@@ -1,19 +1,15 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { Collection } from '@/shared/types/database'
 import type { DocumentWithTags } from '@/modules/library/api/documents'
 import { useDocumentMutations } from '@/modules/library/hooks/useDocumentMutations'
 import { useTags } from '@/modules/library/hooks/useTags'
+import { useReprocessDocument } from '@/modules/processing/hooks/useReprocessDocument'
+import { ProcessingStatusBadge } from '@/modules/processing/components/ProcessingStatusBadge'
 import { fileTypeLabel, formatFileSize } from '@/modules/library/utils/fileTypes'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
 import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
-
-const STATUS_LABEL: Record<DocumentWithTags['status'], string> = {
-  uploaded: 'Uploaded',
-  processing: 'Processing',
-  ready: 'Ready',
-  error: 'Error',
-}
 
 export function DocumentCard({
   document,
@@ -24,6 +20,7 @@ export function DocumentCard({
 }) {
   const { rename, move, remove } = useDocumentMutations()
   const { addTag, removeTag } = useTags()
+  const reprocess = useReprocessDocument()
   const [renaming, setRenaming] = useState(false)
   const [addingTag, setAddingTag] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -51,12 +48,25 @@ export function DocumentCard({
               {document.title}
             </h3>
           )}
-          <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
-            {formatFileSize(document.file_size)} · {STATUS_LABEL[document.status]}
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-[var(--color-ink-muted)]">
+            {formatFileSize(document.file_size)} ·{' '}
+            <ProcessingStatusBadge documentId={document.id} documentStatus={document.status} />
           </p>
         </div>
         <DropdownMenu trigger={<span aria-hidden>⋯</span>}>
+          {document.file_type === 'epub' && document.status === 'ready' && (
+            <Link
+              to={`/library/${document.id}/read`}
+              role="menuitem"
+              className="block w-full px-3 py-2 text-left text-sm text-[var(--color-ink)] hover:bg-[var(--color-canvas)]"
+            >
+              Read
+            </Link>
+          )}
           <DropdownMenuItem onClick={() => setRenaming(true)}>Rename</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => reprocess.mutate(document.id)}>
+            {document.status === 'error' ? 'Retry processing' : 'Reprocess'}
+          </DropdownMenuItem>
           <DropdownMenuItem danger onClick={() => setConfirmingDelete(true)}>
             Delete
           </DropdownMenuItem>

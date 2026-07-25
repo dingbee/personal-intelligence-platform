@@ -6,6 +6,7 @@ import {
   uploadDocument,
 } from '@/modules/library/api/documents'
 import { useAuth } from '@/modules/auth/useAuth'
+import { processDocument } from '@/modules/processing/pipeline/processDocument'
 
 export function useDocumentMutations() {
   const { user } = useAuth()
@@ -15,7 +16,12 @@ export function useDocumentMutations() {
   const upload = useMutation({
     mutationFn: (params: { file: File; collectionId: string | null }) =>
       uploadDocument({ ...params, userId: user!.id }),
-    onSuccess: invalidate,
+    onSuccess: (document) => {
+      invalidate()
+      // Fire-and-forget: the pipeline reports progress via processing_jobs,
+      // which the library UI polls — nothing here needs to await it.
+      void processDocument(document.id, user!.id)
+    },
   })
 
   const rename = useMutation({

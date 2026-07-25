@@ -10,12 +10,21 @@ import { NotesPage } from '@/modules/notes/pages/NotesPage'
 import { SearchPage } from '@/modules/search/pages/SearchPage'
 import { ChatPage } from '@/modules/ai/chat/pages/ChatPage'
 import { SettingsPage } from '@/modules/settings/pages/SettingsPage'
+import { ReaderPage } from '@/modules/reader/pages/ReaderPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignUpPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },
+  {
+    path: '/library/:documentId/read',
+    element: (
+      <ProtectedRoute>
+        <ReaderPage />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: '/',
     element: (

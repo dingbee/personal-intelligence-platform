@@ -27,6 +27,17 @@ Supabase CLI or the SQL editor), before signing up:
   for auth to work end to end.
 - `0002_library.sql` — `collections`, `documents`, `tags`, `document_tags`,
   and the private `documents` Storage bucket, required for the library.
+- `0003_processing.sql` — `processing_jobs`, `extraction_metadata`,
+  `document_chunks`, `embeddings` (pgvector, placeholder-dimension 1536),
+  and the `match_document_chunks` similarity search function.
+
+Document processing (extraction/chunking/embedding) runs client-side in the
+browser after upload — there's no server/edge function yet, so it only runs
+while the uploading tab is open. Moving it to a Supabase Edge Function is a
+natural follow-up once there's a reason to (e.g. very large files, or
+processing that should survive the tab closing); the `DocumentProcessor` /
+`Chunker` / `EmbeddingProvider` / `VectorStore` interfaces don't change
+either way.
 
 ## Folder boundaries
 
@@ -36,14 +47,20 @@ src/
   modules/        One folder per product surface — feature code lives here
     auth/         Auth context, hooks, guarded routes, auth pages
     library/      Document library: upload, collections/folders, tags, search-by-title
+    processing/   Document processing pipeline (extract → chunk → embed → index)
+      extractors/ Per-file-type DocumentProcessor implementations (pdf/epub/docx/txt/markdown)
+      chunking/   Chunker strategies (fixed-length, paragraph, chapter-aware; semantic stubbed)
+      pipeline/   Orchestrates extract → chunk → store → embed → index for one document
+      api/        Supabase queries for processing_jobs, extraction_metadata, document_chunks
+    reader/       Basic EPUB reader (chapter nav, typography, local reading progress)
     notes/        Rich notes (later milestone)
     search/       Semantic search (later milestone)
     ai/
       chat/       Chat UI
-      orchestration/  Prompt construction, provider selection, retrieval glue
-      providers/  Pluggable OpenAI / Anthropic / Gemini adapters
-      embeddings/ Embedding generation for chunks and notes
-      retrieval/  Vector similarity search + context assembly
+      orchestration/  Prompt construction, provider selection, retrieval glue (later milestone)
+      providers/  Pluggable OpenAI / Anthropic / Gemini adapters (later milestone)
+      embeddings/ EmbeddingProvider interface + placeholder implementation
+      retrieval/  VectorStore interface + pgvector-backed implementation
     settings/     Account settings
   shared/         Cross-module code
     components/
@@ -64,11 +81,11 @@ without touching the chat UI.
 ## Roadmap
 
 1. Project foundation and authentication
-2. **Knowledge library and document management** ← current milestone
-3. Document processing and indexing
+2. Knowledge library and document management
+3. **Document processing and indexing** ← current milestone (includes a basic EPUB reader)
 4. AI chat with RAG
 5. Semantic search
-6. EPUB reading workspace
+6. EPUB reading workspace (AI chat/summary/flashcards/quiz per book)
 7. Notes and knowledge linking
 8. Personal memory and AI personalization
 9. Knowledge graph

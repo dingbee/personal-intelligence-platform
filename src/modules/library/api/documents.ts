@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase'
-import type { DocumentRow } from '@/shared/types/database'
+import type { DocumentRow, DocumentStatus } from '@/shared/types/database'
 import { fileTypeFromName } from '@/modules/library/utils/fileTypes'
 
 export interface DocumentFilters {
@@ -81,6 +81,17 @@ export async function uploadDocument(params: {
   }
 
   return data
+}
+
+export async function getDocument(id: string): Promise<DocumentRow> {
+  const { data, error } = await supabase.from('documents').select('*').eq('id', id).single()
+  if (error) throw error
+  return data
+}
+
+export async function updateDocumentStatus(id: string, status: DocumentStatus): Promise<void> {
+  const { error } = await supabase.from('documents').update({ status }).eq('id', id)
+  if (error) throw error
 }
 
 export async function renameDocument(id: string, title: string): Promise<DocumentRow> {
