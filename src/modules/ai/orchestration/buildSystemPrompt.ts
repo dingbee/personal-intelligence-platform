@@ -1,10 +1,10 @@
-import { promptRegistry } from '@/modules/core/prompts/registry'
+import { getActivePrompt } from '@/modules/core/prompts/registry'
 import type { VectorMatch } from '@/modules/ai/retrieval/VectorStore'
 
-/** Fills the registered 'rag-chat' PromptTemplate's {{context}} placeholder with retrieved chunks. */
+/** Fills the active 'chat' PromptTemplate's {{context}} placeholder with retrieved chunks. */
 export function buildSystemPrompt(matches: VectorMatch[]): string {
-  const template = promptRegistry.get('rag-chat')
-  if (!template) throw new Error('Missing "rag-chat" prompt template — is coreModule registered?')
+  const template = getActivePrompt('chat')
+  if (!template) throw new Error('No active prompt template for the "chat" capability — is coreModule registered?')
 
   const context =
     matches.length > 0

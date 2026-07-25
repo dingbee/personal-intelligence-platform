@@ -14,6 +14,7 @@ registerPlatformModule({
   id: 'core',
   name: 'Core',
   capabilities: [
+    { id: 'chat', label: 'Chat', description: 'Ask questions grounded in your own documents via RAG.' },
     { id: 'summarize', label: 'Summarize', description: 'Condense a document, chapter, or note into key points.' },
     { id: 'explain', label: 'Explain', description: 'Break down a difficult passage or concept in plain language.' },
     { id: 'quiz', label: 'Quiz', description: 'Generate questions to test understanding of the content.' },
@@ -39,8 +40,10 @@ registerPlatformModule({
   ],
   prompts: [
     {
-      id: 'rag-chat',
+      id: 'rag-chat@1.0',
       capabilityId: 'chat',
+      version: '1.0',
+      active: true,
       template:
         "You are the user's personal knowledge assistant. Answer using ONLY the context below from " +
         'the user\'s own documents. If the context does not contain the answer, say so plainly instead ' +

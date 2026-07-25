@@ -1,5 +1,5 @@
 /**
- * Hand-written subset of the Supabase schema used through Milestone 4.
+ * Hand-written subset of the Supabase schema used through Milestone 4.5.
  * Regenerate with the Supabase CLI (`supabase gen types typescript`) once
  * the schema grows past what's practical to hand-maintain.
  */
@@ -143,6 +143,23 @@ export type Message = {
   created_at: string
 }
 
+export type AiRequestStatus = 'success' | 'error'
+
+export type AiRequest = {
+  id: string
+  user_id: string
+  workspace_id: string | null
+  feature: string
+  provider: string
+  model: string | null
+  tokens_input: number | null
+  tokens_output: number | null
+  latency_ms: number
+  status: AiRequestStatus
+  error_message: string | null
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -233,6 +250,18 @@ export type Database = {
         Update: Partial<Message>
         Relationships: []
       }
+      ai_requests: {
+        Row: AiRequest
+        Insert: Partial<AiRequest> & {
+          user_id: string
+          feature: string
+          provider: string
+          latency_ms: number
+          status: AiRequestStatus
+        }
+        Update: Partial<AiRequest>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -251,6 +280,7 @@ export type Database = {
       document_status: DocumentStatus
       processing_status: ProcessingStatus
       message_role: MessageRole
+      ai_request_status: AiRequestStatus
     }
   }
 }

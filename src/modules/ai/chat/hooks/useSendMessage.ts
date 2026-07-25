@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/modules/auth/useAuth'
+import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { sendMessage } from '@/modules/ai/orchestration/AIService'
 import type { ChatProviderMessage } from '@/modules/ai/providers/ChatProvider'
 import type { Message } from '@/shared/types/database'
@@ -13,6 +14,7 @@ import type { Message } from '@/shared/types/database'
  */
 export function useSendMessage(conversationId: string, providerId: string, documentId?: string) {
   const { user } = useAuth()
+  const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
   const [streamingText, setStreamingText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -28,6 +30,7 @@ export function useSendMessage(conversationId: string, providerId: string, docum
       const message = await sendMessage({
         conversationId,
         userId: user!.id,
+        workspaceId: currentWorkspaceId,
         providerId,
         documentId,
         history,

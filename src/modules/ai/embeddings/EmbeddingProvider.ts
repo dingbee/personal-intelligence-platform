@@ -1,16 +1,24 @@
+export interface EmbeddingLogContext {
+  userId: string
+  workspaceId?: string | null
+  /** Which platform feature triggered this call, for ai_requests logging — e.g. 'processing', 'retrieval'. */
+  feature: string
+}
+
 export interface EmbeddingProvider {
   /** Identifies the model for storage/debugging — real providers return their model name. */
   modelName: string
   dimensions: number
-  embed(texts: string[]): Promise<number[][]>
+  /** `context`, when provided, logs an ai_requests row — implementations without real usage data may ignore it. */
+  embed(texts: string[], context?: EmbeddingLogContext): Promise<number[][]>
 }
 
 /**
  * Deterministic, content-derived fake embeddings — NOT semantically
- * meaningful. This exists purely so the processing pipeline and pgvector
- * storage/query path can be built and exercised end to end before a real
- * AI provider is wired up in Milestone 4. Similarity search against these
- * vectors will not return relevant results.
+ * meaningful. Exists for offline dev/testing without an OpenAI key; the
+ * processing pipeline and chat retrieval use OpenAIEmbeddingProvider by
+ * default. Similarity search against these vectors will not return
+ * relevant results.
  */
 export class PlaceholderEmbeddingProvider implements EmbeddingProvider {
   modelName = 'placeholder-hash-v1'

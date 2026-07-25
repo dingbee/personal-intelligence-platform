@@ -39,6 +39,9 @@ Supabase CLI or the SQL editor), before signing up:
 - `0005_ai_chat.sql` — `conversations`, `messages`, and an updated
   `match_document_chunks` that can optionally scope similarity search to one
   document (for "chat about this book" instead of the whole library).
+- `0006_ai_governance.sql` — `ai_requests`: an append-only log of every
+  chat/embedding call (feature, provider, model, tokens, latency, status),
+  for debugging failures and estimating usage/cost.
 
 Document processing (extraction/chunking/embedding) runs client-side in the
 browser after upload — there's no background worker yet, so it only runs
@@ -91,6 +94,7 @@ src/
       providers/  ChatProvider interface + thin adapters that call the ai-chat edge function
       embeddings/ EmbeddingProvider interface + OpenAI implementation (+ a placeholder for offline dev)
       retrieval/  VectorStore interface + pgvector-backed implementation
+      observability/  ai_requests logging (api + a hook for Settings' "Recent AI activity")
     workspaces/   Workspace switcher/context — the primary organizational unit
     core/         Platform extensibility: capability/prompt/provider/workflow
                   registries + the module-registration mechanism (see below)
@@ -157,7 +161,7 @@ registries introduced in Milestone 3.5:
 ChatPage
   -> AIService.sendMessage()
        -> retrieveContext()       (embed query, pgvector similarity search)
-       -> buildSystemPrompt()     (promptRegistry's 'rag-chat' template + retrieved chunks)
+       -> buildSystemPrompt()     (the active 'chat' prompt template + retrieved chunks)
        -> getChatProvider(id)     (modules/ai/providers/registry.ts)
        -> provider.chat()         -> ai-chat edge function -> Claude / GPT / Gemini
 ```
@@ -181,13 +185,35 @@ hash vectors — both implement the same `EmbeddingProvider` interface, so
 document processing and chat retrieval didn't need to change to pick this
 up, only which instance they construct.
 
+## AI governance & observability
+
+Every chat completion and embedding call logs an `ai_requests` row
+(feature, provider, model, token counts, latency, status) — visible in
+Settings under "Recent AI activity". Token counts come from each provider's
+own usage reporting: the edge function tracks them while normalizing the
+stream (Anthropic's `message_start`/`message_delta` events, OpenAI's
+`stream_options: { include_usage: true }`, Gemini's `usageMetadata`) and
+appends a small JSON marker as the very last thing written to the
+normalized stream; `streamAiChat` on the client strips it before it ever
+reaches the UI as visible text. It's best-effort by design — a logging
+failure never breaks the chat response that triggered it (see
+`logAiRequest`'s catch-and-log-only error handling).
+
+Prompt templates are versioned from the start: a `PromptTemplate`'s `id`
+includes its version (`rag-chat@1.0`), so multiple versions of the same
+capability's prompt can be registered side by side and marked `active`
+independently — `getActivePrompt('chat')` resolves whichever one is live.
+That's what makes A/B testing a prompt change later ("`rag-chat@1.0` vs
+`rag-chat@1.1`") a data question against `ai_requests`, not a code change.
+
 ## Roadmap
 
 1. Project foundation and authentication
 2. Knowledge library and document management
 3. Document processing and indexing (includes a basic EPUB reader)
 3.5. Platform architecture — Workspaces, module/capability/prompt/provider registries
-4. **AI chat with RAG** ← current milestone — real Claude/GPT/Gemini + OpenAI embeddings, via an Edge Function
+4. AI chat with RAG — real Claude/GPT/Gemini + OpenAI embeddings, via an Edge Function
+4.5. **AI governance & observability** ← current milestone — ai_requests logging, versioned prompts
 5. Semantic search
 6. EPUB reading workspace (AI chat/summary/flashcards/quiz per book)
 7. Notes and knowledge linking

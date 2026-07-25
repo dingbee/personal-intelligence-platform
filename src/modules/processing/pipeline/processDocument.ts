@@ -42,7 +42,10 @@ export async function processDocument(documentId: string, userId: string): Promi
     await updateProcessingJob(job.id, { status: 'embedding' })
     for (let i = 0; i < savedChunks.length; i += EMBEDDING_BATCH_SIZE) {
       const batch = savedChunks.slice(i, i + EMBEDDING_BATCH_SIZE)
-      const embeddings = await embeddingProvider.embed(batch.map((chunk) => chunk.content))
+      const embeddings = await embeddingProvider.embed(
+        batch.map((chunk) => chunk.content),
+        { userId, workspaceId: document.workspace_id, feature: 'processing' },
+      )
       await supabaseVectorStore.upsert(
         batch.map((chunk, j) => ({
           chunkId: chunk.id,

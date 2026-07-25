@@ -51,26 +51,68 @@ const DEFAULT_MODEL: Record<ChatProviderId, string> = {
 
 const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small'
 
-/** Normalizes each provider's SSE wire format to a plain UTF-8 text-delta stream. */
-function normalizeChatStream(provider: ChatProviderId, upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+// Appended once, as the very last thing written to the normalized stream,
+// so the client can separate "text the user should see" from token usage
+// for Milestone 4.5's ai_requests logging. Distinctive enough that no real
+// model response would ever produce it verbatim, so a plain string search
+// is enough — no need for a heavier framed-message protocol.
+const USAGE_MARKER = '<<<AI_USAGE_JSON>>>'
+
+interface UsageInfo {
+  model: string
+  inputTokens: number | null
+  outputTokens: number | null
+}
+
+/** Normalizes each provider's SSE wire format to a plain UTF-8 text-delta stream, tracking token usage along the way. */
+function normalizeChatStream(
+  provider: ChatProviderId,
+  model: string,
+  upstream: ReadableStream<Uint8Array>,
+): ReadableStream<Uint8Array> {
   const decoder = new TextDecoder()
   const encoder = new TextEncoder()
   let buffer = ''
+  const usage: UsageInfo = { model, inputTokens: null, outputTokens: null }
 
-  function extractDelta(provider: ChatProviderId, payload: unknown): string | null {
+  function extractDelta(payload: unknown): string | null {
     if (provider === 'anthropic') {
-      const event = payload as { type?: string; delta?: { type?: string; text?: string } }
+      const event = payload as {
+        type?: string
+        delta?: { type?: string; text?: string; usage?: { output_tokens?: number } }
+        message?: { usage?: { input_tokens?: number } }
+      }
+      if (event.type === 'message_start') {
+        usage.inputTokens = event.message?.usage?.input_tokens ?? usage.inputTokens
+      }
+      if (event.type === 'message_delta') {
+        usage.outputTokens = event.delta?.usage?.output_tokens ?? usage.outputTokens
+      }
       if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
         return event.delta.text ?? null
       }
       return null
     }
     if (provider === 'openai') {
-      const event = payload as { choices?: { delta?: { content?: string } }[] }
+      const event = payload as {
+        choices?: { delta?: { content?: string } }[]
+        usage?: { prompt_tokens?: number; completion_tokens?: number }
+      }
+      if (event.usage) {
+        usage.inputTokens = event.usage.prompt_tokens ?? usage.inputTokens
+        usage.outputTokens = event.usage.completion_tokens ?? usage.outputTokens
+      }
       return event.choices?.[0]?.delta?.content ?? null
     }
     // google
-    const event = payload as { candidates?: { content?: { parts?: { text?: string }[] } }[] }
+    const event = payload as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[]
+      usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number }
+    }
+    if (event.usageMetadata) {
+      usage.inputTokens = event.usageMetadata.promptTokenCount ?? usage.inputTokens
+      usage.outputTokens = event.usageMetadata.candidatesTokenCount ?? usage.outputTokens
+    }
     return event.candidates?.[0]?.content?.parts?.[0]?.text ?? null
   }
 
@@ -94,13 +136,14 @@ function normalizeChatStream(provider: ChatProviderId, upstream: ReadableStream<
 
             try {
               const payload = JSON.parse(data)
-              const text = extractDelta(provider, payload)
+              const text = extractDelta(payload)
               if (text) controller.enqueue(encoder.encode(text))
             } catch {
               // Ignore malformed/partial SSE payloads rather than failing the whole stream.
             }
           }
         }
+        controller.enqueue(encoder.encode(`${USAGE_MARKER}${JSON.stringify(usage)}`))
         controller.close()
       } catch (err) {
         controller.error(err)
@@ -134,7 +177,7 @@ async function handleChat(body: ChatRequestBody): Promise<Response> {
     if (!upstream.ok || !upstream.body) {
       return errorResponse(`Anthropic error: ${upstream.status} ${await upstream.text()}`, 502)
     }
-    return streamResponse(normalizeChatStream('anthropic', upstream.body))
+    return streamResponse(normalizeChatStream('anthropic', model, upstream.body))
   }
 
   if (body.provider === 'openai') {
@@ -145,12 +188,17 @@ async function handleChat(body: ChatRequestBody): Promise<Response> {
     const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ model, messages, stream: true }),
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: true,
+        stream_options: { include_usage: true },
+      }),
     })
     if (!upstream.ok || !upstream.body) {
       return errorResponse(`OpenAI error: ${upstream.status} ${await upstream.text()}`, 502)
     }
-    return streamResponse(normalizeChatStream('openai', upstream.body))
+    return streamResponse(normalizeChatStream('openai', model, upstream.body))
   }
 
   // google
@@ -175,25 +223,34 @@ async function handleChat(body: ChatRequestBody): Promise<Response> {
   if (!upstream.ok || !upstream.body) {
     return errorResponse(`Google error: ${upstream.status} ${await upstream.text()}`, 502)
   }
-  return streamResponse(normalizeChatStream('google', upstream.body))
+  return streamResponse(normalizeChatStream('google', model, upstream.body))
 }
 
 async function handleEmbed(body: EmbedRequestBody): Promise<Response> {
   const apiKey = Deno.env.get('OPENAI_API_KEY')
   if (!apiKey) return errorResponse('OPENAI_API_KEY is not configured', 500)
 
+  const model = body.model ?? DEFAULT_EMBEDDING_MODEL
   const response = await fetch('https://api.openai.com/v1/embeddings', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ model: body.model ?? DEFAULT_EMBEDDING_MODEL, input: body.input }),
+    body: JSON.stringify({ model, input: body.input }),
   })
   if (!response.ok) {
     return errorResponse(`OpenAI embeddings error: ${response.status} ${await response.text()}`, 502)
   }
-  const json = (await response.json()) as { data: { embedding: number[] }[] }
-  return new Response(JSON.stringify({ embeddings: json.data.map((d) => d.embedding) }), {
-    headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
-  })
+  const json = (await response.json()) as {
+    data: { embedding: number[] }[]
+    usage?: { prompt_tokens?: number }
+  }
+  return new Response(
+    JSON.stringify({
+      embeddings: json.data.map((d) => d.embedding),
+      model,
+      promptTokens: json.usage?.prompt_tokens ?? null,
+    }),
+    { headers: { ...CORS_HEADERS, 'content-type': 'application/json' } },
+  )
 }
 
 function streamResponse(stream: ReadableStream<Uint8Array>): Response {

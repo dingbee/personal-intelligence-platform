@@ -1,3 +1,5 @@
+import type { ChatUsage } from '@/modules/ai/providers/edgeFunctionClient'
+
 export interface ChatProviderMessage {
   role: 'user' | 'assistant'
   content: string
@@ -6,6 +8,7 @@ export interface ChatProviderMessage {
 export interface ChatRequest {
   messages: ChatProviderMessage[]
   system?: string
+  onUsage?: (usage: ChatUsage) => void
 }
 
 export interface ChatProvider {

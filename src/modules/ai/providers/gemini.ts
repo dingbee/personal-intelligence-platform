@@ -3,7 +3,7 @@ import { streamAiChat } from '@/modules/ai/providers/edgeFunctionClient'
 
 export const geminiChatProvider: ChatProvider = {
   id: 'google',
-  chat(request: ChatRequest) {
-    return streamAiChat({ action: 'chat', provider: 'google', ...request })
+  chat({ onUsage, ...request }: ChatRequest) {
+    return streamAiChat({ action: 'chat', provider: 'google', ...request }, onUsage)
   },
 }
