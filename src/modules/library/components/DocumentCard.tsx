@@ -63,6 +63,15 @@ export function DocumentCard({
               Read
             </Link>
           )}
+          {document.status === 'ready' && (
+            <Link
+              to={`/chat?documentId=${document.id}`}
+              role="menuitem"
+              className="block w-full px-3 py-2 text-left text-sm text-[var(--color-ink)] hover:bg-[var(--color-canvas)]"
+            >
+              Chat about this document
+            </Link>
+          )}
           <DropdownMenuItem onClick={() => setRenaming(true)}>Rename</DropdownMenuItem>
           <DropdownMenuItem onClick={() => reprocess.mutate(document.id)}>
             {document.status === 'error' ? 'Retry processing' : 'Reprocess'}

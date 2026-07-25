@@ -27,12 +27,24 @@ registerPlatformModule({
     { id: 'mind-map', label: 'Mind Map', description: 'Map out concepts and how they relate to each other.' },
   ],
   providers: [
-    { id: 'anthropic', label: 'Anthropic (Claude)', kind: 'chat', status: 'planned' },
-    { id: 'openai', label: 'OpenAI (GPT)', kind: 'chat', status: 'planned' },
-    { id: 'google', label: 'Google (Gemini)', kind: 'chat', status: 'planned' },
+    // "available" means the code path is real (edge function + client adapter wired up),
+    // not that a key is necessarily configured — see supabase/functions/ai-chat.
+    { id: 'anthropic', label: 'Anthropic (Claude)', kind: 'chat', status: 'available' },
+    { id: 'openai', label: 'OpenAI (GPT)', kind: 'chat', status: 'available' },
+    { id: 'google', label: 'Google (Gemini)', kind: 'chat', status: 'available' },
     { id: 'ollama', label: 'Ollama (local)', kind: 'chat', status: 'planned' },
     { id: 'openrouter', label: 'OpenRouter', kind: 'chat', status: 'planned' },
     { id: 'azure-openai', label: 'Azure OpenAI', kind: 'chat', status: 'planned' },
-    { id: 'placeholder-embeddings', label: 'Placeholder (hash-based)', kind: 'embedding', status: 'available' },
+    { id: 'openai-embeddings', label: 'OpenAI (text-embedding-3-small)', kind: 'embedding', status: 'available' },
+  ],
+  prompts: [
+    {
+      id: 'rag-chat',
+      capabilityId: 'chat',
+      template:
+        "You are the user's personal knowledge assistant. Answer using ONLY the context below from " +
+        'the user\'s own documents. If the context does not contain the answer, say so plainly instead ' +
+        "of guessing from general knowledge.\n\nContext:\n{{context}}",
+    },
   ],
 })

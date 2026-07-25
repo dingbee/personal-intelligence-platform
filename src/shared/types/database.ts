@@ -1,5 +1,5 @@
 /**
- * Hand-written subset of the Supabase schema used through Milestone 3.5.
+ * Hand-written subset of the Supabase schema used through Milestone 4.
  * Regenerate with the Supabase CLI (`supabase gen types typescript`) once
  * the schema grows past what's practical to hand-maintain.
  */
@@ -120,6 +120,29 @@ export type Embedding = {
   created_at: string
 }
 
+export type MessageRole = 'user' | 'assistant' | 'system'
+
+export type Conversation = {
+  id: string
+  user_id: string
+  workspace_id: string | null
+  document_id: string | null
+  title: string
+  provider_id: string
+  created_at: string
+  updated_at: string
+}
+
+export type Message = {
+  id: string
+  conversation_id: string
+  user_id: string
+  role: MessageRole
+  content: string
+  context_chunk_ids: string[]
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -198,11 +221,28 @@ export type Database = {
         Update: Partial<Embedding>
         Relationships: []
       }
+      conversations: {
+        Row: Conversation
+        Insert: Partial<Conversation> & { user_id: string }
+        Update: Partial<Conversation>
+        Relationships: []
+      }
+      messages: {
+        Row: Message
+        Insert: Partial<Message> & { conversation_id: string; user_id: string; role: MessageRole; content: string }
+        Update: Partial<Message>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
       match_document_chunks: {
-        Args: { query_embedding: number[]; match_count?: number; filter_user_id?: string }
+        Args: {
+          query_embedding: number[]
+          match_count?: number
+          filter_user_id?: string
+          filter_document_id?: string | null
+        }
         Returns: { chunk_id: string; document_id: string; content: string; similarity: number }[]
       }
     }
@@ -210,6 +250,7 @@ export type Database = {
       document_file_type: DocumentFileType
       document_status: DocumentStatus
       processing_status: ProcessingStatus
+      message_role: MessageRole
     }
   }
 }
