@@ -1,0 +1,39 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  deleteDocument,
+  moveDocument,
+  renameDocument,
+  uploadDocument,
+} from '@/modules/library/api/documents'
+import { useAuth } from '@/modules/auth/useAuth'
+
+export function useDocumentMutations() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['documents'] })
+
+  const upload = useMutation({
+    mutationFn: (params: { file: File; collectionId: string | null }) =>
+      uploadDocument({ ...params, userId: user!.id }),
+    onSuccess: invalidate,
+  })
+
+  const rename = useMutation({
+    mutationFn: (params: { id: string; title: string }) => renameDocument(params.id, params.title),
+    onSuccess: invalidate,
+  })
+
+  const move = useMutation({
+    mutationFn: (params: { id: string; collectionId: string | null }) =>
+      moveDocument(params.id, params.collectionId),
+    onSuccess: invalidate,
+  })
+
+  const remove = useMutation({
+    mutationFn: (params: { id: string; filePath: string }) =>
+      deleteDocument(params.id, params.filePath),
+    onSuccess: invalidate,
+  })
+
+  return { upload, rename, move, remove }
+}

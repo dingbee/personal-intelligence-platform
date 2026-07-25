@@ -8,6 +8,7 @@ memory).
 ## Stack
 
 - React + Vite + TypeScript (strict mode) + Tailwind CSS
+- TanStack Query for server-state (data fetching/caching/mutations)
 - Supabase (Postgres, Auth, Storage, pgvector)
 - Model-agnostic AI layer (OpenAI / Anthropic / Gemini), added from Milestone 4 onward
 
@@ -19,9 +20,13 @@ cp .env.example .env   # fill in your Supabase project URL + anon key
 npm run dev
 ```
 
-Apply `supabase/migrations/` to your Supabase project (via the Supabase CLI
-or the SQL editor) before signing up — the `profiles` table and its
-auto-provisioning trigger are required for auth to work end to end.
+Apply `supabase/migrations/` to your Supabase project, in order (via the
+Supabase CLI or the SQL editor), before signing up:
+
+- `0001_init.sql` — `profiles` table + auto-provisioning trigger, required
+  for auth to work end to end.
+- `0002_library.sql` — `collections`, `documents`, `tags`, `document_tags`,
+  and the private `documents` Storage bucket, required for the library.
 
 ## Folder boundaries
 
@@ -30,7 +35,7 @@ src/
   app/            Root component, router, app-wide providers
   modules/        One folder per product surface — feature code lives here
     auth/         Auth context, hooks, guarded routes, auth pages
-    library/      Document/book library (upload, organize, tag — later milestone)
+    library/      Document library: upload, collections/folders, tags, search-by-title
     notes/        Rich notes (later milestone)
     search/       Semantic search (later milestone)
     ai/
@@ -58,8 +63,8 @@ without touching the chat UI.
 
 ## Roadmap
 
-1. **Project foundation and authentication** ← current milestone
-2. Knowledge library and document management
+1. Project foundation and authentication
+2. **Knowledge library and document management** ← current milestone
 3. Document processing and indexing
 4. AI chat with RAG
 5. Semantic search
