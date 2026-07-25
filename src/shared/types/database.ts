@@ -1,5 +1,5 @@
 /**
- * Hand-written subset of the Supabase schema used through Milestone 4.5.
+ * Hand-written subset of the Supabase schema used through Milestone 5.
  * Regenerate with the Supabase CLI (`supabase gen types typescript`) once
  * the schema grows past what's practical to hand-maintain.
  */
@@ -102,6 +102,7 @@ export type DocumentChunk = {
   id: string
   document_id: string
   user_id: string
+  workspace_id: string | null
   chunk_index: number
   content: string
   char_start: number
@@ -140,6 +141,14 @@ export type Message = {
   role: MessageRole
   content: string
   context_chunk_ids: string[]
+  created_at: string
+}
+
+export type MessageEmbedding = {
+  id: string
+  message_id: string
+  model: string
+  embedding: number[]
   created_at: string
 }
 
@@ -238,6 +247,12 @@ export type Database = {
         Update: Partial<Embedding>
         Relationships: []
       }
+      message_embeddings: {
+        Row: MessageEmbedding
+        Insert: Partial<MessageEmbedding> & { message_id: string; model: string; embedding: number[] }
+        Update: Partial<MessageEmbedding>
+        Relationships: []
+      }
       conversations: {
         Row: Conversation
         Insert: Partial<Conversation> & { user_id: string }
@@ -271,8 +286,18 @@ export type Database = {
           match_count?: number
           filter_user_id?: string
           filter_document_id?: string | null
+          filter_workspace_id?: string | null
         }
         Returns: { chunk_id: string; document_id: string; content: string; similarity: number }[]
+      }
+      match_messages: {
+        Args: {
+          query_embedding: number[]
+          match_count?: number
+          filter_user_id?: string
+          filter_workspace_id?: string | null
+        }
+        Returns: { message_id: string; conversation_id: string; content: string; similarity: number }[]
       }
     }
     Enums: {

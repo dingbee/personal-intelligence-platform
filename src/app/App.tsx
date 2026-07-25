@@ -4,9 +4,10 @@ import { AuthProvider } from '@/modules/auth/AuthContext'
 import { WorkspaceProvider } from '@/modules/workspaces/context/WorkspaceProvider'
 import { queryClient } from '@/shared/lib/queryClient'
 import { router } from '@/app/router'
-// Side-effect import: registers the built-in "core" capabilities/providers
-// with the platform registries. See modules/core/README.md.
+// Side-effect imports: register built-in platform/search providers before
+// anything tries to read from those registries. See modules/core/README.md.
 import '@/modules/core/modules/coreModule'
+import '@/modules/search/registerBuiltInProviders'
 
 export function App() {
   return (

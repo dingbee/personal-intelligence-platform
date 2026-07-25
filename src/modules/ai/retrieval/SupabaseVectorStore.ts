@@ -26,6 +26,7 @@ export const supabaseVectorStore: VectorStore = {
       query_embedding: embedding,
       match_count: options.matchCount ?? 10,
       filter_document_id: options.documentId ?? null,
+      filter_workspace_id: options.workspaceId ?? null,
     })
     if (error) throw error
     return data.map((row) => ({

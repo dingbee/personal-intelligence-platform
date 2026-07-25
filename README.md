@@ -42,6 +42,10 @@ Supabase CLI or the SQL editor), before signing up:
 - `0006_ai_governance.sql` — `ai_requests`: an append-only log of every
   chat/embedding call (feature, provider, model, tokens, latency, status),
   for debugging failures and estimating usage/cost.
+- `0007_search.sql` — `message_embeddings` + `match_messages` (mirrors
+  `document_chunks`/`match_document_chunks` for conversations), a
+  denormalized `workspace_id` on `document_chunks`, and workspace-scoping
+  added to `match_document_chunks`.
 
 Document processing (extraction/chunking/embedding) runs client-side in the
 browser after upload — there's no background worker yet, so it only runs
@@ -87,7 +91,7 @@ src/
       api/        Supabase queries for processing_jobs, extraction_metadata, document_chunks
     reader/       Basic EPUB reader (chapter nav, typography, local reading progress)
     notes/        Rich notes (later milestone)
-    search/       Semantic search (later milestone)
+    search/       Universal semantic search: SearchProvider registry + document/conversation providers
     ai/
       chat/       Conversations/messages UI + data layer (RAG chat, per-workspace or per-document)
       orchestration/  AIService (the one entry point UI calls), retrieval glue, prompt construction
@@ -206,6 +210,38 @@ independently — `getActivePrompt('chat')` resolves whichever one is live.
 That's what makes A/B testing a prompt change later ("`rag-chat@1.0` vs
 `rag-chat@1.1`") a data question against `ai_requests`, not a code change.
 
+## Universal search
+
+Search (`modules/search/`) is a reusable platform capability, not a
+document-search feature — the same `SearchProvider` pattern Milestone 3.5
+established for capabilities/prompts/providers/workflows, reused here via
+the same `createRegistry<T>()`:
+
+```ts
+interface SearchProvider {
+  id: string
+  search(query: SearchQuery): Promise<SearchResult[]>
+}
+```
+
+Two are registered today — `documentSearchProvider` (queries
+`match_document_chunks`) and `conversationSearchProvider` (queries the new
+`match_messages`, over embeddings generated for every chat message as it's
+sent). `useSearch()` embeds the query once, fans it out to every registered
+provider in parallel, and merges by similarity — it has no idea how many
+source types exist or what they are. A future source (notes, highlights,
+flashcards) adds its own embeddings table + match function, implements
+`SearchProvider`, and registers itself in
+`modules/search/registerBuiltInProviders.ts`; `useSearch()` and `SearchPage`
+don't change.
+
+This stayed inside the Milestone 4 AI boundary throughout: the only new AI
+calls are embeddings, which still go through `OpenAIEmbeddingProvider` (the
+same edge-function-backed implementation chat retrieval uses) and still log
+to `ai_requests` (`feature: 'search'` for the query, `'indexing'` for
+messages as they're embedded). Nothing in `modules/search/` talks to a
+provider or the edge function directly.
+
 ## Roadmap
 
 1. Project foundation and authentication
@@ -213,8 +249,8 @@ That's what makes A/B testing a prompt change later ("`rag-chat@1.0` vs
 3. Document processing and indexing (includes a basic EPUB reader)
 3.5. Platform architecture — Workspaces, module/capability/prompt/provider registries
 4. AI chat with RAG — real Claude/GPT/Gemini + OpenAI embeddings, via an Edge Function
-4.5. **AI governance & observability** ← current milestone — ai_requests logging, versioned prompts
-5. Semantic search
+4.5. AI governance & observability — ai_requests logging, versioned prompts
+5. **Universal semantic search** ← current milestone — SearchProvider registry over documents + conversations
 6. EPUB reading workspace (AI chat/summary/flashcards/quiz per book)
 7. Notes and knowledge linking
 8. Personal memory and AI personalization

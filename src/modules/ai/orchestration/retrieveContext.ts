@@ -16,5 +16,12 @@ export async function retrieveContext(params: {
     workspaceId: params.workspaceId,
     feature: 'retrieval',
   })
-  return supabaseVectorStore.query(embedding!, { documentId: params.documentId, matchCount: 8 })
+  return supabaseVectorStore.query(embedding!, {
+    documentId: params.documentId,
+    // Only apply the workspace filter for whole-library chat — a
+    // document-scoped conversation should always find that document's
+    // chunks even if the workspace switcher has since moved elsewhere.
+    workspaceId: params.documentId ? undefined : params.workspaceId,
+    matchCount: 8,
+  })
 }

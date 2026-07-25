@@ -6,9 +6,10 @@ import type { Chunk } from '@/modules/processing/chunking/types'
 export async function replaceDocumentChunks(params: {
   documentId: string
   userId: string
+  workspaceId: string | null
   chunks: Chunk[]
 }): Promise<DocumentChunk[]> {
-  const { documentId, userId, chunks } = params
+  const { documentId, userId, workspaceId, chunks } = params
 
   const { error: deleteError } = await supabase
     .from('document_chunks')
@@ -24,6 +25,7 @@ export async function replaceDocumentChunks(params: {
       chunks.map((chunk) => ({
         document_id: documentId,
         user_id: userId,
+        workspace_id: workspaceId,
         chunk_index: chunk.index,
         content: chunk.content,
         char_start: chunk.charStart,

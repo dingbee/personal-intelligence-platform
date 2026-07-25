@@ -6,6 +6,7 @@ import { touchConversation } from '@/modules/ai/chat/api/conversations'
 import { retrieveContext } from '@/modules/ai/orchestration/retrieveContext'
 import { buildSystemPrompt } from '@/modules/ai/orchestration/buildSystemPrompt'
 import { logAiRequest } from '@/modules/ai/observability/api/aiRequests'
+import { indexMessage } from '@/modules/search/indexing/indexMessage'
 
 export interface SendMessageParams {
   conversationId: string
@@ -31,7 +32,8 @@ export interface SendMessageParams {
 export async function sendMessage(params: SendMessageParams): Promise<Message> {
   const { conversationId, userId, workspaceId, providerId, documentId, history, text } = params
 
-  await insertMessage({ conversationId, userId, role: 'user', content: text })
+  const userMessage = await insertMessage({ conversationId, userId, role: 'user', content: text })
+  void indexMessage(userMessage, workspaceId)
 
   const matches = await retrieveContext({ query: text, userId, workspaceId, documentId })
   const system = buildSystemPrompt(matches)
@@ -88,6 +90,7 @@ export async function sendMessage(params: SendMessageParams): Promise<Message> {
     content: accumulated,
     contextChunkIds: matches.map((match) => match.chunkId),
   })
+  void indexMessage(assistantMessage, workspaceId)
 
   await touchConversation(conversationId)
   return assistantMessage

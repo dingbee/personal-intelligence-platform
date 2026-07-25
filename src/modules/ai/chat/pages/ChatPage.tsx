@@ -17,7 +17,10 @@ export function ChatPage() {
   const documentId = searchParams.get('documentId') ?? undefined
 
   const { data: conversations = [], isLoading: conversationsLoading, create, remove } = useConversations(documentId)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  // Deep-linked from a search result — if it's outside the current
+  // workspace/document filter it still opens (messages load independently
+  // of the sidebar list), it just won't be highlighted in that list.
+  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get('conversationId'))
   const [newProviderId, setNewProviderId] = useState(DEFAULT_CHAT_PROVIDER_ID)
 
   useEffect(() => {

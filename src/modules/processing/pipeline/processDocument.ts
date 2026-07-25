@@ -37,7 +37,12 @@ export async function processDocument(documentId: string, userId: string): Promi
     const strategy = extraction.chapters && extraction.chapters.length > 0 ? 'chapter-aware' : 'paragraph'
     const chunker = getChunker(strategy)
     const chunks = chunker.chunk({ text: extraction.text, chapters: extraction.chapters })
-    const savedChunks = await replaceDocumentChunks({ documentId, userId, chunks })
+    const savedChunks = await replaceDocumentChunks({
+      documentId,
+      userId,
+      workspaceId: document.workspace_id,
+      chunks,
+    })
 
     await updateProcessingJob(job.id, { status: 'embedding' })
     for (let i = 0; i < savedChunks.length; i += EMBEDDING_BATCH_SIZE) {
