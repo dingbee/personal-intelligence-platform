@@ -1,11 +1,10 @@
 import { supabase } from '@/shared/lib/supabase'
 import type { Collection } from '@/shared/types/database'
 
-export async function listCollections(): Promise<Collection[]> {
-  const { data, error } = await supabase
-    .from('collections')
-    .select('*')
-    .order('name', { ascending: true })
+export async function listCollections(workspaceId?: string | null): Promise<Collection[]> {
+  let query = supabase.from('collections').select('*').order('name', { ascending: true })
+  if (workspaceId) query = query.eq('workspace_id', workspaceId)
+  const { data, error } = await query
   if (error) throw error
   return data
 }
@@ -14,10 +13,16 @@ export async function createCollection(params: {
   name: string
   parentId: string | null
   userId: string
+  workspaceId: string | null
 }): Promise<Collection> {
   const { data, error } = await supabase
     .from('collections')
-    .insert({ name: params.name, parent_id: params.parentId, user_id: params.userId })
+    .insert({
+      name: params.name,
+      parent_id: params.parentId,
+      user_id: params.userId,
+      workspace_id: params.workspaceId,
+    })
     .select()
     .single()
   if (error) throw error

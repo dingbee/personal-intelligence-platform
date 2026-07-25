@@ -17,7 +17,9 @@ export function ReaderPage() {
   useEffect(() => {
     const el = contentRef.current
     if (el) el.scrollTop = el.scrollHeight * progress.scrollFraction
-    // Only restore scroll position on the initial chapter load.
+    // Only restore scroll position on chapter change — deliberately not
+    // depending on progress.scrollFraction, which updates continuously as
+    // the reader scrolls and would otherwise fight the user's own scrolling.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex])
 

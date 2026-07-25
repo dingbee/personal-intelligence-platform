@@ -1,5 +1,5 @@
 /**
- * Hand-written subset of the Supabase schema used through Milestone 3.
+ * Hand-written subset of the Supabase schema used through Milestone 3.5.
  * Regenerate with the Supabase CLI (`supabase gen types typescript`) once
  * the schema grows past what's practical to hand-maintain.
  */
@@ -24,9 +24,18 @@ export type ProcessingStatus =
   | 'completed'
   | 'failed'
 
+export type Workspace = {
+  id: string
+  user_id: string
+  name: string
+  created_at: string
+  updated_at: string
+}
+
 export type Collection = {
   id: string
   user_id: string
+  workspace_id: string | null
   parent_id: string | null
   name: string
   created_at: string
@@ -36,6 +45,7 @@ export type Collection = {
 export type DocumentRow = {
   id: string
   user_id: string
+  workspace_id: string | null
   collection_id: string | null
   title: string
   file_name: string
@@ -117,6 +127,12 @@ export type Database = {
         Row: Profile
         Insert: Partial<Profile> & { id: string; email: string }
         Update: Partial<Profile>
+        Relationships: []
+      }
+      workspaces: {
+        Row: Workspace
+        Insert: Partial<Workspace> & { user_id: string; name: string }
+        Update: Partial<Workspace>
         Relationships: []
       }
       collections: {

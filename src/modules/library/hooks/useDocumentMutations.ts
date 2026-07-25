@@ -6,16 +6,18 @@ import {
   uploadDocument,
 } from '@/modules/library/api/documents'
 import { useAuth } from '@/modules/auth/useAuth'
+import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { processDocument } from '@/modules/processing/pipeline/processDocument'
 
 export function useDocumentMutations() {
   const { user } = useAuth()
+  const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['documents'] })
 
   const upload = useMutation({
     mutationFn: (params: { file: File; collectionId: string | null }) =>
-      uploadDocument({ ...params, userId: user!.id }),
+      uploadDocument({ ...params, userId: user!.id, workspaceId: currentWorkspaceId }),
     onSuccess: (document) => {
       invalidate()
       // Fire-and-forget: the pipeline reports progress via processing_jobs,

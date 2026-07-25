@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { WorkspaceSwitcher } from '@/modules/workspaces/components/WorkspaceSwitcher'
 
 const navItems = [
   { to: '/library', label: 'Library' },
@@ -17,6 +18,7 @@ export function Sidebar() {
       <span className="mb-4 px-2 text-sm font-semibold tracking-tight text-[var(--color-ink)]">
         Second Brain
       </span>
+      <WorkspaceSwitcher />
       {navItems.map((item) => (
         <NavLink
           key={item.to}

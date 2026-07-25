@@ -6,30 +6,37 @@ import {
   renameCollection,
 } from '@/modules/library/api/collections'
 import { useAuth } from '@/modules/auth/useAuth'
-
-const collectionsKey = ['collections']
+import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 
 export function useCollections() {
   const { user } = useAuth()
+  const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
+  const collectionsKey = ['collections', currentWorkspaceId]
 
-  const query = useQuery({ queryKey: collectionsKey, queryFn: listCollections, enabled: Boolean(user) })
+  const query = useQuery({
+    queryKey: collectionsKey,
+    queryFn: () => listCollections(currentWorkspaceId),
+    enabled: Boolean(user),
+  })
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['collections'] })
 
   const create = useMutation({
     mutationFn: (params: { name: string; parentId: string | null }) =>
-      createCollection({ ...params, userId: user!.id }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: collectionsKey }),
+      createCollection({ ...params, userId: user!.id, workspaceId: currentWorkspaceId }),
+    onSuccess: invalidate,
   })
 
   const rename = useMutation({
     mutationFn: (params: { id: string; name: string }) => renameCollection(params.id, params.name),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: collectionsKey }),
+    onSuccess: invalidate,
   })
 
   const remove = useMutation({
     mutationFn: (id: string) => deleteCollection(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: collectionsKey })
+      invalidate()
       queryClient.invalidateQueries({ queryKey: ['documents'] })
     },
   })

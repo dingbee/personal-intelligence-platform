@@ -6,6 +6,8 @@ export interface DocumentFilters {
   collectionId?: string | null
   tagId?: string | null
   search?: string
+  /** null/omitted = "All" (backward compatible: no workspace filter applied). */
+  workspaceId?: string | null
 }
 
 export interface DocumentWithTags extends DocumentRow {
@@ -23,6 +25,9 @@ export async function listDocuments(filters: DocumentFilters = {}): Promise<Docu
       filters.collectionId === null
         ? query.is('collection_id', null)
         : query.eq('collection_id', filters.collectionId)
+  }
+  if (filters.workspaceId) {
+    query = query.eq('workspace_id', filters.workspaceId)
   }
   if (filters.search) {
     query = query.ilike('title', `%${filters.search}%`)
@@ -48,8 +53,9 @@ export async function uploadDocument(params: {
   file: File
   userId: string
   collectionId: string | null
+  workspaceId: string | null
 }): Promise<DocumentRow> {
-  const { file, userId, collectionId } = params
+  const { file, userId, collectionId, workspaceId } = params
   const fileType = fileTypeFromName(file.name)
   if (!fileType) {
     throw new Error(`Unsupported file type: ${file.name}`)
@@ -66,6 +72,7 @@ export async function uploadDocument(params: {
     .insert({
       user_id: userId,
       collection_id: collectionId,
+      workspace_id: workspaceId,
       title: file.name.replace(/\.[^/.]+$/, ''),
       file_name: file.name,
       file_path: storagePath,

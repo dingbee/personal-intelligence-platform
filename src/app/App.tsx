@@ -1,14 +1,20 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from 'react-router-dom'
 import { AuthProvider } from '@/modules/auth/AuthContext'
+import { WorkspaceProvider } from '@/modules/workspaces/context/WorkspaceProvider'
 import { queryClient } from '@/shared/lib/queryClient'
 import { router } from '@/app/router'
+// Side-effect import: registers the built-in "core" capabilities/providers
+// with the platform registries. See modules/core/README.md.
+import '@/modules/core/modules/coreModule'
 
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <RouterProvider router={router} />
+        <WorkspaceProvider>
+          <RouterProvider router={router} />
+        </WorkspaceProvider>
       </AuthProvider>
     </QueryClientProvider>
   )
