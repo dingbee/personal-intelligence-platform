@@ -70,5 +70,16 @@ registerPlatformModule({
         '{"front": "question or term", "back": "answer or definition"} — no markdown code fences, ' +
         'no other text.\n\nContent:\n{{content}}',
     },
+    {
+      id: 'rewrite@1.0',
+      capabilityId: 'rewrite',
+      version: '1.0',
+      active: true,
+      template:
+        'The following is HTML content from a rich text note editor. Rewrite it to improve clarity, ' +
+        'grammar, and flow while preserving the meaning and the author\'s intent. Keep the existing ' +
+        'HTML tags and overall structure (paragraphs, headings, lists) intact — only change wording. ' +
+        'Respond with ONLY the revised HTML — no preamble, no markdown code fences.\n\nContent:\n{{content}}',
+    },
   ],
 })

@@ -2,12 +2,16 @@ import { useAuth } from '@/modules/auth/useAuth'
 import { capabilityRegistry } from '@/modules/core/capabilities/registry'
 import { providerRegistry } from '@/modules/core/providers/registry'
 import { useRecentAiRequests } from '@/modules/ai/observability/hooks/useRecentAiRequests'
+import { useProfile } from '@/modules/settings/hooks/useProfile'
+import { ProfileForm } from '@/modules/settings/components/ProfileForm'
+import { Spinner } from '@/shared/components/ui/Spinner'
 
 export function SettingsPage() {
   const { user } = useAuth()
   const capabilities = capabilityRegistry.list()
   const providers = providerRegistry.list()
   const { data: aiRequests = [] } = useRecentAiRequests()
+  const { profile, isLoading: profileLoading, save: saveProfile } = useProfile()
 
   return (
     <div className="flex flex-col gap-6">
@@ -26,6 +30,22 @@ export function SettingsPage() {
             <dd className="text-[var(--color-ink)]">{user?.id}</dd>
           </div>
         </dl>
+      </div>
+
+      <div className="max-w-2xl rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+        <h2 className="text-sm font-medium text-[var(--color-ink)]">Profile</h2>
+        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+          What you tell the AI about yourself, explicitly — used to personalize responses. This is separate from
+          any AI-learned preferences: those aren't implemented yet, and when they are, they'll always be shown to
+          you and stay editable and deletable on their own, never merged silently into this form.
+        </p>
+        <div className="mt-4">
+          {profileLoading || !profile ? (
+            <Spinner size="sm" />
+          ) : (
+            <ProfileForm profile={profile} onSave={(updates) => saveProfile.mutate(updates)} saving={saveProfile.isPending} />
+          )}
+        </div>
       </div>
 
       <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">

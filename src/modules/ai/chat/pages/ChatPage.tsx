@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useConversations } from '@/modules/ai/chat/hooks/useConversations'
 import { useMessages } from '@/modules/ai/chat/hooks/useMessages'
@@ -8,6 +8,7 @@ import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
 import { DEFAULT_CHAT_PROVIDER_ID } from '@/modules/ai/providers/registry'
+import { useProfile } from '@/modules/settings/hooks/useProfile'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -15,6 +16,7 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 export function ChatPage() {
   const [searchParams] = useSearchParams()
   const documentId = searchParams.get('documentId') ?? undefined
+  const { profile } = useProfile()
 
   const { data: conversations = [], isLoading: conversationsLoading, create, remove } = useConversations(documentId)
   // Deep-linked from a search result — if it's outside the current
@@ -22,6 +24,17 @@ export function ChatPage() {
   // of the sidebar list), it just won't be highlighted in that list.
   const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get('conversationId'))
   const [newProviderId, setNewProviderId] = useState(DEFAULT_CHAT_PROVIDER_ID)
+
+  // Adopt the user's preferred provider, once, as soon as the profile
+  // loads — but only before they've started picking one themselves in this
+  // session, so it never clobbers an in-page choice.
+  const hasAppliedPreferredProvider = useRef(false)
+  useEffect(() => {
+    if (profile?.preferred_ai_provider && !hasAppliedPreferredProvider.current) {
+      setNewProviderId(profile.preferred_ai_provider)
+      hasAppliedPreferredProvider.current = true
+    }
+  }, [profile])
 
   useEffect(() => {
     if (!selectedId && conversations.length > 0) setSelectedId(conversations[0]!.id)

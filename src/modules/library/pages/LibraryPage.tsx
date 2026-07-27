@@ -5,7 +5,7 @@ import { useTags } from '@/modules/library/hooks/useTags'
 import { CollectionTree } from '@/modules/library/components/CollectionTree'
 import { UploadDropzone } from '@/modules/library/components/UploadDropzone'
 import { DocumentGrid } from '@/modules/library/components/DocumentGrid'
-import { TagFilterBar } from '@/modules/library/components/TagFilterBar'
+import { TagFilterBar } from '@/shared/components/tags/TagFilterBar'
 import { Input } from '@/shared/components/ui/Input'
 import { Spinner } from '@/shared/components/ui/Spinner'
 

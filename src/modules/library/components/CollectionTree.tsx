@@ -10,9 +10,18 @@ interface CollectionTreeProps {
   collections: Collection[]
   selectedId: string | null
   onSelect: (id: string | null) => void
+  /** What "no collection selected" shows, and what unlinking on delete refers to — e.g. "All documents" or "All notes". */
+  rootLabel?: string
+  itemsLabel?: string
 }
 
-export function CollectionTree({ collections, selectedId, onSelect }: CollectionTreeProps) {
+export function CollectionTree({
+  collections,
+  selectedId,
+  onSelect,
+  rootLabel = 'All documents',
+  itemsLabel = 'Documents',
+}: CollectionTreeProps) {
   const { create } = useCollections()
   const [creatingRoot, setCreatingRoot] = useState(false)
   const tree = buildCollectionTree(collections)
@@ -28,11 +37,19 @@ export function CollectionTree({ collections, selectedId, onSelect }: Collection
             : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]'
         }`}
       >
-        All documents
+        {rootLabel}
       </button>
 
       {tree.map((node) => (
-        <CollectionTreeItem key={node.id} node={node} selectedId={selectedId} onSelect={onSelect} depth={0} />
+        <CollectionTreeItem
+          key={node.id}
+          node={node}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          depth={0}
+          rootLabel={rootLabel}
+          itemsLabel={itemsLabel}
+        />
       ))}
 
       {creatingRoot ? (
@@ -64,11 +81,15 @@ function CollectionTreeItem({
   selectedId,
   onSelect,
   depth,
+  rootLabel,
+  itemsLabel,
 }: {
   node: CollectionNode
   selectedId: string | null
   onSelect: (id: string | null) => void
   depth: number
+  rootLabel: string
+  itemsLabel: string
 }) {
   const { rename, remove, create } = useCollections()
   const [renaming, setRenaming] = useState(false)
@@ -130,13 +151,21 @@ function CollectionTreeItem({
       )}
 
       {node.children.map((child) => (
-        <CollectionTreeItem key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} depth={depth + 1} />
+        <CollectionTreeItem
+          key={child.id}
+          node={child}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          depth={depth + 1}
+          rootLabel={rootLabel}
+          itemsLabel={itemsLabel}
+        />
       ))}
 
       <ConfirmDialog
         open={confirmingDelete}
         title={`Delete "${node.name}"?`}
-        description="Documents inside will move to All documents. Subfolders are deleted too. This can't be undone."
+        description={`${itemsLabel} inside will move to ${rootLabel}. Subfolders are deleted too. This can't be undone.`}
         confirmLabel="Delete"
         onConfirm={() => {
           remove.mutate(node.id)
