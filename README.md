@@ -95,7 +95,10 @@ src/
       api/        Supabase queries for processing_jobs, extraction_metadata, document_chunks
     reader/       EPUB reading workspace: chapter nav, persisted progress, highlights/notes,
                   cached chapter summaries, flashcard generation, an embedded AI chat panel
-    notes/        Rich notes (later milestone)
+    notes/        Rich notes: TipTap editor, tags, collections, document attachment,
+                  AI-assisted rewrite via runCapability
+    knowledgeLinks/ Knowledge Links: polymorphic note<->document/highlight/conversation/flashcard
+                  links, LinkResolver registry, KnowledgeLinksPanel UI
     search/       Universal semantic search: SearchProvider registry + document/conversation providers
     ai/
       chat/       Conversations/messages UI + data layer (RAG chat, per-workspace or per-document)
@@ -108,7 +111,7 @@ src/
     workspaces/   Workspace switcher/context — the primary organizational unit
     core/         Platform extensibility: capability/prompt/provider/workflow
                   registries + the module-registration mechanism (see below)
-    settings/     Account settings
+    settings/     Account settings + the User Intelligence Profile (explicit profile form)
   shared/         Cross-module code
     components/
       layout/     App shell, sidebar, top bar
@@ -281,6 +284,66 @@ gets persisted differ:
   `useReadingProgress` to a DB-backed one (`reading_progress`, one row per
   document per user), so it now syncs across devices.
 
+## Knowledge Workspace
+
+Milestone 7 expanded from "just Notes" into three parts, all built on the
+same `createRegistry<T>()`/`registerPlatformModule()` foundation the platform
+has used since Milestone 3.5 — no new extensibility mechanism was invented.
+
+**Notes** (`modules/notes/`) is a full rich-text module, not a stub: a TipTap
+editor (`.prose-note` styling, since no Tailwind typography plugin is
+installed), tags and collections reusing the exact same `tags` table and
+`CollectionTree` component the library uses (`shared/api/tags.ts` now holds
+`listTags`/`ensureTag` once, shared by both `document_tags` and `note_tags`),
+optional attachment to a source document, and an "Improve writing" action —
+the `rewrite` capability (already listed in `coreModule.ts` since Milestone
+3.5, but with no prompt template until now) run through the same
+`runCapability()` Chapter Summary and Flashcards use.
+
+**Knowledge Links** (`modules/knowledgeLinks/`) is the graph foundation the
+project will need for the Knowledge Graph milestone, built now specifically
+so that milestone doesn't require a data model rework:
+
+```ts
+interface LinkResolver {
+  id: LinkableType // 'note' | 'document' | 'highlight' | 'conversation' | 'flashcard'
+  resolve(ids: string[]): Promise<LinkableItem[]>   // backlinks -> display items
+  search(queryText: string, ctx): Promise<LinkableItem[]> // the "add link" picker
+}
+```
+
+One polymorphic `knowledge_links` table (`source_type`/`source_id`/
+`target_type`/`target_id`) backs every pair — Note↔Note, Note↔Document,
+Note↔Highlight, Note↔Conversation, Note↔Flashcard all use the same table and
+the same code path. It's queried symmetrically (a node's edges may have it
+as either source or target), and `createLink()` checks both directions
+before inserting so linking A→B from either side is idempotent. A future
+entity type (or a future Knowledge Graph visualization) adds one
+`LinkResolver` and one `linkResolverRegistry.register()` call in
+`registerBuiltInResolvers.ts` — nothing else changes. `KnowledgeLinksPanel`
+is deliberately generic over `LinkableType` rather than Notes-specific, so
+it can be dropped onto documents or highlights in a later milestone as-is.
+
+**User Intelligence Profile** (Settings → Profile) adds an explicit-profile
+form — display name, profession, role, industry, organization, bio,
+expertise/goals/interests as editable chip lists, and response-style/
+detail-level/language/AI-provider/reading-style preferences — plus an
+`ai_memory` table that is **schema only** this milestone; nothing writes to
+it yet, on purpose.
+
+**The load-bearing rule, for whoever implements the `ai_memory` write path
+next:** the Explicit Profile (this form — what the user typed) and Learned
+Preferences (future `ai_memory` rows with `memory_type = 'learned_preference'`
+— what the AI infers from behavior) must stay visibly separate. The AI must
+never permanently infer personal facts about the user without transparency.
+A learned preference has to be something the user can always review, edit,
+or delete on its own — never silently folded into the explicit profile form,
+and never applied without a way to see it happened. This is a product/privacy
+requirement (see the extensive comment in
+`supabase/migrations/0009_knowledge_workspace.sql`), not a naming convention,
+and it binds the implementation of that future write path, not just its
+schema.
+
 ## Roadmap
 
 1. Project foundation and authentication
@@ -290,8 +353,8 @@ gets persisted differ:
 4. AI chat with RAG — real Claude/GPT/Gemini + OpenAI embeddings, via an Edge Function
 4.5. AI governance & observability — ai_requests logging, versioned prompts
 5. Universal semantic search — SearchProvider registry over documents + conversations
-6. **EPUB reading workspace** ← current milestone — AI side panel, chapter summaries, flashcards, highlights/notes
-7. Notes and knowledge linking
+6. EPUB reading workspace — AI side panel, chapter summaries, flashcards, highlights/notes
+7. **Knowledge Workspace** ← current milestone — Notes, Knowledge Links, User Intelligence Profile (explicit profile; `ai_memory` schema only)
 8. Personal memory and AI personalization
 9. Knowledge graph
 10. AI agents and advanced workflows

@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import type { Collection } from '@/shared/types/database'
 import type { DocumentWithTags } from '@/modules/library/api/documents'
 import { useDocumentMutations } from '@/modules/library/hooks/useDocumentMutations'
 import { useTags } from '@/modules/library/hooks/useTags'
 import { useReprocessDocument } from '@/modules/processing/hooks/useReprocessDocument'
+import { useNoteMutations } from '@/modules/notes/hooks/useNoteMutations'
 import { ProcessingStatusBadge } from '@/modules/processing/components/ProcessingStatusBadge'
 import { fileTypeLabel, formatFileSize } from '@/modules/library/utils/fileTypes'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
@@ -18,12 +19,19 @@ export function DocumentCard({
   document: DocumentWithTags
   collections: Collection[]
 }) {
+  const navigate = useNavigate()
   const { rename, move, remove } = useDocumentMutations()
   const { addTag, removeTag } = useTags()
   const reprocess = useReprocessDocument()
+  const { create: createNote } = useNoteMutations()
   const [renaming, setRenaming] = useState(false)
   const [addingTag, setAddingTag] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  async function handleNewNote() {
+    const note = await createNote.mutateAsync({ documentId: document.id, title: `Notes on ${document.title}` })
+    void navigate(`/notes/${note.id}`)
+  }
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
@@ -72,6 +80,7 @@ export function DocumentCard({
               Chat about this document
             </Link>
           )}
+          <DropdownMenuItem onClick={() => void handleNewNote()}>New note</DropdownMenuItem>
           <DropdownMenuItem onClick={() => setRenaming(true)}>Rename</DropdownMenuItem>
           <DropdownMenuItem onClick={() => reprocess.mutate(document.id)}>
             {document.status === 'error' ? 'Retry processing' : 'Reprocess'}

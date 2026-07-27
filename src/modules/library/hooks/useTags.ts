@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { addTagToDocument, listTags, removeTagFromDocument } from '@/modules/library/api/tags'
+import { addTagToDocument, removeTagFromDocument } from '@/modules/library/api/tags'
+import { listTags } from '@/shared/api/tags'
 import { useAuth } from '@/modules/auth/useAuth'
 
 const tagsKey = ['tags']

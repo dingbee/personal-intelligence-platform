@@ -34,3 +34,69 @@
     outline-offset: 2px;
   }
 }
+
+/* Minimal typography for the notes rich-text editor (TipTap StarterKit
+   output) — no Tailwind typography plugin installed, so headings/lists
+   need explicit rules or they render unstyled. */
+.prose-note {
+  & p {
+    margin: 0.75em 0;
+  }
+  & h1 {
+    margin: 1em 0 0.5em;
+    font-size: 1.5em;
+    font-weight: 600;
+  }
+  & h2 {
+    margin: 1em 0 0.5em;
+    font-size: 1.25em;
+    font-weight: 600;
+  }
+  & h3 {
+    margin: 1em 0 0.5em;
+    font-size: 1.1em;
+    font-weight: 600;
+  }
+  & ul,
+  & ol {
+    margin: 0.75em 0;
+    padding-left: 1.5em;
+  }
+  & ul {
+    list-style: disc;
+  }
+  & ol {
+    list-style: decimal;
+  }
+  & blockquote {
+    margin: 0.75em 0;
+    padding-left: 1em;
+    border-left: 2px solid var(--color-border);
+    color: var(--color-ink-muted);
+  }
+  & code {
+    padding: 0.1em 0.3em;
+    border-radius: 0.25em;
+    background: var(--color-canvas);
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.9em;
+  }
+  & pre {
+    margin: 0.75em 0;
+    padding: 0.75em 1em;
+    border-radius: 0.5em;
+    background: var(--color-canvas);
+    overflow-x: auto;
+  }
+  & pre code {
+    padding: 0;
+    background: none;
+  }
+  & p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: var(--color-ink-muted);
+    pointer-events: none;
+  }
+}

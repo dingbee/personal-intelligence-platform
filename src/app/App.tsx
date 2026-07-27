@@ -8,6 +8,7 @@ import { router } from '@/app/router'
 // anything tries to read from those registries. See modules/core/README.md.
 import '@/modules/core/modules/coreModule'
 import '@/modules/search/registerBuiltInProviders'
+import '@/modules/knowledgeLinks/registerBuiltInResolvers'
 
 export function App() {
   return (
