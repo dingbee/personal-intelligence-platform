@@ -5,7 +5,7 @@ import { insertMessage } from '@/modules/ai/chat/api/messages'
 import { touchConversation } from '@/modules/ai/chat/api/conversations'
 import { retrieveContext } from '@/modules/ai/orchestration/retrieveContext'
 import { buildSystemPrompt } from '@/modules/ai/orchestration/buildSystemPrompt'
-import { logAiRequest } from '@/modules/ai/observability/api/aiRequests'
+import { streamChatCompletion } from '@/modules/ai/orchestration/streamChatCompletion'
 import { indexMessage } from '@/modules/search/indexing/indexMessage'
 
 export interface SendMessageParams {
@@ -25,9 +25,7 @@ export interface SendMessageParams {
  * The single entry point for AI chat. ChatPage calls this, not a provider
  * directly — it resolves retrieval, prompt construction, and the provider
  * through the registries so the UI never talks to Claude/OpenAI/Gemini
- * (or even knows which one is selected) itself. Also the one place that
- * logs the chat completion to ai_requests (retrieval's embedding call logs
- * itself, inside retrieveContext -> OpenAIEmbeddingProvider).
+ * (or even knows which one is selected) itself.
  */
 export async function sendMessage(params: SendMessageParams): Promise<Message> {
   const { conversationId, userId, workspaceId, providerId, documentId, history, text } = params
@@ -37,57 +35,22 @@ export async function sendMessage(params: SendMessageParams): Promise<Message> {
 
   const matches = await retrieveContext({ query: text, userId, workspaceId, documentId })
   const system = buildSystemPrompt(matches)
-  const provider = getChatProvider(providerId)
 
-  const start = performance.now()
-  let accumulated = ''
-  let usageModel: string | null = null
-  let tokensInput: number | null = null
-  let tokensOutput: number | null = null
-
-  try {
-    for await (const delta of provider.chat({
-      messages: [...history, { role: 'user', content: text }],
-      system,
-      onUsage: (usage) => {
-        usageModel = usage.model
-        tokensInput = usage.inputTokens
-        tokensOutput = usage.outputTokens
-      },
-    })) {
-      accumulated += delta
-      params.onDelta?.(accumulated)
-    }
-  } catch (err) {
-    void logAiRequest({
-      userId,
-      workspaceId,
-      feature: 'chat',
-      provider: providerId,
-      latencyMs: Math.round(performance.now() - start),
-      status: 'error',
-      errorMessage: err instanceof Error ? err.message : 'Unknown error',
-    })
-    throw err
-  }
-
-  void logAiRequest({
+  const { content } = await streamChatCompletion({
+    provider: getChatProvider(providerId),
+    messages: [...history, { role: 'user', content: text }],
+    system,
     userId,
     workspaceId,
     feature: 'chat',
-    provider: providerId,
-    model: usageModel,
-    tokensInput,
-    tokensOutput,
-    latencyMs: Math.round(performance.now() - start),
-    status: 'success',
+    onDelta: params.onDelta,
   })
 
   const assistantMessage = await insertMessage({
     conversationId,
     userId,
     role: 'assistant',
-    content: accumulated,
+    content,
     contextChunkIds: matches.map((match) => match.chunkId),
   })
   void indexMessage(assistantMessage, workspaceId)

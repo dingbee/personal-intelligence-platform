@@ -29,11 +29,7 @@ export function ChatPage() {
 
   const { data: messages = [], isLoading: messagesLoading } = useMessages(selectedId)
   const conversation = conversations.find((c) => c.id === selectedId)
-  const { send, streamingText, sending, error } = useSendMessage(
-    selectedId ?? '',
-    conversation?.provider_id ?? newProviderId,
-    documentId,
-  )
+  const { send, streamingText, sending, error } = useSendMessage(conversation?.provider_id ?? newProviderId, documentId)
 
   async function handleNew() {
     const created = await create.mutateAsync({ providerId: newProviderId })
@@ -43,7 +39,7 @@ export function ChatPage() {
   async function handleSend(text: string) {
     if (!selectedId) return
     const history = messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
-    await send(text, history)
+    await send(selectedId, text, history)
   }
 
   if (conversationsLoading) {

@@ -1,44 +1,35 @@
-import { useCallback, useState } from 'react'
-
-interface ReadingProgress {
-  chapterIndex: number
-  scrollFraction: number
-}
-
-/**
- * Local-only for now (not synced to Supabase) — good enough for a single
- * device. Cross-device reading progress is deferred to the fuller EPUB
- * reading workspace milestone alongside AI chat/summary/flashcards per book.
- */
-function storageKey(documentId: string): string {
-  return `reading-progress:${documentId}`
-}
-
-function readProgress(documentId: string): ReadingProgress | null {
-  try {
-    const raw = localStorage.getItem(storageKey(documentId))
-    return raw ? (JSON.parse(raw) as ReadingProgress) : null
-  } catch {
-    return null
-  }
-}
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@/modules/auth/useAuth'
+import { getReadingProgress, saveReadingProgress } from '@/modules/reader/api/readingProgress'
 
 export function useReadingProgress(documentId: string) {
-  const [progress, setProgress] = useState<ReadingProgress>(
-    () => readProgress(documentId) ?? { chapterIndex: 0, scrollFraction: 0 },
-  )
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const queryKey = ['reading-progress', documentId]
 
-  const save = useCallback(
-    (next: ReadingProgress) => {
-      setProgress(next)
-      try {
-        localStorage.setItem(storageKey(documentId), JSON.stringify(next))
-      } catch {
-        // Storage can fail (private browsing, quota) — reading still works, it just won't resume.
-      }
+  const { data, isLoading } = useQuery({
+    queryKey,
+    queryFn: () => getReadingProgress(documentId),
+    enabled: Boolean(user),
+  })
+
+  const mutation = useMutation({
+    mutationFn: (next: { chapterIndex: number; scrollFraction: number }) =>
+      saveReadingProgress({ documentId, userId: user!.id, ...next }),
+    onSuccess: (_data, next) => {
+      queryClient.setQueryData(queryKey, {
+        document_id: documentId,
+        user_id: user!.id,
+        chapter_index: next.chapterIndex,
+        scroll_fraction: next.scrollFraction,
+        updated_at: new Date().toISOString(),
+      })
     },
-    [documentId],
-  )
+  })
 
-  return { progress, save }
+  return {
+    progress: { chapterIndex: data?.chapter_index ?? 0, scrollFraction: data?.scroll_fraction ?? 0 },
+    isLoading,
+    save: (next: { chapterIndex: number; scrollFraction: number }) => mutation.mutate(next),
+  }
 }

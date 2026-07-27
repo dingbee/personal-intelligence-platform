@@ -1,4 +1,5 @@
 import { getActivePrompt } from '@/modules/core/prompts/registry'
+import { renderPromptTemplate } from '@/modules/core/prompts/renderPromptTemplate'
 import type { VectorMatch } from '@/modules/ai/retrieval/VectorStore'
 
 /** Fills the active 'chat' PromptTemplate's {{context}} placeholder with retrieved chunks. */
@@ -11,5 +12,5 @@ export function buildSystemPrompt(matches: VectorMatch[]): string {
       ? matches.map((match, i) => `[${i + 1}] ${match.content}`).join('\n\n')
       : '(No relevant content found in the user\'s library.)'
 
-  return template.template.replace('{{context}}', context)
+  return renderPromptTemplate(template.template, { context })
 }

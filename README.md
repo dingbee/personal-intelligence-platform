@@ -46,6 +46,10 @@ Supabase CLI or the SQL editor), before signing up:
   `document_chunks`/`match_document_chunks` for conversations), a
   denormalized `workspace_id` on `document_chunks`, and workspace-scoping
   added to `match_document_chunks`.
+- `0008_reading_workspace.sql` — `reading_progress` (persisted, replaces
+  Milestone 3's localStorage-only version), `highlights` (a quote plus an
+  optional note — passage-anchored annotations), `chapter_summaries`
+  (cache), and `flashcards`.
 
 Document processing (extraction/chunking/embedding) runs client-side in the
 browser after upload — there's no background worker yet, so it only runs
@@ -89,12 +93,14 @@ src/
       chunking/   Chunker strategies (fixed-length, paragraph, chapter-aware; semantic stubbed)
       pipeline/   Orchestrates extract → chunk → store → embed → index for one document
       api/        Supabase queries for processing_jobs, extraction_metadata, document_chunks
-    reader/       Basic EPUB reader (chapter nav, typography, local reading progress)
+    reader/       EPUB reading workspace: chapter nav, persisted progress, highlights/notes,
+                  cached chapter summaries, flashcard generation, an embedded AI chat panel
     notes/        Rich notes (later milestone)
     search/       Universal semantic search: SearchProvider registry + document/conversation providers
     ai/
       chat/       Conversations/messages UI + data layer (RAG chat, per-workspace or per-document)
-      orchestration/  AIService (the one entry point UI calls), retrieval glue, prompt construction
+      orchestration/  AIService + runCapability (the two entry points UI calls), retrieval glue,
+                  prompt construction, streamChatCompletion (shared streaming+logging core)
       providers/  ChatProvider interface + thin adapters that call the ai-chat edge function
       embeddings/ EmbeddingProvider interface + OpenAI implementation (+ a placeholder for offline dev)
       retrieval/  VectorStore interface + pgvector-backed implementation
@@ -229,9 +235,9 @@ Two are registered today — `documentSearchProvider` (queries
 `match_messages`, over embeddings generated for every chat message as it's
 sent). `useSearch()` embeds the query once, fans it out to every registered
 provider in parallel, and merges by similarity — it has no idea how many
-source types exist or what they are. A future source (notes, highlights,
-flashcards) adds its own embeddings table + match function, implements
-`SearchProvider`, and registers itself in
+source types exist or what they are. A future source (notes, or indexing
+the highlights/flashcards Milestone 6 added) adds its own embeddings table
++ match function, implements `SearchProvider`, and registers itself in
 `modules/search/registerBuiltInProviders.ts`; `useSearch()` and `SearchPage`
 don't change.
 
@@ -242,6 +248,39 @@ to `ai_requests` (`feature: 'search'` for the query, `'indexing'` for
 messages as they're embedded). Nothing in `modules/search/` talks to a
 provider or the edge function directly.
 
+## Reading workspace
+
+Milestone 6 is the first real *consumer* of the capability/prompt registries
+Milestone 3.5 seeded and Milestone 4 built execution for — Chapter Summary
+and Flashcards are ordinary capabilities (`summarize`, `flashcards`,
+registered in `coreModule.ts`) run through `runCapability()`
+(`modules/ai/orchestration/runCapability.ts`), the one-shot counterpart to
+`AIService.sendMessage()`'s multi-turn chat. Both share the same
+`streamChatCompletion()` core (streaming + `ai_requests` logging), so
+there was no logic to duplicate between "chat with your library" and
+"summarize this chapter" — only which prompt template and how the result
+gets persisted differ:
+
+- **Chapter summaries** run `summarize` against the chapter's text and
+  cache the result in `chapter_summaries`, keyed by `(document_id,
+  chapter_index)` — reopening a chapter doesn't re-spend tokens.
+- **Flashcards** run `flashcards`, which asks for a JSON array in the
+  response; `parseFlashcardsResponse()` tolerates markdown code fences
+  around it, and each card is stored as its own row so cards accumulate
+  across multiple generations rather than being replaced.
+- **Highlights** are passage-anchored annotations — select text in a
+  chapter, a floating button saves the quote, and an optional note can be
+  attached afterward. This covers "notes linked to a passage" for the
+  reading workspace; the full standalone Notes module (rich text, not
+  anchored to a passage) stays Milestone 7.
+- **The AI side panel** (`ReaderChatPanel`) is the exact same
+  conversations/messages/AIService path the full Chat page uses, just
+  collapsed to "the one conversation for this book" and laid out for a
+  narrow panel — no separate chat implementation.
+- **Reading progress** moved from Milestone 3's localStorage-only
+  `useReadingProgress` to a DB-backed one (`reading_progress`, one row per
+  document per user), so it now syncs across devices.
+
 ## Roadmap
 
 1. Project foundation and authentication
@@ -250,8 +289,8 @@ provider or the edge function directly.
 3.5. Platform architecture — Workspaces, module/capability/prompt/provider registries
 4. AI chat with RAG — real Claude/GPT/Gemini + OpenAI embeddings, via an Edge Function
 4.5. AI governance & observability — ai_requests logging, versioned prompts
-5. **Universal semantic search** ← current milestone — SearchProvider registry over documents + conversations
-6. EPUB reading workspace (AI chat/summary/flashcards/quiz per book)
+5. Universal semantic search — SearchProvider registry over documents + conversations
+6. **EPUB reading workspace** ← current milestone — AI side panel, chapter summaries, flashcards, highlights/notes
 7. Notes and knowledge linking
 8. Personal memory and AI personalization
 9. Knowledge graph
