@@ -1,5 +1,5 @@
 /**
- * Hand-written subset of the Supabase schema used through Milestone 5.
+ * Hand-written subset of the Supabase schema used through Milestone 6.
  * Regenerate with the Supabase CLI (`supabase gen types typescript`) once
  * the schema grows past what's practical to hand-maintain.
  */
@@ -152,6 +152,45 @@ export type MessageEmbedding = {
   created_at: string
 }
 
+export type ReadingProgress = {
+  document_id: string
+  user_id: string
+  chapter_index: number
+  scroll_fraction: number
+  updated_at: string
+}
+
+export type Highlight = {
+  id: string
+  document_id: string
+  user_id: string
+  chapter_index: number | null
+  quote: string
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type ChapterSummary = {
+  document_id: string
+  user_id: string
+  chapter_index: number
+  content: string
+  model: string
+  created_at: string
+  updated_at: string
+}
+
+export type Flashcard = {
+  id: string
+  document_id: string
+  user_id: string
+  chapter_index: number | null
+  front: string
+  back: string
+  created_at: string
+}
+
 export type AiRequestStatus = 'success' | 'error'
 
 export type AiRequest = {
@@ -275,6 +314,36 @@ export type Database = {
           status: AiRequestStatus
         }
         Update: Partial<AiRequest>
+        Relationships: []
+      }
+      reading_progress: {
+        Row: ReadingProgress
+        Insert: Partial<ReadingProgress> & { document_id: string; user_id: string }
+        Update: Partial<ReadingProgress>
+        Relationships: []
+      }
+      highlights: {
+        Row: Highlight
+        Insert: Partial<Highlight> & { document_id: string; user_id: string; quote: string }
+        Update: Partial<Highlight>
+        Relationships: []
+      }
+      chapter_summaries: {
+        Row: ChapterSummary
+        Insert: Partial<ChapterSummary> & {
+          document_id: string
+          user_id: string
+          chapter_index: number
+          content: string
+          model: string
+        }
+        Update: Partial<ChapterSummary>
+        Relationships: []
+      }
+      flashcards: {
+        Row: Flashcard
+        Insert: Partial<Flashcard> & { document_id: string; user_id: string; front: string; back: string }
+        Update: Partial<Flashcard>
         Relationships: []
       }
     }

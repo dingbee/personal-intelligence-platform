@@ -49,5 +49,26 @@ registerPlatformModule({
         'the user\'s own documents. If the context does not contain the answer, say so plainly instead ' +
         "of guessing from general knowledge.\n\nContext:\n{{context}}",
     },
+    {
+      id: 'summarize@1.0',
+      capabilityId: 'summarize',
+      version: '1.0',
+      active: true,
+      template:
+        'Summarize the following content clearly and concisely, in prose (not a list unless the ' +
+        'content itself is a list), preserving the key points a reader would need to remember. ' +
+        'Respond with ONLY the summary — no preamble.\n\nContent:\n{{content}}',
+    },
+    {
+      id: 'flashcards@1.0',
+      capabilityId: 'flashcards',
+      version: '1.0',
+      active: true,
+      template:
+        'Generate 5 to 10 flashcards from the following content, covering its most important facts ' +
+        'and concepts. Respond with ONLY a JSON array of objects shaped like ' +
+        '{"front": "question or term", "back": "answer or definition"} — no markdown code fences, ' +
+        'no other text.\n\nContent:\n{{content}}',
+    },
   ],
 })
