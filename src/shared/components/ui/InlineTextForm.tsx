@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 
 interface InlineTextFormProps {
   initialValue?: string
@@ -9,12 +9,21 @@ interface InlineTextFormProps {
 
 export function InlineTextForm({ initialValue = '', placeholder, onSubmit, onCancel }: InlineTextFormProps) {
   const [value, setValue] = useState(initialValue)
+  // Escape is the only explicit discard — losing focus any other way (click
+  // away, tab away) now commits instead of silently discarding the edit.
+  // This flag stops the blur that follows an Escape keypress from re-running
+  // commitOrCancel a second time.
+  const discardedRef = useRef(false)
 
-  function handleSubmit(event: FormEvent) {
-    event.preventDefault()
+  function commitOrCancel() {
     const trimmed = value.trim()
     if (trimmed) onSubmit(trimmed)
     else onCancel()
+  }
+
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    commitOrCancel()
   }
 
   return (
@@ -25,9 +34,15 @@ export function InlineTextForm({ initialValue = '', placeholder, onSubmit, onCan
         placeholder={placeholder}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Escape') onCancel()
+          if (e.key === 'Escape') {
+            discardedRef.current = true
+            onCancel()
+          }
         }}
-        onBlur={onCancel}
+        onBlur={() => {
+          if (discardedRef.current) return
+          commitOrCancel()
+        }}
         className="w-full rounded-md border border-[var(--color-accent)] bg-[var(--color-surface)] px-2 py-1 text-sm outline-none"
       />
     </form>

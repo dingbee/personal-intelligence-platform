@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/modules/auth/useAuth'
-import { capabilityRegistry } from '@/modules/core/capabilities/registry'
 import { useRecentAiRequests } from '@/modules/ai/observability/hooks/useRecentAiRequests'
 import { useProfile } from '@/modules/settings/hooks/useProfile'
 import { ProfileCard } from '@/modules/settings/components/ProfileCard'
@@ -14,7 +13,6 @@ export function SettingsPage() {
   const { user } = useAuth()
   const { data: profile, isLoading: profileLoading, updateDefaultProvider } = useProfile()
   const defaultProviderId = useDefaultChatProviderId()
-  const capabilities = capabilityRegistry.list()
   const { data: aiRequests = [] } = useRecentAiRequests()
 
   return (
@@ -27,25 +25,6 @@ export function SettingsPage() {
       <ProfileCard email={user?.email ?? ''} userId={user?.id ?? ''} profile={profile} loading={profileLoading} />
 
       <ChangePasswordCard />
-
-      <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-        <h2 className="text-sm font-medium text-[var(--color-ink)]">AI capabilities</h2>
-        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
-          Registered by platform modules. "Chat" is wired to a real provider; the rest are metadata only until a
-          later milestone implements them.
-        </p>
-        <ul className="mt-3 flex flex-wrap gap-1.5">
-          {capabilities.map((capability) => (
-            <li
-              key={capability.id}
-              title={capability.description}
-              className="rounded-full bg-[var(--color-canvas)] px-2.5 py-1 text-xs text-[var(--color-ink-muted)]"
-            >
-              {capability.label}
-            </li>
-          ))}
-        </ul>
-      </div>
 
       <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
         <h2 className="text-sm font-medium text-[var(--color-ink)]">Default AI provider</h2>

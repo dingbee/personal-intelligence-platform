@@ -13,6 +13,16 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 
 type SidePanelTab = 'chat' | 'summary' | 'flashcards' | 'highlights'
+/**
+ * Unifies "which panel is showing" into one value instead of two
+ * independent flags. On desktop this only ever matters for the AI aside —
+ * Chapters stays permanently visible there regardless of this state. On
+ * mobile it's exclusive: at most one of {chapters, an AI tab} is active at
+ * a time, and `null` (neither) is what gives the reading pane full width —
+ * i.e. Reading Focus Mode falls out of this for free, it isn't a separate
+ * boolean.
+ */
+type ActivePanel = 'chapters' | SidePanelTab
 
 const TABS: { id: SidePanelTab; label: string }[] = [
   { id: 'chat', label: 'Chat' },
@@ -26,7 +36,7 @@ export function ReaderPage() {
   const { document, chapters, isLoading: chaptersLoading, isError } = useReaderChapters(documentId!)
   const { progress, isLoading: progressLoading, save } = useReadingProgress(documentId!)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
-  const [openTab, setOpenTab] = useState<SidePanelTab | null>(null)
+  const [activePanel, setActivePanel] = useState<ActivePanel | null>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const scrollSaveTimeout = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -62,6 +72,11 @@ export function ReaderPage() {
   function goToChapter(index: number) {
     setActiveIndex(index)
     save({ chapterIndex: index, scrollFraction: 0 })
+    // On mobile, picking a chapter should return to the reading view rather
+    // than leaving the (now full-width, on mobile) chapters panel open over
+    // the content the user just navigated to. No effect on desktop, where
+    // this state never controls the chapters panel's visibility.
+    setActivePanel(null)
   }
 
   if (isLoading || activeIndex === null) {
@@ -102,19 +117,36 @@ export function ReaderPage() {
         </Link>
         <h1 className="truncate text-sm font-medium text-[var(--color-ink)]">{document.title}</h1>
         <div className="ml-auto flex items-center gap-3 text-xs text-[var(--color-ink-muted)]">
-          <span>
+          {/* Chapter counter + progress bar dropped below md — on a narrow
+              phone there isn't room for them alongside the tab buttons
+              (including the new mobile-only Chapters toggle below), and
+              they're not needed to operate the reader. */}
+          <span className="hidden md:inline">
             Chapter {activeIndex + 1} of {chapters.length}
           </span>
-          <div className="h-1 w-24 overflow-hidden rounded-full bg-[var(--color-canvas)]">
+          <div className="hidden h-1 w-24 overflow-hidden rounded-full bg-[var(--color-canvas)] md:block">
             <div className="h-full bg-[var(--color-accent)]" style={{ width: `${progressPercent}%` }} />
           </div>
+          {/* Mobile-only: desktop always shows ChapterNav, so a toggle for
+              it there would be redundant. */}
+          <button
+            type="button"
+            onClick={() => setActivePanel(activePanel === 'chapters' ? null : 'chapters')}
+            className={`rounded-md px-2 py-1 font-medium md:hidden ${
+              activePanel === 'chapters'
+                ? 'bg-[var(--color-ink)] text-white'
+                : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
+            }`}
+          >
+            Chapters
+          </button>
           {TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
-              onClick={() => setOpenTab(openTab === tab.id ? null : tab.id)}
+              onClick={() => setActivePanel(activePanel === tab.id ? null : tab.id)}
               className={`rounded-md px-2 py-1 font-medium ${
-                openTab === tab.id
+                activePanel === tab.id
                   ? 'bg-[var(--color-ink)] text-white'
                   : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
               }`}
@@ -126,9 +158,25 @@ export function ReaderPage() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <ChapterNav chapters={chapters} activeIndex={activeIndex} onSelect={goToChapter} />
+        {/* Desktop: always visible, exactly as before (md:flex, ignores
+            activePanel entirely). Mobile: only when the Chapters toggle is
+            active — otherwise it would still eat width from the reading
+            pane even with no AI panel open, which was the root of the
+            reported issue. */}
+        <div className={`h-full ${activePanel === 'chapters' ? 'flex' : 'hidden md:flex'}`}>
+          <ChapterNav chapters={chapters} activeIndex={activeIndex} onSelect={goToChapter} />
+        </div>
 
-        <div ref={contentRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
+        {/* Desktop: always visible alongside whichever AI tab is open, as
+            before. Mobile: hidden whenever any panel (chapters or an AI
+            tab) is active, so that panel gets the full viewport instead of
+            being squeezed — this is what makes activePanel === null give
+            the reading pane maximum width by default. */}
+        <div
+          ref={contentRef}
+          onScroll={handleScroll}
+          className={`flex-1 overflow-y-auto ${activePanel !== null ? 'hidden md:block' : ''}`}
+        >
           <SelectionHighlightButton containerRef={contentRef} onHighlight={(quote) => addHighlight.mutate(quote)} />
           <article className="mx-auto max-w-[68ch] px-6 py-12">
             <h2 className="mb-6 text-2xl font-semibold text-[var(--color-ink)]">{activeChapter?.title}</h2>
@@ -157,10 +205,13 @@ export function ReaderPage() {
           </article>
         </div>
 
-        {openTab && (
-          <aside className="w-96 shrink-0 overflow-y-auto border-l border-[var(--color-border)]">
-            {openTab === 'chat' && <ReaderChatPanel documentId={documentId!} />}
-            {openTab === 'summary' && activeChapter && (
+        {/* Desktop: fixed w-96 sidebar, same as before. Mobile: full width
+            — a phone only ever shows one panel at a time, so there's no
+            reason to give this less than the whole viewport either. */}
+        {activePanel !== 'chapters' && activePanel !== null && (
+          <aside className="w-full shrink-0 overflow-y-auto border-l border-[var(--color-border)] md:w-96">
+            {activePanel === 'chat' && <ReaderChatPanel documentId={documentId!} />}
+            {activePanel === 'summary' && activeChapter && (
               <div className="p-4">
                 <ChapterSummaryPanel
                   documentId={documentId!}
@@ -169,7 +220,7 @@ export function ReaderPage() {
                 />
               </div>
             )}
-            {openTab === 'flashcards' && activeChapter && (
+            {activePanel === 'flashcards' && activeChapter && (
               <div className="p-4">
                 <FlashcardsPanel
                   documentId={documentId!}
@@ -178,7 +229,7 @@ export function ReaderPage() {
                 />
               </div>
             )}
-            {openTab === 'highlights' && (
+            {activePanel === 'highlights' && (
               <div className="p-4">
                 <h3 className="mb-3 text-sm font-medium text-[var(--color-ink)]">Highlights in this chapter</h3>
                 <HighlightsList
