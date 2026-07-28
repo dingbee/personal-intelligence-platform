@@ -2,12 +2,25 @@ import { supabase } from '@/shared/lib/supabase'
 import type { DocumentRow, DocumentStatus } from '@/shared/types/database'
 import { fileTypeFromName } from '@/modules/library/utils/fileTypes'
 
+export type DocumentSort = 'newest' | 'oldest' | 'title-asc' | 'title-desc' | 'largest' | 'smallest'
+
+const SORT_COLUMNS: Record<DocumentSort, { column: 'created_at' | 'title' | 'file_size'; ascending: boolean }> = {
+  newest: { column: 'created_at', ascending: false },
+  oldest: { column: 'created_at', ascending: true },
+  'title-asc': { column: 'title', ascending: true },
+  'title-desc': { column: 'title', ascending: false },
+  largest: { column: 'file_size', ascending: false },
+  smallest: { column: 'file_size', ascending: true },
+}
+
 export interface DocumentFilters {
   collectionId?: string | null
   tagId?: string | null
   search?: string
   /** null/omitted = "All" (backward compatible: no workspace filter applied). */
   workspaceId?: string | null
+  /** Defaults to 'newest' (previous hardcoded behavior) when omitted. */
+  sort?: DocumentSort
 }
 
 export interface DocumentWithTags extends DocumentRow {
@@ -15,10 +28,11 @@ export interface DocumentWithTags extends DocumentRow {
 }
 
 export async function listDocuments(filters: DocumentFilters = {}): Promise<DocumentWithTags[]> {
+  const { column, ascending } = SORT_COLUMNS[filters.sort ?? 'newest']
   let query = supabase
     .from('documents')
     .select('*, document_tags(tags(id, name))')
-    .order('created_at', { ascending: false })
+    .order(column, { ascending })
 
   if (filters.collectionId !== undefined) {
     query =

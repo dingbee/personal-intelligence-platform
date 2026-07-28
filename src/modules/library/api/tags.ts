@@ -47,3 +47,20 @@ export async function removeTagFromDocument(documentId: string, tagId: string): 
     .eq('tag_id', tagId)
   if (error) throw error
 }
+
+export async function renameTag(id: string, name: string): Promise<Tag> {
+  const { data, error } = await supabase
+    .from('tags')
+    .update({ name: name.trim().toLowerCase() })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/** Deletes the tag entirely (cascades to remove it from every document via document_tags' FK). */
+export async function deleteTag(id: string): Promise<void> {
+  const { error } = await supabase.from('tags').delete().eq('id', id)
+  if (error) throw error
+}

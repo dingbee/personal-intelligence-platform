@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { addTagToDocument, listTags, removeTagFromDocument } from '@/modules/library/api/tags'
+import { addTagToDocument, deleteTag, listTags, removeTagFromDocument, renameTag } from '@/modules/library/api/tags'
 import { useAuth } from '@/modules/auth/useAuth'
 
 const tagsKey = ['tags']
@@ -27,5 +27,15 @@ export function useTags() {
     onSuccess: invalidate,
   })
 
-  return { ...query, addTag, removeTag }
+  const rename = useMutation({
+    mutationFn: (params: { id: string; name: string }) => renameTag(params.id, params.name),
+    onSuccess: invalidate,
+  })
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteTag(id),
+    onSuccess: invalidate,
+  })
+
+  return { ...query, addTag, removeTag, rename, remove }
 }

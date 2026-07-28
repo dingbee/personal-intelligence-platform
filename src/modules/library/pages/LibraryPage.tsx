@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { DocumentSort } from '@/modules/library/api/documents'
 import { useCollections } from '@/modules/library/hooks/useCollections'
 import { useDocuments } from '@/modules/library/hooks/useDocuments'
 import { useTags } from '@/modules/library/hooks/useTags'
@@ -9,10 +10,20 @@ import { TagFilterBar } from '@/modules/library/components/TagFilterBar'
 import { Input } from '@/shared/components/ui/Input'
 import { Spinner } from '@/shared/components/ui/Spinner'
 
+const SORT_OPTIONS: { value: DocumentSort; label: string }[] = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'title-asc', label: 'Title A–Z' },
+  { value: 'title-desc', label: 'Title Z–A' },
+  { value: 'largest', label: 'Largest file' },
+  { value: 'smallest', label: 'Smallest file' },
+]
+
 export function LibraryPage() {
   const [collectionId, setCollectionId] = useState<string | null | undefined>(undefined)
   const [tagId, setTagId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<DocumentSort>('newest')
 
   const { data: collections = [], isLoading: collectionsLoading } = useCollections()
   const { data: tags = [] } = useTags()
@@ -21,7 +32,7 @@ export function LibraryPage() {
     isLoading: documentsLoading,
     isError,
     error,
-  } = useDocuments({ collectionId, tagId, search: search || undefined })
+  } = useDocuments({ collectionId, tagId, search: search || undefined, sort })
 
   return (
     <div className="flex gap-8">
@@ -52,7 +63,7 @@ export function LibraryPage() {
           <UploadDropzone collectionId={collectionId ?? null} />
         </div>
 
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <Input
             label="Search"
             placeholder="Search by title..."
@@ -60,6 +71,26 @@ export function LibraryPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="sm:w-64"
           />
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="library-sort" className="text-sm font-medium text-[var(--color-ink)]">
+              Sort by
+            </label>
+            <select
+              id="library-sort"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as DocumentSort)}
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="mb-4">
           <TagFilterBar tags={tags} selectedTagId={tagId} onSelect={setTagId} />
         </div>
 
@@ -72,7 +103,12 @@ export function LibraryPage() {
             Couldn't load your documents: {error instanceof Error ? error.message : 'Unknown error'}
           </p>
         ) : (
-          <DocumentGrid documents={documents} collections={collections} />
+          <>
+            <p className="mb-3 text-xs text-[var(--color-ink-muted)]">
+              {documents.length} {documents.length === 1 ? 'document' : 'documents'}
+            </p>
+            <DocumentGrid documents={documents} collections={collections} />
+          </>
         )}
       </div>
     </div>
