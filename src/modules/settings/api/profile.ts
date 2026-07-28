@@ -17,3 +17,15 @@ export async function updateProfile(userId: string, displayName: string): Promis
   if (error) throw error
   return data
 }
+
+/** `providerId: null` clears the override, falling back to the platform's hardcoded DEFAULT_CHAT_PROVIDER_ID. */
+export async function updateDefaultChatProvider(userId: string, providerId: string | null): Promise<Profile> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ default_chat_provider_id: providerId })
+    .eq('id', userId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}

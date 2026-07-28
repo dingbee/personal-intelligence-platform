@@ -5,7 +5,7 @@ import { useSendMessage } from '@/modules/ai/chat/hooks/useSendMessage'
 import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
-import { DEFAULT_CHAT_PROVIDER_ID } from '@/modules/ai/providers/registry'
+import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
 import { isProviderAvailable } from '@/modules/ai/providers/availability'
 import { providerRegistry } from '@/modules/core/providers/registry'
@@ -24,6 +24,7 @@ export function ReaderChatPanel({ documentId }: { documentId: string }) {
   const { data: conversations = [], isLoading: conversationsLoading, create, updateProvider } =
     useConversations(documentId)
   const [conversationId, setConversationId] = useState<string | null>(null)
+  const defaultProviderId = useDefaultChatProviderId()
 
   useEffect(() => {
     if (!conversationId && conversations.length > 0) setConversationId(conversations[0]!.id)
@@ -39,7 +40,7 @@ export function ReaderChatPanel({ documentId }: { documentId: string }) {
   const { data: messages = [], isLoading: messagesLoading } = useMessages(conversationId)
   const conversation = conversations.find((c) => c.id === conversationId)
   const { send, streamingText, sending, error } = useSendMessage(
-    conversation?.provider_id ?? DEFAULT_CHAT_PROVIDER_ID,
+    conversation?.provider_id ?? defaultProviderId,
     documentId,
   )
 
@@ -48,7 +49,7 @@ export function ReaderChatPanel({ documentId }: { documentId: string }) {
     Boolean(conversation) && !isProviderAvailable(conversation!.provider_id, availability)
 
   async function handleSend(text: string) {
-    const id = conversationId ?? (await create.mutateAsync({ providerId: DEFAULT_CHAT_PROVIDER_ID })).id
+    const id = conversationId ?? (await create.mutateAsync({ providerId: defaultProviderId })).id
     if (!conversationId) setConversationId(id)
     const history = messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
     await send(id, text, history)
@@ -67,7 +68,7 @@ export function ReaderChatPanel({ documentId }: { documentId: string }) {
           <div className="flex items-center gap-2">
             {updateProvider.isPending && <Spinner size="sm" />}
             <ProviderSelect
-              value={conversation?.provider_id ?? DEFAULT_CHAT_PROVIDER_ID}
+              value={conversation?.provider_id ?? defaultProviderId}
               onChange={handleProviderChange}
               disabled={updateProvider.isPending}
             />

@@ -6,10 +6,14 @@ import { useRecentAiRequests } from '@/modules/ai/observability/hooks/useRecentA
 import { useProfile } from '@/modules/settings/hooks/useProfile'
 import { ProfileCard } from '@/modules/settings/components/ProfileCard'
 import { ChangePasswordCard } from '@/modules/settings/components/ChangePasswordCard'
+import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
+import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
+import { Spinner } from '@/shared/components/ui/Spinner'
 
 export function SettingsPage() {
   const { user } = useAuth()
-  const { data: profile, isLoading: profileLoading } = useProfile()
+  const { data: profile, isLoading: profileLoading, updateDefaultProvider } = useProfile()
+  const defaultProviderId = useDefaultChatProviderId()
   const capabilities = capabilityRegistry.list()
   const providers = providerRegistry.list()
   const { data: aiRequests = [] } = useRecentAiRequests()
@@ -42,6 +46,29 @@ export function SettingsPage() {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+        <h2 className="text-sm font-medium text-[var(--color-ink)]">Default AI provider</h2>
+        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+          Used for new conversations and AI features (summaries, flashcards, knowledge extraction) unless a
+          conversation already has its own provider set.
+        </p>
+        <div className="mt-3 flex items-center gap-2">
+          {profileLoading ? (
+            <Spinner size="sm" />
+          ) : (
+            <ProviderSelect
+              value={defaultProviderId}
+              onChange={(id) => updateDefaultProvider.mutate(id)}
+              disabled={updateDefaultProvider.isPending}
+            />
+          )}
+          {updateDefaultProvider.isPending && <Spinner size="sm" />}
+        </div>
+        {updateDefaultProvider.isError && (
+          <p className="mt-2 text-xs text-red-600">Couldn't save your default provider. Please try again.</p>
+        )}
       </div>
 
       <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">

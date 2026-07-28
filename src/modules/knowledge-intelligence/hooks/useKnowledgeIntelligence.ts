@@ -8,7 +8,7 @@ import { generateKnowledgeMap } from '@/modules/knowledge-intelligence/api/knowl
 import { runKnowledgeExtraction } from '@/modules/knowledge-intelligence/api/knowledgeExtraction'
 import { withProviderAvailability } from '@/modules/ai/orchestration/withProviderAvailability'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
-import { DEFAULT_CHAT_PROVIDER_ID } from '@/modules/ai/providers/registry'
+import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 
 /** Readiness hooks for a future Knowledge Intelligence UI (Phase 7B+) — no visualization consumes these yet. */
 
@@ -57,12 +57,13 @@ export function useRunKnowledgeExtraction(documentId: string) {
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
   const { data: availability } = useProviderAvailability()
+  const providerId = useDefaultChatProviderId()
 
   return useMutation({
     mutationFn: () =>
       withProviderAvailability(
-        DEFAULT_CHAT_PROVIDER_ID,
-        () => runKnowledgeExtraction({ documentId, userId: user!.id, workspaceId: currentWorkspaceId }),
+        providerId,
+        () => runKnowledgeExtraction({ documentId, userId: user!.id, workspaceId: currentWorkspaceId, providerId }),
         { availability, queryClient },
       ),
     onSuccess: () => {

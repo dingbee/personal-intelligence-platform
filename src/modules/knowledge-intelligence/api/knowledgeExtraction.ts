@@ -1,7 +1,6 @@
 import type { DocumentChunk, KnowledgeNode } from '@/shared/types/database'
 import { listDocumentChunks } from '@/modules/processing/api/chunks'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
-import { DEFAULT_CHAT_PROVIDER_ID } from '@/modules/ai/providers/registry'
 import { upsertKnowledgeNodes } from '@/modules/knowledge-intelligence/api/knowledgeNodes'
 import { upsertKnowledgeEdges } from '@/modules/knowledge-intelligence/api/knowledgeEdges'
 import {
@@ -28,6 +27,7 @@ export interface RunKnowledgeExtractionParams {
   documentId: string
   userId: string
   workspaceId: string | null
+  providerId: string
 }
 
 export interface KnowledgeExtractionResult {
@@ -46,7 +46,7 @@ export interface KnowledgeExtractionResult {
  * per-node embedding.
  */
 export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParams): Promise<KnowledgeExtractionResult> {
-  const { documentId, userId, workspaceId } = params
+  const { documentId, userId, workspaceId, providerId } = params
 
   const chunks = await listDocumentChunks(documentId)
   if (chunks.length === 0) {
@@ -56,8 +56,8 @@ export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParam
   const generatedAt = new Date().toISOString()
 
   const [conceptsRun, entitiesRun] = await Promise.all([
-    runCapability({ capabilityId: 'extract-concepts', variables: { content }, userId, workspaceId }),
-    runCapability({ capabilityId: 'extract-entities', variables: { content }, userId, workspaceId }),
+    runCapability({ capabilityId: 'extract-concepts', variables: { content }, userId, workspaceId, providerId }),
+    runCapability({ capabilityId: 'extract-entities', variables: { content }, userId, workspaceId, providerId }),
   ])
 
   const conceptItems = parseConceptsResponse(conceptsRun.content)
@@ -76,7 +76,7 @@ export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParam
         sourceChunkIds: chunkIds,
         generationMetadata: {
           capability: 'extract-concepts',
-          provider: DEFAULT_CHAT_PROVIDER_ID,
+          provider: providerId,
           model: conceptsRun.model,
           generated_at: generatedAt,
         },
@@ -94,7 +94,7 @@ export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParam
         sourceChunkIds: chunkIds,
         generationMetadata: {
           capability: 'extract-entities',
-          provider: DEFAULT_CHAT_PROVIDER_ID,
+          provider: providerId,
           model: entitiesRun.model,
           generated_at: generatedAt,
         },
@@ -116,6 +116,7 @@ export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParam
     },
     userId,
     workspaceId,
+    providerId,
   })
   const relationshipItems = parseRelationshipsResponse(relationshipsRun.content)
 

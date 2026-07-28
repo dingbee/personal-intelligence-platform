@@ -7,7 +7,7 @@ import { ConversationList } from '@/modules/ai/chat/components/ConversationList'
 import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
-import { DEFAULT_CHAT_PROVIDER_ID } from '@/modules/ai/providers/registry'
+import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
 import { isProviderAvailable } from '@/modules/ai/providers/availability'
 import { providerRegistry } from '@/modules/core/providers/registry'
@@ -25,7 +25,13 @@ export function ChatPage() {
   // workspace/document filter it still opens (messages load independently
   // of the sidebar list), it just won't be highlighted in that list.
   const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get('conversationId'))
-  const [newProviderId, setNewProviderId] = useState(DEFAULT_CHAT_PROVIDER_ID)
+  const defaultProviderId = useDefaultChatProviderId()
+  // null = "no explicit choice yet, follow the live default" — as opposed to
+  // snapshotting defaultProviderId into useState's initializer, which would
+  // freeze it at whatever it resolved to before the profile/availability
+  // queries finished loading.
+  const [newProviderId, setNewProviderId] = useState<string | null>(null)
+  const effectiveNewProviderId = newProviderId ?? defaultProviderId
 
   useEffect(() => {
     if (!selectedId && conversations.length > 0) setSelectedId(conversations[0]!.id)
@@ -45,7 +51,10 @@ export function ChatPage() {
   // next send: this hook re-runs every render, so once the mutation below
   // updates the conversations cache, the next render's `send` closes over
   // the new value automatically.
-  const { send, streamingText, sending, error } = useSendMessage(conversation?.provider_id ?? newProviderId, documentId)
+  const { send, streamingText, sending, error } = useSendMessage(
+    conversation?.provider_id ?? effectiveNewProviderId,
+    documentId,
+  )
 
   const { data: availability } = useProviderAvailability()
   // Only meaningful for an existing conversation — a not-yet-created one's
@@ -55,7 +64,7 @@ export function ChatPage() {
     Boolean(conversation) && !isProviderAvailable(conversation!.provider_id, availability)
 
   async function handleNew() {
-    const created = await create.mutateAsync({ providerId: newProviderId })
+    const created = await create.mutateAsync({ providerId: effectiveNewProviderId })
     setSelectedId(created.id)
   }
 
@@ -99,7 +108,7 @@ export function ChatPage() {
               description="Answers are grounded in your own documents via retrieval-augmented generation — not model memory."
               action={
                 <div className="flex items-center gap-2">
-                  <ProviderSelect value={newProviderId} onChange={setNewProviderId} />
+                  <ProviderSelect value={effectiveNewProviderId} onChange={setNewProviderId} />
                   <Button onClick={() => void handleNew()}>Start chat</Button>
                 </div>
               }
@@ -112,7 +121,7 @@ export function ChatPage() {
               <div className="flex shrink-0 items-center gap-2">
                 {updateProvider.isPending && <Spinner size="sm" />}
                 <ProviderSelect
-                  value={conversation?.provider_id ?? newProviderId}
+                  value={conversation?.provider_id ?? effectiveNewProviderId}
                   onChange={handleProviderChange}
                   disabled={updateProvider.isPending}
                 />

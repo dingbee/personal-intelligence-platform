@@ -10,6 +10,7 @@ export type Profile = {
   id: string
   email: string
   display_name: string | null
+  default_chat_provider_id: string | null
   created_at: string
   updated_at: string
 }
