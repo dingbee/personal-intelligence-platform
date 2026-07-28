@@ -16,7 +16,12 @@ const chatProviders: Record<string, ChatProvider> = {
   google: geminiChatProvider,
 }
 
-export const DEFAULT_CHAT_PROVIDER_ID = 'anthropic'
+// OpenAI, not Anthropic: ANTHROPIC_API_KEY is not configured as a Supabase
+// function secret in this deployment (only OPENAI_API_KEY is), so every new
+// chat/capability run defaulting to 'anthropic' failed with "ANTHROPIC_API_KEY
+// is not configured" (see ai_requests). Anthropic/Google remain fully
+// selectable/supported — this only changes which one is picked by default.
+export const DEFAULT_CHAT_PROVIDER_ID = 'openai'
 
 export function getChatProvider(id: string = DEFAULT_CHAT_PROVIDER_ID): ChatProvider {
   const provider = chatProviders[id]
