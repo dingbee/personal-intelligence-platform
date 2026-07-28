@@ -1,5 +1,6 @@
 import { supabase } from '@/shared/lib/supabase'
 import { latestOf } from '@/modules/workspaces/api/workspaces'
+import { getMostRecentReadingProgress } from '@/modules/reader/api/readingProgress'
 
 export interface GreetingData {
   newKnowledgeConnectionsYesterday: number
@@ -30,7 +31,7 @@ export async function getGreetingData(): Promise<GreetingData> {
     yesterdayLinksResult,
     todayNodesResult,
     todayLinksResult,
-    recentReadingResult,
+    inProgressDocument,
     recentNotesResult,
     recentConversationsResult,
     recentDocumentsResult,
@@ -47,35 +48,18 @@ export async function getGreetingData(): Promise<GreetingData> {
       .lt('created_at', todayStart.toISOString()),
     supabase.from('knowledge_nodes').select('id', { count: 'exact', head: true }).gte('created_at', todayStart.toISOString()),
     supabase.from('knowledge_links').select('id', { count: 'exact', head: true }).gte('created_at', todayStart.toISOString()),
-    supabase
-      .from('reading_progress')
-      .select('updated_at, documents(title)')
-      .order('updated_at', { ascending: false })
-      .limit(1),
+    getMostRecentReadingProgress(),
     supabase.from('notes').select('updated_at').order('updated_at', { ascending: false }).limit(1),
     supabase.from('conversations').select('updated_at').order('updated_at', { ascending: false }).limit(1),
     supabase.from('documents').select('created_at').order('created_at', { ascending: false }).limit(1),
   ])
 
-  for (const result of [
-    yesterdayNodesResult,
-    yesterdayLinksResult,
-    todayNodesResult,
-    todayLinksResult,
-    recentReadingResult,
-    recentNotesResult,
-    recentConversationsResult,
-    recentDocumentsResult,
-  ]) {
+  for (const result of [yesterdayNodesResult, yesterdayLinksResult, todayNodesResult, todayLinksResult, recentNotesResult, recentConversationsResult, recentDocumentsResult]) {
     if (result.error) throw result.error
   }
 
-  const readingRow = (
-    recentReadingResult.data as unknown as { updated_at: string; documents: { title: string } | null }[]
-  )[0]
-
   const lastActivity = latestOf([
-    readingRow?.updated_at,
+    inProgressDocument?.updatedAt,
     (recentNotesResult.data as { updated_at: string }[])[0]?.updated_at,
     (recentConversationsResult.data as { updated_at: string }[])[0]?.updated_at,
     (recentDocumentsResult.data as { created_at: string }[])[0]?.created_at,
@@ -88,7 +72,7 @@ export async function getGreetingData(): Promise<GreetingData> {
   return {
     newKnowledgeConnectionsYesterday: (yesterdayNodesResult.count ?? 0) + (yesterdayLinksResult.count ?? 0),
     knowledgeGraphGrowthToday: (todayNodesResult.count ?? 0) + (todayLinksResult.count ?? 0),
-    inProgressDocumentTitle: readingRow?.documents?.title ?? null,
+    inProgressDocumentTitle: inProgressDocument?.title ?? null,
     daysSinceLastActivity,
   }
 }

@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useSearch } from '@/modules/search/hooks/useSearch'
 import { SearchResultCard } from '@/modules/search/components/SearchResultCard'
 import { Input } from '@/shared/components/ui/Input'
@@ -8,14 +9,28 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 
 export function SearchPage() {
   const { search, results, loading, error } = useSearch()
-  const [queryText, setQueryText] = useState('')
+  const [searchParams] = useSearchParams()
+  const [queryText, setQueryText] = useState(() => searchParams.get('q') ?? '')
   const [hasSearched, setHasSearched] = useState(false)
+  const autoRunRef = useRef(false)
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setHasSearched(true)
     void search(queryText)
   }
+
+  // Deep-linked from the Command Bar's "Search library for '<query>'" —
+  // runs the exact same search() as submitting the form manually would,
+  // once per mount.
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (!q || autoRunRef.current) return
+    autoRunRef.current = true
+    setHasSearched(true)
+    void search(q)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   return (
     <div className="flex flex-col gap-6">

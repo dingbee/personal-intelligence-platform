@@ -11,6 +11,7 @@ import { appConfig } from '@/app/appConfig'
 import '@/modules/core/modules/coreModule'
 import '@/modules/knowledge-intelligence/module'
 import '@/modules/search/registerBuiltInProviders'
+import '@/modules/commands/registerBuiltInCommands'
 
 export function App() {
   useEffect(() => {

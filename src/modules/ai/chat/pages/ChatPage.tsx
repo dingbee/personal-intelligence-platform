@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useConversations } from '@/modules/ai/chat/hooks/useConversations'
 import { useMessages } from '@/modules/ai/chat/hooks/useMessages'
@@ -18,8 +18,14 @@ import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 
 export function ChatPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const documentId = searchParams.get('documentId') ?? undefined
+  // Set by the Command Bar's "Ask NOVA: <query>" — a brand-new conversation
+  // deep-linked here with a question already chosen. Sent once below via
+  // the exact same handleSend a typed message goes through; not a second
+  // AI pipeline.
+  const initialQuery = searchParams.get('initialQuery')
+  const initialQuerySentRef = useRef(false)
 
   const { data: conversations = [], isLoading: conversationsLoading, create, remove, updateProvider } =
     useConversations(documentId)
@@ -82,6 +88,27 @@ export function ChatPage() {
     const history = messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
     await send(selectedId, text, history)
   }
+
+  // Fires exactly once per mount: only once messages have loaded (so we
+  // know for sure this conversation is still empty — never resend into
+  // one that already has content) and only for the conversation the
+  // command bar actually created. Stripping the param afterwards means
+  // refreshing or navigating back never re-triggers it.
+  useEffect(() => {
+    if (!initialQuery || initialQuerySentRef.current) return
+    if (!selectedId || messagesLoading || messages.length > 0) return
+    initialQuerySentRef.current = true
+    void handleSend(initialQuery)
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        next.delete('initialQuery')
+        return next
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery, selectedId, messagesLoading, messages.length])
 
   if (conversationsLoading) {
     return (

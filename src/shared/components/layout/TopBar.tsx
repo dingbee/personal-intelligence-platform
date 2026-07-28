@@ -9,7 +9,13 @@ import { ProfileMenu } from '@/shared/components/layout/ProfileMenu'
  * only relevant below md, where the persistent Sidebar (and its
  * WorkspaceSwitcher) is replaced by MobileNavDrawer.
  */
-export function TopBar({ onOpenNav }: { onOpenNav: () => void }) {
+export function TopBar({
+  onOpenNav,
+  onOpenCommandBar,
+}: {
+  onOpenNav: () => void
+  onOpenCommandBar: () => void
+}) {
   const greeting = useGreeting()
 
   return (
@@ -23,7 +29,26 @@ export function TopBar({ onOpenNav }: { onOpenNav: () => void }) {
         >
           <span aria-hidden>☰</span>
         </button>
-        <div className="ml-auto flex items-center gap-1">
+        <button
+          type="button"
+          onClick={onOpenCommandBar}
+          className="ml-auto hidden items-center gap-2 rounded-control bg-[var(--surface-inset)] px-3 py-1.5 text-sm text-[var(--color-ink-muted)] shadow-inset transition-shadow hover:shadow-raised md:flex"
+        >
+          <span aria-hidden>✨</span>
+          <span>Ask NOVA...</span>
+          <kbd className="ml-2 rounded-pill bg-[var(--surface-raised)] px-1.5 py-0.5 text-[0.65rem] text-[var(--color-ink-muted)]">
+            ⌘K
+          </kbd>
+        </button>
+        <div className="ml-auto flex items-center gap-1 md:ml-1">
+          <button
+            type="button"
+            onClick={onOpenCommandBar}
+            aria-label="Ask NOVA"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-sm text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--surface-base)] hover:text-[var(--color-ink)] md:hidden"
+          >
+            ✨
+          </button>
           <button
             type="button"
             disabled
