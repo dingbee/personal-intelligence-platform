@@ -4,6 +4,7 @@ import { RecentHighlightsSection } from '@/modules/knowledge/components/RecentHi
 import { RecentSummariesSection } from '@/modules/knowledge/components/RecentSummariesSection'
 import { FlashcardActivitySection } from '@/modules/knowledge/components/FlashcardActivitySection'
 import { DocumentConnectionsSection } from '@/modules/knowledge/components/DocumentConnectionsSection'
+import { KnowledgeInsightsPanel } from '@/modules/knowledge-intelligence/components/KnowledgeInsightsPanel'
 
 export function KnowledgePage() {
   return (
@@ -33,18 +34,7 @@ export function KnowledgePage() {
         </div>
       </div>
 
-      {/*
-        Structural placeholder for future AI-driven sections (suggested
-        connections, knowledge gaps, learning insights — see the Phase 4
-        architecture audit's roadmap). Deliberately static and un-styled
-        beyond matching the section chrome: no capability, prompt, or
-        provider work happens here yet, per this phase's scope.
-      */}
-      <section className="rounded-xl border border-dashed border-[var(--color-border)] p-4 text-center">
-        <p className="text-sm text-[var(--color-ink-muted)]">
-          AI-suggested connections and insights arrive in a future milestone.
-        </p>
-      </section>
+      <KnowledgeInsightsPanel />
     </div>
   )
 }

@@ -9,6 +9,7 @@ import { useReprocessDocument } from '@/modules/processing/hooks/useReprocessDoc
 import { useExtractionMetadata } from '@/modules/processing/hooks/useExtractionMetadata'
 import { useDocumentChunkCount } from '@/modules/processing/hooks/useDocumentChunkCount'
 import { ProcessingStatusBadge } from '@/modules/processing/components/ProcessingStatusBadge'
+import { KnowledgeExtractionPanel } from '@/modules/knowledge-intelligence/components/KnowledgeExtractionPanel'
 import { DocumentTagEditor } from '@/modules/library/components/DocumentTagEditor'
 import { CollectionMoveSelect } from '@/modules/library/components/CollectionMoveSelect'
 import { fileTypeLabel, formatFileSize } from '@/modules/library/utils/fileTypes'
@@ -159,6 +160,8 @@ export function DocumentDetailPage() {
             </p>
           )}
         </div>
+
+        {document.status === 'ready' && <KnowledgeExtractionPanel documentId={document.id} />}
 
         <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-4">
           {document.file_type === 'epub' && document.status === 'ready' && (
