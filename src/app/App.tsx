@@ -7,6 +7,7 @@ import { router } from '@/app/router'
 // Side-effect imports: register built-in platform/search providers before
 // anything tries to read from those registries. See modules/core/README.md.
 import '@/modules/core/modules/coreModule'
+import '@/modules/knowledge-intelligence/module'
 import '@/modules/search/registerBuiltInProviders'
 
 export function App() {

@@ -230,6 +230,31 @@ export type KnowledgeLink = {
   target_type: string
   target_id: string
   created_at: string
+  /** Null for links created before Phase 7A (e.g. note<->highlight) — those derive a display label at query time instead. Set for AI-generated edges. */
+  relationship_type: string | null
+  confidence: number | null
+  /** e.g. 'ai:detect-relationships'. Null for user-authored links. */
+  generated_by: string | null
+  metadata: Record<string, unknown> | null
+}
+
+export type KnowledgeNodeType = 'concept' | 'entity'
+
+/** An AI-extracted concept or entity, anchored to the document (source_type/source_id) it was found in. Not a user-authored object — see Phase 7A audit for why this doesn't reuse tags. */
+export type KnowledgeNode = {
+  id: string
+  user_id: string
+  workspace_id: string | null
+  node_type: KnowledgeNodeType
+  title: string
+  description: string | null
+  source_type: string
+  source_id: string
+  source_chunk_ids: string[] | null
+  generation_metadata: Record<string, unknown> | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
 }
 
 export type AiMemoryType = 'explicit_profile' | 'learned_preference' | 'conversation_memory'
@@ -422,6 +447,18 @@ export type Database = {
           target_id: string
         }
         Update: Partial<KnowledgeLink>
+        Relationships: []
+      }
+      knowledge_nodes: {
+        Row: KnowledgeNode
+        Insert: Partial<KnowledgeNode> & {
+          user_id: string
+          node_type: KnowledgeNodeType
+          title: string
+          source_type: string
+          source_id: string
+        }
+        Update: Partial<KnowledgeNode>
         Relationships: []
       }
       ai_memory: {
