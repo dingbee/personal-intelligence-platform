@@ -27,6 +27,18 @@ export function SettingsPage() {
       <ChangePasswordCard />
 
       <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-[var(--color-ink)]">Workspaces</h2>
+          <Link to="/settings/workspaces" className="text-xs text-[var(--color-accent)] hover:underline">
+            Manage workspaces →
+          </Link>
+        </div>
+        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+          Rename, reorder, archive, or delete your workspaces, and see what's in each one.
+        </p>
+      </div>
+
+      <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
         <h2 className="text-sm font-medium text-[var(--color-ink)]">Default AI provider</h2>
         <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
           Used for new conversations and AI features (summaries, flashcards, knowledge extraction) unless a

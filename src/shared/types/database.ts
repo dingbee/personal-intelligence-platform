@@ -29,6 +29,10 @@ export type Workspace = {
   id: string
   user_id: string
   name: string
+  /** Null = active. Archived workspaces are hidden from the switcher but restorable. */
+  archived_at: string | null
+  /** Display order within a user's workspaces, ascending. New workspaces get max+1. */
+  sort_order: number
   created_at: string
   updated_at: string
 }

@@ -15,7 +15,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const { data: workspaces = [], isLoading } = useQuery({
     queryKey: ['workspaces'],
-    queryFn: listWorkspaces,
+    queryFn: () => listWorkspaces(),
     enabled: Boolean(user),
   })
 
