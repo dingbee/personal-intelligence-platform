@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { appConfig } from '@/app/appConfig'
 import { WorkspaceSwitcher } from '@/modules/workspaces/components/WorkspaceSwitcher'
 
 const navItems = [
@@ -20,7 +21,7 @@ export function SidebarNav() {
   return (
     <>
       <span className="mb-4 px-2 text-sm font-semibold tracking-tight text-[var(--color-ink)]">
-        Second Brain
+        {appConfig.productName}
       </span>
       <WorkspaceSwitcher />
       {navItems.map((item) => (
@@ -47,7 +48,7 @@ export function Sidebar() {
   return (
     <nav
       aria-label="Primary"
-      className="hidden h-full w-56 shrink-0 flex-col gap-1 border-r border-[var(--color-border)] bg-[var(--color-surface)] p-4 md:flex"
+      className="hidden h-full w-56 shrink-0 flex-col gap-1 border-r border-[var(--color-border)] bg-[var(--surface-raised)] p-4 md:flex"
     >
       <SidebarNav />
     </nav>

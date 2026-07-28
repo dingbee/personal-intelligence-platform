@@ -14,6 +14,8 @@ import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
+import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
+import { StatCard } from '@/shared/components/ui/surface/StatCard'
 
 type TypeFilter = 'all' | KnowledgeNodeType
 
@@ -32,15 +34,6 @@ function formatProvenance(meta: Record<string, unknown>): string | null {
   const when = generatedAt ? new Date(generatedAt).toLocaleDateString() : null
   const parts = [source, when].filter(Boolean)
   return parts.length > 0 ? parts.join(' — ') : null
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex flex-col">
-      <span className="text-lg font-semibold text-[var(--color-ink)]">{value}</span>
-      <span className="text-xs text-[var(--color-ink-muted)]">{label}</span>
-    </div>
-  )
 }
 
 /** A structured, searchable list of knowledge nodes — the pre-graph-visualization view called for in Phase 7B. */
@@ -65,12 +58,11 @@ export function KnowledgeExplorerPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-[var(--color-ink)]">Knowledge Explorer</h1>
-        <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
-          Every concept and entity your AI has extracted, how it connects, and where it came from.
-        </p>
-      </div>
+      <SectionHeader
+        level="page"
+        title="Knowledge Explorer"
+        description="Every concept and entity your AI has extracted, how it connects, and where it came from."
+      />
 
       <InsightPanel
         title="Knowledge Intelligence"
@@ -83,11 +75,11 @@ export function KnowledgeExplorerPage() {
         isEmpty={!insights.data || (insights.data.conceptCount === 0 && insights.data.entityCount === 0)}
         emptyMessage="No knowledge extracted yet — open a document and run Analyze Document to get started."
       >
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat label="Concepts" value={insights.data?.conceptCount ?? 0} />
-          <Stat label="Entities" value={insights.data?.entityCount ?? 0} />
-          <Stat label="Relationships" value={insights.data?.edgeCount ?? 0} />
-          <Stat label="Documents" value={insights.data?.documentsWithKnowledge ?? 0} />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <StatCard variant="inset" label="Concepts" value={insights.data?.conceptCount ?? 0} />
+          <StatCard variant="inset" label="Entities" value={insights.data?.entityCount ?? 0} />
+          <StatCard variant="inset" label="Relationships" value={insights.data?.edgeCount ?? 0} />
+          <StatCard variant="inset" label="Documents" value={insights.data?.documentsWithKnowledge ?? 0} />
         </div>
         {reconcile.isError && (
           <p className="text-sm text-red-600">

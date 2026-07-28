@@ -34,7 +34,7 @@ export function ConfirmDialog({
       ref={dialogRef}
       onCancel={onCancel}
       onClose={onCancel}
-      className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 backdrop:bg-black/30"
+      className="w-full max-w-sm rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] p-6 shadow-floating backdrop:bg-black/30"
     >
       <h2 className="text-lg font-semibold text-[var(--color-ink)]">{title}</h2>
       {description && <p className="mt-2 text-sm text-[var(--color-ink-muted)]">{description}</p>}

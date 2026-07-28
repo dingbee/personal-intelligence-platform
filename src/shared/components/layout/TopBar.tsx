@@ -13,7 +13,7 @@ export function TopBar({ onOpenNav }: { onOpenNav: () => void }) {
   const greeting = useGreeting()
 
   return (
-    <header className="flex flex-col gap-1 border-b border-[var(--color-border)] px-4 py-3 md:px-6">
+    <header className="flex flex-col gap-1 border-b border-[var(--color-border)] bg-[var(--surface-raised)] px-4 py-3 md:px-6">
       <div className="flex items-center gap-4">
         <button
           type="button"
@@ -29,14 +29,14 @@ export function TopBar({ onOpenNav }: { onOpenNav: () => void }) {
             disabled
             title="No notifications yet"
             aria-label="Notifications"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-sm text-[var(--color-ink-muted)]/60"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-sm text-[var(--color-ink-muted)]/60 transition-colors"
           >
             🔔
           </button>
           <Link
             to="/settings"
             aria-label="Settings"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-sm text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-sm text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--surface-base)] hover:text-[var(--color-ink)]"
           >
             ⚙️
           </Link>

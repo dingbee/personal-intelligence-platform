@@ -19,7 +19,7 @@ export function DashboardSection({
   children: ReactNode
 }) {
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+    <section className="flex flex-col gap-3 rounded-card border border-[var(--color-border)] bg-[var(--surface-raised)] p-4 shadow-raised">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-[var(--color-ink)]">{title}</h2>
         {viewAllHref && (

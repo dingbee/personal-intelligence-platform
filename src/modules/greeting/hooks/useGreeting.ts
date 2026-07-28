@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useProfile } from '@/modules/settings/hooks/useProfile'
+import { appConfig } from '@/app/appConfig'
 import { getGreetingData } from '@/modules/greeting/api/greetingData'
 import { computeGreeting, deriveNameFromEmail, type Greeting } from '@/modules/greeting/greetingEngine'
 
-const FALLBACK: Greeting = { headline: 'Welcome.', subtext: "Let's continue building your knowledge." }
+const FALLBACK: Greeting = { headline: 'Welcome.', subtext: appConfig.tagline }
 
 export function useGreeting(): Greeting {
   const { user } = useAuth()

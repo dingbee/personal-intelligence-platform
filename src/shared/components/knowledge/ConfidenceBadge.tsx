@@ -1,9 +1,8 @@
 /**
  * Small provenance indicator for an AI-generated relationship's confidence
- * score. Deliberately plain (canvas pill + colored text, same shape as the
- * file-type pill on DocumentDetailPage) rather than introducing a new
- * colored-background pattern — keeps this restylable in one place for
- * Phase 8's neomorphic pass instead of scattered across call sites.
+ * score. Phase UX-3.5: the "restylable in one place" neomorphic pass this
+ * predated — an inset pill (recessed, not raised), since this is metadata
+ * embedded in a card, not its own elevated surface.
  */
 export function ConfidenceBadge({ confidence }: { confidence: number | null }) {
   if (confidence === null) return null
@@ -14,7 +13,7 @@ export function ConfidenceBadge({ confidence }: { confidence: number | null }) {
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded bg-[var(--color-canvas)] px-1.5 py-0.5 text-xs font-medium ${toneClass}`}
+      className={`inline-flex shrink-0 items-center rounded-pill bg-[var(--surface-inset)] px-1.5 py-0.5 text-xs font-medium shadow-inset ${toneClass}`}
     >
       {pct}%
     </span>

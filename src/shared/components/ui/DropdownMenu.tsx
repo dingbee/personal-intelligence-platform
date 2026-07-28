@@ -27,7 +27,7 @@ export function DropdownMenu({ trigger, children }: DropdownMenuProps) {
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="rounded-md p-1 text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]"
+        className="rounded-control p-1 text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--surface-base)] hover:text-[var(--color-ink)]"
       >
         {trigger}
       </button>
@@ -35,7 +35,7 @@ export function DropdownMenu({ trigger, children }: DropdownMenuProps) {
         <div
           role="menu"
           onClick={() => setOpen(false)}
-          className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-md"
+          className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] py-1 shadow-floating"
         >
           {children}
         </div>
@@ -58,7 +58,7 @@ export function DropdownMenuItem({
       type="button"
       role="menuitem"
       onClick={onClick}
-      className={`block w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-canvas)] ${
+      className={`block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--surface-base)] ${
         danger ? 'text-red-600' : 'text-[var(--color-ink)]'
       }`}
     >

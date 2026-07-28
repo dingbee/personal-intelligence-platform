@@ -5,24 +5,24 @@ import { RecentSummariesSection } from '@/modules/knowledge/components/RecentSum
 import { FlashcardActivitySection } from '@/modules/knowledge/components/FlashcardActivitySection'
 import { DocumentConnectionsSection } from '@/modules/knowledge/components/DocumentConnectionsSection'
 import { KnowledgeInsightsPanel } from '@/modules/knowledge-intelligence/components/KnowledgeInsightsPanel'
+import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
 
 export function KnowledgePage() {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-[var(--color-ink)]">Knowledge</h1>
-          <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
-            Everything you've accumulated across your notes, highlights, and AI-generated content.
-          </p>
-        </div>
-        <Link
-          to="/knowledge/graph"
-          className="shrink-0 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm font-medium text-[var(--color-ink)] hover:bg-[var(--color-canvas)]"
-        >
-          View Graph →
-        </Link>
-      </div>
+      <SectionHeader
+        level="page"
+        title="Knowledge"
+        description="Everything you've accumulated across your notes, highlights, and AI-generated content."
+        action={
+          <Link
+            to="/knowledge/graph"
+            className="shrink-0 rounded-control border border-[var(--color-border)] bg-[var(--surface-raised)] px-3 py-1.5 text-sm font-medium text-[var(--color-ink)] shadow-raised transition-colors hover:bg-[var(--surface-base)]"
+          >
+            View Graph →
+          </Link>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <RecentNotesSection />

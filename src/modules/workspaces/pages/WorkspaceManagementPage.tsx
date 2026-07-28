@@ -6,6 +6,7 @@ import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
+import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
 
 export function WorkspaceManagementPage() {
   const { data: workspaces = [], isLoading, create } = useWorkspaceManagement()
@@ -17,14 +18,16 @@ export function WorkspaceManagementPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link to="/settings" className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
+        <Link to="/settings" className="text-sm text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]">
           ← Back to Settings
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">Workspaces</h1>
-        <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
-          Rename, reorder, archive, or delete your workspaces. Deleting a workspace never deletes its content — it
-          moves to the unscoped "All" view.
-        </p>
+        <div className="mt-2">
+          <SectionHeader
+            level="page"
+            title="Workspaces"
+            description={'Your mental spaces — rename, reorder, archive, or delete them. Deleting one never deletes its content, it moves to the unscoped "All" view.'}
+          />
+        </div>
       </div>
 
       {isLoading ? (
@@ -80,7 +83,7 @@ export function WorkspaceManagementPage() {
 
           {archived.length > 0 && (
             <div className="flex flex-col gap-3">
-              <h2 className="text-sm font-medium text-[var(--color-ink-muted)]">Archived</h2>
+              <SectionHeader level="section" title="Archived" />
               {archived.map((workspace) => (
                 <WorkspaceCard key={workspace.id} workspace={workspace} isFirst isLast />
               ))}

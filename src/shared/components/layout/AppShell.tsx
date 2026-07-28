@@ -8,7 +8,7 @@ export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   return (
-    <div className="flex h-screen bg-[var(--color-canvas)]">
+    <div className="flex h-screen bg-[var(--surface-base)]">
       <Sidebar />
       <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">

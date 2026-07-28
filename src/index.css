@@ -21,6 +21,47 @@
      without retrofitting every existing flat card in the app. */
   --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 12px -4px rgb(0 0 0 / 0.08);
   --shadow-soft-lg: 0 2px 4px rgb(0 0 0 / 0.04), 0 10px 28px -8px rgb(0 0 0 / 0.10);
+
+  /* Phase UX-3.5: Neomorphic design system foundation.
+     --shadow-raised/--shadow-inset/--shadow-floating extend --shadow-soft
+     with the same restrained, single-shadow-stack approach (no dual
+     light/dark embossing — that's the decorative 2020s neumorphism this
+     phase explicitly avoids). All three become real `shadow-*` utilities
+     for free, same mechanism as --shadow-soft above. */
+  --shadow-raised: 0 1px 3px rgb(0 0 0 / 0.05), 0 8px 20px -6px rgb(0 0 0 / 0.12);
+  --shadow-inset: inset 0 1px 3px rgb(0 0 0 / 0.06), inset 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-floating: 0 4px 8px rgb(0 0 0 / 0.06), 0 20px 48px -12px rgb(0 0 0 / 0.20);
+
+  /* Surface fill tokens — not a Tailwind-reserved namespace (colors are
+     --color-*), so these are referenced via bg-[var(--surface-x)], the
+     same bracket convention already used for --color-* throughout this
+     file. surface-base/raised/floating alias the existing canvas/surface
+     colors (zero value drift, just semantic names the new primitives
+     below can build on); surface-inset is genuinely new — a touch more
+     muted than canvas, for the "embedded" look inputs/insets should have. */
+  --surface-base: var(--color-canvas);
+  --surface-raised: var(--color-surface);
+  --surface-inset: #f0eeea;
+  --surface-floating: var(--color-surface);
+
+  /* Radius system. Deliberately NOT named --radius-sm/md/lg/xl: Tailwind
+     v4 reserves that exact namespace for its own built-in rounded-*
+     scale (see node_modules/tailwindcss/theme.css) — redefining it here
+     would silently change every rounded-sm/md/lg/xl element already in
+     the app, including dozens of components this phase never touches.
+     These semantic names avoid that collision while still giving new
+     components one small, intentional scale to pick from instead of ad
+     hoc rounded-lg vs rounded-xl vs rounded-2xl choices. Values match
+     the sizes already in use for these exact roles (rounded-lg for
+     controls, rounded-xl for cards, rounded-2xl for dialogs, rounded-full
+     for pills), so declaring them is a formalization, not a visual
+     change — and each becomes a real rounded-* utility (rounded-control,
+     rounded-card, rounded-panel, rounded-pill), same free-utility
+     mechanism as the shadow tokens. */
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-panel: 1rem;
+  --radius-pill: 9999px;
 }
 
 @layer base {

@@ -43,7 +43,7 @@ export function InlineTextForm({ initialValue = '', placeholder, onSubmit, onCan
           if (discardedRef.current) return
           commitOrCancel()
         }}
-        className="w-full rounded-md border border-[var(--color-accent)] bg-[var(--color-surface)] px-2 py-1 text-sm outline-none"
+        className="w-full rounded-control border border-[var(--color-accent)] bg-[var(--surface-inset)] px-2 py-1 text-sm shadow-inset outline-none transition-shadow"
       />
     </form>
   )

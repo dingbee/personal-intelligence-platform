@@ -7,7 +7,9 @@ import { Spinner } from '@/shared/components/ui/Spinner'
  * modules/knowledge/components/DashboardSection (which is scoped to the
  * five Phase 6B dashboard sections and lives in that module); this one is
  * shared because Phase 7B uses it on the Dashboard, Document Detail, and
- * the Explorer page.
+ * the Explorer page. Phase UX-3.5: this is the "IntelligencePanel" role
+ * from the design-system brief — upgraded to the raised-surface tokens
+ * in place rather than adding a duplicate component under a new name.
  */
 export function InsightPanel({
   title,
@@ -27,7 +29,7 @@ export function InsightPanel({
   children: ReactNode
 }) {
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+    <section className="flex flex-col gap-3 rounded-card border border-[var(--color-border)] bg-[var(--surface-raised)] p-4 shadow-raised">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-medium text-[var(--color-ink)]">{title}</h2>

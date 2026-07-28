@@ -8,9 +8,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
   primary:
-    'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:bg-[var(--color-accent)]/60',
+    'bg-[var(--color-accent)] text-white shadow-raised hover:bg-[var(--color-accent-hover)] disabled:bg-[var(--color-accent)]/60 disabled:shadow-none',
   secondary:
-    'bg-[var(--color-surface)] text-[var(--color-ink)] border border-[var(--color-border)] hover:bg-[var(--color-canvas)]',
+    'bg-[var(--surface-raised)] text-[var(--color-ink)] border border-[var(--color-border)] hover:bg-[var(--surface-base)]',
   ghost: 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]',
 }
 
@@ -20,7 +20,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || loading}
-        className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed ${variantClasses[variant]} ${className}`}
+        // Tactile press feedback for primary actions — a small, restrained
+        // scale-down on :active, not a bounce or gaming-style effect.
+        className={`inline-flex items-center justify-center gap-2 rounded-control px-4 py-2 text-sm font-medium transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 ${variantClasses[variant]} ${className}`}
         {...props}
       >
         {loading && <Spinner size="sm" />}

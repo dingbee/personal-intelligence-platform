@@ -1,3 +1,5 @@
+import { appConfig } from '@/app/appConfig'
+
 /**
  * Deterministic greeting rules (Phase UX-3). Priority, highest first:
  * 1. Long inactivity (>= 3 days) — surfacing this always beats a fact
@@ -70,7 +72,7 @@ export function computeGreeting(ctx: GreetingContext): Greeting {
     return { headline, subtext: 'Ready for another learning session?' }
   }
 
-  return { headline, subtext: "Let's continue building your knowledge." }
+  return { headline, subtext: appConfig.tagline }
 }
 
 /** Best-effort display name from an email's local part when no display name is set — "ding.smith@x.com" → "Ding". */

@@ -7,6 +7,8 @@ import { useWorkspaceStats } from '@/modules/workspaces/hooks/useWorkspaceStats'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
 import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
+import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
+import { StatCard } from '@/shared/components/ui/surface/StatCard'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { formatRelativeTime } from '@/shared/utils/formatRelativeTime'
 import { formatFileSize } from '@/modules/library/utils/fileTypes'
@@ -32,15 +34,16 @@ export function WorkspaceCard({
 
   return (
     <div
-      className={`flex flex-col gap-3 rounded-xl border p-4 ${
+      className={`flex flex-col gap-4 rounded-card border p-5 transition-shadow ${
         isArchived
-          ? 'border-dashed border-[var(--color-border)] bg-[var(--color-canvas)] opacity-70'
-          : 'border-[var(--color-border)] bg-[var(--color-surface)]'
+          ? 'border-dashed border-[var(--color-border)] bg-[var(--surface-inset)] opacity-70'
+          : 'border-[var(--color-border)] bg-[var(--surface-raised)] shadow-raised hover:shadow-floating'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
+            {!isArchived && <span aria-hidden className="text-[var(--color-accent)]">◉</span>}
             {renaming ? (
               <InlineTextForm
                 initialValue={workspace.name}
@@ -55,20 +58,13 @@ export function WorkspaceCard({
                 {workspace.name}
               </h3>
             )}
-            {isCurrent && (
-              <span className="shrink-0 rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-xs font-medium text-[var(--color-accent)]">
-                Current workspace
-              </span>
-            )}
-            {isArchived && (
-              <span className="shrink-0 rounded-full bg-[var(--color-ink-muted)]/10 px-2 py-0.5 text-xs font-medium text-[var(--color-ink-muted)]">
-                Archived
-              </span>
-            )}
+            {isCurrent && <StatusBadge label="Current workspace" variant="info" />}
+            {isArchived && <StatusBadge label="Archived" variant="neutral" />}
           </div>
           <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
             Created {formatRelativeTime(workspace.created_at)}
             {isArchived && workspace.archived_at && ` · Archived ${formatRelativeTime(workspace.archived_at)}`}
+            {!isArchived && stats?.lastActivityAt && ` · Updated ${formatRelativeTime(stats.lastActivityAt)}`}
           </p>
         </div>
 
@@ -80,7 +76,7 @@ export function WorkspaceCard({
                 aria-label="Move up"
                 disabled={isFirst || move.isPending}
                 onClick={() => move.mutate({ direction: 'up', workspace })}
-                className="rounded px-1 text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] disabled:opacity-30"
+                className="rounded px-1 text-xs text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)] disabled:opacity-30"
               >
                 ▲
               </button>
@@ -89,7 +85,7 @@ export function WorkspaceCard({
                 aria-label="Move down"
                 disabled={isLast || move.isPending}
                 onClick={() => move.mutate({ direction: 'down', workspace })}
-                className="rounded px-1 text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] disabled:opacity-30"
+                className="rounded px-1 text-xs text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)] disabled:opacity-30"
               >
                 ▼
               </button>
@@ -125,20 +121,26 @@ export function WorkspaceCard({
       {statsLoading || !stats ? (
         <Spinner size="sm" />
       ) : (
-        <div className="flex flex-col gap-0.5 text-xs text-[var(--color-ink-muted)]">
-          <p>
-            {stats.documents} document{stats.documents === 1 ? '' : 's'} · {stats.collections} collection
-            {stats.collections === 1 ? '' : 's'} · {stats.notes} note{stats.notes === 1 ? '' : 's'} ·{' '}
-            {stats.conversations} conversation{stats.conversations === 1 ? '' : 's'}
-          </p>
-          <p>
-            {stats.knowledgeNodes} knowledge node{stats.knowledgeNodes === 1 ? '' : 's'} · {stats.highlights} highlight
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatCard variant="inset" label={stats.documents === 1 ? 'Document' : 'Documents'} value={stats.documents} />
+            <StatCard variant="inset" label={stats.notes === 1 ? 'Note' : 'Notes'} value={stats.notes} />
+            <StatCard
+              variant="inset"
+              label={stats.conversations === 1 ? 'Conversation' : 'Conversations'}
+              value={stats.conversations}
+            />
+            <StatCard
+              variant="inset"
+              label={stats.knowledgeNodes === 1 ? 'Knowledge node' : 'Knowledge nodes'}
+              value={stats.knowledgeNodes}
+            />
+          </div>
+          <p className="text-xs text-[var(--color-ink-muted)]">
+            {stats.collections} collection{stats.collections === 1 ? '' : 's'} · {stats.highlights} highlight
             {stats.highlights === 1 ? '' : 's'} · {stats.flashcards} flashcard{stats.flashcards === 1 ? '' : 's'} ·{' '}
-            {stats.chapterSummaries} chapter summar{stats.chapterSummaries === 1 ? 'y' : 'ies'}
-          </p>
-          <p>
-            Storage: {formatFileSize(stats.storageBytes)} · Last activity:{' '}
-            {stats.lastActivityAt ? formatRelativeTime(stats.lastActivityAt) : 'none yet'}
+            {stats.chapterSummaries} chapter summar{stats.chapterSummaries === 1 ? 'y' : 'ies'} · Storage:{' '}
+            {formatFileSize(stats.storageBytes)}
           </p>
         </div>
       )}

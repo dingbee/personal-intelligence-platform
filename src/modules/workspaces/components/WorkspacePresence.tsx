@@ -1,23 +1,27 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
-import { useWorkspaceDocumentCount } from '@/modules/workspaces/hooks/useWorkspaceDocumentCount'
+import { useWorkspaceHeaderSummary } from '@/modules/workspaces/hooks/useWorkspaceHeaderSummary'
 import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
+import { formatRelativeTime } from '@/shared/utils/formatRelativeTime'
 
 /**
- * The header's richer workspace indicator (Phase UX-3) — a live summary +
- * quick actions, distinct from the Sidebar's compact WorkspaceSwitcher
- * <select>, which is untouched and still the fast day-to-day way to switch.
+ * The header's richer workspace indicator (Phase UX-3, upgraded in
+ * UX-3.5 with an "active intelligence context" feel — a live-status dot,
+ * last-activity signal, tactile hover) — distinct from the Sidebar's
+ * compact WorkspaceSwitcher <select>, which is untouched and still the
+ * fast day-to-day way to switch.
  */
 export function WorkspacePresence() {
   const navigate = useNavigate()
   const { workspaces, currentWorkspaceId, setCurrentWorkspaceId, create } = useWorkspace()
-  const { data: documentCount } = useWorkspaceDocumentCount(currentWorkspaceId)
+  const { data: summary } = useWorkspaceHeaderSummary(currentWorkspaceId)
   const [creating, setCreating] = useState(false)
 
   const current = workspaces.find((w) => w.id === currentWorkspaceId)
   const label = current?.name ?? 'All workspaces'
+  const documentCount = summary?.documentCount ?? 0
 
   if (creating) {
     return (
@@ -37,9 +41,24 @@ export function WorkspacePresence() {
   return (
     <DropdownMenu
       trigger={
-        <span className="block text-right leading-tight">
-          <span className="block text-[0.65rem] uppercase tracking-wide text-[var(--color-ink-muted)]">Workspace</span>
-          <span className="block max-w-[10rem] truncate text-sm font-medium text-[var(--color-ink)]">{label} ▾</span>
+        <span className="flex items-center gap-1.5 rounded-control px-1.5 py-1 text-right leading-tight transition-colors hover:bg-[var(--surface-base)]">
+          <span className="flex flex-col items-end">
+            <span className="flex items-center gap-1 text-sm font-medium text-[var(--color-ink)]">
+              <span aria-hidden className="text-[var(--color-accent)]">
+                ◉
+              </span>
+              <span className="max-w-[9rem] truncate">{label}</span>
+            </span>
+            <span className="whitespace-nowrap text-xs text-[var(--color-ink-muted)]">
+              {documentCount} document{documentCount === 1 ? '' : 's'}
+              {summary?.lastActivityAt && (
+                <span className="hidden sm:inline"> · Updated {formatRelativeTime(summary.lastActivityAt)}</span>
+              )}
+            </span>
+          </span>
+          <span aria-hidden className="shrink-0 text-[var(--color-ink-muted)]">
+            ⌄
+          </span>
         </span>
       }
     >
@@ -47,7 +66,8 @@ export function WorkspacePresence() {
         <p className="text-xs text-[var(--color-ink-muted)]">Current workspace</p>
         <p className="truncate text-sm font-medium text-[var(--color-ink)]">{label}</p>
         <p className="text-xs text-[var(--color-ink-muted)]">
-          {documentCount ?? 0} document{documentCount === 1 ? '' : 's'}
+          {documentCount} document{documentCount === 1 ? '' : 's'}
+          {summary?.lastActivityAt && ` · Updated ${formatRelativeTime(summary.lastActivityAt)}`}
         </p>
       </div>
       {currentWorkspaceId !== null && (

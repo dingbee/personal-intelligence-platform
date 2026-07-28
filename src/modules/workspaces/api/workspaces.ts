@@ -68,17 +68,28 @@ export async function deleteWorkspace(id: string): Promise<void> {
   if (error) throw error
 }
 
+export interface WorkspaceHeaderSummary {
+  documentCount: number
+  lastActivityAt: string | null
+}
+
 /**
- * A single lightweight count, distinct from getWorkspaceStats' full 8-query
- * breakdown — this one is for the persistent header widget (rendered on
- * every page), not the management page's per-card detail.
+ * A single lightweight query, distinct from getWorkspaceStats' full
+ * 8-query breakdown — this one is for the persistent header widget
+ * (rendered on every page), not the management page's per-card detail.
+ * Scoped to documents only (not notes/conversations too) so it stays a
+ * single round trip for something visible everywhere.
  */
-export async function getWorkspaceDocumentCount(workspaceId: string | null): Promise<number> {
-  let query = supabase.from('documents').select('id', { count: 'exact', head: true })
+export async function getWorkspaceHeaderSummary(workspaceId: string | null): Promise<WorkspaceHeaderSummary> {
+  let query = supabase.from('documents').select('updated_at')
   if (workspaceId) query = query.eq('workspace_id', workspaceId)
-  const { count, error } = await query
+  const { data, error } = await query
   if (error) throw error
-  return count ?? 0
+  const rows = data as { updated_at: string }[]
+  return {
+    documentCount: rows.length,
+    lastActivityAt: latestOf(rows.map((row) => row.updated_at)),
+  }
 }
 
 /** Persists a swap between two adjacent workspaces' sort_order (the result of a Move Up/Down action). */
