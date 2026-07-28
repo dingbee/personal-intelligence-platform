@@ -3,17 +3,39 @@ import { renderPromptTemplate } from '@/modules/core/prompts/renderPromptTemplat
 import type { VectorMatch } from '@/modules/ai/retrieval/VectorStore'
 
 /**
- * Fills the active 'chat' PromptTemplate's {{context}} placeholder with
- * retrieved chunks, then optionally appends a separate
- * <knowledge_connections> block (Phase 9D) with AI-extracted concepts,
- * entities, and relationships from the same retrieved documents.
- *
- * The rag-chat@1.0 template itself is untouched by this — graphContext is
- * appended to the rendered result, not woven into {{context}}, so the
- * existing prompt contract (and its behavior when graphContext is absent)
- * stays exactly as it was before Phase 9D.
+ * Told to the model explicitly rather than left implicit — memory is
+ * personalization, not evidence. Without this, a model could treat "user
+ * likes concise explanations" as license to skip retrieved facts instead
+ * of just shortening how it presents them.
  */
-export function buildSystemPrompt(matches: VectorMatch[], graphContext?: string | null): string {
+const MEMORY_SAFETY_NOTE =
+  'Personal context below may influence style, tone, and personalization, but must never override or ' +
+  "replace factual evidence from the retrieved documents above. If personal context and the user's current " +
+  'question conflict, answer the question — use personal context only to shape how you say it.'
+
+/**
+ * Fills the active 'chat' PromptTemplate's {{context}} placeholder with
+ * retrieved chunks, then optionally appends two further blocks: Phase 9D's
+ * <knowledge_connections> (AI-extracted concepts/entities/relationships
+ * from the same retrieved documents) and Phase UX-5.2's <personal_context>
+ * (the user's stored memories — preferences, explicit profile facts,
+ * durable facts from past conversations).
+ *
+ * The rag-chat@1.0 template itself is untouched by this — every extra
+ * block is appended to the rendered result, not woven into {{context}},
+ * so the existing prompt contract (and its behavior when a block is
+ * absent) stays exactly as it was before either phase. Each block is
+ * independently optional and independently omitted when its source has
+ * nothing to contribute — documents = external knowledge, graph =
+ * relationships, memory = user context; keeping them in separate tagged
+ * blocks is what lets the model (and a future prompt revision) treat
+ * them differently instead of blending everything into one undifferentiated context.
+ */
+export function buildSystemPrompt(
+  matches: VectorMatch[],
+  graphContext?: string | null,
+  memoryContext?: string | null,
+): string {
   const template = getActivePrompt('chat')
   if (!template) throw new Error('No active prompt template for the "chat" capability — is coreModule registered?')
 
@@ -22,8 +44,15 @@ export function buildSystemPrompt(matches: VectorMatch[], graphContext?: string 
       ? matches.map((match, i) => `[${i + 1}] ${match.content}`).join('\n\n')
       : '(No relevant content found in the user\'s library.)'
 
-  const base = renderPromptTemplate(template.template, { context })
-  if (!graphContext) return base
+  let prompt = renderPromptTemplate(template.template, { context })
 
-  return `${base}\n\n<knowledge_connections>\n${graphContext}\n</knowledge_connections>`
+  if (graphContext) {
+    prompt += `\n\n<knowledge_connections>\n${graphContext}\n</knowledge_connections>`
+  }
+
+  if (memoryContext) {
+    prompt += `\n\n<personal_context>\n${MEMORY_SAFETY_NOTE}\n\n${memoryContext}\n</personal_context>`
+  }
+
+  return prompt
 }

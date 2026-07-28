@@ -5,7 +5,9 @@ import { insertMessage } from '@/modules/ai/chat/api/messages'
 import { touchConversation } from '@/modules/ai/chat/api/conversations'
 import { retrieveContext } from '@/modules/ai/orchestration/retrieveContext'
 import { buildSystemPrompt } from '@/modules/ai/orchestration/buildSystemPrompt'
+import { buildContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import { retrieveGraphContext } from '@/modules/knowledge-intelligence/api/retrieveGraphContext'
+import { retrieveMemoryContext } from '@/modules/ai/memory/retrieveMemoryContext'
 import { streamChatCompletion } from '@/modules/ai/orchestration/streamChatCompletion'
 import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { indexMessage } from '@/modules/search/indexing/indexMessage'
@@ -40,15 +42,21 @@ export async function sendMessage(params: SendMessageParams): Promise<Message> {
   void indexMessage(userMessage, workspaceId)
 
   const matches = await retrieveContext({ query: text, userId, workspaceId, documentId })
-  // retrieveGraphContext never throws (see its own try/catch) — a missing
-  // or empty knowledge graph just means no <knowledge_connections> block,
-  // never a broken chat response.
+  // retrieveGraphContext/retrieveMemoryContext never throw (see their own
+  // try/catch) — a missing or empty knowledge graph or memory store just
+  // means no <knowledge_connections>/<personal_context> block, never a
+  // broken chat response.
   const graphContext = await retrieveGraphContext({
     documentIds: [...new Set(matches.map((match) => match.documentId))],
     userId,
     workspaceId,
   })
-  const system = buildSystemPrompt(matches, graphContext)
+  const memoryContext = await retrieveMemoryContext({ userId, workspaceId })
+  const system = buildSystemPrompt(matches, graphContext, memoryContext)
+
+  // Internal-only, logged not persisted (Phase UX-5.2) — "why did NOVA
+  // answer this way" isn't user- or UI-facing yet, that's a later phase.
+  console.debug('[AIService] context trace', buildContextTrace(matches.length, graphContext, memoryContext))
 
   const { result } = await runWithFallback(providerChain, (candidateId) =>
     streamChatCompletion({
