@@ -3,11 +3,15 @@ import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { getChapterSummary, saveChapterSummary } from '@/modules/reader/api/chapterSummaries'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
+import { withProviderAvailability } from '@/modules/ai/orchestration/withProviderAvailability'
+import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
+import { DEFAULT_CHAT_PROVIDER_ID } from '@/modules/ai/providers/registry'
 
 export function useChapterSummary(documentId: string, chapterIndex: number) {
   const { user } = useAuth()
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
+  const { data: availability } = useProviderAvailability()
   const queryKey = ['chapter-summary', documentId, chapterIndex]
 
   const query = useQuery({
@@ -18,12 +22,17 @@ export function useChapterSummary(documentId: string, chapterIndex: number) {
 
   const generate = useMutation({
     mutationFn: async (chapterText: string) => {
-      const { content, model } = await runCapability({
-        capabilityId: 'summarize',
-        variables: { content: chapterText },
-        userId: user!.id,
-        workspaceId: currentWorkspaceId,
-      })
+      const { content, model } = await withProviderAvailability(
+        DEFAULT_CHAT_PROVIDER_ID,
+        () =>
+          runCapability({
+            capabilityId: 'summarize',
+            variables: { content: chapterText },
+            userId: user!.id,
+            workspaceId: currentWorkspaceId,
+          }),
+        { availability, queryClient },
+      )
       return saveChapterSummary({
         documentId,
         userId: user!.id,

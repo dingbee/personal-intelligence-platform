@@ -3,12 +3,15 @@ import { getNote, updateNote } from '@/modules/notes/api/notes'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
+import { withProviderAvailability } from '@/modules/ai/orchestration/withProviderAvailability'
+import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
 import { DEFAULT_CHAT_PROVIDER_ID } from '@/modules/ai/providers/registry'
 
 export function useNote(noteId: string) {
   const { user } = useAuth()
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
+  const { data: availability } = useProviderAvailability()
   const queryKey = ['note', noteId]
 
   const query = useQuery({
@@ -38,12 +41,17 @@ export function useNote(noteId: string) {
   // up rather than adding new prompt content this phase.
   const summarize = useMutation({
     mutationFn: async (content: string) => {
-      const { content: summary, model } = await runCapability({
-        capabilityId: 'summarize',
-        variables: { content },
-        userId: user!.id,
-        workspaceId: currentWorkspaceId,
-      })
+      const { content: summary, model } = await withProviderAvailability(
+        DEFAULT_CHAT_PROVIDER_ID,
+        () =>
+          runCapability({
+            capabilityId: 'summarize',
+            variables: { content },
+            userId: user!.id,
+            workspaceId: currentWorkspaceId,
+          }),
+        { availability, queryClient },
+      )
       return updateNote(noteId, {
         content: summary,
         generation_metadata: {
