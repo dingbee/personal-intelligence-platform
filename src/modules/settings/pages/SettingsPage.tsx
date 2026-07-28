@@ -2,9 +2,13 @@ import { useAuth } from '@/modules/auth/useAuth'
 import { capabilityRegistry } from '@/modules/core/capabilities/registry'
 import { providerRegistry } from '@/modules/core/providers/registry'
 import { useRecentAiRequests } from '@/modules/ai/observability/hooks/useRecentAiRequests'
+import { useProfile } from '@/modules/settings/hooks/useProfile'
+import { ProfileCard } from '@/modules/settings/components/ProfileCard'
+import { ChangePasswordCard } from '@/modules/settings/components/ChangePasswordCard'
 
 export function SettingsPage() {
   const { user } = useAuth()
+  const { data: profile, isLoading: profileLoading } = useProfile()
   const capabilities = capabilityRegistry.list()
   const providers = providerRegistry.list()
   const { data: aiRequests = [] } = useRecentAiRequests()
@@ -15,18 +19,10 @@ export function SettingsPage() {
         <h1 className="text-2xl font-semibold text-[var(--color-ink)]">Settings</h1>
         <p className="mt-1 text-sm text-[var(--color-ink-muted)]">Manage your account.</p>
       </div>
-      <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-        <dl className="flex flex-col gap-3 text-sm">
-          <div className="flex justify-between">
-            <dt className="text-[var(--color-ink-muted)]">Email</dt>
-            <dd className="text-[var(--color-ink)]">{user?.email}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-[var(--color-ink-muted)]">User ID</dt>
-            <dd className="text-[var(--color-ink)]">{user?.id}</dd>
-          </div>
-        </dl>
-      </div>
+
+      <ProfileCard email={user?.email ?? ''} userId={user?.id ?? ''} profile={profile} loading={profileLoading} />
+
+      <ChangePasswordCard />
 
       <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
         <h2 className="text-sm font-medium text-[var(--color-ink)]">AI capabilities</h2>
