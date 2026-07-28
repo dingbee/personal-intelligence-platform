@@ -290,6 +290,8 @@ export type AiMemory = {
   memory_type: AiMemoryType
   content: string
   source: string | null
+  /** Phase UX-5.3A: false = disabled (individually, or via a category-wide toggle) — excluded from retrieval/prompt injection but not deleted. */
+  is_active: boolean
   created_at: string
   updated_at: string
 }

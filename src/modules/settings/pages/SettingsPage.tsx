@@ -8,6 +8,7 @@ import { ProviderStatusCard } from '@/modules/settings/components/ProviderStatus
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { Spinner } from '@/shared/components/ui/Spinner'
+import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 
 export function SettingsPage() {
   const { user } = useAuth()
@@ -37,6 +38,18 @@ export function SettingsPage() {
           Rename, reorder, archive, or delete your workspaces, and see what's in each one.
         </p>
       </div>
+
+      <SurfaceCard className="max-w-md">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-[var(--color-ink)]">Memory & Personalization</h2>
+          <Link to="/settings/memory" className="text-xs text-[var(--color-accent)] hover:underline">
+            Manage memories →
+          </Link>
+        </div>
+        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+          Control what NOVA remembers to personalize your experience.
+        </p>
+      </SurfaceCard>
 
       <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
         <h2 className="text-sm font-medium text-[var(--color-ink)]">Default AI provider</h2>

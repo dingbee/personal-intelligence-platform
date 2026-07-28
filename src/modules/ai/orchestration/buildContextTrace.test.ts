@@ -14,6 +14,7 @@ function makeMemory(overrides: Partial<AiMemory> = {}): AiMemory {
     memory_type: 'explicit_profile',
     content: `Content ${counter}`,
     source: null,
+    is_active: true,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     ...overrides,

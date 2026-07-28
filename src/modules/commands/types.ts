@@ -1,4 +1,4 @@
-export type CommandCategory = 'navigation' | 'workspace' | 'ai' | 'search' | 'notes' | 'reader' | 'settings'
+export type CommandCategory = 'navigation' | 'workspace' | 'ai' | 'search' | 'notes' | 'reader' | 'settings' | 'memory'
 
 /** What a command's isAvailable/execute can read about "here and now" — resolved once per render by useCommandContext. */
 export interface CommandContext {
