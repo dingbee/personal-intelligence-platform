@@ -96,6 +96,18 @@ export async function getDocument(id: string): Promise<DocumentRow> {
   return data
 }
 
+export async function getDocumentWithTags(id: string): Promise<DocumentWithTags> {
+  const { data, error } = await supabase
+    .from('documents')
+    .select('*, document_tags(tags(id, name))')
+    .eq('id', id)
+    .single()
+  if (error) throw error
+
+  const doc = data as unknown as DocumentRow & { document_tags: { tags: { id: string; name: string } }[] }
+  return { ...doc, tags: doc.document_tags.map((dt) => dt.tags) }
+}
+
 export async function updateDocumentStatus(id: string, status: DocumentStatus): Promise<void> {
   const { error } = await supabase.from('documents').update({ status }).eq('id', id)
   if (error) throw error

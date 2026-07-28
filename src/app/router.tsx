@@ -6,6 +6,7 @@ import { SignUpPage } from '@/modules/auth/pages/SignUpPage'
 import { ForgotPasswordPage } from '@/modules/auth/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/modules/auth/pages/ResetPasswordPage'
 import { LibraryPage } from '@/modules/library/pages/LibraryPage'
+import { DocumentDetailPage } from '@/modules/library/pages/DocumentDetailPage'
 import { NotesPage } from '@/modules/notes/pages/NotesPage'
 import { SearchPage } from '@/modules/search/pages/SearchPage'
 import { ChatPage } from '@/modules/ai/chat/pages/ChatPage'
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/library" replace /> },
       { path: 'library', element: <LibraryPage /> },
+      { path: 'library/:documentId', element: <DocumentDetailPage /> },
       { path: 'notes', element: <NotesPage /> },
       { path: 'search', element: <SearchPage /> },
       { path: 'chat', element: <ChatPage /> },

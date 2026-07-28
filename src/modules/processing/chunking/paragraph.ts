@@ -23,10 +23,47 @@ function splitParagraphs(text: string): Paragraph[] {
   return paragraphs
 }
 
-/** Groups paragraphs (in order) into chunks up to ~MAX_CHUNK_CHARS, never splitting a paragraph. */
+interface TextSlice {
+  content: string
+  start: number
+  end: number
+}
+
+/**
+ * Splits `text` into pieces no longer than `maxChars`, preferring to break at
+ * whitespace so words survive intact. Falls back to a hard character split
+ * only for a single unbroken run longer than `maxChars` (e.g. no whitespace
+ * at all) — this is what guarantees every returned piece stays within the
+ * limit, unlike a paragraph-preserving split which can't cap a paragraph
+ * that has no internal break points.
+ */
+function splitLongText(text: string, maxChars: number): TextSlice[] {
+  const pieces: TextSlice[] = []
+  let start = 0
+  while (start < text.length) {
+    let end = Math.min(start + maxChars, text.length)
+    if (end < text.length) {
+      const breakPoint = text.lastIndexOf(' ', end)
+      if (breakPoint > start) end = breakPoint
+    }
+    const content = text.slice(start, end).trim()
+    if (content) pieces.push({ content, start, end })
+    start = end > start ? end : start + maxChars
+  }
+  return pieces
+}
+
+/**
+ * Groups paragraphs (in order) into chunks up to ~MAX_CHUNK_CHARS. A
+ * paragraph that already exceeds the limit on its own (e.g. an EPUB chapter
+ * with no internal paragraph breaks) is split via `splitLongText` instead of
+ * being kept whole, so no chunk — and therefore no embedding input — can
+ * grow unbounded.
+ */
 export function chunkParagraphs(paragraphs: Paragraph[], startIndex = 0): Chunk[] {
   const chunks: Chunk[] = []
   let buffer: Paragraph[] = []
+  let bufferLength = 0
   let index = startIndex
 
   function flush() {
@@ -43,13 +80,29 @@ export function chunkParagraphs(paragraphs: Paragraph[], startIndex = 0): Chunk[
     })
     index += 1
     buffer = []
+    bufferLength = 0
   }
 
-  let bufferLength = 0
   for (const paragraph of paragraphs) {
+    if (paragraph.text.length > MAX_CHUNK_CHARS) {
+      flush()
+      for (const piece of splitLongText(paragraph.text, MAX_CHUNK_CHARS)) {
+        chunks.push({
+          index,
+          content: piece.content,
+          charStart: paragraph.start + piece.start,
+          charEnd: paragraph.start + piece.end,
+          tokenCount: estimateTokenCount(piece.content),
+          chapterIndex: null,
+          chapterTitle: null,
+        })
+        index += 1
+      }
+      continue
+    }
+
     if (bufferLength > 0 && bufferLength + paragraph.text.length > MAX_CHUNK_CHARS) {
       flush()
-      bufferLength = 0
     }
     buffer.push(paragraph)
     bufferLength += paragraph.text.length

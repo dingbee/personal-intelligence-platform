@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { getDocument, updateDocumentStatus } from '@/modules/library/api/documents'
 import { createProcessingJob, updateProcessingJob } from '@/modules/processing/api/jobs'
 import { saveExtractionMetadata } from '@/modules/processing/api/extractionMetadata'
@@ -7,9 +8,76 @@ import { getChunker } from '@/modules/processing/chunking/registry'
 import { downloadDocumentFile } from '@/modules/processing/pipeline/downloadFile'
 import { OpenAIEmbeddingProvider } from '@/modules/ai/embeddings/OpenAIEmbeddingProvider'
 import { supabaseVectorStore } from '@/modules/ai/retrieval/SupabaseVectorStore'
+import type { DocumentChunk } from '@/shared/types/database'
 
 const embeddingProvider = new OpenAIEmbeddingProvider()
 const EMBEDDING_BATCH_SIZE = 100
+
+const MAX_EMBEDDING_RETRIES = 5
+const RETRY_BASE_DELAY_MS = 1000
+const RETRY_MAX_DELAY_MS = 30_000
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * The ai-chat edge function always answers upstream failures with its own
+ * 502, so the real OpenAI status only survives inside the JSON error body
+ * text (e.g. "OpenAI embeddings error: 429 ..."). `FunctionsHttpError.context`
+ * is the still-unread Response for that call, so this reads it once to check
+ * for a 429 without needing the edge function to forward the real status.
+ */
+export async function isRateLimitError(err: unknown): Promise<boolean> {
+  if (!(err instanceof FunctionsHttpError)) return false
+  try {
+    const body = (await err.context.json()) as { error?: string }
+    return typeof body.error === 'string' && /\b429\b/.test(body.error)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Embeds and stores one batch, retrying in place (same batch, same chunk
+ * ids) with exponential backoff when the failure is an OpenAI rate limit.
+ * Non-rate-limit errors, or a rate limit that outlives the retry budget,
+ * propagate to the caller so the job is marked failed — but every batch
+ * embedded before this one has already been upserted and stays intact,
+ * and `upsert`'s `onConflict: 'chunk_id'` means retrying this same batch
+ * can't create duplicate embedding rows either.
+ */
+export async function embedBatchWithRetry(
+  batch: DocumentChunk[],
+  context: { userId: string; workspaceId: string | null },
+): Promise<void> {
+  let attempt = 0
+  for (;;) {
+    try {
+      const embeddings = await embeddingProvider.embed(
+        batch.map((chunk) => chunk.content),
+        { userId: context.userId, workspaceId: context.workspaceId, feature: 'processing' },
+      )
+      await supabaseVectorStore.upsert(
+        batch.map((chunk, j) => ({
+          chunkId: chunk.id,
+          embedding: embeddings[j]!,
+          model: embeddingProvider.modelName,
+        })),
+      )
+      return
+    } catch (err) {
+      attempt += 1
+      if (!(await isRateLimitError(err))) throw err
+      if (attempt > MAX_EMBEDDING_RETRIES) {
+        throw new Error(`Embedding batch still rate-limited after ${MAX_EMBEDDING_RETRIES} retries`, {
+          cause: err,
+        })
+      }
+      await sleep(Math.min(RETRY_BASE_DELAY_MS * 2 ** (attempt - 1), RETRY_MAX_DELAY_MS))
+    }
+  }
+}
 
 /**
  * Runs the full pipeline for one document: extract → normalize → chunk →
@@ -47,17 +115,7 @@ export async function processDocument(documentId: string, userId: string): Promi
     await updateProcessingJob(job.id, { status: 'embedding' })
     for (let i = 0; i < savedChunks.length; i += EMBEDDING_BATCH_SIZE) {
       const batch = savedChunks.slice(i, i + EMBEDDING_BATCH_SIZE)
-      const embeddings = await embeddingProvider.embed(
-        batch.map((chunk) => chunk.content),
-        { userId, workspaceId: document.workspace_id, feature: 'processing' },
-      )
-      await supabaseVectorStore.upsert(
-        batch.map((chunk, j) => ({
-          chunkId: chunk.id,
-          embedding: embeddings[j]!,
-          model: embeddingProvider.modelName,
-        })),
-      )
+      await embedBatchWithRetry(batch, { userId, workspaceId: document.workspace_id })
     }
 
     await updateProcessingJob(job.id, { status: 'completed', completed_at: new Date().toISOString() })

@@ -41,14 +41,54 @@ async function findOpfPath(zip: JSZip): Promise<string> {
   return path
 }
 
+// Block-level tags whose boundaries should become paragraph breaks — DOM
+// `textContent` concatenates all text nodes with no separator at all, so an
+// EPUB chapter with e.g. <p>one</p><p>two</p> would otherwise flatten into
+// "onetwo" with zero `\n\n` for the chunker to split on.
+const BLOCK_TAGS = new Set([
+  'p', 'div', 'section', 'article', 'header', 'footer', 'aside', 'nav',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'li', 'ul', 'ol', 'blockquote', 'pre', 'table', 'tr', 'td', 'th',
+  'figure', 'figcaption', 'hr',
+])
+
+/** Walks a DOM tree, inserting `\n\n` around block-element boundaries and `\n` for `<br>` so paragraph structure survives into plain text. */
+function extractTextWithBreaks(root: Node | null): string {
+  if (!root) return ''
+  const parts: string[] = []
+
+  function visit(node: Node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      parts.push(node.textContent ?? '')
+      return
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return
+
+    const tag = (node as Element).tagName.toLowerCase()
+    if (tag === 'script' || tag === 'style') return
+    if (tag === 'br') {
+      parts.push('\n')
+      return
+    }
+
+    const isBlock = BLOCK_TAGS.has(tag)
+    if (isBlock) parts.push('\n\n')
+    for (const child of Array.from(node.childNodes)) visit(child)
+    if (isBlock) parts.push('\n\n')
+  }
+
+  visit(root)
+  return parts.join('')
+}
+
 function htmlToText(html: string): string {
   const doc = parseXml(html, XHTML_MIME)
   if (doc.querySelector('parsererror')) {
     // Some EPUB XHTML isn't well-formed XML; fall back to lenient HTML parsing.
     const fallback = new DOMParser().parseFromString(html, 'text/html')
-    return (fallback.body?.textContent ?? '').trim()
+    return extractTextWithBreaks(fallback.body).trim()
   }
-  return (doc.body?.textContent ?? doc.documentElement.textContent ?? '').trim()
+  return extractTextWithBreaks(doc.body ?? doc.documentElement).trim()
 }
 
 async function parseNcxTitles(

@@ -49,3 +49,12 @@ export async function listDocumentChunks(documentId: string): Promise<DocumentCh
   if (error) throw error
   return data
 }
+
+export async function countDocumentChunks(documentId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('document_chunks')
+    .select('id', { count: 'exact', head: true })
+    .eq('document_id', documentId)
+  if (error) throw error
+  return count ?? 0
+}
