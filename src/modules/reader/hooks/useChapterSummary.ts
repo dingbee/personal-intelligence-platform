@@ -5,6 +5,7 @@ import { getChapterSummary, saveChapterSummary } from '@/modules/reader/api/chap
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { withProviderAvailability } from '@/modules/ai/orchestration/withProviderAvailability'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
+import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 
 export function useChapterSummary(documentId: string, chapterIndex: number) {
@@ -12,6 +13,7 @@ export function useChapterSummary(documentId: string, chapterIndex: number) {
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
   const { data: availability } = useProviderAvailability()
+  const { data: overrides } = useProviderOverrides()
   const providerId = useDefaultChatProviderId()
   const queryKey = ['chapter-summary', documentId, chapterIndex]
 
@@ -33,7 +35,7 @@ export function useChapterSummary(documentId: string, chapterIndex: number) {
             workspaceId: currentWorkspaceId,
             providerId,
           }),
-        { availability, queryClient },
+        { availability, overrides, queryClient },
       )
       return saveChapterSummary({
         documentId,

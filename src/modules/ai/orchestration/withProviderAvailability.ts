@@ -1,9 +1,15 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { normalizeAiError } from '@/modules/ai/orchestration/normalizeAiError'
-import { isProviderAvailable, PROVIDER_UNAVAILABLE_MESSAGE, type ProviderAvailability } from '@/modules/ai/providers/availability'
+import {
+  isProviderAvailable,
+  PROVIDER_UNAVAILABLE_MESSAGE,
+  type ProviderAvailability,
+  type ProviderOverrides,
+} from '@/modules/ai/providers/availability'
 
 export interface ProviderGuardDeps {
   availability: ProviderAvailability | undefined
+  overrides?: ProviderOverrides
   queryClient: QueryClient
 }
 
@@ -21,7 +27,7 @@ export async function withProviderAvailability<T>(
   run: () => Promise<T>,
   deps: ProviderGuardDeps,
 ): Promise<T> {
-  if (!isProviderAvailable(providerId, deps.availability)) {
+  if (!isProviderAvailable(providerId, deps.availability, deps.overrides)) {
     throw new Error(PROVIDER_UNAVAILABLE_MESSAGE)
   }
 

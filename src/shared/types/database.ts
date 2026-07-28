@@ -271,6 +271,16 @@ export type AiMemory = {
   updated_at: string
 }
 
+export type ProviderOverride = {
+  id: string
+  user_id: string
+  provider_id: string
+  enabled: boolean | null
+  reason: string | null
+  updated_at: string
+  created_at: string
+}
+
 export type AiRequestStatus = 'success' | 'error'
 
 export type AiRequest = {
@@ -394,6 +404,12 @@ export type Database = {
           status: AiRequestStatus
         }
         Update: Partial<AiRequest>
+        Relationships: []
+      }
+      provider_overrides: {
+        Row: ProviderOverride
+        Insert: Partial<ProviderOverride> & { user_id: string; provider_id: string }
+        Update: Partial<ProviderOverride>
         Relationships: []
       }
       reading_progress: {

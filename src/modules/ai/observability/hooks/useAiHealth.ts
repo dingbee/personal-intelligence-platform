@@ -4,6 +4,7 @@ import { useAuth } from '@/modules/auth/useAuth'
 import { listAiRequestsSince } from '@/modules/ai/observability/api/aiRequests'
 import { providerRegistry } from '@/modules/core/providers/registry'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
+import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
 import { isProviderAvailable } from '@/modules/ai/providers/availability'
 import {
   calculateHealthTrend,
@@ -59,6 +60,7 @@ export function useAiHealth(timeRange: TimeRange = '7d') {
   })
 
   const { data: availability } = useProviderAvailability()
+  const { data: overrides } = useProviderOverrides()
   const chatProviders = useMemo(() => providerRegistry.list().filter((provider) => provider.kind === 'chat'), [])
 
   const allFetchedRequests = useMemo(() => query.data ?? [], [query.data])
@@ -73,7 +75,7 @@ export function useAiHealth(timeRange: TimeRange = '7d') {
   const providerHealth = useMemo(
     () =>
       computeProviderHealth(requests, chatProviders).map((stats) => {
-        const isAvailable = isProviderAvailable(stats.providerId, availability)
+        const isAvailable = isProviderAvailable(stats.providerId, availability, overrides)
         const healthScore = calculateProviderHealthScore({
           isAvailable,
           requestCount: stats.requestCount,
@@ -83,13 +85,13 @@ export function useAiHealth(timeRange: TimeRange = '7d') {
         })
         return { ...stats, isAvailable, healthScore }
       }),
-    [requests, chatProviders, availability],
+    [requests, chatProviders, availability, overrides],
   )
   const capabilityHealth = useMemo(() => computeCapabilityHealth(requests), [requests])
   const errorIntelligence = useMemo(() => computeErrorIntelligence(requests), [requests])
   const usageOverview = useMemo(
-    () => computeUsageOverview(requests, chatProviders, availability),
-    [requests, chatProviders, availability],
+    () => computeUsageOverview(requests, chatProviders, availability, overrides),
+    [requests, chatProviders, availability, overrides],
   )
   const lastSuccess = useMemo(() => findLastSuccess(allFetchedRequests), [allFetchedRequests])
   const overallTrend = useMemo(() => calculateHealthTrend(allFetchedRequests), [allFetchedRequests])

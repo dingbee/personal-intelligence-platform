@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/modules/auth/useAuth'
 import { capabilityRegistry } from '@/modules/core/capabilities/registry'
-import { providerRegistry } from '@/modules/core/providers/registry'
 import { useRecentAiRequests } from '@/modules/ai/observability/hooks/useRecentAiRequests'
 import { useProfile } from '@/modules/settings/hooks/useProfile'
 import { ProfileCard } from '@/modules/settings/components/ProfileCard'
 import { ChangePasswordCard } from '@/modules/settings/components/ChangePasswordCard'
+import { ProviderStatusCard } from '@/modules/settings/components/ProviderStatusCard'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -15,7 +15,6 @@ export function SettingsPage() {
   const { data: profile, isLoading: profileLoading, updateDefaultProvider } = useProfile()
   const defaultProviderId = useDefaultChatProviderId()
   const capabilities = capabilityRegistry.list()
-  const providers = providerRegistry.list()
   const { data: aiRequests = [] } = useRecentAiRequests()
 
   return (
@@ -71,25 +70,7 @@ export function SettingsPage() {
         )}
       </div>
 
-      <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-        <h2 className="text-sm font-medium text-[var(--color-ink)]">AI providers</h2>
-        <ul className="mt-3 flex flex-col gap-2 text-sm">
-          {providers.map((provider) => (
-            <li key={provider.id} className="flex items-center justify-between">
-              <span className="text-[var(--color-ink)]">{provider.label}</span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs ${
-                  provider.status === 'available'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)]'
-                }`}
-              >
-                {provider.status === 'available' ? 'Available' : 'Planned'}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <ProviderStatusCard />
 
       <div className="max-w-2xl rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
         <div className="flex items-center justify-between">

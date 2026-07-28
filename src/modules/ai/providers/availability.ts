@@ -8,6 +8,19 @@ export interface ProviderAvailability {
 }
 
 /**
+ * Runtime enable/disable overrides (Phase 8B.2), keyed by provider id.
+ * `false` is the only state that excludes a provider; `undefined` (no row)
+ * and `null` (explicitly reset) both mean "no override" — defer entirely to
+ * key availability. Distinct from ProviderAvailability: this is ordinary
+ * app data (provider_overrides, RLS-scoped per user), never a secret.
+ */
+export type ProviderOverrides = Record<string, boolean | null>
+
+function isOverrideEnabled(providerId: string, overrides: ProviderOverrides | undefined): boolean {
+  return overrides?.[providerId] !== false
+}
+
+/**
  * Whether a provider's API key is actually configured can only be known
  * server-side (Supabase function secrets, never sent to the client) — see
  * supabase/functions/provider-availability, which returns booleans only,
@@ -30,23 +43,35 @@ export async function getProviderAvailability(): Promise<ProviderAvailability> {
  * Provider Registry -> Availability Resolver -> Provider Selector: the
  * registry stays the sole source of truth for which providers *exist*
  * (status: 'available' means the code path is wired up at all); this
- * cross-references that list against which ones are actually usable
- * right now. Chat providers only — embedding provider descriptors aren't
- * relevant to this selector.
+ * cross-references that list against which ones are actually usable right
+ * now — both technically (key configured) and by choice (not runtime-
+ * disabled via provider_overrides). Chat providers only — embedding
+ * provider descriptors aren't relevant to this selector.
  */
 export function resolveAvailableProviders(
   providers: AIProviderDescriptor[],
   availability: ProviderAvailability | undefined,
+  overrides?: ProviderOverrides,
 ): AIProviderDescriptor[] {
   const wired = providers.filter((provider) => provider.kind === 'chat' && provider.status === 'available')
-  if (!availability) return wired
-  return wired.filter((provider) => availability[provider.id as keyof ProviderAvailability] ?? false)
+  return wired.filter((provider) => isProviderAvailable(provider.id, availability, overrides))
 }
 
-/** True if a provider id is one this deployment can actually use right now. */
-export function isProviderAvailable(providerId: string, availability: ProviderAvailability | undefined): boolean {
-  if (!availability) return true
-  return availability[providerId as keyof ProviderAvailability] ?? false
+/**
+ * True if a provider id is one this deployment can actually use right now:
+ * a key must be configured (or availability data not yet loaded, in which
+ * case we don't gate on it) AND it must not be explicitly disabled via a
+ * provider_overrides row. Every call site that used to check availability
+ * alone extends through this one function rather than adding a parallel
+ * enabled/disabled check of its own.
+ */
+export function isProviderAvailable(
+  providerId: string,
+  availability: ProviderAvailability | undefined,
+  overrides?: ProviderOverrides,
+): boolean {
+  const keyAvailable = !availability || (availability[providerId as keyof ProviderAvailability] ?? false)
+  return keyAvailable && isOverrideEnabled(providerId, overrides)
 }
 
 /**

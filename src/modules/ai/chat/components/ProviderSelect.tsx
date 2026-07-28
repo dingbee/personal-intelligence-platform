@@ -1,5 +1,6 @@
 import { providerRegistry } from '@/modules/core/providers/registry'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
+import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
 import { resolveAvailableProviders } from '@/modules/ai/providers/availability'
 
 /**
@@ -27,8 +28,9 @@ export function ProviderSelect({
   disabled?: boolean
 }) {
   const { data: availability } = useProviderAvailability()
+  const { data: overrides } = useProviderOverrides()
   const allChatProviders = providerRegistry.list().filter((provider) => provider.kind === 'chat')
-  const available = resolveAvailableProviders(allChatProviders, availability)
+  const available = resolveAvailableProviders(allChatProviders, availability, overrides)
 
   const currentIsAvailable = available.some((provider) => provider.id === value)
   const current = allChatProviders.find((provider) => provider.id === value)

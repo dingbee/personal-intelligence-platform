@@ -6,6 +6,9 @@ import { sendMessage } from '@/modules/ai/orchestration/AIService'
 import type { ChatProviderMessage } from '@/modules/ai/providers/ChatProvider'
 import type { Message } from '@/shared/types/database'
 import { normalizeAiError } from '@/modules/ai/orchestration/normalizeAiError'
+import { isProviderAvailable, PROVIDER_UNAVAILABLE_MESSAGE } from '@/modules/ai/providers/availability'
+import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
+import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
 
 /**
  * Not a react-query mutation on purpose — streaming token-by-token updates
@@ -22,6 +25,8 @@ export function useSendMessage(providerId: string, documentId?: string) {
   const { user } = useAuth()
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
+  const { data: availability } = useProviderAvailability()
+  const { data: overrides } = useProviderOverrides()
   const [streamingText, setStreamingText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -31,6 +36,18 @@ export function useSendMessage(providerId: string, documentId?: string) {
     history: ChatProviderMessage[],
   ): Promise<Message | undefined> {
     setError(null)
+
+    // ai-chat only knows about missing keys (it'll fail the send itself in
+    // that case, caught below) — it has no idea about provider_overrides,
+    // which is pure app data, never sent to it. A runtime-disabled provider
+    // must be caught here, client-side, through the same shared predicate
+    // everything else uses, or disabling it here would have no effect on
+    // an already-open conversation.
+    if (!isProviderAvailable(providerId, availability, overrides)) {
+      setError(PROVIDER_UNAVAILABLE_MESSAGE)
+      return undefined
+    }
+
     setStreamingText('')
     // The new user message won't show up until the messages query refetches
     // below, so invalidate eagerly for it while the assistant reply streams.

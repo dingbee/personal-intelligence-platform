@@ -66,12 +66,17 @@ export function ProviderHealthDetailPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link to="/settings/ai-health" className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
-          ← Back to AI Health
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Link to="/settings/ai-health" className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
+            ← Back to AI Health
+          </Link>
+          <h1 className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">{provider.label}</h1>
+          <p className="mt-1 text-sm text-[var(--color-ink-muted)]">Last 7 days.</p>
+        </div>
+        <Link to="/settings" className="text-xs text-[var(--color-accent)] hover:underline">
+          Manage in Settings →
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">{provider.label}</h1>
-        <p className="mt-1 text-sm text-[var(--color-ink-muted)]">Last 7 days.</p>
       </div>
 
       <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-soft">

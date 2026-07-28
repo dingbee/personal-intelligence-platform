@@ -1,7 +1,7 @@
 import type { AiRequest } from '@/shared/types/database'
 import type { AIProviderDescriptor } from '@/modules/core/providers/types'
 import { normalizeAiError, type AiErrorCategory } from '@/modules/ai/orchestration/normalizeAiError'
-import { isProviderAvailable, type ProviderAvailability } from '@/modules/ai/providers/availability'
+import { isProviderAvailable, type ProviderAvailability, type ProviderOverrides } from '@/modules/ai/providers/availability'
 
 function average(values: number[]): number | null {
   if (values.length === 0) return null
@@ -188,13 +188,15 @@ export function computeUsageOverview(
   requests: AiRequest[],
   chatProviders: AIProviderDescriptor[],
   availability: ProviderAvailability | undefined,
+  overrides?: ProviderOverrides,
 ): UsageOverview {
   const successes = requests.filter((request) => request.status === 'success')
   return {
     totalRequests: requests.length,
     successRate: requests.length > 0 ? successes.length / requests.length : null,
     avgLatencyMs: average(requests.map((request) => request.latency_ms)),
-    availableProviderCount: chatProviders.filter((provider) => isProviderAvailable(provider.id, availability)).length,
+    availableProviderCount: chatProviders.filter((provider) => isProviderAvailable(provider.id, availability, overrides))
+      .length,
     totalProviderCount: chatProviders.length,
   }
 }

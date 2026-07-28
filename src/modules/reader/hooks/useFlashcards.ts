@@ -5,6 +5,7 @@ import { createFlashcards, listFlashcards } from '@/modules/reader/api/flashcard
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { withProviderAvailability } from '@/modules/ai/orchestration/withProviderAvailability'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
+import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { parseFlashcardsResponse } from '@/modules/reader/utils/parseFlashcardsResponse'
 
@@ -13,6 +14,7 @@ export function useFlashcards(documentId: string, chapterIndex: number) {
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
   const { data: availability } = useProviderAvailability()
+  const { data: overrides } = useProviderOverrides()
   const providerId = useDefaultChatProviderId()
   const queryKey = ['flashcards', documentId, chapterIndex]
 
@@ -34,7 +36,7 @@ export function useFlashcards(documentId: string, chapterIndex: number) {
             workspaceId: currentWorkspaceId,
             providerId,
           }),
-        { availability, queryClient },
+        { availability, overrides, queryClient },
       )
       const cards = parseFlashcardsResponse(content)
       return createFlashcards({ documentId, userId: user!.id, chapterIndex, cards })

@@ -7,6 +7,7 @@ import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
+import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
 import { isProviderAvailable } from '@/modules/ai/providers/availability'
 import { providerRegistry } from '@/modules/core/providers/registry'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
@@ -45,8 +46,9 @@ export function ReaderChatPanel({ documentId }: { documentId: string }) {
   )
 
   const { data: availability } = useProviderAvailability()
+  const { data: overrides } = useProviderOverrides()
   const conversationProviderUnavailable =
-    Boolean(conversation) && !isProviderAvailable(conversation!.provider_id, availability)
+    Boolean(conversation) && !isProviderAvailable(conversation!.provider_id, availability, overrides)
 
   async function handleSend(text: string) {
     const id = conversationId ?? (await create.mutateAsync({ providerId: defaultProviderId })).id
