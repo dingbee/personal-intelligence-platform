@@ -6,6 +6,7 @@ import { listKnowledgeLinks } from '@/modules/knowledge-graph/api/graph'
 import { getKnowledgeInsights } from '@/modules/knowledge-intelligence/api/knowledgeInsights'
 import { generateKnowledgeMap } from '@/modules/knowledge-intelligence/api/knowledgeMap'
 import { runKnowledgeExtraction } from '@/modules/knowledge-intelligence/api/knowledgeExtraction'
+import { reconcileKnowledgeGraph } from '@/modules/knowledge-intelligence/api/reconcileKnowledgeGraph'
 import { withProviderAvailability } from '@/modules/ai/orchestration/withProviderAvailability'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
@@ -68,6 +69,34 @@ export function useRunKnowledgeExtraction(documentId: string) {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-nodes'] })
+      queryClient.invalidateQueries({ queryKey: ['knowledge-edges'] })
+      queryClient.invalidateQueries({ queryKey: ['knowledge-insights'] })
+      queryClient.invalidateQueries({ queryKey: ['knowledge-map'] })
+    },
+  })
+}
+
+/**
+ * Phase 9B: cross-document reconciliation — distinct from
+ * useRunKnowledgeExtraction, which only ever compares nodes within one
+ * document's own fresh extraction. Manually triggered only; not wired
+ * into any UI yet (deferred to Phase 9C).
+ */
+export function useReconcileKnowledgeGraph() {
+  const { user } = useAuth()
+  const { currentWorkspaceId } = useWorkspace()
+  const queryClient = useQueryClient()
+  const providerId = useDefaultChatProviderId()
+  const chain = useProviderChain(providerId)
+
+  return useMutation({
+    mutationFn: () =>
+      withProviderAvailability(
+        chain,
+        () => reconcileKnowledgeGraph({ userId: user!.id, workspaceId: currentWorkspaceId, chain }),
+        { queryClient },
+      ),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-edges'] })
       queryClient.invalidateQueries({ queryKey: ['knowledge-insights'] })
       queryClient.invalidateQueries({ queryKey: ['knowledge-map'] })

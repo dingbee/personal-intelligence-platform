@@ -30,6 +30,11 @@ registerPlatformModule({
       label: 'Detect Relationships',
       description: 'Infer relationships between previously extracted concepts and entities.',
     },
+    {
+      id: 'detect-cross-document-relationships',
+      label: 'Detect Cross-Document Relationships',
+      description: 'Infer relationships between concepts and entities extracted from different documents.',
+    },
   ],
   prompts: [
     {
@@ -68,6 +73,22 @@ registerPlatformModule({
         'list", "relationshipType": "short label such as relates_to, part_of, causes, contrasts_with", ' +
         '"confidence": 0.0 to 1.0} — no markdown code fences, no other text.\n\n' +
         'Items:\n{{nodes}}\n\nContent:\n{{content}}',
+    },
+    {
+      id: 'detect-cross-document-relationships@1.0',
+      capabilityId: 'detect-cross-document-relationships',
+      version: '1.0',
+      active: true,
+      template:
+        'The following is a list of concepts and entities extracted from a user\'s knowledge base, drawn ' +
+        'from multiple different documents. Identify meaningful relationships between items that likely ' +
+        'come from different sources, based only on the titles and descriptions given — you do not have ' +
+        'the original documents. Only propose relationships between items that appear in the list below, ' +
+        'using their exact titles. Be conservative: only propose a relationship when the titles or ' +
+        'descriptions give a clear, specific reason to connect them. Respond with ONLY a JSON array of ' +
+        'objects shaped like {"source": "exact title from the list", "target": "exact title from the ' +
+        'list", "relationshipType": "short label such as relates_to, part_of, causes, contrasts_with", ' +
+        '"confidence": 0.0 to 1.0} — no markdown code fences, no other text.\n\nItems:\n{{nodes}}',
     },
   ],
 })

@@ -4,6 +4,7 @@ import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { upsertKnowledgeNodes } from '@/modules/knowledge-intelligence/api/knowledgeNodes'
 import { upsertKnowledgeEdges } from '@/modules/knowledge-intelligence/api/knowledgeEdges'
+import { buildEdgeInputsFromRelationships } from '@/modules/knowledge-intelligence/api/knowledgeRelationships'
 import {
   parseConceptsResponse,
   parseEntitiesResponse,
@@ -134,24 +135,10 @@ export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParam
   })
   const relationshipItems = parseRelationshipsResponse(relationshipsRun.content)
 
-  const nodesByTitle = new Map(allNodes.map((node) => [node.title, node]))
-  const edges = relationshipItems.flatMap((item) => {
-    const source = nodesByTitle.get(item.source)
-    const target = nodesByTitle.get(item.target)
-    if (!source || !target || source.id === target.id) return []
-    return [
-      {
-        userId,
-        workspaceId,
-        sourceType: 'knowledge_node',
-        sourceId: source.id,
-        targetType: 'knowledge_node',
-        targetId: target.id,
-        relationshipType: item.relationshipType,
-        confidence: item.confidence,
-        generatedBy: 'ai:detect-relationships',
-      },
-    ]
+  const edges = buildEdgeInputsFromRelationships(allNodes, relationshipItems, {
+    userId,
+    workspaceId,
+    generatedBy: 'ai:detect-relationships',
   })
 
   await upsertKnowledgeEdges(edges)
