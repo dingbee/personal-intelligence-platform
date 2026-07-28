@@ -16,6 +16,7 @@ import { SearchPage } from '@/modules/search/pages/SearchPage'
 import { ChatPage } from '@/modules/ai/chat/pages/ChatPage'
 import { SettingsPage } from '@/modules/settings/pages/SettingsPage'
 import { AiHealthPage } from '@/modules/ai/observability/pages/AiHealthPage'
+import { ProviderHealthDetailPage } from '@/modules/ai/observability/pages/ProviderHealthDetailPage'
 import { ReaderPage } from '@/modules/reader/pages/ReaderPage'
 
 export const router = createBrowserRouter([
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
       { path: 'chat', element: <ChatPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'settings/ai-health', element: <AiHealthPage /> },
+      { path: 'settings/ai-health/provider/:providerId', element: <ProviderHealthDetailPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

@@ -1,6 +1,7 @@
 import type { AiRequest } from '@/shared/types/database'
 import type { AIProviderDescriptor } from '@/modules/core/providers/types'
 import { normalizeAiError, type AiErrorCategory } from '@/modules/ai/orchestration/normalizeAiError'
+import { isProviderAvailable, type ProviderAvailability } from '@/modules/ai/providers/availability'
 
 function average(values: number[]): number | null {
   if (values.length === 0) return null
@@ -160,4 +161,115 @@ export function computeErrorIntelligence(requests: AiRequest[]): ErrorIntelligen
     .sort((a, b) => b.count - a.count)
 
   return { groups, recentFailures }
+}
+
+export interface LastSuccess {
+  provider: string
+  feature: string
+  at: string
+}
+
+/** Assumes `requests` is already ordered newest-first — the first success found is the most recent one. */
+export function findLastSuccess(requests: AiRequest[]): LastSuccess | null {
+  const success = requests.find((request) => request.status === 'success')
+  return success ? { provider: success.provider, feature: success.feature, at: success.created_at } : null
+}
+
+export interface UsageOverview {
+  totalRequests: number
+  successRate: number | null
+  avgLatencyMs: number | null
+  availableProviderCount: number
+  totalProviderCount: number
+}
+
+/** Aggregate stats across every provider/feature — the four summary cards at the top of the dashboard. */
+export function computeUsageOverview(
+  requests: AiRequest[],
+  chatProviders: AIProviderDescriptor[],
+  availability: ProviderAvailability | undefined,
+): UsageOverview {
+  const successes = requests.filter((request) => request.status === 'success')
+  return {
+    totalRequests: requests.length,
+    successRate: requests.length > 0 ? successes.length / requests.length : null,
+    avgLatencyMs: average(requests.map((request) => request.latency_ms)),
+    availableProviderCount: chatProviders.filter((provider) => isProviderAvailable(provider.id, availability)).length,
+    totalProviderCount: chatProviders.length,
+  }
+}
+
+export interface PeriodStats {
+  requestCount: number
+  successRate: number | null
+  avgLatencyMs: number | null
+  errorCount: number
+}
+
+export interface HealthTrend {
+  current: PeriodStats
+  previous: PeriodStats
+  /** Relative % change in request volume; null when the previous period had zero requests (nothing to compare against). */
+  requestCountChangePercent: number | null
+  /** Percentage-*point* change in success rate (e.g. 98% now vs 95% before = +3), not a relative %. */
+  successRateChangePoints: number | null
+  /** Relative % change in average latency — negative means faster (an improvement). */
+  avgLatencyChangePercent: number | null
+  /** Relative % change in error count; null when the previous period had zero errors. */
+  errorCountChangePercent: number | null
+}
+
+function periodStats(requests: AiRequest[]): PeriodStats {
+  const successes = requests.filter((request) => request.status === 'success')
+  const errors = requests.filter((request) => request.status === 'error')
+  return {
+    requestCount: requests.length,
+    successRate: requests.length > 0 ? successes.length / requests.length : null,
+    avgLatencyMs: average(requests.map((request) => request.latency_ms)),
+    errorCount: errors.length,
+  }
+}
+
+function percentChange(current: number, previous: number): number | null {
+  if (previous === 0) return null
+  return Math.round(((current - previous) / previous) * 100)
+}
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Fixed last-24h vs previous-24h comparison — independent of whatever
+ * time range the dashboard is currently displaying, per this phase's
+ * brief. Pass a providerId to scope the comparison to one provider, or
+ * omit it for an aggregate trend across all providers (used by the usage
+ * overview cards). The caller must supply at least 48h of history for
+ * the "previous" period to have any data.
+ */
+export function calculateHealthTrend(requests: AiRequest[], providerId?: string, nowMs: number = Date.now()): HealthTrend {
+  const scoped = providerId ? requests.filter((request) => request.provider === providerId) : requests
+  const currentStart = nowMs - ONE_DAY_MS
+  const previousStart = nowMs - ONE_DAY_MS * 2
+
+  const current = periodStats(scoped.filter((request) => new Date(request.created_at).getTime() >= currentStart))
+  const previous = periodStats(
+    scoped.filter((request) => {
+      const time = new Date(request.created_at).getTime()
+      return time >= previousStart && time < currentStart
+    }),
+  )
+
+  return {
+    current,
+    previous,
+    requestCountChangePercent: percentChange(current.requestCount, previous.requestCount),
+    successRateChangePoints:
+      current.successRate !== null && previous.successRate !== null
+        ? Math.round((current.successRate - previous.successRate) * 100)
+        : null,
+    avgLatencyChangePercent:
+      current.avgLatencyMs !== null && previous.avgLatencyMs !== null
+        ? percentChange(current.avgLatencyMs, previous.avgLatencyMs)
+        : null,
+    errorCountChangePercent: percentChange(current.errorCount, previous.errorCount),
+  }
 }

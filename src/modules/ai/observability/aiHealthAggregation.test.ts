@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { AiRequest } from '@/shared/types/database'
 import type { AIProviderDescriptor } from '@/modules/core/providers/types'
-import { computeCapabilityHealth, computeErrorIntelligence, computeProviderHealth } from '@/modules/ai/observability/aiHealthAggregation'
+import {
+  calculateHealthTrend,
+  computeCapabilityHealth,
+  computeErrorIntelligence,
+  computeProviderHealth,
+  computeUsageOverview,
+  findLastSuccess,
+} from '@/modules/ai/observability/aiHealthAggregation'
 
 let counter = 0
 function makeRequest(overrides: Partial<AiRequest> = {}): AiRequest {
@@ -100,5 +107,79 @@ describe('computeErrorIntelligence', () => {
     const requests = Array.from({ length: 15 }, () => makeRequest({ status: 'error', error_message: 'boom' }))
     const { recentFailures } = computeErrorIntelligence(requests)
     expect(recentFailures).toHaveLength(10)
+  })
+})
+
+describe('findLastSuccess', () => {
+  it('returns the first success in a newest-first list', () => {
+    const requests = [
+      makeRequest({ status: 'error', provider: 'anthropic', error_message: 'x' }),
+      makeRequest({ status: 'success', provider: 'openai', feature: 'chat' }),
+      makeRequest({ status: 'success', provider: 'openai', feature: 'summarize' }),
+    ]
+    expect(findLastSuccess(requests)).toMatchObject({ provider: 'openai', feature: 'chat' })
+  })
+
+  it('returns null when there are no successes', () => {
+    const requests = [makeRequest({ status: 'error', error_message: 'x' })]
+    expect(findLastSuccess(requests)).toBeNull()
+  })
+})
+
+describe('computeUsageOverview', () => {
+  it('combines request stats with live provider availability', () => {
+    const requests = [
+      makeRequest({ status: 'success', latency_ms: 100 }),
+      makeRequest({ status: 'success', latency_ms: 200 }),
+      makeRequest({ status: 'error', latency_ms: 50, error_message: 'x' }),
+    ]
+    const overview = computeUsageOverview(requests, CHAT_PROVIDERS, { openai: true, anthropic: false, google: false })
+    expect(overview).toEqual({
+      totalRequests: 3,
+      successRate: 2 / 3,
+      avgLatencyMs: 117,
+      availableProviderCount: 1,
+      totalProviderCount: 2,
+    })
+  })
+})
+
+describe('calculateHealthTrend', () => {
+  const NOW = new Date('2026-01-08T00:00:00.000Z').getTime()
+  const HOUR = 60 * 60 * 1000
+
+  it('compares the last 24h against the previous 24h', () => {
+    const requests = [
+      // current period (last 24h): 2 successes
+      makeRequest({ status: 'success', latency_ms: 100, created_at: new Date(NOW - 2 * HOUR).toISOString() }),
+      makeRequest({ status: 'success', latency_ms: 200, created_at: new Date(NOW - 3 * HOUR).toISOString() }),
+      // previous period (24-48h ago): 1 success, 1 error
+      makeRequest({ status: 'success', latency_ms: 100, created_at: new Date(NOW - 26 * HOUR).toISOString() }),
+      makeRequest({ status: 'error', latency_ms: 100, error_message: 'x', created_at: new Date(NOW - 30 * HOUR).toISOString() }),
+      // older than 48h — excluded entirely
+      makeRequest({ status: 'success', created_at: new Date(NOW - 72 * HOUR).toISOString() }),
+    ]
+
+    const trend = calculateHealthTrend(requests, undefined, NOW)
+    expect(trend.current).toMatchObject({ requestCount: 2, successRate: 1, avgLatencyMs: 150 })
+    expect(trend.previous).toMatchObject({ requestCount: 2, successRate: 0.5, errorCount: 1 })
+    expect(trend.requestCountChangePercent).toBe(0)
+    expect(trend.successRateChangePoints).toBe(50)
+  })
+
+  it('scopes to one provider when providerId is given', () => {
+    const requests = [
+      makeRequest({ provider: 'openai', status: 'success', created_at: new Date(NOW - 1 * HOUR).toISOString() }),
+      makeRequest({ provider: 'anthropic', status: 'success', created_at: new Date(NOW - 1 * HOUR).toISOString() }),
+    ]
+    const trend = calculateHealthTrend(requests, 'openai', NOW)
+    expect(trend.current.requestCount).toBe(1)
+  })
+
+  it('returns null percent-change when the previous period has no data', () => {
+    const requests = [makeRequest({ status: 'success', created_at: new Date(NOW - 1 * HOUR).toISOString() })]
+    const trend = calculateHealthTrend(requests, undefined, NOW)
+    expect(trend.requestCountChangePercent).toBeNull()
+    expect(trend.avgLatencyChangePercent).toBeNull()
   })
 })
