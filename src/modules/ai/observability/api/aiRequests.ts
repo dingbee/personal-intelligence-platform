@@ -58,3 +58,21 @@ export async function listAiRequestsSince(sinceIso: string): Promise<AiRequest[]
   if (error) throw error
   return data
 }
+
+/**
+ * The Control Center's "last test" history — deliberately the mirror image
+ * of useAiHealth's exclusion of feature='provider-test': this is the one
+ * place that *only* wants those rows, so a manual connectivity test still
+ * has somewhere to be seen after a page reload, without polluting the
+ * health/usage aggregations built on listAiRequestsSince.
+ */
+export async function listRecentProviderTests(limit = 50): Promise<AiRequest[]> {
+  const { data, error } = await supabase
+    .from('ai_requests')
+    .select('*')
+    .eq('feature', 'provider-test')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data
+}

@@ -14,5 +14,7 @@ export interface AIProviderDescriptor {
   label: string
   kind: ProviderKind
   status: ProviderStatus
+  /** Display-only (Phase 8B.3 Provider Control Center) — the models this provider's adapter can be pointed at. Not consumed by routing/execution; the model actually used per request is still whatever ai-chat's DEFAULT_MODEL resolves to. */
+  models?: string[]
   moduleId?: string
 }

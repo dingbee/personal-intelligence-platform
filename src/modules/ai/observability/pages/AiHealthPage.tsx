@@ -6,6 +6,7 @@ import { MetricCard, type MetricTrend } from '@/modules/ai/observability/compone
 import { ProviderHealthCard } from '@/modules/ai/observability/components/ProviderHealthCard'
 import { ErrorDistributionChart } from '@/modules/ai/observability/components/ErrorDistributionChart'
 import { Spinner } from '@/shared/components/ui/Spinner'
+import { formatRelativeTime } from '@/shared/utils/formatRelativeTime'
 
 const CATEGORY_LABELS: Record<string, string> = {
   provider_unavailable: 'Provider unavailable',
@@ -26,16 +27,6 @@ function formatLatency(ms: number | null): string {
 
 function truncate(text: string, max = 60): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text
-}
-
-function formatRelativeTime(iso: string): string {
-  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
-  const days = Math.round(hours / 24)
-  return `${days} day${days === 1 ? '' : 's'} ago`
 }
 
 type TrendKind = 'higherIsBetter' | 'lowerIsBetter' | 'neutral'

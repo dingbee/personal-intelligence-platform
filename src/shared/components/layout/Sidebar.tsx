@@ -10,12 +10,15 @@ const navItems = [
   { to: '/settings', label: 'Settings' },
 ]
 
-export function Sidebar() {
+/**
+ * The actual nav content — one navItems array, one set of markup, shared by
+ * the persistent desktop Sidebar below and MobileNavDrawer. Neither wraps
+ * this in its own <nav>; each supplies the surrounding chrome (fixed column
+ * vs. dialog-drawer) appropriate to where it renders.
+ */
+export function SidebarNav() {
   return (
-    <nav
-      aria-label="Primary"
-      className="flex h-full w-56 shrink-0 flex-col gap-1 border-r border-[var(--color-border)] bg-[var(--color-surface)] p-4"
-    >
+    <>
       <span className="mb-4 px-2 text-sm font-semibold tracking-tight text-[var(--color-ink)]">
         Second Brain
       </span>
@@ -35,6 +38,18 @@ export function Sidebar() {
           {item.label}
         </NavLink>
       ))}
+    </>
+  )
+}
+
+/** Persistent on desktop only (md:flex) — below md, MobileNavDrawer is the way to reach navigation. */
+export function Sidebar() {
+  return (
+    <nav
+      aria-label="Primary"
+      className="hidden h-full w-56 shrink-0 flex-col gap-1 border-r border-[var(--color-border)] bg-[var(--color-surface)] p-4 md:flex"
+    >
+      <SidebarNav />
     </nav>
   )
 }

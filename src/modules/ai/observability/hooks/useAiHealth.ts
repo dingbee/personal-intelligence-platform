@@ -63,7 +63,19 @@ export function useAiHealth(timeRange: TimeRange = '7d') {
   const { data: overrides } = useProviderOverrides()
   const chatProviders = useMemo(() => providerRegistry.list().filter((provider) => provider.kind === 'chat'), [])
 
-  const allFetchedRequests = useMemo(() => query.data ?? [], [query.data])
+  // Manual connectivity tests (Phase 8B.3's Control Center "Test" button)
+  // still log to ai_requests — feature='provider-test' — but must not
+  // distort health/usage/trend numbers. Filtering them out once, right
+  // here, means every aggregation function downstream (computeProviderHealth,
+  // computeUsageOverview, computeErrorIntelligence, findLastSuccess,
+  // calculateHealthTrend) excludes them automatically; nothing below this
+  // line needs its own copy of this check. Test history itself is fetched
+  // separately (useProviderIntelligence -> listRecentProviderTests) for the
+  // Control Center's own "last test" display.
+  const allFetchedRequests = useMemo(
+    () => (query.data ?? []).filter((request) => request.feature !== 'provider-test'),
+    [query.data],
+  )
   // "Current state" sections reflect only the selected display range;
   // the trend comparison below always uses the fuller fetched set
   // (>= 48h) regardless of what's selected here.
