@@ -4,6 +4,7 @@ import { useConversations } from '@/modules/ai/chat/hooks/useConversations'
 import { useMessages } from '@/modules/ai/chat/hooks/useMessages'
 import { useSendMessage } from '@/modules/ai/chat/hooks/useSendMessage'
 import { ConversationList } from '@/modules/ai/chat/components/ConversationList'
+import { MobileConversationDrawer } from '@/modules/ai/chat/components/MobileConversationDrawer'
 import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
@@ -33,6 +34,7 @@ export function ChatPage() {
   // queries finished loading.
   const [newProviderId, setNewProviderId] = useState<string | null>(null)
   const effectiveNewProviderId = newProviderId ?? defaultProviderId
+  const [conversationDrawerOpen, setConversationDrawerOpen] = useState(false)
 
   useEffect(() => {
     if (!selectedId && conversations.length > 0) setSelectedId(conversations[0]!.id)
@@ -90,8 +92,20 @@ export function ChatPage() {
   }
 
   return (
-    <div className="-m-8 flex h-[calc(100vh-3.5rem)]">
+    <div className="-m-4 flex h-[calc(100vh-3.5rem)] md:-m-8">
       <ConversationList
+        conversations={conversations}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+        onNew={() => void handleNew()}
+        onDelete={(id) => {
+          remove.mutate(id)
+          if (id === selectedId) setSelectedId(null)
+        }}
+      />
+      <MobileConversationDrawer
+        open={conversationDrawerOpen}
+        onClose={() => setConversationDrawerOpen(false)}
         conversations={conversations}
         selectedId={selectedId}
         onSelect={setSelectedId}
@@ -103,6 +117,11 @@ export function ChatPage() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center border-b border-[var(--color-border)] px-4 py-2 md:hidden">
+          <Button variant="ghost" onClick={() => setConversationDrawerOpen(true)}>
+            ☰ Conversations
+          </Button>
+        </div>
         {!selectedId ? (
           <div className="flex flex-1 items-center justify-center p-8">
             <EmptyState

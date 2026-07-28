@@ -3,11 +3,13 @@ import type { DocumentSort } from '@/modules/library/api/documents'
 import { useCollections } from '@/modules/library/hooks/useCollections'
 import { useDocuments } from '@/modules/library/hooks/useDocuments'
 import { useTags } from '@/modules/library/hooks/useTags'
-import { CollectionTree } from '@/modules/library/components/CollectionTree'
+import { CollectionsPanelContent } from '@/modules/library/components/CollectionsPanelContent'
+import { MobileCollectionsDrawer } from '@/modules/library/components/MobileCollectionsDrawer'
 import { UploadDropzone } from '@/modules/library/components/UploadDropzone'
 import { DocumentGrid } from '@/modules/library/components/DocumentGrid'
 import { TagFilterBar } from '@/modules/library/components/TagFilterBar'
 import { Input } from '@/shared/components/ui/Input'
+import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 
 const SORT_OPTIONS: { value: DocumentSort; label: string }[] = [
@@ -24,6 +26,7 @@ export function LibraryPage() {
   const [tagId, setTagId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<DocumentSort>('newest')
+  const [collectionsDrawerOpen, setCollectionsDrawerOpen] = useState(false)
 
   const { data: collections = [], isLoading: collectionsLoading } = useCollections()
   const { data: tags = [] } = useTags()
@@ -36,23 +39,30 @@ export function LibraryPage() {
 
   return (
     <div className="flex gap-8">
-      <aside className="w-56 shrink-0">
-        <h2 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-muted)]">
-          Collections
-        </h2>
-        {collectionsLoading ? (
-          <Spinner size="sm" />
-        ) : (
-          <CollectionTree
-            collections={collections}
-            selectedId={collectionId ?? null}
-            onSelect={(id) => setCollectionId(id ?? undefined)}
-          />
-        )}
+      <aside className="hidden w-56 shrink-0 md:block">
+        <CollectionsPanelContent
+          collections={collections}
+          collectionsLoading={collectionsLoading}
+          selectedId={collectionId ?? null}
+          onSelect={(id) => setCollectionId(id ?? undefined)}
+        />
       </aside>
+      <MobileCollectionsDrawer
+        open={collectionsDrawerOpen}
+        onClose={() => setCollectionsDrawerOpen(false)}
+        collections={collections}
+        collectionsLoading={collectionsLoading}
+        selectedId={collectionId ?? null}
+        onSelect={(id) => setCollectionId(id ?? undefined)}
+      />
 
-      <div className="min-w-0 flex-1 flex-col gap-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-6">
         <div className="mb-6">
+          <div className="mb-2 md:hidden">
+            <Button variant="ghost" onClick={() => setCollectionsDrawerOpen(true)}>
+              ☰ Collections
+            </Button>
+          </div>
           <h1 className="text-2xl font-semibold text-[var(--color-ink)]">Library</h1>
           <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
             Your documents, books, and collections live here.
