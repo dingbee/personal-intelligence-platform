@@ -5,6 +5,7 @@ import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { sendMessage } from '@/modules/ai/orchestration/AIService'
 import type { ChatProviderMessage } from '@/modules/ai/providers/ChatProvider'
 import type { Message } from '@/shared/types/database'
+import { isProviderUnavailableError, PROVIDER_UNAVAILABLE_MESSAGE } from '@/modules/ai/providers/availability'
 
 /**
  * Not a react-query mutation on purpose — streaming token-by-token updates
@@ -50,7 +51,17 @@ export function useSendMessage(providerId: string, documentId?: string) {
       await queryClient.invalidateQueries({ queryKey: ['conversations'] })
       return message
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get a response')
+      const rawMessage = err instanceof Error ? err.message : 'Failed to get a response'
+      if (isProviderUnavailableError(rawMessage)) {
+        // The provider we thought was configured just failed on the one
+        // check that actually matters (a live send) — don't show the raw
+        // "X_API_KEY is not configured" text, and stop offering this
+        // provider as a choice until availability is re-checked.
+        setError(PROVIDER_UNAVAILABLE_MESSAGE)
+        void queryClient.invalidateQueries({ queryKey: ['provider-availability'] })
+      } else {
+        setError(rawMessage)
+      }
       return undefined
     } finally {
       setStreamingText(null)

@@ -8,6 +8,9 @@ import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
 import { DEFAULT_CHAT_PROVIDER_ID } from '@/modules/ai/providers/registry'
+import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
+import { isProviderAvailable } from '@/modules/ai/providers/availability'
+import { providerRegistry } from '@/modules/core/providers/registry'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -43,6 +46,13 @@ export function ChatPage() {
   // updates the conversations cache, the next render's `send` closes over
   // the new value automatically.
   const { send, streamingText, sending, error } = useSendMessage(conversation?.provider_id ?? newProviderId, documentId)
+
+  const { data: availability } = useProviderAvailability()
+  // Only meaningful for an existing conversation — a not-yet-created one's
+  // newProviderId can only ever be something ProviderSelect already offered,
+  // which is available by construction.
+  const conversationProviderUnavailable =
+    Boolean(conversation) && !isProviderAvailable(conversation!.provider_id, availability)
 
   async function handleNew() {
     const created = await create.mutateAsync({ providerId: newProviderId })
@@ -108,6 +118,13 @@ export function ChatPage() {
                 />
               </div>
             </div>
+            {conversationProviderUnavailable && (
+              <p className="px-6 pt-2 text-xs text-amber-600">
+                This conversation is set to {providerRegistry.get(conversation!.provider_id)?.label ?? conversation!.provider_id},
+                which isn't currently available. It's still selected above so nothing about this conversation is
+                changed — pick a different provider to continue chatting.
+              </p>
+            )}
             {updateProvider.isError && (
               <p className="px-6 pt-2 text-xs text-red-600">
                 Couldn't switch provider — reverted to the previous one.{' '}
