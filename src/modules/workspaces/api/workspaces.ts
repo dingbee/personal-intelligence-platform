@@ -68,6 +68,19 @@ export async function deleteWorkspace(id: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * A single lightweight count, distinct from getWorkspaceStats' full 8-query
+ * breakdown — this one is for the persistent header widget (rendered on
+ * every page), not the management page's per-card detail.
+ */
+export async function getWorkspaceDocumentCount(workspaceId: string | null): Promise<number> {
+  let query = supabase.from('documents').select('id', { count: 'exact', head: true })
+  if (workspaceId) query = query.eq('workspace_id', workspaceId)
+  const { count, error } = await query
+  if (error) throw error
+  return count ?? 0
+}
+
 /** Persists a swap between two adjacent workspaces' sort_order (the result of a Move Up/Down action). */
 export async function swapWorkspaceOrder(
   a: { id: string; sortOrder: number },
