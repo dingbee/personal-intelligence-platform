@@ -167,6 +167,9 @@ export type Highlight = {
   chapter_index: number | null
   quote: string
   note: string | null
+  /** Chunk ids this was derived from, when AI-generated. Null for user-authored highlights (the normal case). */
+  source_chunk_ids: string[] | null
+  generation_metadata: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
@@ -177,6 +180,9 @@ export type ChapterSummary = {
   chapter_index: number
   content: string
   model: string
+  /** Chunk ids the summary was generated from. Null for rows created before provenance tracking existed. */
+  source_chunk_ids: string[] | null
+  generation_metadata: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
@@ -188,7 +194,55 @@ export type Flashcard = {
   chapter_index: number | null
   front: string
   back: string
+  /** Chunk ids the flashcard was generated from. Null for rows created before provenance tracking existed. */
+  source_chunk_ids: string[] | null
+  generation_metadata: Record<string, unknown> | null
   created_at: string
+}
+
+export type Note = {
+  id: string
+  user_id: string
+  workspace_id: string | null
+  collection_id: string | null
+  document_id: string | null
+  title: string
+  content: string
+  /** Chunk ids this was derived from, when AI-assisted. Null for hand-written notes (the normal case). */
+  source_chunk_ids: string[] | null
+  generation_metadata: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export type NoteTag = {
+  note_id: string
+  tag_id: string
+}
+
+/** A polymorphic graph edge between two entities (e.g. a document and a note) — source_type/target_type determine what source_id/target_id point into; not FK-enforced at the DB level. */
+export type KnowledgeLink = {
+  id: string
+  user_id: string
+  workspace_id: string | null
+  source_type: string
+  source_id: string
+  target_type: string
+  target_id: string
+  created_at: string
+}
+
+export type AiMemoryType = 'explicit_profile' | 'learned_preference' | 'conversation_memory'
+
+export type AiMemory = {
+  id: string
+  user_id: string
+  workspace_id: string | null
+  memory_type: AiMemoryType
+  content: string
+  source: string | null
+  created_at: string
+  updated_at: string
 }
 
 export type AiRequestStatus = 'success' | 'error'
@@ -346,6 +400,36 @@ export type Database = {
         Update: Partial<Flashcard>
         Relationships: []
       }
+      notes: {
+        Row: Note
+        Insert: Partial<Note> & { user_id: string }
+        Update: Partial<Note>
+        Relationships: []
+      }
+      note_tags: {
+        Row: NoteTag
+        Insert: NoteTag
+        Update: Partial<NoteTag>
+        Relationships: []
+      }
+      knowledge_links: {
+        Row: KnowledgeLink
+        Insert: Partial<KnowledgeLink> & {
+          user_id: string
+          source_type: string
+          source_id: string
+          target_type: string
+          target_id: string
+        }
+        Update: Partial<KnowledgeLink>
+        Relationships: []
+      }
+      ai_memory: {
+        Row: AiMemory
+        Insert: Partial<AiMemory> & { user_id: string; memory_type: AiMemoryType; content: string }
+        Update: Partial<AiMemory>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -375,6 +459,7 @@ export type Database = {
       processing_status: ProcessingStatus
       message_role: MessageRole
       ai_request_status: AiRequestStatus
+      ai_memory_type: AiMemoryType
     }
   }
 }
