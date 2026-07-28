@@ -1,5 +1,6 @@
 import { supabase } from '@/shared/lib/supabase'
 import type { KnowledgeNode, KnowledgeNodeType } from '@/shared/types/database'
+import { resolveCanonicalNode } from '@/modules/knowledge-intelligence/api/knowledgeNodeResolution'
 
 export interface UpsertKnowledgeNodeInput {
   userId: string
@@ -15,33 +16,33 @@ export interface UpsertKnowledgeNodeInput {
 }
 
 /**
- * Upsert rather than plain insert: re-running extraction on a document
- * should refresh an already-found concept/entity's description, not fail
- * on the (user_id, source_id, node_type, title) unique constraint or pile
- * up duplicates. Nothing is ever deleted here.
+ * Phase 9A: routes each node through resolveCanonicalNode instead of a raw
+ * upsert — the same document re-extracting still refreshes its node's
+ * content exactly as before, but a concept/entity that already exists
+ * under a *different* document is now reused (with its provenance
+ * recorded in knowledge_node_sources) instead of creating a disconnected
+ * duplicate. Callers are unaffected: same function name, same input/output
+ * shape, still never deletes anything.
  */
 export async function upsertKnowledgeNodes(nodes: UpsertKnowledgeNodeInput[]): Promise<KnowledgeNode[]> {
   if (nodes.length === 0) return []
-  const { data, error } = await supabase
-    .from('knowledge_nodes')
-    .upsert(
-      nodes.map((node) => ({
-        user_id: node.userId,
-        workspace_id: node.workspaceId,
-        node_type: node.nodeType,
+  const resolved = await Promise.all(
+    nodes.map((node) =>
+      resolveCanonicalNode({
+        userId: node.userId,
+        workspaceId: node.workspaceId,
+        nodeType: node.nodeType,
         title: node.title,
         description: node.description,
-        source_type: node.sourceType,
-        source_id: node.sourceId,
-        source_chunk_ids: node.sourceChunkIds,
-        generation_metadata: node.generationMetadata,
-        metadata: node.metadata ?? null,
-      })),
-      { onConflict: 'user_id,source_id,node_type,title' },
-    )
-    .select()
-  if (error) throw error
-  return data
+        sourceType: node.sourceType,
+        sourceId: node.sourceId,
+        sourceChunkIds: node.sourceChunkIds,
+        generationMetadata: node.generationMetadata,
+        metadata: node.metadata,
+      }),
+    ),
+  )
+  return resolved.map((result) => result.node)
 }
 
 export interface KnowledgeNodeFilters {

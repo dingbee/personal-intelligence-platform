@@ -241,13 +241,21 @@ export type KnowledgeLink = {
 
 export type KnowledgeNodeType = 'concept' | 'entity'
 
-/** An AI-extracted concept or entity, anchored to the document (source_type/source_id) it was found in. Not a user-authored object — see Phase 7A audit for why this doesn't reuse tags. */
+/**
+ * An AI-extracted concept or entity. `source_type`/`source_id` remain the
+ * node's original/first source (unchanged pre-Phase 9A meaning, still what
+ * the Explorer/Graph UI reads) — `knowledge_node_sources` is the complete,
+ * possibly-multi-document provenance ledger (Phase 9A). Not a user-authored
+ * object — see Phase 7A audit for why this doesn't reuse tags.
+ */
 export type KnowledgeNode = {
   id: string
   user_id: string
   workspace_id: string | null
   node_type: KnowledgeNodeType
   title: string
+  /** Phase 9A: lowercase, whitespace/punctuation-normalized title — the canonical-identity lookup key within (user_id, node_type). */
+  title_normalized: string
   description: string | null
   source_type: string
   source_id: string
@@ -256,6 +264,17 @@ export type KnowledgeNode = {
   metadata: Record<string, unknown> | null
   created_at: string
   updated_at: string
+}
+
+/** Phase 9A: one row per (node, document) it was actually extracted from — the full provenance ledger a canonical, possibly-multi-source node accumulates over time. */
+export type KnowledgeNodeSource = {
+  id: string
+  user_id: string
+  node_id: string
+  source_type: string
+  source_id: string
+  source_chunk_ids: string[] | null
+  created_at: string
 }
 
 export type AiMemoryType = 'explicit_profile' | 'learned_preference' | 'conversation_memory'
@@ -476,10 +495,22 @@ export type Database = {
           user_id: string
           node_type: KnowledgeNodeType
           title: string
+          title_normalized: string
           source_type: string
           source_id: string
         }
         Update: Partial<KnowledgeNode>
+        Relationships: []
+      }
+      knowledge_node_sources: {
+        Row: KnowledgeNodeSource
+        Insert: Partial<KnowledgeNodeSource> & {
+          user_id: string
+          node_id: string
+          source_type: string
+          source_id: string
+        }
+        Update: Partial<KnowledgeNodeSource>
         Relationships: []
       }
       ai_memory: {
