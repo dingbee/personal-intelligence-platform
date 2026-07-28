@@ -52,9 +52,28 @@ export interface KnowledgeNodeFilters {
   limit?: number
 }
 
+/**
+ * Phase 9C: a node's own source_id is only where it was *first* extracted —
+ * since Phase 9A/9B it may since have been reused (merged) into other
+ * documents too, recorded in knowledge_node_sources. Filtering directly on
+ * knowledge_nodes.source_id would miss those merges, so documentId now
+ * resolves through knowledge_node_sources instead.
+ */
 export async function listKnowledgeNodes(filters: KnowledgeNodeFilters = {}): Promise<KnowledgeNode[]> {
+  let nodeIds: string[] | null = null
+  if (filters.documentId) {
+    const { data: sources, error: sourcesError } = await supabase
+      .from('knowledge_node_sources')
+      .select('node_id')
+      .eq('source_type', 'document')
+      .eq('source_id', filters.documentId)
+    if (sourcesError) throw sourcesError
+    nodeIds = sources.map((row) => row.node_id)
+    if (nodeIds.length === 0) return []
+  }
+
   let query = supabase.from('knowledge_nodes').select('*').order('created_at', { ascending: false })
-  if (filters.documentId) query = query.eq('source_id', filters.documentId)
+  if (nodeIds) query = query.in('id', nodeIds)
   if (filters.workspaceId) query = query.eq('workspace_id', filters.workspaceId)
   if (filters.nodeType) query = query.eq('node_type', filters.nodeType)
   if (filters.limit) query = query.limit(filters.limit)
@@ -62,4 +81,21 @@ export async function listKnowledgeNodes(filters: KnowledgeNodeFilters = {}): Pr
   const { data, error } = await query
   if (error) throw error
   return data
+}
+
+export interface KnowledgeNodeSourceRef {
+  nodeId: string
+  sourceType: string
+  sourceId: string
+}
+
+/** Phase 9C: the reverse direction of the same gap — given a set of (possibly merged) nodes, look up every document each one came from, not just its original source_id. Used to show all source documents on a knowledge card. */
+export async function listKnowledgeNodeSourcesForNodes(nodeIds: string[]): Promise<KnowledgeNodeSourceRef[]> {
+  if (nodeIds.length === 0) return []
+  const { data, error } = await supabase
+    .from('knowledge_node_sources')
+    .select('node_id, source_type, source_id')
+    .in('node_id', nodeIds)
+  if (error) throw error
+  return data.map((row) => ({ nodeId: row.node_id, sourceType: row.source_type, sourceId: row.source_id }))
 }

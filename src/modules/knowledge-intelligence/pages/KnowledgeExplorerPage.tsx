@@ -1,11 +1,17 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { KnowledgeNodeType } from '@/shared/types/database'
+import {
+  useKnowledgeInsights,
+  useReconcileKnowledgeGraph,
+} from '@/modules/knowledge-intelligence/hooks/useKnowledgeIntelligence'
 import { useKnowledgeNodeDetails } from '@/modules/knowledge-intelligence/hooks/useKnowledgeNodeDetails'
 import { KnowledgeCard } from '@/shared/components/knowledge/KnowledgeCard'
 import { ConfidenceBadge } from '@/shared/components/knowledge/ConfidenceBadge'
 import { SourceReference } from '@/shared/components/knowledge/SourceReference'
+import { InsightPanel } from '@/shared/components/knowledge/InsightPanel'
 import { Input } from '@/shared/components/ui/Input'
+import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 
@@ -28,12 +34,23 @@ function formatProvenance(meta: Record<string, unknown>): string | null {
   return parts.length > 0 ? parts.join(' — ') : null
 }
 
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-lg font-semibold text-[var(--color-ink)]">{value}</span>
+      <span className="text-xs text-[var(--color-ink-muted)]">{label}</span>
+    </div>
+  )
+}
+
 /** A structured, searchable list of knowledge nodes — the pre-graph-visualization view called for in Phase 7B. */
 export function KnowledgeExplorerPage() {
   const [searchParams] = useSearchParams()
   const documentIdFilter = searchParams.get('documentId') ?? undefined
 
   const { details, isLoading } = useKnowledgeNodeDetails(documentIdFilter)
+  const insights = useKnowledgeInsights()
+  const reconcile = useReconcileKnowledgeGraph()
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
 
@@ -54,6 +71,35 @@ export function KnowledgeExplorerPage() {
           Every concept and entity your AI has extracted, how it connects, and where it came from.
         </p>
       </div>
+
+      <InsightPanel
+        title="Knowledge Intelligence"
+        actions={
+          <Button variant="secondary" loading={reconcile.isPending} onClick={() => reconcile.mutate()}>
+            {reconcile.isPending ? 'Finding connections…' : 'Reconcile knowledge graph'}
+          </Button>
+        }
+        isLoading={insights.isLoading}
+        isEmpty={!insights.data || (insights.data.conceptCount === 0 && insights.data.entityCount === 0)}
+        emptyMessage="No knowledge extracted yet — open a document and run Analyze Document to get started."
+      >
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <Stat label="Concepts" value={insights.data?.conceptCount ?? 0} />
+          <Stat label="Entities" value={insights.data?.entityCount ?? 0} />
+          <Stat label="Relationships" value={insights.data?.edgeCount ?? 0} />
+          <Stat label="Documents" value={insights.data?.documentsWithKnowledge ?? 0} />
+        </div>
+        {reconcile.isError && (
+          <p className="text-sm text-red-600">
+            {reconcile.error instanceof Error ? reconcile.error.message : 'Failed to reconcile the knowledge graph.'}
+          </p>
+        )}
+        {reconcile.isSuccess && (
+          <p className="text-sm text-[var(--color-ink-muted)]">
+            {reconcile.data.edgesCreated} new relationship{reconcile.data.edgesCreated === 1 ? '' : 's'} discovered
+          </p>
+        )}
+      </InsightPanel>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-sm flex-1">
@@ -93,7 +139,7 @@ export function KnowledgeExplorerPage() {
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(({ node, documentId, documentTitle, connections }) => {
+          {filtered.map(({ node, sources, connections }) => {
             const provenance = node.generation_metadata ? formatProvenance(node.generation_metadata) : null
             return (
               <KnowledgeCard
@@ -120,9 +166,7 @@ export function KnowledgeExplorerPage() {
                     </ul>
                   </div>
                 )}
-                {documentId && documentTitle && (
-                  <SourceReference sources={[{ type: 'document', id: documentId, label: documentTitle }]} />
-                )}
+                <SourceReference sources={sources} />
                 {provenance && <p className="text-[11px] text-[var(--color-ink-muted)]">Extracted {provenance}</p>}
               </KnowledgeCard>
             )
