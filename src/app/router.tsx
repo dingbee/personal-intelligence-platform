@@ -10,6 +10,7 @@ import { DocumentDetailPage } from '@/modules/library/pages/DocumentDetailPage'
 import { NotesPage } from '@/modules/notes/pages/NotesPage'
 import { NoteDetailPage } from '@/modules/notes/pages/NoteDetailPage'
 import { KnowledgePage } from '@/modules/knowledge/pages/KnowledgePage'
+import { KnowledgeGraphPage } from '@/modules/knowledge-graph/pages/KnowledgeGraphPage'
 import { SearchPage } from '@/modules/search/pages/SearchPage'
 import { ChatPage } from '@/modules/ai/chat/pages/ChatPage'
 import { SettingsPage } from '@/modules/settings/pages/SettingsPage'
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: 'notes', element: <NotesPage /> },
       { path: 'notes/:noteId', element: <NoteDetailPage /> },
       { path: 'knowledge', element: <KnowledgePage /> },
+      { path: 'knowledge/graph', element: <KnowledgeGraphPage /> },
       { path: 'search', element: <SearchPage /> },
       { path: 'chat', element: <ChatPage /> },
       { path: 'settings', element: <SettingsPage /> },
