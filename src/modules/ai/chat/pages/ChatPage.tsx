@@ -16,7 +16,8 @@ export function ChatPage() {
   const [searchParams] = useSearchParams()
   const documentId = searchParams.get('documentId') ?? undefined
 
-  const { data: conversations = [], isLoading: conversationsLoading, create, remove } = useConversations(documentId)
+  const { data: conversations = [], isLoading: conversationsLoading, create, remove, updateProvider } =
+    useConversations(documentId)
   // Deep-linked from a search result — if it's outside the current
   // workspace/document filter it still opens (messages load independently
   // of the sidebar list), it just won't be highlighted in that list.
@@ -27,13 +28,30 @@ export function ChatPage() {
     if (!selectedId && conversations.length > 0) setSelectedId(conversations[0]!.id)
   }, [conversations, selectedId])
 
+  // Don't carry a provider-switch error over when the user moves to a
+  // different conversation — it belongs to the conversation it happened in.
+  useEffect(() => {
+    updateProvider.reset()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId])
+
   const { data: messages = [], isLoading: messagesLoading } = useMessages(selectedId)
   const conversation = conversations.find((c) => c.id === selectedId)
+  // Reading conversation.provider_id fresh here (rather than snapshotting it
+  // into a ref) is what makes a provider switch take effect on the very
+  // next send: this hook re-runs every render, so once the mutation below
+  // updates the conversations cache, the next render's `send` closes over
+  // the new value automatically.
   const { send, streamingText, sending, error } = useSendMessage(conversation?.provider_id ?? newProviderId, documentId)
 
   async function handleNew() {
     const created = await create.mutateAsync({ providerId: newProviderId })
     setSelectedId(created.id)
+  }
+
+  function handleProviderChange(providerId: string) {
+    if (!conversation || providerId === conversation.provider_id || updateProvider.isPending) return
+    updateProvider.mutate({ id: conversation.id, providerId })
   }
 
   async function handleSend(text: string) {
@@ -79,6 +97,23 @@ export function ChatPage() {
           </div>
         ) : (
           <>
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] px-6 py-3">
+              <h2 className="truncate text-sm font-medium text-[var(--color-ink)]">{conversation?.title}</h2>
+              <div className="flex shrink-0 items-center gap-2">
+                {updateProvider.isPending && <Spinner size="sm" />}
+                <ProviderSelect
+                  value={conversation?.provider_id ?? newProviderId}
+                  onChange={handleProviderChange}
+                  disabled={updateProvider.isPending}
+                />
+              </div>
+            </div>
+            {updateProvider.isError && (
+              <p className="px-6 pt-2 text-xs text-red-600">
+                Couldn't switch provider — reverted to the previous one.{' '}
+                {updateProvider.error instanceof Error ? updateProvider.error.message : ''}
+              </p>
+            )}
             <div className="flex-1 overflow-y-auto p-6">
               <div className="flex flex-col gap-4">
                 {messagesLoading ? (

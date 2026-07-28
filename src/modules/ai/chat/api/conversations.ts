@@ -46,6 +46,12 @@ export async function renameConversation(id: string, title: string): Promise<voi
   if (error) throw error
 }
 
+/** Changes which provider future messages in this conversation use — historical messages are untouched, since providerId isn't stored per-message. */
+export async function updateConversationProvider(id: string, providerId: string): Promise<void> {
+  const { error } = await supabase.from('conversations').update({ provider_id: providerId }).eq('id', id)
+  if (error) throw error
+}
+
 export async function touchConversation(id: string): Promise<void> {
   const { error } = await supabase
     .from('conversations')
