@@ -181,7 +181,11 @@ export function ReaderPage() {
             {openTab === 'highlights' && (
               <div className="p-4">
                 <h3 className="mb-3 text-sm font-medium text-[var(--color-ink)]">Highlights in this chapter</h3>
-                <HighlightsList documentId={documentId!} chapterIndex={activeIndex} />
+                <HighlightsList
+                  documentId={documentId!}
+                  chapterIndex={activeIndex}
+                  chunkIds={activeChapter?.chunkIds ?? []}
+                />
               </div>
             )}
           </aside>

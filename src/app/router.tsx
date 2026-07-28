@@ -8,6 +8,7 @@ import { ResetPasswordPage } from '@/modules/auth/pages/ResetPasswordPage'
 import { LibraryPage } from '@/modules/library/pages/LibraryPage'
 import { DocumentDetailPage } from '@/modules/library/pages/DocumentDetailPage'
 import { NotesPage } from '@/modules/notes/pages/NotesPage'
+import { NoteDetailPage } from '@/modules/notes/pages/NoteDetailPage'
 import { SearchPage } from '@/modules/search/pages/SearchPage'
 import { ChatPage } from '@/modules/ai/chat/pages/ChatPage'
 import { SettingsPage } from '@/modules/settings/pages/SettingsPage'
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
       { path: 'library', element: <LibraryPage /> },
       { path: 'library/:documentId', element: <DocumentDetailPage /> },
       { path: 'notes', element: <NotesPage /> },
+      { path: 'notes/:noteId', element: <NoteDetailPage /> },
       { path: 'search', element: <SearchPage /> },
       { path: 'chat', element: <ChatPage /> },
       { path: 'settings', element: <SettingsPage /> },
