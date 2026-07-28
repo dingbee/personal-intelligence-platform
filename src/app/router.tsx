@@ -15,6 +15,7 @@ import { KnowledgeExplorerPage } from '@/modules/knowledge-intelligence/pages/Kn
 import { SearchPage } from '@/modules/search/pages/SearchPage'
 import { ChatPage } from '@/modules/ai/chat/pages/ChatPage'
 import { SettingsPage } from '@/modules/settings/pages/SettingsPage'
+import { AiHealthPage } from '@/modules/ai/observability/pages/AiHealthPage'
 import { ReaderPage } from '@/modules/reader/pages/ReaderPage'
 
 export const router = createBrowserRouter([
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
       { path: 'search', element: <SearchPage /> },
       { path: 'chat', element: <ChatPage /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'settings/ai-health', element: <AiHealthPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

@@ -40,3 +40,21 @@ export async function listRecentAiRequests(limit = 20): Promise<AiRequest[]> {
   if (error) throw error
   return data
 }
+
+/**
+ * Fetches a bounded recent window for client-side aggregation (AI Health
+ * Dashboard) rather than a row-count limit — RLS already scopes this to
+ * the current user, and at this table's actual volume a time window is
+ * cheap via the existing created_at index. No new index/view/RPC needed;
+ * revisit with a real server-side aggregate only if this table grows into
+ * the tens of thousands of rows.
+ */
+export async function listAiRequestsSince(sinceIso: string): Promise<AiRequest[]> {
+  const { data, error } = await supabase
+    .from('ai_requests')
+    .select('*')
+    .gte('created_at', sinceIso)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/modules/auth/useAuth'
 import { capabilityRegistry } from '@/modules/core/capabilities/registry'
 import { providerRegistry } from '@/modules/core/providers/registry'
@@ -64,7 +65,12 @@ export function SettingsPage() {
       </div>
 
       <div className="max-w-2xl rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-        <h2 className="text-sm font-medium text-[var(--color-ink)]">Recent AI activity</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-[var(--color-ink)]">Recent AI activity</h2>
+          <Link to="/settings/ai-health" className="text-xs text-[var(--color-accent)] hover:underline">
+            View AI health →
+          </Link>
+        </div>
         <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
           Every chat and embedding call, logged for debugging, usage, and future cost tracking.
         </p>
