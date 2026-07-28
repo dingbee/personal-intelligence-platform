@@ -5,6 +5,8 @@ export interface NoteFilters {
   documentId?: string | null
   /** null/omitted = "All" (matches the same backward-compatible convention as documents/collections filters). */
   workspaceId?: string | null
+  /** Caps result count server-side — e.g. for a "recent notes" dashboard section that doesn't need the full list. */
+  limit?: number
 }
 
 export interface NoteWithDocument extends Note {
@@ -23,6 +25,7 @@ export async function listNotes(filters: NoteFilters = {}): Promise<NoteWithDocu
         : query.eq('document_id', filters.documentId)
   }
   if (filters.workspaceId) query = query.eq('workspace_id', filters.workspaceId)
+  if (filters.limit) query = query.limit(filters.limit)
 
   const { data, error } = await query
   if (error) throw error
