@@ -8,6 +8,8 @@ import {
   type MemoryTypeFilter,
 } from '@/modules/ai/memory/filterAndSortMemories'
 import { MEMORY_TYPE_LABELS } from '@/modules/ai/memory/memoryTypeLabels'
+import { MemoryApprovalPanel } from '@/modules/ai/memory/memoryDetection/MemoryApprovalPanel'
+import type { MemoryCandidate } from '@/modules/ai/memory/memoryDetection/types'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
@@ -50,16 +52,38 @@ function FilterPill<T extends string>({
   )
 }
 
-/** Phase UX-5.3A: the user-facing control plane for `ai_memory` — list, filter, sort, edit, delete. No memory-creation or approval UI here; NOVA doesn't write memories on its own yet (that's UX-5.3B). */
+/**
+ * Phase UX-5.3A: the user-facing control plane for `ai_memory` — list,
+ * filter, sort, edit, delete.
+ *
+ * Phase UX-5.3B adds the approval surface (MemoryApprovalPanel) above it.
+ * `pendingCandidates` is plain local state, not persisted anywhere —
+ * nothing in this codebase calls detectMemoryCandidates from a live
+ * conversation yet (that wiring is deferred, see the phase's final
+ * report), so this list is always empty today and the panel renders
+ * nothing. It's still fully functional end-to-end: Remember calls the
+ * same createMemory mutation as everywhere else, Dismiss just drops the
+ * candidate locally.
+ */
 export function MemoryManagementPage() {
-  const { data: memories = [], isLoading } = useMemories()
+  const { data: memories = [], isLoading, create } = useMemories()
   const [typeFilter, setTypeFilter] = useState<MemoryTypeFilter>('all')
   const [sortOrder, setSortOrder] = useState<MemorySortOrder>('newest')
+  const [pendingCandidates, setPendingCandidates] = useState<MemoryCandidate[]>([])
 
   const filtered = useMemo(
     () => filterAndSortMemories(memories, { typeFilter, sortOrder }),
     [memories, typeFilter, sortOrder],
   )
+
+  function dismissCandidate(candidate: MemoryCandidate) {
+    setPendingCandidates((current) => current.filter((c) => c !== candidate))
+  }
+
+  function rememberCandidate(candidate: MemoryCandidate) {
+    create.mutate({ memoryType: candidate.type, content: candidate.content, source: 'conversation' })
+    dismissCandidate(candidate)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -78,6 +102,8 @@ export function MemoryManagementPage() {
           />
         </div>
       </div>
+
+      <MemoryApprovalPanel candidates={pendingCandidates} onRemember={rememberCandidate} onDismiss={dismissCandidate} />
 
       {isLoading ? (
         <Spinner size="sm" />

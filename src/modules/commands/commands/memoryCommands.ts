@@ -10,3 +10,13 @@ export const manageMemoriesCommand: Command = {
   featured: true,
   execute: (_context, actions) => actions.navigate('/settings/memory'),
 }
+
+/** Same reasoning as manageMemoriesCommand above: "Review memory suggestions" and "Open memory approvals" both describe opening the one settings surface (MemoryApprovalPanel lives on /settings/memory) — one command, not two competing routes. */
+export const reviewMemorySuggestionsCommand: Command = {
+  id: 'memory-review-suggestions',
+  title: 'Review memory suggestions',
+  description: 'Open memory approvals',
+  icon: '🔎',
+  category: 'memory',
+  execute: (_context, actions) => actions.navigate('/settings/memory'),
+}

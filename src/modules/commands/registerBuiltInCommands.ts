@@ -4,7 +4,7 @@ import { manageWorkspacesCommand, switchToAllWorkspacesCommand } from '@/modules
 import { askNovaCommand } from '@/modules/commands/commands/aiCommands'
 import { openSearchCommand } from '@/modules/commands/commands/searchCommands'
 import { createNoteCommand } from '@/modules/commands/commands/noteCommands'
-import { manageMemoriesCommand } from '@/modules/commands/commands/memoryCommands'
+import { manageMemoriesCommand, reviewMemorySuggestionsCommand } from '@/modules/commands/commands/memoryCommands'
 
 // Side-effect module, imported once from app/App.tsx — same pattern as
 // modules/search/registerBuiltInProviders.ts. A future command
@@ -21,3 +21,4 @@ commandRegistry.register(askNovaCommand)
 commandRegistry.register(openSearchCommand)
 commandRegistry.register(createNoteCommand)
 commandRegistry.register(manageMemoriesCommand)
+commandRegistry.register(reviewMemorySuggestionsCommand)
