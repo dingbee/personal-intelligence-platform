@@ -7,9 +7,8 @@ import { getKnowledgeInsights } from '@/modules/knowledge-intelligence/api/knowl
 import { generateKnowledgeMap } from '@/modules/knowledge-intelligence/api/knowledgeMap'
 import { runKnowledgeExtraction } from '@/modules/knowledge-intelligence/api/knowledgeExtraction'
 import { withProviderAvailability } from '@/modules/ai/orchestration/withProviderAvailability'
-import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
-import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
+import { useProviderChain } from '@/modules/ai/router/useProviderChain'
 
 /** Readiness hooks for a future Knowledge Intelligence UI (Phase 7B+) — no visualization consumes these yet. */
 
@@ -57,16 +56,15 @@ export function useRunKnowledgeExtraction(documentId: string) {
   const { user } = useAuth()
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
-  const { data: availability } = useProviderAvailability()
-  const { data: overrides } = useProviderOverrides()
   const providerId = useDefaultChatProviderId()
+  const chain = useProviderChain(providerId)
 
   return useMutation({
     mutationFn: () =>
       withProviderAvailability(
-        providerId,
-        () => runKnowledgeExtraction({ documentId, userId: user!.id, workspaceId: currentWorkspaceId, providerId }),
-        { availability, overrides, queryClient },
+        chain,
+        () => runKnowledgeExtraction({ documentId, userId: user!.id, workspaceId: currentWorkspaceId, chain }),
+        { queryClient },
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-nodes'] })

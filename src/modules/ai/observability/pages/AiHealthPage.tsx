@@ -283,7 +283,17 @@ export function AiHealthPage() {
                             {new Date(failure.createdAt).toLocaleString()}
                           </td>
                           <td className="py-2 pr-4 text-[var(--color-ink)]">{failure.feature}</td>
-                          <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{failure.provider}</td>
+                          <td className="py-2 pr-4 text-[var(--color-ink-muted)]">
+                            {failure.provider}
+                            {failure.fallbackReason && (
+                              <span
+                                className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+                                title={failure.fallbackReason}
+                              >
+                                fallback
+                              </span>
+                            )}
+                          </td>
                           <td className="py-2 pr-4 text-[var(--color-ink-muted)]">
                             {CATEGORY_LABELS[failure.category] ?? failure.category}
                           </td>

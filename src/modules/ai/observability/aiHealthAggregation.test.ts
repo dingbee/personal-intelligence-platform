@@ -25,6 +25,8 @@ function makeRequest(overrides: Partial<AiRequest> = {}): AiRequest {
     latency_ms: 100,
     status: 'success',
     error_message: null,
+    requested_provider: null,
+    fallback_reason: null,
     created_at: new Date(2026, 0, 1, 0, 0, counter).toISOString(),
     ...overrides,
   }

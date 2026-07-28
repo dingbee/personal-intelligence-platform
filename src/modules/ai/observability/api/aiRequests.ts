@@ -12,6 +12,10 @@ export interface LogAiRequestParams {
   latencyMs: number
   status: AiRequestStatus
   errorMessage?: string | null
+  /** Phase 8C: the router's first-choice candidate for this request — pass it even when it matches `provider` (no fallback happened), so "routed, first try succeeded" is distinguishable from "not routed at all." */
+  requestedProvider?: string | null
+  /** Set only when `provider` differs from `requestedProvider`. */
+  fallbackReason?: string | null
 }
 
 /** Best-effort: a logging failure should never break the feature that triggered it. */
@@ -27,6 +31,8 @@ export async function logAiRequest(params: LogAiRequestParams): Promise<void> {
     latency_ms: params.latencyMs,
     status: params.status,
     error_message: params.errorMessage ?? null,
+    requested_provider: params.requestedProvider ?? null,
+    fallback_reason: params.fallbackReason ?? null,
   })
   if (error) console.error('Failed to log AI request:', error)
 }

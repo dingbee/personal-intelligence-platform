@@ -4,18 +4,17 @@ import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { createFlashcards, listFlashcards } from '@/modules/reader/api/flashcards'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { withProviderAvailability } from '@/modules/ai/orchestration/withProviderAvailability'
-import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
-import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
+import { useProviderChain } from '@/modules/ai/router/useProviderChain'
+import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { parseFlashcardsResponse } from '@/modules/reader/utils/parseFlashcardsResponse'
 
 export function useFlashcards(documentId: string, chapterIndex: number) {
   const { user } = useAuth()
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
-  const { data: availability } = useProviderAvailability()
-  const { data: overrides } = useProviderOverrides()
   const providerId = useDefaultChatProviderId()
+  const chain = useProviderChain(providerId)
   const queryKey = ['flashcards', documentId, chapterIndex]
 
   const query = useQuery({
@@ -26,17 +25,22 @@ export function useFlashcards(documentId: string, chapterIndex: number) {
 
   const generate = useMutation({
     mutationFn: async (chapterText: string) => {
-      const { content } = await withProviderAvailability(
-        providerId,
+      const {
+        result: { content },
+      } = await withProviderAvailability(
+        chain,
         () =>
-          runCapability({
-            capabilityId: 'flashcards',
-            variables: { content: chapterText },
-            userId: user!.id,
-            workspaceId: currentWorkspaceId,
-            providerId,
-          }),
-        { availability, overrides, queryClient },
+          runWithFallback(chain, (candidateId) =>
+            runCapability({
+              capabilityId: 'flashcards',
+              variables: { content: chapterText },
+              userId: user!.id,
+              workspaceId: currentWorkspaceId,
+              providerId: candidateId,
+              requestedProviderId: chain[0],
+            }),
+          ),
+        { queryClient },
       )
       const cards = parseFlashcardsResponse(content)
       return createFlashcards({ documentId, userId: user!.id, chapterIndex, cards })

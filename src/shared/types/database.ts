@@ -295,6 +295,10 @@ export type AiRequest = {
   latency_ms: number
   status: AiRequestStatus
   error_message: string | null
+  /** Phase 8C: the provider the router chose first — set on every routed request, even when it matches `provider` (i.e. no fallback happened). Null for requests logged before this phase. */
+  requested_provider: string | null
+  /** Set only on the row where `provider` differs from `requested_provider` — the one that succeeded after an earlier candidate failed. */
+  fallback_reason: string | null
   created_at: string
 }
 

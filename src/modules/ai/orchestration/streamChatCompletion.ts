@@ -9,6 +9,8 @@ export interface StreamChatCompletionParams {
   workspaceId: string | null
   /** ai_requests.feature — 'chat' for conversations, or a capability id ('summarize', 'flashcards') for one-shot execution. */
   feature: string
+  /** Phase 8C: the router's chain[0] for this call — pass it any time a caller resolved a provider chain, even when `provider` matches it (see logAiRequest). */
+  requestedProvider?: string
   onDelta?: (textSoFar: string) => void
 }
 
@@ -26,12 +28,20 @@ export interface StreamChatCompletionResult {
 export async function streamChatCompletion(
   params: StreamChatCompletionParams,
 ): Promise<StreamChatCompletionResult> {
-  const { provider, messages, system, userId, workspaceId, feature } = params
+  const { provider, messages, system, userId, workspaceId, feature, requestedProvider } = params
   const start = performance.now()
   let accumulated = ''
   let usageModel: string | null = null
   let tokensInput: number | null = null
   let tokensOutput: number | null = null
+
+  // Only the row where a fallback actually happened gets a reason — the
+  // common case (requestedProvider matches, or wasn't supplied at all)
+  // leaves this null, exactly like every request logged before this phase.
+  const fallbackReason =
+    requestedProvider && requestedProvider !== provider.id
+      ? `Routed to ${provider.id} after ${requestedProvider} failed`
+      : null
 
   try {
     for await (const delta of provider.chat({
@@ -55,6 +65,8 @@ export async function streamChatCompletion(
       latencyMs: Math.round(performance.now() - start),
       status: 'error',
       errorMessage: err instanceof Error ? err.message : 'Unknown error',
+      requestedProvider,
+      fallbackReason,
     })
     throw err
   }
@@ -69,6 +81,8 @@ export async function streamChatCompletion(
     tokensOutput,
     latencyMs: Math.round(performance.now() - start),
     status: 'success',
+    requestedProvider,
+    fallbackReason,
   })
 
   return { content: accumulated, model: usageModel }

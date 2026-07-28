@@ -4,17 +4,16 @@ import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { getChapterSummary, saveChapterSummary } from '@/modules/reader/api/chapterSummaries'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { withProviderAvailability } from '@/modules/ai/orchestration/withProviderAvailability'
-import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
-import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
+import { useProviderChain } from '@/modules/ai/router/useProviderChain'
+import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 
 export function useChapterSummary(documentId: string, chapterIndex: number) {
   const { user } = useAuth()
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
-  const { data: availability } = useProviderAvailability()
-  const { data: overrides } = useProviderOverrides()
   const providerId = useDefaultChatProviderId()
+  const chain = useProviderChain(providerId)
   const queryKey = ['chapter-summary', documentId, chapterIndex]
 
   const query = useQuery({
@@ -25,17 +24,22 @@ export function useChapterSummary(documentId: string, chapterIndex: number) {
 
   const generate = useMutation({
     mutationFn: async (chapterText: string) => {
-      const { content, model } = await withProviderAvailability(
-        providerId,
+      const {
+        result: { content, model },
+      } = await withProviderAvailability(
+        chain,
         () =>
-          runCapability({
-            capabilityId: 'summarize',
-            variables: { content: chapterText },
-            userId: user!.id,
-            workspaceId: currentWorkspaceId,
-            providerId,
-          }),
-        { availability, overrides, queryClient },
+          runWithFallback(chain, (candidateId) =>
+            runCapability({
+              capabilityId: 'summarize',
+              variables: { content: chapterText },
+              userId: user!.id,
+              workspaceId: currentWorkspaceId,
+              providerId: candidateId,
+              requestedProviderId: chain[0],
+            }),
+          ),
+        { queryClient },
       )
       return saveChapterSummary({
         documentId,

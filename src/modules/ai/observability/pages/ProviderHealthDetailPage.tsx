@@ -175,6 +175,14 @@ export function ProviderHealthDetailPage() {
                       >
                         {request.status}
                       </span>
+                      {request.fallback_reason && (
+                        <span
+                          className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+                          title={request.fallback_reason}
+                        >
+                          fallback
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

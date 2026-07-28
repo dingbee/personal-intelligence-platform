@@ -4,17 +4,16 @@ import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { withProviderAvailability } from '@/modules/ai/orchestration/withProviderAvailability'
-import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
-import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
+import { useProviderChain } from '@/modules/ai/router/useProviderChain'
+import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 
 export function useNote(noteId: string) {
   const { user } = useAuth()
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
-  const { data: availability } = useProviderAvailability()
-  const { data: overrides } = useProviderOverrides()
   const providerId = useDefaultChatProviderId()
+  const chain = useProviderChain(providerId)
   const queryKey = ['note', noteId]
 
   const query = useQuery({
@@ -44,23 +43,29 @@ export function useNote(noteId: string) {
   // up rather than adding new prompt content this phase.
   const summarize = useMutation({
     mutationFn: async (content: string) => {
-      const { content: summary, model } = await withProviderAvailability(
-        providerId,
+      const {
+        result: { content: summary, model },
+        providerId: usedProviderId,
+      } = await withProviderAvailability(
+        chain,
         () =>
-          runCapability({
-            capabilityId: 'summarize',
-            variables: { content },
-            userId: user!.id,
-            workspaceId: currentWorkspaceId,
-            providerId,
-          }),
-        { availability, overrides, queryClient },
+          runWithFallback(chain, (candidateId) =>
+            runCapability({
+              capabilityId: 'summarize',
+              variables: { content },
+              userId: user!.id,
+              workspaceId: currentWorkspaceId,
+              providerId: candidateId,
+              requestedProviderId: chain[0],
+            }),
+          ),
+        { queryClient },
       )
       return updateNote(noteId, {
         content: summary,
         generation_metadata: {
           capability: 'summarize',
-          provider: providerId,
+          provider: usedProviderId,
           model,
           generated_at: new Date().toISOString(),
         },

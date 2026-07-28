@@ -10,6 +10,8 @@ export interface RunCapabilityParams {
   userId: string
   workspaceId: string | null
   providerId?: string
+  /** Phase 8C: the caller's chain[0], for fallback logging — pass it whenever this call is one candidate in a runWithFallback loop, even when it equals `providerId`. */
+  requestedProviderId?: string
 }
 
 /**
@@ -21,7 +23,7 @@ export interface RunCapabilityParams {
  * keeping capabilities and their execution decoupled.
  */
 export async function runCapability(params: RunCapabilityParams): Promise<StreamChatCompletionResult> {
-  const { capabilityId, variables, userId, workspaceId, providerId = DEFAULT_CHAT_PROVIDER_ID } = params
+  const { capabilityId, variables, userId, workspaceId, providerId = DEFAULT_CHAT_PROVIDER_ID, requestedProviderId } = params
 
   const template = getActivePrompt(capabilityId)
   if (!template) throw new Error(`No active prompt template for capability "${capabilityId}"`)
@@ -35,5 +37,6 @@ export async function runCapability(params: RunCapabilityParams): Promise<Stream
     userId,
     workspaceId,
     feature: capabilityId,
+    requestedProvider: requestedProviderId,
   })
 }

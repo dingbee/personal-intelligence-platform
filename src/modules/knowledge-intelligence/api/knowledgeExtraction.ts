@@ -1,6 +1,7 @@
 import type { DocumentChunk, KnowledgeNode } from '@/shared/types/database'
 import { listDocumentChunks } from '@/modules/processing/api/chunks'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
+import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { upsertKnowledgeNodes } from '@/modules/knowledge-intelligence/api/knowledgeNodes'
 import { upsertKnowledgeEdges } from '@/modules/knowledge-intelligence/api/knowledgeEdges'
 import {
@@ -27,7 +28,8 @@ export interface RunKnowledgeExtractionParams {
   documentId: string
   userId: string
   workspaceId: string | null
-  providerId: string
+  /** Ordered candidates from useProviderChain. Only the first call (extract-concepts) uses this for fallback — every later call in this same run is pinned to whichever provider that first call actually used, so concepts/entities/relationships are never split across different models mid-workflow (see the Phase 8C audit's capability-routing conclusion). */
+  chain: string[]
 }
 
 export interface KnowledgeExtractionResult {
@@ -46,7 +48,7 @@ export interface KnowledgeExtractionResult {
  * per-node embedding.
  */
 export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParams): Promise<KnowledgeExtractionResult> {
-  const { documentId, userId, workspaceId, providerId } = params
+  const { documentId, userId, workspaceId, chain } = params
 
   const chunks = await listDocumentChunks(documentId)
   if (chunks.length === 0) {
@@ -55,10 +57,22 @@ export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParam
   const { content, chunkIds } = boundContent(chunks)
   const generatedAt = new Date().toISOString()
 
-  const [conceptsRun, entitiesRun] = await Promise.all([
-    runCapability({ capabilityId: 'extract-concepts', variables: { content }, userId, workspaceId, providerId }),
-    runCapability({ capabilityId: 'extract-entities', variables: { content }, userId, workspaceId, providerId }),
-  ])
+  // The first call is the only one that ever falls back — it establishes
+  // `providerId` for the rest of this run. extract-entities therefore can't
+  // run in parallel with it anymore (it needs to know the pinned provider
+  // first), a deliberate latency trade for never mixing providers within
+  // one extraction.
+  const { result: conceptsRun, providerId } = await runWithFallback(chain, (candidateId) =>
+    runCapability({
+      capabilityId: 'extract-concepts',
+      variables: { content },
+      userId,
+      workspaceId,
+      providerId: candidateId,
+      requestedProviderId: chain[0],
+    }),
+  )
+  const entitiesRun = await runCapability({ capabilityId: 'extract-entities', variables: { content }, userId, workspaceId, providerId })
 
   const conceptItems = parseConceptsResponse(conceptsRun.content)
   const entityItems = parseEntitiesResponse(entitiesRun.content)

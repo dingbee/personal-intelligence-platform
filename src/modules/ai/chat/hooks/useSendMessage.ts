@@ -6,9 +6,8 @@ import { sendMessage } from '@/modules/ai/orchestration/AIService'
 import type { ChatProviderMessage } from '@/modules/ai/providers/ChatProvider'
 import type { Message } from '@/shared/types/database'
 import { normalizeAiError } from '@/modules/ai/orchestration/normalizeAiError'
-import { isProviderAvailable, PROVIDER_UNAVAILABLE_MESSAGE } from '@/modules/ai/providers/availability'
-import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
-import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
+import { PROVIDER_UNAVAILABLE_MESSAGE } from '@/modules/ai/providers/availability'
+import { useProviderChain } from '@/modules/ai/router/useProviderChain'
 
 /**
  * Not a react-query mutation on purpose — streaming token-by-token updates
@@ -25,8 +24,11 @@ export function useSendMessage(providerId: string, documentId?: string) {
   const { user } = useAuth()
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
-  const { data: availability } = useProviderAvailability()
-  const { data: overrides } = useProviderOverrides()
+  // Resolved once per render from the same cached availability/overrides/
+  // health queries every other provider-aware hook already uses — preferred
+  // provider first if it's still eligible, else health-ordered fallback
+  // candidates. See resolveProviderChain for the precedence rule.
+  const chain = useProviderChain(providerId)
   const [streamingText, setStreamingText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,13 +39,13 @@ export function useSendMessage(providerId: string, documentId?: string) {
   ): Promise<Message | undefined> {
     setError(null)
 
-    // ai-chat only knows about missing keys (it'll fail the send itself in
-    // that case, caught below) — it has no idea about provider_overrides,
-    // which is pure app data, never sent to it. A runtime-disabled provider
-    // must be caught here, client-side, through the same shared predicate
-    // everything else uses, or disabling it here would have no effect on
-    // an already-open conversation.
-    if (!isProviderAvailable(providerId, availability, overrides)) {
+    // An empty chain means nothing survived candidacy filtering at all
+    // (no key configured anywhere, or everything's disabled) — ai-chat
+    // itself would only ever catch a missing key on ITS chosen provider,
+    // never "provider_overrides says no," which is pure app data it never
+    // sees. This check is what makes disabling a provider actually stop an
+    // already-open conversation from using it.
+    if (chain.length === 0) {
       setError(PROVIDER_UNAVAILABLE_MESSAGE)
       return undefined
     }
@@ -58,7 +60,7 @@ export function useSendMessage(providerId: string, documentId?: string) {
         conversationId,
         userId: user!.id,
         workspaceId: currentWorkspaceId,
-        providerId,
+        providerChain: chain,
         documentId,
         history,
         text,

@@ -111,6 +111,8 @@ export interface RecentAiFailure {
   category: AiErrorCategory
   /** Raw error text — shown here deliberately: this is a diagnostic surface over the account owner's own request history, the same posture Settings' existing error tooltip already takes. */
   message: string
+  /** Phase 8C: set when this failure happened on the provider the router actually tried first, distinct from a fallback attempt that also failed — null for requests logged before this phase or with no routing info. */
+  fallbackReason: string | null
 }
 
 export interface ErrorIntelligence {
@@ -152,6 +154,7 @@ export function computeErrorIntelligence(requests: AiRequest[]): ErrorIntelligen
         provider: failure.provider,
         category,
         message,
+        fallbackReason: failure.fallback_reason,
       })
     }
   }
