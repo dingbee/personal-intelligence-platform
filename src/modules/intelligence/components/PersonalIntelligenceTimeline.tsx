@@ -4,6 +4,7 @@ import { listConversations } from '@/modules/ai/chat/api/conversations'
 import { listNotes } from '@/modules/notes/api/notes'
 import { getMostRecentReadingProgress } from '@/modules/reader/api/readingProgress'
 import { useKnowledgeInsights } from '@/modules/knowledge-intelligence/hooks/useKnowledgeIntelligence'
+import { buildGraphInteractionState } from '@/modules/knowledge/intelligence/graphInteraction'
 import { formatRelativeTime } from '@/shared/utils/formatRelativeTime'
 
 const RECENT_LIMIT = 3
@@ -31,6 +32,22 @@ export function PersonalIntelligenceTimeline({ workspaceId }: { workspaceId: str
 
   const recentConversations = conversations.slice(0, RECENT_LIMIT)
   const hasKnowledgeEvolution = Boolean(insights && insights.edgeCount > 0)
+
+  // UX-10 Phase 11 — surfaces the current top graph insight (e.g. "Most
+  // connected: X") alongside the existing concept/entity/edge counts. This
+  // is a live snapshot, same as everything else in this component — there
+  // is no persisted history of graph mutations to draw a true point-in-time
+  // "event" from (no such table exists, and adding one is a schema change
+  // out of this phase's scope), so "new cluster formed" style historical
+  // events aren't implemented; what's shown is always the graph's current
+  // most notable insight, recomputed on each render, not a log entry.
+  const { data: graphState } = useQuery({
+    queryKey: ['graph-interaction-state-timeline', workspaceId],
+    queryFn: () => buildGraphInteractionState({ workspaceId }),
+    enabled: hasKnowledgeEvolution,
+  })
+  const topInsight = graphState?.insights[0] ?? null
+
   const hasAnything = recentConversations.length > 0 || notes.length > 0 || Boolean(inProgressDocument) || hasKnowledgeEvolution
 
   if (!hasAnything) return null
@@ -82,6 +99,7 @@ export function PersonalIntelligenceTimeline({ workspaceId }: { workspaceId: str
           <Link to="/knowledge/explorer" className="hover:text-[var(--color-ink)] hover:underline">
             {insights.conceptCount} concepts · {insights.entityCount} entities · {insights.edgeCount} relationships
           </Link>
+          {topInsight && <p className="mt-0.5">{topInsight.label}: {topInsight.value}</p>}
         </div>
       )}
     </div>

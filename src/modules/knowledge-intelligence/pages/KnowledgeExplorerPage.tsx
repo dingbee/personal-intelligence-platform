@@ -4,8 +4,17 @@ import type { KnowledgeNodeType } from '@/shared/types/database'
 import {
   useKnowledgeInsights,
   useReconcileKnowledgeGraph,
+  useKnowledgeNodes,
+  useKnowledgeEdges,
 } from '@/modules/knowledge-intelligence/hooks/useKnowledgeIntelligence'
 import { useKnowledgeNodeDetails } from '@/modules/knowledge-intelligence/hooks/useKnowledgeNodeDetails'
+import { useGraphInteractionState } from '@/modules/knowledge/hooks/useGraphInteractionState'
+import { GraphIntelligencePanel } from '@/modules/knowledge/components/GraphIntelligencePanel'
+import { InteractiveConceptGraph } from '@/modules/knowledge/components/InteractiveConceptGraph'
+import type { GraphSuggestion } from '@/modules/knowledge/intelligence/graphSuggestions'
+import { useWorkspace } from '@/modules/workspaces/useWorkspace'
+import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
+import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { KnowledgeCard } from '@/shared/components/knowledge/KnowledgeCard'
 import { ConfidenceBadge } from '@/shared/components/knowledge/ConfidenceBadge'
 import { SourceReference } from '@/shared/components/knowledge/SourceReference'
@@ -44,17 +53,39 @@ export function KnowledgeExplorerPage() {
   const { details, isLoading } = useKnowledgeNodeDetails(documentIdFilter)
   const insights = useKnowledgeInsights()
   const reconcile = useReconcileKnowledgeGraph()
+  const graphState = useGraphInteractionState()
+  const graphNodes = useKnowledgeNodes()
+  const graphEdges = useKnowledgeEdges()
+  const { currentWorkspaceId } = useWorkspace()
+  const commandContext = useCommandContext()
+  const commandActions = useCommandActions()
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [clusterFilter, setClusterFilter] = useState<{ label: string; nodeIds: string[] } | null>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return details.filter(({ node }) => {
       if (typeFilter !== 'all' && node.node_type !== typeFilter) return false
+      if (clusterFilter && !clusterFilter.nodeIds.includes(node.id)) return false
       if (q && !node.title.toLowerCase().includes(q) && !(node.description ?? '').toLowerCase().includes(q)) return false
       return true
     })
-  }, [details, query, typeFilter])
+  }, [details, query, typeFilter, clusterFilter])
+
+  /** UX-10 Phase 7/9 — 'explore-cluster' filters the existing card grid to that cluster's nodes (no new view); 'expand-topic' reuses the existing search box to jump straight to that concept's card. Neither adds a new UI surface. */
+  function handleLocalSuggestion(suggestion: Extract<GraphSuggestion, { kind: 'local' }>) {
+    if (suggestion.id === 'explore-cluster') {
+      const cluster = graphState.data?.clusters.find((c) => c.id === suggestion.clusterId)
+      if (cluster) {
+        setClusterFilter({ label: cluster.label, nodeIds: cluster.nodeIds })
+        setQuery('')
+      }
+    } else if (suggestion.id === 'expand-topic') {
+      setClusterFilter(null)
+      setQuery(suggestion.nodeTitle)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -92,6 +123,39 @@ export function KnowledgeExplorerPage() {
           </p>
         )}
       </InsightPanel>
+
+      {graphState.data && (
+        <GraphIntelligencePanel
+          state={graphState.data}
+          workspaceId={currentWorkspaceId}
+          onLocalSuggestion={handleLocalSuggestion}
+          commandContext={commandContext}
+          commandActions={commandActions}
+        />
+      )}
+
+      {graphNodes.data && graphNodes.data.length > 0 && (
+        <InsightPanel
+          title="Interactive Graph"
+          description="Focus a concept, expand or collapse its neighbors, pin it in view, or trace the shortest path between two concepts."
+          isLoading={false}
+          isEmpty={false}
+          emptyMessage=""
+        >
+          <InteractiveConceptGraph nodes={graphNodes.data} edges={graphEdges.data ?? []} />
+        </InsightPanel>
+      )}
+
+      {clusterFilter && (
+        <div className="flex items-center gap-2 text-xs text-[var(--color-ink-muted)]">
+          <span>
+            Showing cluster: <span className="font-medium text-[var(--color-ink)]">{clusterFilter.label}</span>
+          </span>
+          <button type="button" onClick={() => setClusterFilter(null)} className="text-[var(--color-accent)] hover:underline">
+            Clear
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-sm flex-1">

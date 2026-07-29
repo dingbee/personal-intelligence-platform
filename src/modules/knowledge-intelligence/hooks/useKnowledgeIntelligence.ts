@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
-import { listKnowledgeNodes } from '@/modules/knowledge-intelligence/api/knowledgeNodes'
+import { listKnowledgeNodes, listKnowledgeNodeSourcesForNodes } from '@/modules/knowledge-intelligence/api/knowledgeNodes'
 import { listKnowledgeLinks } from '@/modules/knowledge-graph/api/graph'
 import { getKnowledgeInsights } from '@/modules/knowledge-intelligence/api/knowledgeInsights'
 import { generateKnowledgeMap } from '@/modules/knowledge-intelligence/api/knowledgeMap'
@@ -30,6 +30,15 @@ export function useKnowledgeEdges() {
     queryKey: ['knowledge-edges', currentWorkspaceId],
     queryFn: () => listKnowledgeLinks(currentWorkspaceId),
     enabled: Boolean(user),
+  })
+}
+
+/** UX-10 Phase 4/9 — backs the Relationship Explorer's "shared documents" basis; same nodeIds-keyed query shape as useKnowledgeNodeDetails already uses. */
+export function useKnowledgeNodeSources(nodeIds: string[]) {
+  return useQuery({
+    queryKey: ['knowledge-node-sources', nodeIds],
+    queryFn: () => listKnowledgeNodeSourcesForNodes(nodeIds),
+    enabled: nodeIds.length > 0,
   })
 }
 

@@ -1,4 +1,5 @@
-export type GraphNodeType = 'document' | 'note' | 'highlight' | 'tag'
+/** 'concept'/'entity' added in UX-10 Phase 10 — GraphCanvas now also renders the AI concept graph (knowledge_nodes/knowledge_links), not just the document/note/highlight/tag graph it was built for in Phase 6C. */
+export type GraphNodeType = 'document' | 'note' | 'highlight' | 'tag' | 'concept' | 'entity'
 
 export interface GraphNode {
   id: string

@@ -20,6 +20,15 @@ export type SignalType =
   | 'high_highlight_density'
   | 'needs_summary'
   | 'strong_concept_cluster'
+  // UX-10 Phase 6 additions (Knowledge Graph):
+  | 'knowledge_island'
+  | 'emerging_topic'
+  | 'disconnected_concept'
+  | 'rapid_growth'
+  | 'high_confidence_cluster'
+  | 'weak_evidence'
+  | 'concept_drift'
+  | 'duplicate_concept'
 
 /**
  * UX-6 Phase 6: informational only. Nothing reads a signal and acts on it
