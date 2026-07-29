@@ -12,16 +12,59 @@ import { isProviderAvailable } from '@/modules/ai/providers/availability'
 import { providerRegistry } from '@/modules/core/providers/registry'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Spinner } from '@/shared/components/ui/Spinner'
+import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
+import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
+import { buildReaderInteractionState, type ReaderInteractionState } from '@/modules/reader/intelligence/readerInteraction'
+import type { LocalSuggestionId } from '@/modules/reader/intelligence/chapterSuggestions'
+import { ReaderIntelligencePanel } from '@/modules/reader/components/ReaderIntelligencePanel'
+
+export interface ReaderChatPanelProps {
+  documentId: string
+  /**
+   * UX-9 Phase 3/10 — chapter context ReaderPage already holds (chapters,
+   * activeChapterIndex, progress). Passed as props rather than re-fetched:
+   * this panel never duplicates Reader state, it composes over what's
+   * already loaded, same as ChapterSummaryPanel/FlashcardsPanel already do.
+   */
+  documentTitle: string
+  workspaceId: string | null
+  chapters: { index: number; title: string; content: string; chunkIds: string[] }[]
+  activeChapterIndex: number
+  scrollFraction: number
+  hasProgress: boolean
+  progressUpdatedAt: string | null
+  onLocalSuggestion: (id: LocalSuggestionId) => void
+}
 
 /**
  * Contextual chat scoped to one document, embedded in the reader rather
  * than requiring a trip to /chat. Reuses the same conversations/messages
- * hooks and AIService path as the full Chat page — including, now, the
- * same provider-awareness model: ProviderSelect (same component, not a
- * copy), the unavailable-provider warning, and updateProvider switching,
- * all already built for ChatPage and reused here as-is.
+ * hooks and AIService path as the full Chat page — including the same
+ * provider-awareness model (ProviderSelect, unavailable-provider warning,
+ * updateProvider switching) and, as of UX-9, the same reference/evidence/
+ * signal rendering ChatPage already has, plus Reader-specific insights/
+ * journey/suggestions (ReaderIntelligencePanel).
+ *
+ * Chapter-awareness note (UX-9 Phase 3/10, see the phase report): this
+ * does NOT modify AIService — retrieveContext already scopes to
+ * `documentId`, and UX-6's resolveNovaContext already surfaces the
+ * account's most-recent reading position, which is normally *this*
+ * document while its chat panel is open. True chapter-index-precise
+ * prompt injection would need a small additive AIService param change,
+ * which this phase's STOP RULE explicitly gates — flagged, not done
+ * silently.
  */
-export function ReaderChatPanel({ documentId }: { documentId: string }) {
+export function ReaderChatPanel({
+  documentId,
+  documentTitle,
+  workspaceId,
+  chapters,
+  activeChapterIndex,
+  scrollFraction,
+  hasProgress,
+  progressUpdatedAt,
+  onLocalSuggestion,
+}: ReaderChatPanelProps) {
   const { data: conversations = [], isLoading: conversationsLoading, create, updateProvider } =
     useConversations(documentId)
   const [conversationId, setConversationId] = useState<string | null>(null)
@@ -40,10 +83,37 @@ export function ReaderChatPanel({ documentId }: { documentId: string }) {
 
   const { data: messages = [], isLoading: messagesLoading } = useMessages(conversationId)
   const conversation = conversations.find((c) => c.id === conversationId)
-  const { send, streamingText, sending, error } = useSendMessage(
+  const { send, streamingText, sending, error, contextTrace, references, signals } = useSendMessage(
     conversation?.provider_id ?? defaultProviderId,
     documentId,
   )
+
+  const commandContext = useCommandContext()
+  const commandActions = useCommandActions()
+
+  // UX-9 Phase 8/10 — recomputed whenever the chapter context or the last
+  // chat turn's output changes; reuses buildReaderInteractionState (Phase
+  // 8) exactly like ChatPage reuses buildInteractionState (UX-8).
+  const [readerInteractionState, setReaderInteractionState] = useState<ReaderInteractionState | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void buildReaderInteractionState({
+      documentId,
+      documentTitle,
+      chapters,
+      activeChapterIndex,
+      scrollFraction,
+      progressUpdatedAt: hasProgress ? progressUpdatedAt : null,
+      references: contextTrace ? references : undefined,
+      graphNodeCount: contextTrace?.graphNodes,
+    }).then((state) => {
+      if (!cancelled) setReaderInteractionState(state)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentId, activeChapterIndex, scrollFraction, hasProgress, progressUpdatedAt, contextTrace, references])
 
   const { data: availability } = useProviderAvailability()
   const { data: overrides } = useProviderOverrides()
@@ -108,6 +178,15 @@ export function ReaderChatPanel({ documentId }: { documentId: string }) {
           </div>
         )}
       </div>
+      {!sending && readerInteractionState && (
+        <ReaderIntelligencePanel
+          state={{ ...readerInteractionState, signals: [...readerInteractionState.signals, ...signals] }}
+          workspaceId={workspaceId}
+          onLocalSuggestion={onLocalSuggestion}
+          commandContext={commandContext}
+          commandActions={commandActions}
+        />
+      )}
       <ChatInput disabled={sending} onSend={(text) => void handleSend(text)} />
     </div>
   )

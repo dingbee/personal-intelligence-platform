@@ -12,6 +12,17 @@ export async function getChapterSummary(documentId: string, chapterIndex: number
   return data
 }
 
+/** UX-9 — every summary for a document (not just one chapter), for documentJourney/readingInsights' "recently summarized" without a per-chapter round trip each. */
+export async function listChapterSummaries(documentId: string): Promise<ChapterSummary[]> {
+  const { data, error } = await supabase
+    .from('chapter_summaries')
+    .select('*')
+    .eq('document_id', documentId)
+    .order('chapter_index', { ascending: true })
+  if (error) throw error
+  return data
+}
+
 export async function saveChapterSummary(params: {
   documentId: string
   userId: string

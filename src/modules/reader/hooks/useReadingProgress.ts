@@ -29,6 +29,11 @@ export function useReadingProgress(documentId: string) {
 
   return {
     progress: { chapterIndex: data?.chapter_index ?? 0, scrollFraction: data?.scroll_fraction ?? 0 },
+    // UX-9 — documentJourney/readingSignals need to know whether a row
+    // exists at all (not started vs. started-at-chapter-0) and when it
+    // was last touched; additive, existing callers only ever read `progress`.
+    hasProgress: Boolean(data),
+    updatedAt: data?.updated_at ?? null,
     isLoading,
     save: (next: { chapterIndex: number; scrollFraction: number }) => mutation.mutate(next),
   }

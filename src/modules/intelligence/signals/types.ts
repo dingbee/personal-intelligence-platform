@@ -11,6 +11,15 @@ export type SignalType =
   | 'inactive_workspace'
   | 'large_context'
   | 'conversation_drift'
+  // UX-9 Phase 6 additions (Reader):
+  | 'knowledge_saturation'
+  | 'review_recommended'
+  | 'reading_gap'
+  | 'chapter_completed'
+  | 'book_nearly_finished'
+  | 'high_highlight_density'
+  | 'needs_summary'
+  | 'strong_concept_cluster'
 
 /**
  * UX-6 Phase 6: informational only. Nothing reads a signal and acts on it

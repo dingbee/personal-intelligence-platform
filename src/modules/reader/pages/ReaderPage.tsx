@@ -9,6 +9,7 @@ import { HighlightsList } from '@/modules/reader/components/HighlightsList'
 import { ChapterSummaryPanel } from '@/modules/reader/components/ChapterSummaryPanel'
 import { FlashcardsPanel } from '@/modules/reader/components/FlashcardsPanel'
 import { ReaderChatPanel } from '@/modules/reader/components/ReaderChatPanel'
+import type { LocalSuggestionId } from '@/modules/reader/intelligence/chapterSuggestions'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 
@@ -24,6 +25,14 @@ type SidePanelTab = 'chat' | 'summary' | 'flashcards' | 'highlights'
  */
 type ActivePanel = 'chapters' | SidePanelTab
 
+const LOCAL_SUGGESTION_TABS: Record<LocalSuggestionId, SidePanelTab> = {
+  summarize: 'summary',
+  flashcards: 'flashcards',
+  highlights: 'highlights',
+  'ask-nova': 'chat',
+  timeline: 'chat',
+}
+
 const TABS: { id: SidePanelTab; label: string }[] = [
   { id: 'chat', label: 'Chat' },
   { id: 'summary', label: 'Summary' },
@@ -35,7 +44,7 @@ export function ReaderPage() {
   const { documentId } = useParams<{ documentId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const { document, chapters, isLoading: chaptersLoading, isError } = useReaderChapters(documentId!)
-  const { progress, isLoading: progressLoading, save } = useReadingProgress(documentId!)
+  const { progress, hasProgress, updatedAt: progressUpdatedAt, isLoading: progressLoading, save } = useReadingProgress(documentId!)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [activePanel, setActivePanel] = useState<ActivePanel | null>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -96,6 +105,15 @@ export function ReaderPage() {
     // the content the user just navigated to. No effect on desktop, where
     // this state never controls the chapters panel's visibility.
     setActivePanel(null)
+  }
+
+  // UX-9 Phase 10 — ReaderIntelligencePanel's chapter suggestions are
+  // reader-local (they need chapter content as a payload, which no
+  // registry Command execute signature supports), so they're routed
+  // through the tab-switching state ReaderPage already owns rather than
+  // the global command registry.
+  function handleLocalSuggestion(id: LocalSuggestionId) {
+    setActivePanel(LOCAL_SUGGESTION_TABS[id])
   }
 
   if (isLoading || activeIndex === null) {
@@ -229,7 +247,19 @@ export function ReaderPage() {
             reason to give this less than the whole viewport either. */}
         {activePanel !== 'chapters' && activePanel !== null && (
           <aside className="w-full shrink-0 overflow-y-auto border-l border-[var(--color-border)] md:w-96">
-            {activePanel === 'chat' && <ReaderChatPanel documentId={documentId!} />}
+            {activePanel === 'chat' && (
+              <ReaderChatPanel
+                documentId={documentId!}
+                documentTitle={document.title}
+                workspaceId={document.workspace_id}
+                chapters={chapters}
+                activeChapterIndex={activeIndex}
+                scrollFraction={progress.scrollFraction}
+                hasProgress={hasProgress}
+                progressUpdatedAt={progressUpdatedAt}
+                onLocalSuggestion={handleLocalSuggestion}
+              />
+            )}
             {activePanel === 'summary' && activeChapter && (
               <div className="p-4">
                 <ChapterSummaryPanel
