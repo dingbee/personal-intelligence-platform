@@ -6,9 +6,12 @@ import { getProfile } from '@/modules/settings/api/profile'
 import { buildContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import { detectAttentionItems } from '@/modules/intelligence/orchestrator/attentionEngine'
 import { rankAttentionItems } from '@/modules/intelligence/dashboard/dashboardSignals'
+import { getWorkspaceEvolutionSnapshot } from '@/modules/evolution/api/evolutionData'
+import { buildWorkspaceEvolutionReport } from '@/modules/evolution/evolutionReport'
 import type {
   ActivityContext,
   AttentionContext,
+  EvolutionContext,
   KnowledgeContext,
   MemoryContext,
   NovaContext,
@@ -95,6 +98,30 @@ async function resolveAttentionContext(workspaceId: string | null): Promise<Atte
   }
 }
 
+/**
+ * UX-13 — a compact evolution summary for the current workspace, reusing
+ * getWorkspaceEvolutionSnapshot + buildWorkspaceEvolutionReport (the exact
+ * same composition the /evolution page uses) rather than recomputing
+ * maturity/health/forecast a second way. Evolution is inherently
+ * workspace-scoped, so this is null in "All Workspaces" mode — same
+ * degrade-to-null contract as every other resolver here.
+ */
+async function resolveEvolutionContext(workspaceId: string | null): Promise<EvolutionContext | null> {
+  if (!workspaceId) return null
+  try {
+    const snapshot = await getWorkspaceEvolutionSnapshot(workspaceId)
+    const report = buildWorkspaceEvolutionReport(snapshot)
+    const parts = [
+      `Workspace maturity: ${report.maturity.label}.`,
+      `Knowledge health: ${report.health.score}/100.`,
+    ]
+    if (report.forecasts[0]) parts.push(`Forecast: ${report.forecasts[0].message}`)
+    return { summary: parts.join(' ') }
+  } catch {
+    return null
+  }
+}
+
 /** Pure — derives a node count from already-formatted graph context text via buildContextTrace, the same counting logic UX-5.2's internal trace already uses. Exported for direct unit testing without a Supabase mock. */
 export function resolveKnowledgeContext(graphContextText: string | null): KnowledgeContext | null {
   if (!graphContextText) return null
@@ -118,11 +145,12 @@ export function resolveMemoryContext(memoryContextText: string | null): MemoryCo
  * chat response.
  */
 export async function resolveNovaContext(params: ResolveNovaContextParams): Promise<NovaContext> {
-  const [workspaceContext, activityContext, userContext, attentionContext] = await Promise.all([
+  const [workspaceContext, activityContext, userContext, attentionContext, evolutionContext] = await Promise.all([
     resolveWorkspaceContext(params.workspaceId),
     resolveActivityContext(params.workspaceId),
     resolveUserContext(params.userId),
     resolveAttentionContext(params.workspaceId),
+    resolveEvolutionContext(params.workspaceId),
   ])
 
   return {
@@ -132,5 +160,6 @@ export async function resolveNovaContext(params: ResolveNovaContextParams): Prom
     memoryContext: resolveMemoryContext(params.memoryContextText),
     userContext,
     attentionContext,
+    evolutionContext,
   }
 }

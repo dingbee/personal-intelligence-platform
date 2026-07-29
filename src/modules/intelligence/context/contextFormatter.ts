@@ -40,6 +40,7 @@ const SECTION_RENDERERS: Record<ContextSourceKey, (context: NovaContext) => stri
     const user = context.userContext
     return user ? `Speaking with: ${user.displayName}.` : null
   },
+  evolutionContext: (context) => context.evolutionContext?.summary ?? null,
 }
 
 /**

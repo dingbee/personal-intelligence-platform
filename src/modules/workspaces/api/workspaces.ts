@@ -20,6 +20,13 @@ export async function getWorkspaceName(id: string): Promise<string | null> {
   return data?.name ?? null
 }
 
+/** UX-13 — the full row, for workspaceEvolution's need for `created_at` (workspace age). A single-row fetch rather than listWorkspaces() + find(), which would pull every workspace just for one's timestamp. */
+export async function getWorkspace(id: string): Promise<Workspace> {
+  const { data, error } = await supabase.from('workspaces').select('*').eq('id', id).single()
+  if (error) throw error
+  return data
+}
+
 export async function createWorkspace(params: { name: string; userId: string }): Promise<Workspace> {
   // New workspaces go to the end of the display order — a single extra
   // round trip for the current max, cheap at this app's per-user scale.

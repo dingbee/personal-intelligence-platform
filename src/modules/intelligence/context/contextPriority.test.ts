@@ -9,6 +9,7 @@ const EMPTY: NovaContext = {
   memoryContext: null,
   userContext: null,
   attentionContext: null,
+  evolutionContext: null,
 }
 
 describe('rankNovaContext', () => {
@@ -24,6 +25,7 @@ describe('rankNovaContext', () => {
       memoryContext: { formattedText: 'text', memoryCount: 1 },
       userContext: { displayName: 'Ding' },
       attentionContext: null,
+      evolutionContext: null,
     }
     expect(rankNovaContext(full).map((r) => r.key)).toEqual([
       'memoryContext',
@@ -37,6 +39,16 @@ describe('rankNovaContext', () => {
   it('ranks attentionContext between activity and knowledge', () => {
     const context: NovaContext = { ...EMPTY, attentionContext: { topItem: { message: 'Finish your book' } } }
     expect(rankNovaContext(context).map((r) => r.key)).toEqual(['attentionContext'])
+  })
+
+  it('ranks evolutionContext between knowledge and workspace', () => {
+    const context: NovaContext = {
+      ...EMPTY,
+      knowledgeContext: { graphSummary: 'text', nodeCount: 1 },
+      workspaceContext: { workspaceId: 'w1', workspaceName: 'Research', documentCount: 2, lastActivityAt: null },
+      evolutionContext: { summary: 'Workspace maturity: Growing.' },
+    }
+    expect(rankNovaContext(context).map((r) => r.key)).toEqual(['knowledgeContext', 'evolutionContext', 'workspaceContext'])
   })
 
   it('omits workspaceContext when it has no workspace name (the "All" scope)', () => {

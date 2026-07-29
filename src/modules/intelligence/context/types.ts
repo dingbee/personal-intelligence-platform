@@ -34,6 +34,11 @@ export interface AttentionContext {
   topItem: { message: string }
 }
 
+/** UX-13 — a compact summary of the current workspace's evolution report (maturity, knowledge health, top forecast), reusing buildWorkspaceEvolutionReport rather than recomputing anything. Null when there's no current workspace (evolution is inherently workspace-scoped) or the report fails to build. */
+export interface EvolutionContext {
+  summary: string
+}
+
 /**
  * The NOVA Context Engine's aggregate output (UX-6 Phase 2). Every field
  * is independently optional by design — a failure resolving one source
@@ -47,4 +52,5 @@ export interface NovaContext {
   memoryContext: MemoryContext | null
   userContext: UserContext | null
   attentionContext: AttentionContext | null
+  evolutionContext: EvolutionContext | null
 }

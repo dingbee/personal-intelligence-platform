@@ -52,6 +52,25 @@ export async function listReadingProgressForWorkspace(workspaceId: string | null
   return (data as unknown as { updated_at: string }[]).map((row) => ({ updated_at: row.updated_at }))
 }
 
+/**
+ * UX-13 — like listReadingProgressForWorkspace, but keeps document_id so
+ * the evolution layer can tell *which* documents have been opened in the
+ * Reader (knowledgeHealth's unread/stale checks) rather than only how many
+ * reading_progress rows exist in total.
+ */
+export async function listReadingProgressDetailsForWorkspace(
+  workspaceId: string | null,
+): Promise<{ documentId: string; updatedAt: string }[]> {
+  let query = supabase.from('reading_progress').select('document_id, updated_at, documents!inner(workspace_id)')
+  if (workspaceId) query = query.eq('documents.workspace_id', workspaceId)
+  const { data, error } = await query
+  if (error) throw error
+  return (data as unknown as { document_id: string; updated_at: string }[]).map((row) => ({
+    documentId: row.document_id,
+    updatedAt: row.updated_at,
+  }))
+}
+
 export async function saveReadingProgress(params: {
   documentId: string
   userId: string

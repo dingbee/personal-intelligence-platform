@@ -7,6 +7,7 @@ export type ContextSourceKey =
   | 'workspaceContext'
   | 'userContext'
   | 'attentionContext'
+  | 'evolutionContext'
 
 export interface RankedContextSource {
   key: ContextSourceKey
@@ -29,6 +30,10 @@ const BASE_PRIORITY: Record<ContextSourceKey, number> = {
   // attention" is situational guidance, not passive context.
   attentionContext: 25,
   knowledgeContext: 20,
+  // UX-13 — historical/trend evidence (maturity, health, forecast), less
+  // urgent than the current knowledge graph snapshot but still more
+  // relevant than static workspace/identity facts.
+  evolutionContext: 15,
   workspaceContext: 10,
   userContext: 5,
 }
@@ -49,6 +54,8 @@ function isSourcePresent(context: NovaContext, key: ContextSourceKey): boolean {
       return Boolean(context.userContext)
     case 'attentionContext':
       return Boolean(context.attentionContext)
+    case 'evolutionContext':
+      return Boolean(context.evolutionContext)
   }
 }
 

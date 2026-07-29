@@ -2,14 +2,13 @@ import type { KnowledgeLink, KnowledgeNode } from '@/shared/types/database'
 import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
 import type { Cluster } from '@/modules/knowledge/intelligence/conceptClusters'
 import type { KnowledgeNodeSourceRef } from '@/modules/knowledge/intelligence/relationshipStrength'
-import { normalizeTitle } from '@/modules/knowledge-intelligence/utils/normalizeTitle'
+import { findDuplicateConceptPairs } from '@/modules/knowledge-intelligence/utils/duplicateConceptPairs'
 
 const RECENT_GROWTH_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 const RAPID_GROWTH_MIN_NODES = 3
 const HIGH_CONFIDENCE_THRESHOLD = 0.8
 const WEAK_EVIDENCE_THRESHOLD = 0.4
 const CONCEPT_DRIFT_MIN_GAP_MS = 24 * 60 * 60 * 1000
-const DUPLICATE_TITLE_JACCARD_THRESHOLD = 0.6
 
 export interface DetectGraphSignalsInput {
   nodes: KnowledgeNode[]
@@ -17,22 +16,6 @@ export interface DetectGraphSignalsInput {
   clusters: Cluster[]
   nodeSources: KnowledgeNodeSourceRef[]
   now?: Date
-}
-
-function jaccard(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 && b.size === 0) return 0
-  const intersection = [...a].filter((word) => b.has(word)).length
-  const union = new Set([...a, ...b]).size
-  return union === 0 ? 0 : intersection / union
-}
-
-function hasDirectEdge(nodeAId: string, nodeBId: string, edges: KnowledgeLink[]): boolean {
-  return edges.some(
-    (edge) =>
-      Boolean(edge.generated_by) &&
-      ((edge.source_id === nodeAId && edge.target_id === nodeBId) ||
-        (edge.source_id === nodeBId && edge.target_id === nodeAId)),
-  )
 }
 
 /**
@@ -128,18 +111,10 @@ export function detectGraphSignals(input: DetectGraphSignalsInput): Intelligence
     signals.push({ type: 'concept_drift', message: `"${drifted.title}" has evolved since it was first extracted.` })
   }
 
-  outer: for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-      const a = nodes[i]!
-      const b = nodes[j]!
-      if (a.node_type !== b.node_type) continue
-      if (hasDirectEdge(a.id, b.id, edges)) continue
-      const similarity = jaccard(new Set(normalizeTitle(a.title).split(' ')), new Set(normalizeTitle(b.title).split(' ')))
-      if (similarity >= DUPLICATE_TITLE_JACCARD_THRESHOLD && similarity < 1) {
-        signals.push({ type: 'duplicate_concept', message: `"${a.title}" and "${b.title}" may be duplicate concepts.` })
-        break outer
-      }
-    }
+  const [firstDuplicatePair] = findDuplicateConceptPairs(nodes, edges)
+  if (firstDuplicatePair) {
+    const [a, b] = firstDuplicatePair
+    signals.push({ type: 'duplicate_concept', message: `"${a.title}" and "${b.title}" may be duplicate concepts.` })
   }
 
   return signals

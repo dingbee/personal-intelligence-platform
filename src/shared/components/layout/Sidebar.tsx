@@ -4,6 +4,7 @@ import { WorkspaceSwitcher } from '@/modules/workspaces/components/WorkspaceSwit
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
+  { to: '/evolution', label: 'Evolution' },
   { to: '/library', label: 'Library' },
   { to: '/knowledge', label: 'Knowledge' },
   { to: '/notes', label: 'Notes' },

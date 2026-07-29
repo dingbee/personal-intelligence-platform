@@ -9,6 +9,7 @@ const EMPTY: NovaContext = {
   memoryContext: null,
   userContext: null,
   attentionContext: null,
+  evolutionContext: null,
 }
 
 describe('formatNovaContext', () => {
@@ -55,6 +56,11 @@ describe('formatNovaContext', () => {
     expect(activityIndex).toBeGreaterThanOrEqual(0)
     expect(activityIndex).toBeLessThan(knowledgeIndex)
     expect(knowledgeIndex).toBeLessThan(workspaceIndex)
+  })
+
+  it('renders the evolution summary', () => {
+    const context: NovaContext = { ...EMPTY, evolutionContext: { summary: 'Workspace maturity: Growing. Knowledge health: 90/100.' } }
+    expect(formatNovaContext(context)).toContain('Workspace maturity: Growing.')
   })
 
   it('omits workspaceContext with no name (the "All" scope)', () => {

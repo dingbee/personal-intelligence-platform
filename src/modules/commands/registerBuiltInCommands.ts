@@ -20,6 +20,14 @@ import {
   planWritingCommand,
   planMigrationCommand,
 } from '@/modules/commands/commands/planningCommands'
+import {
+  reviewWorkspaceEvolutionCommand,
+  reviewKnowledgeHealthCommand,
+  reviewConceptGrowthCommand,
+  reviewTimelineCommand,
+  reviewKnowledgeGapsCommand,
+  forecastWorkspaceCommand,
+} from '@/modules/commands/commands/evolutionCommands'
 
 // Side-effect module, imported once from app/App.tsx — same pattern as
 // modules/search/registerBuiltInProviders.ts. A future command
@@ -48,3 +56,9 @@ commandRegistry.register(planResearchCommand)
 commandRegistry.register(planReadingCommand)
 commandRegistry.register(planWritingCommand)
 commandRegistry.register(planMigrationCommand)
+commandRegistry.register(reviewWorkspaceEvolutionCommand)
+commandRegistry.register(reviewKnowledgeHealthCommand)
+commandRegistry.register(reviewConceptGrowthCommand)
+commandRegistry.register(reviewTimelineCommand)
+commandRegistry.register(reviewKnowledgeGapsCommand)
+commandRegistry.register(forecastWorkspaceCommand)
