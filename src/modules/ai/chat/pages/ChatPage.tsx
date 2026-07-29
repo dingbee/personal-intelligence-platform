@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useConversations } from '@/modules/ai/chat/hooks/useConversations'
 import { useMessages } from '@/modules/ai/chat/hooks/useMessages'
@@ -36,6 +36,13 @@ import { buildInteractionState } from '@/modules/intelligence/orchestrator/orche
 import type { InteractionState } from '@/modules/intelligence/orchestrator/types'
 import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
+import { buildReasoningPlan, type PlannerSignals } from '@/modules/intelligence/planner/planner'
+import { selectContext } from '@/modules/intelligence/planner/contextSelector'
+import { buildReasoningTrace } from '@/modules/intelligence/planner/reasoningTrace'
+import { buildDecisionFramework } from '@/modules/intelligence/decision/decisionFrameworkBuilder'
+import { detectLearningIntelligence } from '@/modules/intelligence/learning/learningEngine'
+import { ReasoningIndicators } from '@/modules/intelligence/components/ReasoningIndicators'
+import { PlanPreviewPanel } from '@/modules/intelligence/components/PlanPreviewPanel'
 
 export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -126,6 +133,35 @@ export function ChatPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sending, contextTrace, references, suggestions, signals])
+
+  // UX-12 Phase 9/10 — the reasoning layer. Every step here is pure and
+  // synchronous (no new fetch): classifyIntent/buildReasoningPlan/
+  // selectContext/buildDecisionFramework/detectLearningIntelligence/
+  // buildReasoningTrace all compute directly from data already in scope
+  // (lastUserMessage, commandContext, contextTrace). detectLearningIntelligence
+  // is called with journey: null here — a real DocumentJourney (UX-9) is
+  // only available in the document-scoped Reader Chat panel, not this
+  // general chat surface, so Learning Mode naturally stays absent here
+  // rather than being faked; see the phase report's deferred items.
+  const reasoningTrace = useMemo(() => {
+    if (sending || !contextTrace) return null
+    const text = lastUserMessage ?? ''
+    const plannerSignals: PlannerSignals = {
+      hasInProgressDocument: Boolean(commandContext.inProgressDocument),
+      hasMemoryContext: contextTrace.memoriesUsed > 0,
+      hasGraphContext: contextTrace.graphNodes > 0,
+      isContinuation: isContinuationMessage(text),
+    }
+    const plan = buildReasoningPlan({ text, signals: plannerSignals })
+    return buildReasoningTrace({
+      contextTrace,
+      plan,
+      selectedContext: selectContext(plan.requiredContext),
+      decisionFramework: buildDecisionFramework(text),
+      learningMode: detectLearningIntelligence({ intent: plan.intent, journey: null, unreviewedHighlightCount: 0 }),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sending, contextTrace, lastUserMessage, commandContext.inProgressDocument])
 
   const { data: availability } = useProviderAvailability()
   const { data: overrides } = useProviderOverrides()
@@ -274,6 +310,7 @@ export function ChatPage() {
             </div>
             {!sending && contextTrace && (
               <div className="flex flex-col gap-3 border-t border-[var(--color-border)] px-6 py-3">
+                {reasoningTrace && <ReasoningIndicators trace={reasoningTrace} />}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <NovaContextUsedBadges contextTrace={contextTrace} />
                   <EvidenceBadge
@@ -292,6 +329,7 @@ export function ChatPage() {
                   actions={commandActions}
                 />
                 <SignalList signals={interactionState?.signals ?? signals} />
+                {reasoningTrace && <PlanPreviewPanel trace={reasoningTrace} />}
                 <ExplainAnswerPanel
                   summary={computeExplainSummary({
                     contextTrace,

@@ -12,6 +12,14 @@ import {
   showAttentionItemsCommand,
   explainIntelligenceScoreCommand,
 } from '@/modules/commands/commands/dashboardCommands'
+import {
+  planProjectCommand,
+  planLearningCommand,
+  planResearchCommand,
+  planReadingCommand,
+  planWritingCommand,
+  planMigrationCommand,
+} from '@/modules/commands/commands/planningCommands'
 
 // Side-effect module, imported once from app/App.tsx — same pattern as
 // modules/search/registerBuiltInProviders.ts. A future command
@@ -34,3 +42,9 @@ commandRegistry.register(openIntelligenceDashboardCommand)
 commandRegistry.register(showKnowledgeGrowthCommand)
 commandRegistry.register(showAttentionItemsCommand)
 commandRegistry.register(explainIntelligenceScoreCommand)
+commandRegistry.register(planProjectCommand)
+commandRegistry.register(planLearningCommand)
+commandRegistry.register(planResearchCommand)
+commandRegistry.register(planReadingCommand)
+commandRegistry.register(planWritingCommand)
+commandRegistry.register(planMigrationCommand)
