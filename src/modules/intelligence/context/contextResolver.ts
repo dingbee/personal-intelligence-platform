@@ -43,7 +43,7 @@ async function resolveActivityContext(workspaceId: string | null): Promise<Activ
     ])
     return {
       inProgressDocument,
-      recentConversationTitles: conversations.slice(0, RECENT_CONVERSATIONS_LIMIT).map((c) => c.title),
+      recentConversations: conversations.slice(0, RECENT_CONVERSATIONS_LIMIT).map((c) => ({ id: c.id, title: c.title })),
     }
   } catch {
     return null

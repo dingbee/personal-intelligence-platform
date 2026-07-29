@@ -58,3 +58,21 @@ export async function countDocumentChunks(documentId: string): Promise<number> {
   if (error) throw error
   return count ?? 0
 }
+
+export interface ChunkLocation {
+  id: string
+  document_id: string
+  chapter_index: number | null
+  chapter_title: string | null
+}
+
+/** UX-7 Phase 2: resolves which chapter each already-retrieved chunk belongs to — a plain ID lookup against columns chunking already writes (chapter_index/chapter_title), no AI/embedding involved. */
+export async function getChunkLocations(chunkIds: string[]): Promise<ChunkLocation[]> {
+  if (chunkIds.length === 0) return []
+  const { data, error } = await supabase
+    .from('document_chunks')
+    .select('id, document_id, chapter_index, chapter_title')
+    .in('id', chunkIds)
+  if (error) throw error
+  return data
+}

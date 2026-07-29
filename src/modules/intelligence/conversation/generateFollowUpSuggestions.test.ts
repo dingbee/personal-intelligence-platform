@@ -29,7 +29,7 @@ describe('generateFollowUpSuggestions', () => {
       ...EMPTY,
       activityContext: {
         inProgressDocument: { id: 'doc-1', title: 'Deep Work', updatedAt: new Date().toISOString() },
-        recentConversationTitles: [],
+        recentConversations: [],
       },
     }
     expect(generateFollowUpSuggestions({ matchCount: 0, context })).toEqual(['Continue reading "Deep Work"?'])
@@ -41,7 +41,7 @@ describe('generateFollowUpSuggestions', () => {
       knowledgeContext: { graphSummary: 'text', nodeCount: 1 },
       activityContext: {
         inProgressDocument: { id: 'doc-1', title: 'Deep Work', updatedAt: new Date().toISOString() },
-        recentConversationTitles: [],
+        recentConversations: [],
       },
     }
     expect(generateFollowUpSuggestions({ matchCount: 2, context })).toEqual([

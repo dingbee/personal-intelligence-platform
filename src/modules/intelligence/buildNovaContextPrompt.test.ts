@@ -22,7 +22,7 @@ describe('buildNovaContextPrompt', () => {
   it('includes a "Current context" section when situational context is available', () => {
     const context: NovaContext = {
       ...EMPTY,
-      activityContext: { inProgressDocument: null, recentConversationTitles: ['Topic A'] },
+      activityContext: { inProgressDocument: null, recentConversations: [{ id: 'conv-1', title: 'Topic A' }] },
     }
     const prompt = buildNovaContextPrompt(context, 'Continue')
     expect(prompt).toContain('Current context:')

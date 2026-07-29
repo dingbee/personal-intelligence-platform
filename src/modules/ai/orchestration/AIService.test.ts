@@ -43,6 +43,9 @@ vi.mock('@/modules/workspaces/api/workspaces', () => ({
 }))
 vi.mock('@/modules/reader/api/readingProgress', () => ({ getMostRecentReadingProgress: vi.fn(async () => null) }))
 vi.mock('@/modules/settings/api/profile', () => ({ getProfile: vi.fn(async () => ({ display_name: null })) }))
+// UX-7: the reference resolver's own lookups — same reasoning, no real Supabase call from this suite.
+vi.mock('@/modules/processing/api/chunks', () => ({ getChunkLocations: vi.fn(async () => []) }))
+vi.mock('@/modules/library/api/documents', () => ({ getDocumentTitles: vi.fn(async () => []) }))
 
 // getChatProvider/the real chat provider instances aren't mocked — they're
 // plain, hardcoded objects (see providers/registry.ts), and since
@@ -117,5 +120,32 @@ describe('sendMessage', () => {
       type: 'knowledge_gap_detected',
       message: "No matching content found in the user's library for this question.",
     })
+  })
+
+  it('returns the model reported by the provider (UX-7 Phase 5)', async () => {
+    const result = await sendMessage(baseParams())
+    expect(result.model).toBe('test-model')
+  })
+
+  it('returns no references when nothing was retrieved (UX-7 Phase 2)', async () => {
+    const result = await sendMessage(baseParams())
+    expect(result.references).toEqual([])
+  })
+
+  it('resolves a chapter reference from this turn\'s retrieved matches', async () => {
+    retrieveContextMock.mockResolvedValueOnce([
+      { chunkId: 'chunk-1', documentId: 'doc-1', content: 'Some passage', similarity: 0.9 },
+    ])
+    const { getChunkLocations } = await import('@/modules/processing/api/chunks')
+    const { getDocumentTitles } = await import('@/modules/library/api/documents')
+    vi.mocked(getChunkLocations).mockResolvedValueOnce([
+      { id: 'chunk-1', document_id: 'doc-1', chapter_index: 3, chapter_title: 'The Turning Point' },
+    ])
+    vi.mocked(getDocumentTitles).mockResolvedValueOnce([{ id: 'doc-1', title: 'Atomic Habits' }])
+
+    const result = await sendMessage(baseParams())
+    expect(result.references).toEqual([
+      { type: 'chapter', documentId: 'doc-1', documentTitle: 'Atomic Habits', chapterIndex: 3, chapterTitle: 'The Turning Point' },
+    ])
   })
 })

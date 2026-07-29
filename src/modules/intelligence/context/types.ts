@@ -9,8 +9,8 @@ export interface WorkspaceContext {
 /** What the user is doing right now / just did — reading progress + a glance at recent conversations. */
 export interface ActivityContext {
   inProgressDocument: { id: string; title: string; updatedAt: string } | null
-  /** Most-recent-first, capped small — a glance, not a full history browse (that's ConversationList's job). */
-  recentConversationTitles: string[]
+  /** Most-recent-first, capped small — a glance, not a full history browse (that's ConversationList's job). Carries id (UX-7 Phase 9's timeline links to them), not just title. */
+  recentConversations: { id: string; title: string }[]
 }
 
 /** Reuses the same formatted text retrieveGraphContext already produced this turn — never re-queried. */

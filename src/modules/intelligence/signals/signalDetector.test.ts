@@ -20,7 +20,7 @@ describe('detectSignals', () => {
       ...EMPTY,
       activityContext: {
         inProgressDocument: { id: 'doc-1', title: 'Deep Work', updatedAt: new Date().toISOString() },
-        recentConversationTitles: [],
+        recentConversations: [],
       },
     }
     const signals = detectSignals({ context, matchCount: 1, documentId: 'doc-1', responseLength: 50 })
@@ -32,7 +32,7 @@ describe('detectSignals', () => {
       ...EMPTY,
       activityContext: {
         inProgressDocument: { id: 'doc-1', title: 'Deep Work', updatedAt: new Date().toISOString() },
-        recentConversationTitles: [],
+        recentConversations: [],
       },
     }
     const signals = detectSignals({ context, matchCount: 1, documentId: 'doc-2', responseLength: 50 })
@@ -48,7 +48,7 @@ describe('detectSignals', () => {
     const context: NovaContext = {
       ...EMPTY,
       workspaceContext: { workspaceId: 'w1', workspaceName: 'Research Notes', documentCount: 1, lastActivityAt: null },
-      activityContext: { inProgressDocument: null, recentConversationTitles: ['Research Notes'] },
+      activityContext: { inProgressDocument: null, recentConversations: [{ id: 'conv-1', title: 'Research Notes' }] },
     }
     const signals = detectSignals({ context, matchCount: 1, documentId: null, responseLength: 50 })
     expect(signals.some((s) => s.type === 'repeated_topic_detected')).toBe(true)

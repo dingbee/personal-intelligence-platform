@@ -35,7 +35,7 @@ export function detectSignals(params: DetectSignalsParams): IntelligenceSignal[]
   }
 
   const currentTopic = context.workspaceContext?.workspaceName
-  if (currentTopic && context.activityContext?.recentConversationTitles.some((title) => title === currentTopic)) {
+  if (currentTopic && context.activityContext?.recentConversations.some((c) => c.title === currentTopic)) {
     signals.push({ type: 'repeated_topic_detected', message: `"${currentTopic}" has come up in a recent conversation.` })
   }
 

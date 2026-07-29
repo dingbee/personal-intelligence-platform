@@ -20,6 +20,17 @@ import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { NovaStatusIndicator } from '@/modules/intelligence/components/NovaStatusIndicator'
 import { NovaContextUsedBadges } from '@/modules/intelligence/components/NovaContextUsedBadges'
 import { NovaSuggestions } from '@/modules/intelligence/components/NovaSuggestions'
+import { ReferenceRow } from '@/modules/intelligence/components/ReferenceRow'
+import { ExplainAnswerPanel } from '@/modules/intelligence/components/ExplainAnswerPanel'
+import { ActionChips } from '@/modules/intelligence/components/ActionChips'
+import { EvidenceBadge } from '@/modules/intelligence/components/EvidenceBadge'
+import { PersonalIntelligenceTimeline } from '@/modules/intelligence/components/PersonalIntelligenceTimeline'
+import { computeExplainSummary } from '@/modules/intelligence/explain/computeExplainSummary'
+import { computeEvidenceScore } from '@/modules/intelligence/evidence/computeEvidenceScore'
+import { isContinuationMessage } from '@/modules/intelligence/conversation/detectContinuation'
+import { deriveActionChips } from '@/modules/intelligence/actions/deriveActionChips'
+import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
+import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 
 export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -64,7 +75,7 @@ export function ChatPage() {
   // next send: this hook re-runs every render, so once the mutation below
   // updates the conversations cache, the next render's `send` closes over
   // the new value automatically.
-  const { send, streamingText, sending, error, suggestions, contextTrace } = useSendMessage(
+  const { send, streamingText, sending, error, suggestions, contextTrace, references, model } = useSendMessage(
     conversation?.provider_id ?? effectiveNewProviderId,
     documentId,
   )
@@ -73,6 +84,12 @@ export function ChatPage() {
   const { workspaces, currentWorkspaceId } = useWorkspace()
   const currentWorkspaceName = workspaces.find((w) => w.id === currentWorkspaceId)?.name ?? null
   const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content ?? null
+
+  // UX-7: everything below is derived purely from data already in scope —
+  // no new AIService fields beyond contextTrace/model (added this phase).
+  const commandContext = useCommandContext()
+  const commandActions = useCommandActions()
+  const actionChips = deriveActionChips(commandContext)
 
   const { data: availability } = useProviderAvailability()
   const { data: overrides } = useProviderOverrides()
@@ -219,10 +236,36 @@ export function ChatPage() {
                 {error && <p className="text-sm text-red-600">{error}</p>}
               </div>
             </div>
-            {!sending && (contextTrace || suggestions.length > 0) && (
-              <div className="flex flex-col gap-2 border-t border-[var(--color-border)] px-6 py-3">
-                {contextTrace && <NovaContextUsedBadges contextTrace={contextTrace} />}
+            {!sending && contextTrace && (
+              <div className="flex flex-col gap-3 border-t border-[var(--color-border)] px-6 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <NovaContextUsedBadges contextTrace={contextTrace} />
+                  <EvidenceBadge
+                    level={computeEvidenceScore({
+                      contextTrace,
+                      isContinuation: isContinuationMessage(lastUserMessage ?? ''),
+                    })}
+                  />
+                </div>
+                <ReferenceRow references={references} />
                 <NovaSuggestions suggestions={suggestions} onSelect={(suggestion) => void handleSend(suggestion)} />
+                <ActionChips commands={actionChips} context={commandContext} actions={commandActions} />
+                <ExplainAnswerPanel
+                  summary={computeExplainSummary({
+                    contextTrace,
+                    workspaceName: currentWorkspaceName,
+                    userQuery: lastUserMessage ?? '',
+                    model: model ?? 'unknown',
+                  })}
+                />
+                <details className="text-xs text-[var(--color-ink-muted)]">
+                  <summary className="cursor-pointer select-none hover:text-[var(--color-ink)]">
+                    More from your knowledge
+                  </summary>
+                  <div className="mt-2">
+                    <PersonalIntelligenceTimeline workspaceId={currentWorkspaceId} />
+                  </div>
+                </details>
               </div>
             )}
             <ChatInput disabled={sending} onSend={(text) => void handleSend(text)} />

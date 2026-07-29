@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useReaderChapters } from '@/modules/reader/hooks/useReaderChapters'
 import { useReadingProgress } from '@/modules/reader/hooks/useReadingProgress'
 import { useHighlights } from '@/modules/reader/hooks/useHighlights'
@@ -33,6 +33,7 @@ const TABS: { id: SidePanelTab; label: string }[] = [
 
 export function ReaderPage() {
   const { documentId } = useParams<{ documentId: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { document, chapters, isLoading: chaptersLoading, isError } = useReaderChapters(documentId!)
   const { progress, isLoading: progressLoading, save } = useReadingProgress(documentId!)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
@@ -44,8 +45,26 @@ export function ReaderPage() {
 
   // Only set the initial chapter once, after reading progress has loaded —
   // avoids a visible jump from chapter 0 to the saved chapter on open.
+  // UX-7 Phase 4: a `?chapter=` param (from a reference chip / "Read
+  // Chapter 4" deep link) wins over saved progress — it's an explicit
+  // destination, not a resume point. Stripped from the URL immediately so
+  // it doesn't fight manual chapter navigation afterwards or re-trigger on
+  // a later remount.
   useEffect(() => {
-    if (activeIndex === null && !progressLoading) setActiveIndex(progress.chapterIndex)
+    if (activeIndex !== null || progressLoading) return
+    const chapterParam = searchParams.get('chapter')
+    const requestedChapter = chapterParam !== null ? Number.parseInt(chapterParam, 10) : null
+    setActiveIndex(requestedChapter !== null && !Number.isNaN(requestedChapter) ? requestedChapter : progress.chapterIndex)
+    if (chapterParam !== null) {
+      setSearchParams(
+        (previous) => {
+          const next = new URLSearchParams(previous)
+          next.delete('chapter')
+          return next
+        },
+        { replace: true },
+      )
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progressLoading])
 

@@ -7,6 +7,7 @@ import type { ChatProviderMessage } from '@/modules/ai/providers/ChatProvider'
 import type { Message } from '@/shared/types/database'
 import type { ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
+import type { Reference } from '@/modules/intelligence/references/referenceTypes'
 import { normalizeAiError } from '@/modules/ai/orchestration/normalizeAiError'
 import { PROVIDER_UNAVAILABLE_MESSAGE } from '@/modules/ai/providers/availability'
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
@@ -39,6 +40,9 @@ export function useSendMessage(providerId: string, documentId?: string) {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [contextTrace, setContextTrace] = useState<ContextTrace | null>(null)
   const [signals, setSignals] = useState<IntelligenceSignal[]>([])
+  // UX-7: this turn's resolved reference chips + the model that answered.
+  const [references, setReferences] = useState<Reference[]>([])
+  const [model, setModel] = useState<string | null>(null)
 
   async function send(
     conversationId: string,
@@ -49,6 +53,8 @@ export function useSendMessage(providerId: string, documentId?: string) {
     setSuggestions([])
     setContextTrace(null)
     setSignals([])
+    setReferences([])
+    setModel(null)
 
     // An empty chain means nothing survived candidacy filtering at all
     // (no key configured anywhere, or everything's disabled) — ai-chat
@@ -80,6 +86,8 @@ export function useSendMessage(providerId: string, documentId?: string) {
       setSuggestions(result.suggestions)
       setContextTrace(result.contextTrace)
       setSignals(result.signals)
+      setReferences(result.references)
+      setModel(result.model)
       await queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
       await queryClient.invalidateQueries({ queryKey: ['conversations'] })
       return result.message
@@ -100,5 +108,15 @@ export function useSendMessage(providerId: string, documentId?: string) {
     }
   }
 
-  return { send, streamingText, sending: streamingText !== null, error, suggestions, contextTrace, signals }
+  return {
+    send,
+    streamingText,
+    sending: streamingText !== null,
+    error,
+    suggestions,
+    contextTrace,
+    signals,
+    references,
+    model,
+  }
 }

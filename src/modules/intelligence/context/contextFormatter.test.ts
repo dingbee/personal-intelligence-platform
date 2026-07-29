@@ -25,7 +25,7 @@ describe('formatNovaContext', () => {
       ...EMPTY,
       activityContext: {
         inProgressDocument: { id: 'doc-1', title: 'Deep Work', updatedAt: new Date().toISOString() },
-        recentConversationTitles: [],
+        recentConversations: [],
       },
     }
     expect(formatNovaContext(context)).toContain('Deep Work')
@@ -34,7 +34,7 @@ describe('formatNovaContext', () => {
   it('renders recent conversation topics', () => {
     const context: NovaContext = {
       ...EMPTY,
-      activityContext: { inProgressDocument: null, recentConversationTitles: ['Renaissance architecture'] },
+      activityContext: { inProgressDocument: null, recentConversations: [{ id: 'conv-1', title: 'Renaissance architecture' }] },
     }
     expect(formatNovaContext(context)).toContain('Renaissance architecture')
   })
@@ -42,7 +42,7 @@ describe('formatNovaContext', () => {
   it('renders knowledge and workspace context in priority order (activity before knowledge before workspace)', () => {
     const context: NovaContext = {
       ...EMPTY,
-      activityContext: { inProgressDocument: null, recentConversationTitles: ['Topic A'] },
+      activityContext: { inProgressDocument: null, recentConversations: [{ id: 'conv-1', title: 'Topic A' }] },
       knowledgeContext: { graphSummary: 'text', nodeCount: 4 },
       workspaceContext: { workspaceId: 'w1', workspaceName: 'Research Notes', documentCount: 12, lastActivityAt: null },
     }

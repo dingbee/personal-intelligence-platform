@@ -16,6 +16,8 @@ import { buildNovaContextPrompt } from '@/modules/intelligence/buildNovaContextP
 import { generateFollowUpSuggestions } from '@/modules/intelligence/conversation/generateFollowUpSuggestions'
 import { detectSignals } from '@/modules/intelligence/signals/signalDetector'
 import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
+import { resolveReferences } from '@/modules/intelligence/references/referenceResolver'
+import type { Reference } from '@/modules/intelligence/references/referenceTypes'
 
 export interface SendMessageParams {
   conversationId: string
@@ -39,6 +41,10 @@ export interface SendMessageResult {
   contextTrace: ContextTrace
   /** UX-6 Phase 6 — informational only, nothing here is auto-acted-on. */
   signals: IntelligenceSignal[]
+  /** UX-7 Phase 2/3 — document/chapter chips resolved purely from this turn's retrieved chunk IDs, no AI/embedding involved. */
+  references: Reference[]
+  /** The provider's own reported model id (UX-7 Phase 5's "Explain My Answer" — previously computed but discarded). Null when the provider doesn't report one. */
+  model: string | null
 }
 
 /**
@@ -110,6 +116,12 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
 
   await touchConversation(conversationId)
 
+  // UX-7 Phase 2 — resolveReferences never throws (see its own try/catch-
+  // free but purely-additive design: no matches means [] immediately);
+  // still guarded here since a Supabase hiccup on this lookup must not
+  // turn a successful answer into a failed one.
+  const references = await resolveReferences({ matches }).catch(() => [])
+
   return {
     message: assistantMessage,
     suggestions: generateFollowUpSuggestions({ matchCount: matches.length, context: novaContext }),
@@ -120,5 +132,7 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
       documentId: documentId ?? null,
       responseLength: result.content.length,
     }),
+    references,
+    model: result.model,
   }
 }

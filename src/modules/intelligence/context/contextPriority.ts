@@ -29,7 +29,7 @@ function isSourcePresent(context: NovaContext, key: ContextSourceKey): boolean {
       return Boolean(context.memoryContext)
     case 'activityContext':
       return Boolean(
-        context.activityContext?.inProgressDocument || (context.activityContext?.recentConversationTitles.length ?? 0) > 0,
+        context.activityContext?.inProgressDocument || (context.activityContext?.recentConversations.length ?? 0) > 0,
       )
     case 'knowledgeContext':
       return Boolean(context.knowledgeContext)

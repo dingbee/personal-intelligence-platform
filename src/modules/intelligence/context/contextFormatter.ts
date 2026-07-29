@@ -20,8 +20,8 @@ const SECTION_RENDERERS: Record<ContextSourceKey, (context: NovaContext) => stri
         `Currently reading: "${activity.inProgressDocument.title}" (last opened ${formatRelativeTime(activity.inProgressDocument.updatedAt)}).`,
       )
     }
-    if (activity.recentConversationTitles.length > 0) {
-      lines.push(`Recent conversation topics: ${activity.recentConversationTitles.join('; ')}.`)
+    if (activity.recentConversations.length > 0) {
+      lines.push(`Recent conversation topics: ${activity.recentConversations.map((c) => c.title).join('; ')}.`)
     }
     return lines.length > 0 ? lines.join('\n') : null
   },

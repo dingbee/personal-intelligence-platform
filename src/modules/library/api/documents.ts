@@ -110,6 +110,14 @@ export async function getDocument(id: string): Promise<DocumentRow> {
   return data
 }
 
+/** UX-7 Phase 2: batch title lookup for reference resolution — a plain ID lookup, no search/embedding involved. */
+export async function getDocumentTitles(ids: string[]): Promise<{ id: string; title: string }[]> {
+  if (ids.length === 0) return []
+  const { data, error } = await supabase.from('documents').select('id, title').in('id', ids)
+  if (error) throw error
+  return data
+}
+
 export async function getDocumentWithTags(id: string): Promise<DocumentWithTags> {
   const { data, error } = await supabase
     .from('documents')
