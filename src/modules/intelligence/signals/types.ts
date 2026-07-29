@@ -4,6 +4,13 @@ export type SignalType =
   | 'repeated_topic_detected'
   | 'possible_note_creation'
   | 'related_concept_discovered'
+  // UX-8 Phase 7 additions:
+  | 'contradictory_memory'
+  | 'reading_opportunity'
+  | 'unreviewed_memory'
+  | 'inactive_workspace'
+  | 'large_context'
+  | 'conversation_drift'
 
 /**
  * UX-6 Phase 6: informational only. Nothing reads a signal and acts on it

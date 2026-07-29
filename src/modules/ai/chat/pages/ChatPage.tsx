@@ -25,10 +25,15 @@ import { ExplainAnswerPanel } from '@/modules/intelligence/components/ExplainAns
 import { ActionChips } from '@/modules/intelligence/components/ActionChips'
 import { EvidenceBadge } from '@/modules/intelligence/components/EvidenceBadge'
 import { PersonalIntelligenceTimeline } from '@/modules/intelligence/components/PersonalIntelligenceTimeline'
+import { AttentionList } from '@/modules/intelligence/components/AttentionList'
+import { WorkspaceInsightList } from '@/modules/intelligence/components/WorkspaceInsightList'
+import { SignalList } from '@/modules/intelligence/components/SignalList'
 import { computeExplainSummary } from '@/modules/intelligence/explain/computeExplainSummary'
 import { computeEvidenceScore } from '@/modules/intelligence/evidence/computeEvidenceScore'
 import { isContinuationMessage } from '@/modules/intelligence/conversation/detectContinuation'
 import { deriveActionChips } from '@/modules/intelligence/actions/deriveActionChips'
+import { buildInteractionState } from '@/modules/intelligence/orchestrator/orchestrator'
+import type { InteractionState } from '@/modules/intelligence/orchestrator/types'
 import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 
@@ -75,7 +80,7 @@ export function ChatPage() {
   // next send: this hook re-runs every render, so once the mutation below
   // updates the conversations cache, the next render's `send` closes over
   // the new value automatically.
-  const { send, streamingText, sending, error, suggestions, contextTrace, references, model } = useSendMessage(
+  const { send, streamingText, sending, error, suggestions, contextTrace, references, model, signals } = useSendMessage(
     conversation?.provider_id ?? effectiveNewProviderId,
     documentId,
   )
@@ -90,6 +95,37 @@ export function ChatPage() {
   const commandContext = useCommandContext()
   const commandActions = useCommandActions()
   const actionChips = deriveActionChips(commandContext)
+
+  // UX-8 Phase 9 — requests InteractionState once per completed turn
+  // (contextTrace/references/suggestions/signals only change when a send
+  // finishes). Never touches providers/streaming/router/RAG — it composes
+  // over what AIService already returned plus existing read-only APIs.
+  const [interactionState, setInteractionState] = useState<InteractionState | null>(null)
+  useEffect(() => {
+    if (sending || !contextTrace) {
+      setInteractionState(null)
+      return
+    }
+    let cancelled = false
+    void buildInteractionState({
+      workspaceId: currentWorkspaceId,
+      workspaceName: currentWorkspaceName,
+      conversationTitle: conversation?.title ?? null,
+      messageCount: messages.length,
+      userQuery: lastUserMessage ?? '',
+      commandContext,
+      contextTrace,
+      references,
+      suggestions,
+      signals,
+    }).then((state) => {
+      if (!cancelled) setInteractionState(state)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sending, contextTrace, references, suggestions, signals])
 
   const { data: availability } = useProviderAvailability()
   const { data: overrides } = useProviderOverrides()
@@ -248,8 +284,14 @@ export function ChatPage() {
                   />
                 </div>
                 <ReferenceRow references={references} />
+                <AttentionList items={interactionState?.attention ?? []} />
                 <NovaSuggestions suggestions={suggestions} onSelect={(suggestion) => void handleSend(suggestion)} />
-                <ActionChips commands={actionChips} context={commandContext} actions={commandActions} />
+                <ActionChips
+                  commands={interactionState ? interactionState.actions.map((a) => a.command) : actionChips}
+                  context={commandContext}
+                  actions={commandActions}
+                />
+                <SignalList signals={interactionState?.signals ?? signals} />
                 <ExplainAnswerPanel
                   summary={computeExplainSummary({
                     contextTrace,
@@ -262,7 +304,8 @@ export function ChatPage() {
                   <summary className="cursor-pointer select-none hover:text-[var(--color-ink)]">
                     More from your knowledge
                   </summary>
-                  <div className="mt-2">
+                  <div className="mt-2 flex flex-col gap-3">
+                    <WorkspaceInsightList insights={interactionState?.workspace ?? []} />
                     <PersonalIntelligenceTimeline workspaceId={currentWorkspaceId} />
                   </div>
                 </details>
