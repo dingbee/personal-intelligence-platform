@@ -13,6 +13,13 @@ export async function listWorkspaces(options: { includeArchived?: boolean } = {}
   return data
 }
 
+/** Single-workspace name lookup for server-side contexts (e.g. the NOVA Context Engine) that only have a workspaceId, not the React WorkspaceProvider's already-loaded list. */
+export async function getWorkspaceName(id: string): Promise<string | null> {
+  const { data, error } = await supabase.from('workspaces').select('name').eq('id', id).maybeSingle()
+  if (error) throw error
+  return data?.name ?? null
+}
+
 export async function createWorkspace(params: { name: string; userId: string }): Promise<Workspace> {
   // New workspaces go to the end of the display order — a single extra
   // round trip for the current max, cheap at this app's per-user scale.

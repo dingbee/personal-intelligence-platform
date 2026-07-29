@@ -5,6 +5,8 @@ import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { sendMessage } from '@/modules/ai/orchestration/AIService'
 import type { ChatProviderMessage } from '@/modules/ai/providers/ChatProvider'
 import type { Message } from '@/shared/types/database'
+import type { ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
+import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
 import { normalizeAiError } from '@/modules/ai/orchestration/normalizeAiError'
 import { PROVIDER_UNAVAILABLE_MESSAGE } from '@/modules/ai/providers/availability'
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
@@ -31,6 +33,12 @@ export function useSendMessage(providerId: string, documentId?: string) {
   const chain = useProviderChain(providerId)
   const [streamingText, setStreamingText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // UX-6: the latest turn's context-derived suggestions/trace/signals —
+  // reset per send, not persisted across conversation switches (they
+  // describe "this last response," not conversation-level state).
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [contextTrace, setContextTrace] = useState<ContextTrace | null>(null)
+  const [signals, setSignals] = useState<IntelligenceSignal[]>([])
 
   async function send(
     conversationId: string,
@@ -38,6 +46,9 @@ export function useSendMessage(providerId: string, documentId?: string) {
     history: ChatProviderMessage[],
   ): Promise<Message | undefined> {
     setError(null)
+    setSuggestions([])
+    setContextTrace(null)
+    setSignals([])
 
     // An empty chain means nothing survived candidacy filtering at all
     // (no key configured anywhere, or everything's disabled) — ai-chat
@@ -56,7 +67,7 @@ export function useSendMessage(providerId: string, documentId?: string) {
     void queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
 
     try {
-      const message = await sendMessage({
+      const result = await sendMessage({
         conversationId,
         userId: user!.id,
         workspaceId: currentWorkspaceId,
@@ -66,9 +77,12 @@ export function useSendMessage(providerId: string, documentId?: string) {
         text,
         onDelta: setStreamingText,
       })
+      setSuggestions(result.suggestions)
+      setContextTrace(result.contextTrace)
+      setSignals(result.signals)
       await queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
       await queryClient.invalidateQueries({ queryKey: ['conversations'] })
-      return message
+      return result.message
     } catch (err) {
       // The provider we thought was configured may have just failed on the
       // one check that actually matters (a live send) — normalizeAiError
@@ -86,5 +100,5 @@ export function useSendMessage(providerId: string, documentId?: string) {
     }
   }
 
-  return { send, streamingText, sending: streamingText !== null, error }
+  return { send, streamingText, sending: streamingText !== null, error, suggestions, contextTrace, signals }
 }

@@ -25,12 +25,24 @@ vi.mock('@/modules/ai/chat/api/messages', () => ({
     }),
   ),
 }))
-vi.mock('@/modules/ai/chat/api/conversations', () => ({ touchConversation: vi.fn(async () => {}) }))
+vi.mock('@/modules/ai/chat/api/conversations', () => ({
+  touchConversation: vi.fn(async () => {}),
+  listConversations: vi.fn(async () => []),
+}))
 vi.mock('@/modules/search/indexing/indexMessage', () => ({ indexMessage: vi.fn(async () => {}) }))
 vi.mock('@/modules/ai/orchestration/retrieveContext', () => ({ retrieveContext: retrieveContextMock }))
 vi.mock('@/modules/knowledge-intelligence/api/retrieveGraphContext', () => ({ retrieveGraphContext: retrieveGraphContextMock }))
 vi.mock('@/modules/ai/memory/retrieveMemoryContext', () => ({ retrieveMemoryContext: retrieveMemoryContextMock }))
 vi.mock('@/modules/ai/orchestration/streamChatCompletion', () => ({ streamChatCompletion: streamChatCompletionMock }))
+// UX-6: the NOVA Context Engine's own data sources — mocked here the same
+// way retrieveGraphContext/retrieveMemoryContext are, so this test suite
+// never makes a real Supabase call.
+vi.mock('@/modules/workspaces/api/workspaces', () => ({
+  getWorkspaceHeaderSummary: vi.fn(async () => ({ documentCount: 0, lastActivityAt: null })),
+  getWorkspaceName: vi.fn(async () => null),
+}))
+vi.mock('@/modules/reader/api/readingProgress', () => ({ getMostRecentReadingProgress: vi.fn(async () => null) }))
+vi.mock('@/modules/settings/api/profile', () => ({ getProfile: vi.fn(async () => ({ display_name: null })) }))
 
 // getChatProvider/the real chat provider instances aren't mocked — they're
 // plain, hardcoded objects (see providers/registry.ts), and since
@@ -67,15 +79,15 @@ describe('sendMessage', () => {
 
   it('completes and returns the assistant reply even when memory retrieval yields nothing (its documented failure behavior is returning null, never throwing)', async () => {
     retrieveMemoryContextMock.mockResolvedValueOnce(null)
-    const message = await sendMessage(baseParams())
-    expect(message.content).toBe('Hello there.')
+    const result = await sendMessage(baseParams())
+    expect(result.message.content).toBe('Hello there.')
   })
 
   it('still completes successfully when graph context is also absent — memory is not the only optional block', async () => {
     retrieveMemoryContextMock.mockResolvedValueOnce(null)
     retrieveGraphContextMock.mockResolvedValueOnce(null)
-    const message = await sendMessage(baseParams())
-    expect(message.content).toBe('Hello there.')
+    const result = await sendMessage(baseParams())
+    expect(result.message.content).toBe('Hello there.')
   })
 
   it('passes the retrieved memory context through to the system prompt sent to the provider', async () => {
@@ -84,5 +96,26 @@ describe('sendMessage', () => {
     const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
     expect(lastCall?.system).toContain('<personal_context>')
     expect(lastCall?.system).toContain('Likes concise answers')
+  })
+
+  it('appends the UX-6 NOVA personality/context layer to the system prompt, additive to the existing template', async () => {
+    await sendMessage(baseParams())
+    const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+    expect(lastCall?.system).toContain('Context:') // the mocked rag-chat template itself, untouched
+    expect(lastCall?.system).toContain('You are NOVA')
+  })
+
+  it('returns a contextTrace alongside the message', async () => {
+    const result = await sendMessage(baseParams())
+    expect(result.contextTrace).toEqual({ retrievedChunks: 0, graphNodes: 0, memoriesUsed: 0 })
+  })
+
+  it('returns no suggestions and no signals-worth-noting when nothing in context justifies one, except the always-applicable knowledge gap signal for an empty match set', async () => {
+    const result = await sendMessage(baseParams())
+    expect(result.suggestions).toEqual([])
+    expect(result.signals).toContainEqual({
+      type: 'knowledge_gap_detected',
+      message: "No matching content found in the user's library for this question.",
+    })
   })
 })

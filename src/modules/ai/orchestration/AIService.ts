@@ -5,12 +5,17 @@ import { insertMessage } from '@/modules/ai/chat/api/messages'
 import { touchConversation } from '@/modules/ai/chat/api/conversations'
 import { retrieveContext } from '@/modules/ai/orchestration/retrieveContext'
 import { buildSystemPrompt } from '@/modules/ai/orchestration/buildSystemPrompt'
-import { buildContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
+import { buildContextTrace, type ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import { retrieveGraphContext } from '@/modules/knowledge-intelligence/api/retrieveGraphContext'
 import { retrieveMemoryContext } from '@/modules/ai/memory/retrieveMemoryContext'
 import { streamChatCompletion } from '@/modules/ai/orchestration/streamChatCompletion'
 import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { indexMessage } from '@/modules/search/indexing/indexMessage'
+import { resolveNovaContext } from '@/modules/intelligence/context/contextResolver'
+import { buildNovaContextPrompt } from '@/modules/intelligence/buildNovaContextPrompt'
+import { generateFollowUpSuggestions } from '@/modules/intelligence/conversation/generateFollowUpSuggestions'
+import { detectSignals } from '@/modules/intelligence/signals/signalDetector'
+import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
 
 export interface SendMessageParams {
   conversationId: string
@@ -26,6 +31,16 @@ export interface SendMessageParams {
   onDelta?: (textSoFar: string) => void
 }
 
+export interface SendMessageResult {
+  message: Message
+  /** UX-6 Phase 5 — context-derived "would you like me to..." suggestions, never a fixed set. */
+  suggestions: string[]
+  /** Same counts UX-5.2 already logged internally — now returned so the UI can show "Used: ..." (Phase 7). */
+  contextTrace: ContextTrace
+  /** UX-6 Phase 6 — informational only, nothing here is auto-acted-on. */
+  signals: IntelligenceSignal[]
+}
+
 /**
  * The single entry point for AI chat. ChatPage calls this, not a provider
  * directly — it resolves retrieval, prompt construction, and the provider
@@ -35,7 +50,7 @@ export interface SendMessageParams {
  * useProviderChain before this is called — this function just executes it
  * with single-hop fallback via runWithFallback, never re-deciding anything.
  */
-export async function sendMessage(params: SendMessageParams): Promise<Message> {
+export async function sendMessage(params: SendMessageParams): Promise<SendMessageResult> {
   const { conversationId, userId, workspaceId, providerChain, documentId, history, text } = params
 
   const userMessage = await insertMessage({ conversationId, userId, role: 'user', content: text })
@@ -52,11 +67,24 @@ export async function sendMessage(params: SendMessageParams): Promise<Message> {
     workspaceId,
   })
   const memoryContext = await retrieveMemoryContext({ userId, workspaceId })
-  const system = buildSystemPrompt(matches, graphContext, memoryContext)
+  let system = buildSystemPrompt(matches, graphContext, memoryContext)
 
+  const contextTrace = buildContextTrace(matches.length, graphContext, memoryContext)
   // Internal-only, logged not persisted (Phase UX-5.2) — "why did NOVA
   // answer this way" isn't user- or UI-facing yet, that's a later phase.
-  console.debug('[AIService] context trace', buildContextTrace(matches.length, graphContext, memoryContext))
+  console.debug('[AIService] context trace', contextTrace)
+
+  // UX-6: the NOVA Context Engine + personality/situational prompt layer.
+  // resolveNovaContext never throws by design (every source is its own
+  // try/catch) — matching that same "must never break chat" contract, so
+  // this stays additive to the UX-5.2 prompt above, never a replacement.
+  const novaContext = await resolveNovaContext({
+    userId,
+    workspaceId,
+    graphContextText: graphContext,
+    memoryContextText: memoryContext,
+  })
+  system = `${system}\n\n${buildNovaContextPrompt(novaContext, text)}`
 
   const { result } = await runWithFallback(providerChain, (candidateId) =>
     streamChatCompletion({
@@ -81,5 +109,16 @@ export async function sendMessage(params: SendMessageParams): Promise<Message> {
   void indexMessage(assistantMessage, workspaceId)
 
   await touchConversation(conversationId)
-  return assistantMessage
+
+  return {
+    message: assistantMessage,
+    suggestions: generateFollowUpSuggestions({ matchCount: matches.length, context: novaContext }),
+    contextTrace,
+    signals: detectSignals({
+      context: novaContext,
+      matchCount: matches.length,
+      documentId: documentId ?? null,
+      responseLength: result.content.length,
+    }),
+  }
 }

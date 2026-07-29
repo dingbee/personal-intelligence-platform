@@ -16,6 +16,10 @@ import { providerRegistry } from '@/modules/core/providers/registry'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
+import { useWorkspace } from '@/modules/workspaces/useWorkspace'
+import { NovaStatusIndicator } from '@/modules/intelligence/components/NovaStatusIndicator'
+import { NovaContextUsedBadges } from '@/modules/intelligence/components/NovaContextUsedBadges'
+import { NovaSuggestions } from '@/modules/intelligence/components/NovaSuggestions'
 
 export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -60,10 +64,15 @@ export function ChatPage() {
   // next send: this hook re-runs every render, so once the mutation below
   // updates the conversations cache, the next render's `send` closes over
   // the new value automatically.
-  const { send, streamingText, sending, error } = useSendMessage(
+  const { send, streamingText, sending, error, suggestions, contextTrace } = useSendMessage(
     conversation?.provider_id ?? effectiveNewProviderId,
     documentId,
   )
+  // UX-6 Phase 7 status indicator — workspace name from the already-loaded
+  // list (no new query), "understanding" from the last user turn.
+  const { workspaces, currentWorkspaceId } = useWorkspace()
+  const currentWorkspaceName = workspaces.find((w) => w.id === currentWorkspaceId)?.name ?? null
+  const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content ?? null
 
   const { data: availability } = useProviderAvailability()
   const { data: overrides } = useProviderOverrides()
@@ -175,6 +184,13 @@ export function ChatPage() {
                 />
               </div>
             </div>
+            <div className="hidden px-6 pt-3 sm:block">
+              <NovaStatusIndicator
+                status={sending ? 'thinking' : 'ready'}
+                understanding={lastUserMessage}
+                workspaceName={currentWorkspaceName}
+              />
+            </div>
             {conversationProviderUnavailable && (
               <p className="px-6 pt-2 text-xs text-amber-600">
                 This conversation is set to {providerRegistry.get(conversation!.provider_id)?.label ?? conversation!.provider_id},
@@ -203,6 +219,12 @@ export function ChatPage() {
                 {error && <p className="text-sm text-red-600">{error}</p>}
               </div>
             </div>
+            {!sending && (contextTrace || suggestions.length > 0) && (
+              <div className="flex flex-col gap-2 border-t border-[var(--color-border)] px-6 py-3">
+                {contextTrace && <NovaContextUsedBadges contextTrace={contextTrace} />}
+                <NovaSuggestions suggestions={suggestions} onSelect={(suggestion) => void handleSend(suggestion)} />
+              </div>
+            )}
             <ChatInput disabled={sending} onSend={(text) => void handleSend(text)} />
           </>
         )}
