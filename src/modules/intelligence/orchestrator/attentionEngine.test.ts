@@ -110,4 +110,23 @@ describe('detectAttentionItems', () => {
     const items = detectAttentionItems({ ...BASE_INPUT, workspaceLastActivityAt: '2026-05-30T00:00:00.000Z' })
     expect(items.some((i) => i.type === 'inactive_workspace')).toBe(false)
   })
+
+  it('assigns high priority to contradictory memories', () => {
+    const items = detectAttentionItems({
+      ...BASE_INPUT,
+      memories: [
+        makeMemory({ id: 'm1', content: 'User prefers dark mode.' }),
+        makeMemory({ id: 'm2', content: 'User dislikes dark mode.' }),
+      ],
+    })
+    expect(items.find((i) => i.type === 'contradictory_memories')?.priority).toBe('high')
+  })
+
+  it('assigns medium priority to an unfinished book and low priority to an inactive workspace', () => {
+    const unfinished = detectAttentionItems({ ...BASE_INPUT, inProgressDocument: { title: 'Deep Work', scrollFraction: 0.3 } })
+    expect(unfinished.find((i) => i.type === 'unfinished_book')?.priority).toBe('medium')
+
+    const inactive = detectAttentionItems({ ...BASE_INPUT, workspaceLastActivityAt: '2026-05-01T00:00:00.000Z' })
+    expect(inactive.find((i) => i.type === 'inactive_workspace')?.priority).toBe('low')
+  })
 })

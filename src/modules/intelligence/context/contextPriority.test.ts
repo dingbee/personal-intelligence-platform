@@ -8,6 +8,7 @@ const EMPTY: NovaContext = {
   knowledgeContext: null,
   memoryContext: null,
   userContext: null,
+  attentionContext: null,
 }
 
 describe('rankNovaContext', () => {
@@ -22,6 +23,7 @@ describe('rankNovaContext', () => {
       knowledgeContext: { graphSummary: 'text', nodeCount: 2 },
       memoryContext: { formattedText: 'text', memoryCount: 1 },
       userContext: { displayName: 'Ding' },
+      attentionContext: null,
     }
     expect(rankNovaContext(full).map((r) => r.key)).toEqual([
       'memoryContext',
@@ -30,6 +32,11 @@ describe('rankNovaContext', () => {
       'workspaceContext',
       'userContext',
     ])
+  })
+
+  it('ranks attentionContext between activity and knowledge', () => {
+    const context: NovaContext = { ...EMPTY, attentionContext: { topItem: { message: 'Finish your book' } } }
+    expect(rankNovaContext(context).map((r) => r.key)).toEqual(['attentionContext'])
   })
 
   it('omits workspaceContext when it has no workspace name (the "All" scope)', () => {

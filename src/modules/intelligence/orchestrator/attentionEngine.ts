@@ -75,26 +75,26 @@ export function detectAttentionItems(input: AttentionEngineInput): AttentionItem
   if (input.inProgressDocument) {
     const { title, scrollFraction } = input.inProgressDocument
     if (scrollFraction < FINISHED_THRESHOLD) {
-      items.push({ type: 'unfinished_book', message: `You haven't finished "${title}" yet.` })
+      items.push({ type: 'unfinished_book', message: `You haven't finished "${title}" yet.`, priority: 'medium' })
     }
     if (scrollFraction >= STOPPED_MIDWAY_MIN && scrollFraction <= STOPPED_MIDWAY_MAX) {
-      items.push({ type: 'stopped_midway', message: `You stopped partway through "${title}".` })
+      items.push({ type: 'stopped_midway', message: `You stopped partway through "${title}".`, priority: 'medium' })
     }
   }
 
   const askedBefore = input.recentConversations.find((conversation) => shareSignificantWord(conversation.title, input.userQuery))
   if (askedBefore) {
-    items.push({ type: 'asked_before', message: `You asked about something similar in "${askedBefore.title}".` })
+    items.push({ type: 'asked_before', message: `You asked about something similar in "${askedBefore.title}".`, priority: 'low' })
   }
 
   if (findContradictoryMemoryPairs(input.memories).length > 0) {
-    items.push({ type: 'contradictory_memories', message: 'Some of your stored preferences may contradict each other.' })
+    items.push({ type: 'contradictory_memories', message: 'Some of your stored preferences may contradict each other.', priority: 'high' })
   }
 
   if (input.workspaceLastActivityAt) {
     const daysSince = Math.floor((now.getTime() - new Date(input.workspaceLastActivityAt).getTime()) / (24 * 60 * 60 * 1000))
     if (daysSince >= INACTIVE_WORKSPACE_DAYS) {
-      items.push({ type: 'inactive_workspace', message: `This workspace has been inactive for ${daysSince} days.` })
+      items.push({ type: 'inactive_workspace', message: `This workspace has been inactive for ${daysSince} days.`, priority: 'low' })
     }
   }
 

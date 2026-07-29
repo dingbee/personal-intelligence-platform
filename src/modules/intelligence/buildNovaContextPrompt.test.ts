@@ -8,6 +8,7 @@ const EMPTY: NovaContext = {
   knowledgeContext: null,
   memoryContext: null,
   userContext: null,
+  attentionContext: null,
 }
 
 describe('buildNovaContextPrompt', () => {

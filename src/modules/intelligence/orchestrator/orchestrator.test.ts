@@ -96,7 +96,11 @@ describe('buildInteractionState', () => {
     getReadingProgressMock.mockResolvedValueOnce({ scroll_fraction: 0.4 })
 
     const state = await buildInteractionState(baseParams())
-    expect(state.attention).toContainEqual({ type: 'unfinished_book', message: 'You haven\'t finished "Deep Work" yet.' })
+    expect(state.attention).toContainEqual({
+      type: 'unfinished_book',
+      message: 'You haven\'t finished "Deep Work" yet.',
+      priority: 'medium',
+    })
     expect(state.resurfacedKnowledge).toContainEqual({ type: 'document', id: 'doc-1', title: 'Deep Work', href: '/library/doc-1/read' })
     expect(state.context.map((c) => c.key)).toContain('reading')
   })

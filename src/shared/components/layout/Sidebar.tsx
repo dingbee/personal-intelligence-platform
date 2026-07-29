@@ -3,6 +3,7 @@ import { appConfig } from '@/app/appConfig'
 import { WorkspaceSwitcher } from '@/modules/workspaces/components/WorkspaceSwitcher'
 
 const navItems = [
+  { to: '/dashboard', label: 'Dashboard' },
   { to: '/library', label: 'Library' },
   { to: '/knowledge', label: 'Knowledge' },
   { to: '/notes', label: 'Notes' },

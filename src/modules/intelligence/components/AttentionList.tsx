@@ -6,8 +6,8 @@ export function AttentionList({ items }: { items: AttentionItem[] }) {
 
   return (
     <ul className="flex flex-col gap-1 text-xs text-amber-700">
-      {items.map((item) => (
-        <li key={item.type}>⚠ {item.message}</li>
+      {items.map((item, index) => (
+        <li key={`${item.type}-${index}`}>⚠ {item.message}</li>
       ))}
     </ul>
   )

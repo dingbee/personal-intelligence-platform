@@ -6,6 +6,12 @@ import { openSearchCommand } from '@/modules/commands/commands/searchCommands'
 import { createNoteCommand } from '@/modules/commands/commands/noteCommands'
 import { manageMemoriesCommand, reviewMemorySuggestionsCommand } from '@/modules/commands/commands/memoryCommands'
 import { openKnowledgeGraphCommand } from '@/modules/commands/commands/knowledgeCommands'
+import {
+  openIntelligenceDashboardCommand,
+  showKnowledgeGrowthCommand,
+  showAttentionItemsCommand,
+  explainIntelligenceScoreCommand,
+} from '@/modules/commands/commands/dashboardCommands'
 
 // Side-effect module, imported once from app/App.tsx — same pattern as
 // modules/search/registerBuiltInProviders.ts. A future command
@@ -24,3 +30,7 @@ commandRegistry.register(createNoteCommand)
 commandRegistry.register(manageMemoriesCommand)
 commandRegistry.register(reviewMemorySuggestionsCommand)
 commandRegistry.register(openKnowledgeGraphCommand)
+commandRegistry.register(openIntelligenceDashboardCommand)
+commandRegistry.register(showKnowledgeGrowthCommand)
+commandRegistry.register(showAttentionItemsCommand)
+commandRegistry.register(explainIntelligenceScoreCommand)

@@ -28,11 +28,17 @@ export type AttentionType =
   | 'asked_before'
   | 'contradictory_memories'
   | 'inactive_workspace'
+  // UX-11 Phase 6 additions (dashboard-only sources, composed by dashboardSignals.ts):
+  | 'disconnected_concept'
+  | 'knowledge_island'
 
-/** Phase 3 — informational, never auto-acted-on. */
+export type AttentionPriority = 'high' | 'medium' | 'low'
+
+/** Phase 3 — informational, never auto-acted-on. `priority` added in UX-11 Phase 6 for the Attention Center's High/Medium/Low grouping — assigned by detectAttentionItems per type, existing callers that don't render it are unaffected. */
 export interface AttentionItem {
   type: AttentionType
   message: string
+  priority: AttentionPriority
 }
 
 export type ResurfacedKnowledgeType = 'document' | 'note' | 'conversation'

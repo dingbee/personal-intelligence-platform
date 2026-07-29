@@ -1,6 +1,12 @@
 import type { NovaContext } from '@/modules/intelligence/context/types'
 
-export type ContextSourceKey = 'memoryContext' | 'activityContext' | 'knowledgeContext' | 'workspaceContext' | 'userContext'
+export type ContextSourceKey =
+  | 'memoryContext'
+  | 'activityContext'
+  | 'knowledgeContext'
+  | 'workspaceContext'
+  | 'userContext'
+  | 'attentionContext'
 
 export interface RankedContextSource {
   key: ContextSourceKey
@@ -18,6 +24,10 @@ export interface RankedContextSource {
 const BASE_PRIORITY: Record<ContextSourceKey, number> = {
   memoryContext: 40,
   activityContext: 30,
+  // UX-11 Phase 10 — ranks just under activity (what you're doing) but
+  // above background knowledge/workspace/identity facts: "what needs your
+  // attention" is situational guidance, not passive context.
+  attentionContext: 25,
   knowledgeContext: 20,
   workspaceContext: 10,
   userContext: 5,
@@ -37,6 +47,8 @@ function isSourcePresent(context: NovaContext, key: ContextSourceKey): boolean {
       return Boolean(context.workspaceContext?.workspaceName)
     case 'userContext':
       return Boolean(context.userContext)
+    case 'attentionContext':
+      return Boolean(context.attentionContext)
   }
 }
 

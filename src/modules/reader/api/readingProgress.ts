@@ -37,6 +37,21 @@ export async function getMostRecentReadingProgress(): Promise<InProgressDocument
   return { id: row.documents.id, title: row.documents.title, updatedAt: row.updated_at }
 }
 
+/**
+ * UX-11 Phase 3 — every reading_progress row for a workspace (or all
+ * workspaces when null), for Knowledge Growth Analytics' "reading progress
+ * updates" metric. reading_progress has no workspace_id of its own (only
+ * document_id, same gap dashboard.ts already works around), so this joins
+ * through documents like listRecentHighlights/listFlashcardActivity do.
+ */
+export async function listReadingProgressForWorkspace(workspaceId: string | null): Promise<{ updated_at: string }[]> {
+  let query = supabase.from('reading_progress').select('updated_at, documents!inner(workspace_id)')
+  if (workspaceId) query = query.eq('documents.workspace_id', workspaceId)
+  const { data, error } = await query
+  if (error) throw error
+  return (data as unknown as { updated_at: string }[]).map((row) => ({ updated_at: row.updated_at }))
+}
+
 export async function saveReadingProgress(params: {
   documentId: string
   userId: string

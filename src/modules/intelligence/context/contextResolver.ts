@@ -1,10 +1,14 @@
 import { getWorkspaceHeaderSummary, getWorkspaceName } from '@/modules/workspaces/api/workspaces'
-import { getMostRecentReadingProgress } from '@/modules/reader/api/readingProgress'
+import { getMostRecentReadingProgress, getReadingProgress } from '@/modules/reader/api/readingProgress'
 import { listConversations } from '@/modules/ai/chat/api/conversations'
+import { listMemories } from '@/modules/ai/memory/api/memory'
 import { getProfile } from '@/modules/settings/api/profile'
 import { buildContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
+import { detectAttentionItems } from '@/modules/intelligence/orchestrator/attentionEngine'
+import { rankAttentionItems } from '@/modules/intelligence/dashboard/dashboardSignals'
 import type {
   ActivityContext,
+  AttentionContext,
   KnowledgeContext,
   MemoryContext,
   NovaContext,
@@ -59,6 +63,38 @@ async function resolveUserContext(userId: string): Promise<UserContext | null> {
   }
 }
 
+/**
+ * UX-11 Phase 10 — "What should I focus on?" answered through this same
+ * existing context pipeline, not a separate AI path: the single highest-
+ * priority Attention Center item (reusing UX-8's detectAttentionItems +
+ * dashboardSignals.rankAttentionItems, never re-detected). Independent
+ * fetch, same as every other resolver here — degrades to null on failure.
+ */
+async function resolveAttentionContext(workspaceId: string | null): Promise<AttentionContext | null> {
+  try {
+    const [mostRecentReading, memories, workspaceSummary] = await Promise.all([
+      getMostRecentReadingProgress(),
+      listMemories({ workspaceId }),
+      getWorkspaceHeaderSummary(workspaceId),
+    ])
+    const fullProgress = mostRecentReading ? await getReadingProgress(mostRecentReading.id) : null
+    const inProgressDocument =
+      mostRecentReading && fullProgress ? { title: mostRecentReading.title, scrollFraction: fullProgress.scroll_fraction } : null
+
+    const items = detectAttentionItems({
+      inProgressDocument,
+      memories,
+      userQuery: '',
+      recentConversations: [],
+      workspaceLastActivityAt: workspaceSummary.lastActivityAt,
+    })
+    const [topItem] = rankAttentionItems(items)
+    return topItem ? { topItem: { message: topItem.message } } : null
+  } catch {
+    return null
+  }
+}
+
 /** Pure — derives a node count from already-formatted graph context text via buildContextTrace, the same counting logic UX-5.2's internal trace already uses. Exported for direct unit testing without a Supabase mock. */
 export function resolveKnowledgeContext(graphContextText: string | null): KnowledgeContext | null {
   if (!graphContextText) return null
@@ -82,10 +118,11 @@ export function resolveMemoryContext(memoryContextText: string | null): MemoryCo
  * chat response.
  */
 export async function resolveNovaContext(params: ResolveNovaContextParams): Promise<NovaContext> {
-  const [workspaceContext, activityContext, userContext] = await Promise.all([
+  const [workspaceContext, activityContext, userContext, attentionContext] = await Promise.all([
     resolveWorkspaceContext(params.workspaceId),
     resolveActivityContext(params.workspaceId),
     resolveUserContext(params.userId),
+    resolveAttentionContext(params.workspaceId),
   ])
 
   return {
@@ -94,5 +131,6 @@ export async function resolveNovaContext(params: ResolveNovaContextParams): Prom
     knowledgeContext: resolveKnowledgeContext(params.graphContextText),
     memoryContext: resolveMemoryContext(params.memoryContextText),
     userContext,
+    attentionContext,
   }
 }

@@ -29,6 +29,11 @@ export interface UserContext {
   displayName: string
 }
 
+/** UX-11 Phase 10 — the single highest-priority item from the Attention Center (dashboardSignals.rankAttentionItems), reusing UX-8's attentionEngine. Only the top item, kept deliberately compact — this is situational-prompt text, not the full dashboard. */
+export interface AttentionContext {
+  topItem: { message: string }
+}
+
 /**
  * The NOVA Context Engine's aggregate output (UX-6 Phase 2). Every field
  * is independently optional by design — a failure resolving one source
@@ -41,4 +46,5 @@ export interface NovaContext {
   knowledgeContext: KnowledgeContext | null
   memoryContext: MemoryContext | null
   userContext: UserContext | null
+  attentionContext: AttentionContext | null
 }

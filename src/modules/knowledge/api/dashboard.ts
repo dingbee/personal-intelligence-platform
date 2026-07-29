@@ -101,6 +101,15 @@ export async function listFlashcardActivity(
   return Array.from(byDocument.values()).sort((a, b) => (a.mostRecentAt < b.mostRecentAt ? 1 : -1))
 }
 
+/** UX-11 Phase 3 — every flashcard's created_at for a workspace, for Knowledge Growth Analytics' "insights generated" metric. Distinct from listFlashcardActivity (grouped per-document, no per-card window bucketing possible from its shape). */
+export async function listAllFlashcards(workspaceId: string | null): Promise<{ created_at: string }[]> {
+  let query = supabase.from('flashcards').select('created_at, documents!inner(workspace_id)')
+  if (workspaceId) query = query.eq('documents.workspace_id', workspaceId)
+  const { data, error } = await query
+  if (error) throw error
+  return (data as unknown as { created_at: string }[]).map((row) => ({ created_at: row.created_at }))
+}
+
 export interface DocumentConnection {
   documentId: string
   documentTitle: string

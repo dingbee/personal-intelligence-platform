@@ -11,6 +11,7 @@ import type { NovaContext } from '@/modules/intelligence/context/types'
  */
 const SECTION_RENDERERS: Record<ContextSourceKey, (context: NovaContext) => string | null> = {
   memoryContext: () => null,
+  attentionContext: (context) => context.attentionContext?.topItem.message ?? null,
   activityContext: (context) => {
     const activity = context.activityContext
     if (!activity) return null

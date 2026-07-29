@@ -32,6 +32,11 @@ export interface SignalEngineInput {
   now?: Date
 }
 
+/** Exported for reuse by UX-11's dashboardInteraction.ts (Review recommendations) — same check, not duplicated. */
+export function hasUnreviewedMemory(memories: AiMemory[]): boolean {
+  return memories.some((memory) => memory.source === 'conversation' && memory.created_at === memory.updated_at)
+}
+
 /**
  * UX-8 Phase 7 — new signal types only (contradictory_memory,
  * reading_opportunity, unreviewed_memory, inactive_workspace,
@@ -53,8 +58,7 @@ export function detectOrchestratorSignals(input: SignalEngineInput): Intelligenc
     signals.push({ type: 'reading_opportunity', message: 'There is a book in progress you could continue.' })
   }
 
-  const unreviewed = input.memories.some((memory) => memory.source === 'conversation' && memory.created_at === memory.updated_at)
-  if (unreviewed) {
+  if (hasUnreviewedMemory(input.memories)) {
     signals.push({ type: 'unreviewed_memory', message: 'A learned memory has not been reviewed since it was saved.' })
   }
 

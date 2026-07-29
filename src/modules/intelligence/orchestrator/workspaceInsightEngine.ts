@@ -29,10 +29,20 @@ const STOPWORDS = new Set([
   'conversation',
   'untitled',
   'new',
+  // UX-11 Phase 5: this function is now also reused over ai_memory.content,
+  // every row of which is templated as "User prefers/dislikes ..." (same
+  // gap attentionEngine.ts's own STOPWORDS already excludes "user" for) —
+  // without this it would spuriously "win" on every memory-content input.
+  'user',
 ])
 
-/** Crude, deterministic keyword frequency — a proxy for "most queried topic" from conversation titles, not an NLP topic model. */
-function mostFrequentSignificantWord(titles: string[]): string | null {
+/**
+ * Crude, deterministic keyword frequency — a proxy for "most queried topic"
+ * from conversation titles, not an NLP topic model. Exported for reuse by
+ * UX-11's dashboardInsights.ts (applied to memory content / conversation
+ * titles over time) — same technique, not duplicated.
+ */
+export function mostFrequentSignificantWord(titles: string[]): string | null {
   const counts = new Map<string, number>()
   for (const title of titles) {
     for (const word of title.toLowerCase().split(/\W+/)) {
