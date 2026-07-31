@@ -9,6 +9,7 @@ import { HighlightsList } from '@/modules/reader/components/HighlightsList'
 import { ChapterSummaryPanel } from '@/modules/reader/components/ChapterSummaryPanel'
 import { FlashcardsPanel } from '@/modules/reader/components/FlashcardsPanel'
 import { ReaderChatPanel } from '@/modules/reader/components/ReaderChatPanel'
+import { resolveReaderMode } from '@/modules/reader/resolveReaderMode'
 import type { LocalSuggestionId } from '@/modules/reader/intelligence/chapterSuggestions'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
@@ -55,7 +56,11 @@ export function ReaderPage() {
   const contentRef = useRef<HTMLDivElement>(null)
   const scrollSaveTimeout = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  const isPdf = document?.file_type === 'pdf'
+  // UX-13.8.1 — resolveReaderMode is the single "is this document readable,
+  // and how" decision; DocumentCard's Read button/menu item make the same
+  // call before ever linking here.
+  const readerMode = document ? resolveReaderMode(document.file_type) : null
+  const isPdf = readerMode === 'pdf'
   // UX-13.7.1 — populated by PdfReaderView once it (lazily) loads the PDF
   // and knows its real page count; 0 until then.
   const [pdfPageCount, setPdfPageCount] = useState(0)
@@ -88,6 +93,26 @@ export function ReaderPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progressLoading])
+
+  // UX-13.8.1 — a `?panel=summary` deep link (from DocumentCard's
+  // Summarize menu item) opens straight to that side panel instead of
+  // requiring a click once the reader loads. Same "consume once, strip
+  // from the URL" contract as `?chapter=` above — this only needs to run
+  // once on mount, not re-check on every activePanel change.
+  useEffect(() => {
+    const panelParam = searchParams.get('panel')
+    if (panelParam === null) return
+    if (TABS.some((tab) => tab.id === panelParam)) setActivePanel(panelParam as SidePanelTab)
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        next.delete('panel')
+        return next
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const el = contentRef.current
@@ -144,12 +169,12 @@ export function ReaderPage() {
     )
   }
 
-  if (document.file_type !== 'epub' && document.file_type !== 'pdf') {
+  if (readerMode === null) {
     return (
       <div className="p-8">
         <EmptyState
           title="Reader coming soon for this file type"
-          description="The reading workspace currently supports EPUB and PDF. Other formats arrive in a later milestone."
+          description="The reading workspace currently supports PDF, EPUB, DOCX, plain text, and Markdown."
         />
       </div>
     )

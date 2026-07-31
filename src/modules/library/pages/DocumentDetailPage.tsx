@@ -13,6 +13,7 @@ import { KnowledgeExtractionPanel } from '@/modules/knowledge-intelligence/compo
 import { DocumentTagEditor } from '@/modules/library/components/DocumentTagEditor'
 import { CollectionMoveSelect } from '@/modules/library/components/CollectionMoveSelect'
 import { fileTypeLabel, formatFileSize } from '@/modules/library/utils/fileTypes'
+import { resolveReaderMode } from '@/modules/reader/resolveReaderMode'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Button } from '@/shared/components/ui/Button'
@@ -58,6 +59,8 @@ export function DocumentDetailPage() {
       />
     )
   }
+
+  const readerMode = resolveReaderMode(document.file_type)
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -164,7 +167,7 @@ export function DocumentDetailPage() {
         {document.status === 'ready' && <KnowledgeExtractionPanel documentId={document.id} />}
 
         <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-4">
-          {document.file_type === 'epub' && document.status === 'ready' && (
+          {readerMode && document.status === 'ready' && (
             <Link to={`/library/${document.id}/read`}>
               <Button variant="secondary">Read</Button>
             </Link>
