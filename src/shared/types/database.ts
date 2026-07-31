@@ -98,7 +98,8 @@ export type ExtractionMetadata = {
   chapter_count: number | null
   word_count: number | null
   char_count: number | null
-  metadata: { chapters?: ExtractionChapterSummary[] } & Record<string, unknown>
+  /** `spreadsheet` (UX-13.10) holds SheetAnalysis[] from `@/modules/processing/spreadsheet/types` — kept as `unknown[]` here so shared/types doesn't depend on a feature module; readers should go through `getSpreadsheetAnalysis` in `@/modules/processing/api/extractionMetadata` rather than casting this directly. */
+  metadata: { chapters?: ExtractionChapterSummary[]; spreadsheet?: unknown[] } & Record<string, unknown>
   created_at: string
   updated_at: string
 }

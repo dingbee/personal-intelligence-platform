@@ -71,4 +71,20 @@ describe('buildSystemPrompt', () => {
     const result = buildSystemPrompt([], 'Concept: Relativity Theory')
     expect(result).not.toContain('must never override')
   })
+
+  it('appends a <spreadsheet_analysis> block when spreadsheetContext is given (UX-13.10)', () => {
+    const result = buildSystemPrompt([], null, null, 'Revenue: sum USD 1,500')
+    expect(result).toContain('<spreadsheet_analysis>\nRevenue: sum USD 1,500\n</spreadsheet_analysis>')
+  })
+
+  it('produces no <spreadsheet_analysis> block when spreadsheetContext is null, undefined, or empty', () => {
+    expect(buildSystemPrompt([], null, null, null)).not.toContain('<spreadsheet_analysis>')
+    expect(buildSystemPrompt([])).not.toContain('<spreadsheet_analysis>')
+    expect(buildSystemPrompt([], null, null, '')).not.toContain('<spreadsheet_analysis>')
+  })
+
+  it('places spreadsheet analysis before personal context, same evidence-before-personalization ordering as graph context', () => {
+    const result = buildSystemPrompt([], null, '- Likes concise answers', 'Revenue: sum USD 1,500')
+    expect(result.indexOf('<spreadsheet_analysis>')).toBeLessThan(result.indexOf('<personal_context>'))
+  })
 })

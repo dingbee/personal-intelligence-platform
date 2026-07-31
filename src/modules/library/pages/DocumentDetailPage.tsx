@@ -12,8 +12,10 @@ import { ProcessingStatusBadge } from '@/modules/processing/components/Processin
 import { KnowledgeExtractionPanel } from '@/modules/knowledge-intelligence/components/KnowledgeExtractionPanel'
 import { DocumentTagEditor } from '@/modules/library/components/DocumentTagEditor'
 import { CollectionMoveSelect } from '@/modules/library/components/CollectionMoveSelect'
+import { SpreadsheetSummaryCard } from '@/modules/library/components/SpreadsheetSummaryCard'
 import { fileTypeLabel, formatFileSize } from '@/modules/library/utils/fileTypes'
 import { resolveReaderMode } from '@/modules/reader/resolveReaderMode'
+import { getSpreadsheetAnalysis } from '@/modules/processing/api/extractionMetadata'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Button } from '@/shared/components/ui/Button'
@@ -61,6 +63,7 @@ export function DocumentDetailPage() {
   }
 
   const readerMode = resolveReaderMode(document.file_type)
+  const spreadsheetAnalysis = readerMode === 'spreadsheet' ? getSpreadsheetAnalysis(metadata) : null
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -163,6 +166,20 @@ export function DocumentDetailPage() {
             </p>
           )}
         </div>
+
+        {spreadsheetAnalysis && spreadsheetAnalysis.length > 0 && (
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-muted)]">
+              Spreadsheet Analysis
+            </h2>
+            <div className="mt-1.5">
+              <SpreadsheetSummaryCard
+                analyses={spreadsheetAnalysis}
+                lastUpdatedLabel={new Date(document.updated_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+              />
+            </div>
+          </div>
+        )}
 
         {document.status === 'ready' && <KnowledgeExtractionPanel documentId={document.id} />}
 

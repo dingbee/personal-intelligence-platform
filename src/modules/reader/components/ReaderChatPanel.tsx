@@ -36,7 +36,17 @@ export interface ReaderChatPanelProps {
   hasProgress: boolean
   progressUpdatedAt: string | null
   onLocalSuggestion: (id: LocalSuggestionId) => void
+  /** UX-13.10 — shows the "Basic Analyst Questions" starter chips instead of the generic empty state when this document is a spreadsheet. */
+  isSpreadsheet?: boolean
 }
+
+const ANALYST_QUESTIONS = [
+  'Summarize this spreadsheet',
+  'What are the largest expenses?',
+  'Which region performs best?',
+  'Show me trends',
+  'Find anomalies',
+]
 
 /**
  * Contextual chat scoped to one document, embedded in the reader rather
@@ -66,6 +76,7 @@ export function ReaderChatPanel({
   hasProgress,
   progressUpdatedAt,
   onLocalSuggestion,
+  isSpreadsheet,
 }: ReaderChatPanelProps) {
   const { data: conversations = [], isLoading: conversationsLoading, create, updateProvider } =
     useConversations(documentId)
@@ -181,10 +192,31 @@ export function ReaderChatPanel({
             <Spinner size="sm" />
           </div>
         ) : !conversationId ? (
-          <EmptyState
-            title="Ask about this book"
-            description="Grounded in this document's content — ask for an explanation, a comparison, or anything else."
-          />
+          isSpreadsheet ? (
+            <div className="flex flex-col gap-3">
+              <EmptyState
+                title="Ask about this spreadsheet"
+                description="Grounded in the sheet's actual computed figures, not a guess at the raw text."
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {ANALYST_QUESTIONS.map((question) => (
+                  <button
+                    key={question}
+                    type="button"
+                    onClick={() => void handleSend(question)}
+                    className="rounded-full border border-[var(--color-border)] bg-[var(--color-canvas)] px-3 py-1.5 text-xs font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <EmptyState
+              title="Ask about this book"
+              description="Grounded in this document's content — ask for an explanation, a comparison, or anything else."
+            />
+          )
         ) : (
           <div className="flex flex-col gap-3">
             {messagesLoading ? (

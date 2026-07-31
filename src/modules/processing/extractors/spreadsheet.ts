@@ -1,7 +1,9 @@
 import * as XLSX from 'xlsx'
+import type { WorkSheet } from 'xlsx'
 import type { DocumentFileType } from '@/shared/types/database'
 import type { DocumentProcessor, ExtractionResult } from '@/modules/processing/extractors/types'
 import { countWords, normalizeText } from '@/modules/processing/extractors/textStats'
+import { analyzeSheet } from '@/modules/processing/spreadsheet/workbookAnalysis'
 
 /**
  * UX-13 Phase B (Spreadsheet Intelligence) — one chapter per sheet, same
@@ -26,16 +28,39 @@ function serializeSheetAsMarkdownTable(rows: unknown[][]): string {
   return lines.join('\n')
 }
 
+/**
+ * UX-13.10 — which columns (0-indexed) have at least one formula cell, read
+ * directly off the raw WorkSheet's cell objects (`.f`) rather than the
+ * `sheet_to_json`-derived `rows`, which only carries each formula's
+ * last-computed value. Cheap: one pass over the sheet's populated cell
+ * addresses, no recalculation.
+ */
+function formulaColumnIndexes(sheet: WorkSheet): Set<number> {
+  const columns = new Set<number>()
+  for (const address of Object.keys(sheet)) {
+    if (address.startsWith('!')) continue
+    const cell = sheet[address]
+    if (cell && typeof cell === 'object' && 'f' in cell && cell.f) {
+      columns.add(XLSX.utils.decode_cell(address).c)
+    }
+  }
+  return columns
+}
+
 async function extract(file: Blob): Promise<ExtractionResult> {
   const arrayBuffer = await file.arrayBuffer()
   const workbook = XLSX.read(arrayBuffer, { type: 'array' })
 
-  const chapters = workbook.SheetNames.map((name, index) => {
+  const sheetResults = workbook.SheetNames.map((name, index) => {
     const sheet = workbook.Sheets[name]
     const rows = sheet ? XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, blankrows: false }) : []
-    return { index, title: name, text: normalizeText(serializeSheetAsMarkdownTable(rows)) }
-  }).filter((chapter) => chapter.text.trim().length > 0)
+    const chapter = { index, title: name, text: normalizeText(serializeSheetAsMarkdownTable(rows)) }
+    const analysis = sheet ? analyzeSheet(rows, index, name, formulaColumnIndexes(sheet)) : null
+    return { chapter, analysis }
+  }).filter((result) => result.chapter.text.trim().length > 0)
 
+  const chapters = sheetResults.map((result) => result.chapter)
+  const spreadsheetAnalysis = sheetResults.map((result) => result.analysis).filter((a): a is NonNullable<typeof a> => a !== null)
   const text = chapters.map((chapter) => `## ${chapter.title}\n\n${chapter.text}`).join('\n\n')
 
   return {
@@ -47,6 +72,7 @@ async function extract(file: Blob): Promise<ExtractionResult> {
     wordCount: countWords(text),
     charCount: text.length,
     chapters,
+    spreadsheetAnalysis,
   }
 }
 

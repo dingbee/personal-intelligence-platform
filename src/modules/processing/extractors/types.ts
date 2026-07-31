@@ -1,4 +1,5 @@
 import type { DocumentFileType, ExtractionChapterSummary } from '@/shared/types/database'
+import type { SheetAnalysis } from '@/modules/processing/spreadsheet/types'
 
 export interface ExtractedChapter {
   index: number
@@ -16,6 +17,8 @@ export interface ExtractionResult {
   charCount: number
   /** Populated for formats with a real chapter structure (EPUB) or a natural page structure (PDF, one chapter per page). Null for plain text formats with neither. */
   chapters: ExtractedChapter[] | null
+  /** UX-13.10 — populated only by the spreadsheet extractor, computed from the same typed cell grid SheetJS produces before it's serialized to markdown for `chapters`/`text`. Null for every other format. */
+  spreadsheetAnalysis?: SheetAnalysis[]
 }
 
 /**

@@ -8,6 +8,7 @@ import { buildSystemPrompt } from '@/modules/ai/orchestration/buildSystemPrompt'
 import { buildContextTrace, type ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import { retrieveGraphContext } from '@/modules/knowledge-intelligence/api/retrieveGraphContext'
 import { retrieveMemoryContext } from '@/modules/ai/memory/retrieveMemoryContext'
+import { retrieveSpreadsheetContext } from '@/modules/processing/api/retrieveSpreadsheetContext'
 import { streamChatCompletion } from '@/modules/ai/orchestration/streamChatCompletion'
 import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { indexMessage } from '@/modules/search/indexing/indexMessage'
@@ -73,7 +74,12 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
     workspaceId,
   })
   const memoryContext = await retrieveMemoryContext({ userId, workspaceId })
-  let system = buildSystemPrompt(matches, graphContext, memoryContext)
+  // UX-13.10 — same never-throws contract as graph/memory context; scoped
+  // to `documentId` specifically (not the matched chunks' documents) since
+  // this is only meaningful when the reader/chat is actually anchored to
+  // one spreadsheet, same scoping retrieveContext itself already uses.
+  const spreadsheetContext = await retrieveSpreadsheetContext(documentId)
+  let system = buildSystemPrompt(matches, graphContext, memoryContext, spreadsheetContext)
 
   const contextTrace = buildContextTrace(matches.length, graphContext, memoryContext)
   // Internal-only, logged not persisted (Phase UX-5.2) — "why did NOVA

@@ -35,6 +35,7 @@ export function buildSystemPrompt(
   matches: VectorMatch[],
   graphContext?: string | null,
   memoryContext?: string | null,
+  spreadsheetContext?: string | null,
 ): string {
   const template = getActivePrompt('chat')
   if (!template) throw new Error('No active prompt template for the "chat" capability — is coreModule registered?')
@@ -48,6 +49,13 @@ export function buildSystemPrompt(
 
   if (graphContext) {
     prompt += `\n\n<knowledge_connections>\n${graphContext}\n</knowledge_connections>`
+  }
+
+  // UX-13.10 — deterministic, precomputed spreadsheet figures (sums,
+  // comparisons, trends, anomalies), placed ahead of memory the same way
+  // graph context is: it's evidence, not personalization.
+  if (spreadsheetContext) {
+    prompt += `\n\n<spreadsheet_analysis>\n${spreadsheetContext}\n</spreadsheet_analysis>`
   }
 
   if (memoryContext) {

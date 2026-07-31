@@ -374,6 +374,7 @@ export function ReaderPage() {
                 hasProgress={hasProgress}
                 progressUpdatedAt={progressUpdatedAt}
                 onLocalSuggestion={handleLocalSuggestion}
+                isSpreadsheet={isSpreadsheet}
               />
             )}
             {activePanel === 'summary' && activeChapter && (
