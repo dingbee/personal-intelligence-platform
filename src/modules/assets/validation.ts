@@ -9,6 +9,23 @@ export interface ImageValidationResult {
   error: string | null
 }
 
+/**
+ * UX-13 Stabilization Sprint — mobile browsers (notably iOS Safari with
+ * iCloud-backed or still-encoding camera photos) can hand back a File
+ * whose `.size` reads 0 immediately after picking, before the underlying
+ * blob has fully materialized. Reading `.size` synchronously right off
+ * the picker's `change` event — the pattern every upload entry point used
+ * — is exactly what triggers it, producing a false "File is empty"
+ * rejection that only reproduces on mobile. Forcing a real read resolves
+ * it; this is a no-op extra cost for the normal case where `.size` is
+ * already correct.
+ */
+export async function resolveFileSize(file: File): Promise<number> {
+  if (file.size > 0) return file.size
+  const buffer = await file.arrayBuffer()
+  return buffer.byteLength
+}
+
 export function validateImageFile(file: { type: string; size: number }): ImageValidationResult {
   if (!SUPPORTED_IMAGE_MIME_TYPES.includes(file.type as (typeof SUPPORTED_IMAGE_MIME_TYPES)[number])) {
     return { valid: false, error: `Unsupported image type: ${file.type || 'unknown'}` }

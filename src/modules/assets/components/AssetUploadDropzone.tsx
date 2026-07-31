@@ -1,6 +1,6 @@
 import { useRef, useState, type DragEvent } from 'react'
 import { useAssets } from '@/modules/assets/hooks/useAssets'
-import { SUPPORTED_IMAGE_MIME_TYPES, validateImageFile } from '@/modules/assets/validation'
+import { SUPPORTED_IMAGE_MIME_TYPES, resolveFileSize, validateImageFile } from '@/modules/assets/validation'
 import { Button } from '@/shared/components/ui/Button'
 
 interface UploadItem {
@@ -22,7 +22,8 @@ export function AssetUploadDropzone() {
 
     for (const file of Array.from(files)) {
       const id = crypto.randomUUID()
-      const validation = validateImageFile(file)
+      const size = await resolveFileSize(file)
+      const validation = validateImageFile({ type: file.type, size })
 
       if (!validation.valid) {
         setItems((prev) => [...prev, { id, fileName: file.name, status: 'error', error: validation.error ?? 'Invalid image' }])

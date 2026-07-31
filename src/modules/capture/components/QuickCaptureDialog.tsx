@@ -4,7 +4,7 @@ import { useDocumentMutations } from '@/modules/library/hooks/useDocumentMutatio
 import { useAssets } from '@/modules/assets/hooks/useAssets'
 import { useNotes } from '@/modules/notes/hooks/useNotes'
 import { ACCEPTED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES, formatFileSize, isSupportedFile } from '@/modules/library/utils/fileTypes'
-import { SUPPORTED_IMAGE_MIME_TYPES, validateImageFile } from '@/modules/assets/validation'
+import { SUPPORTED_IMAGE_MIME_TYPES, resolveFileSize, validateImageFile } from '@/modules/assets/validation'
 import { Button } from '@/shared/components/ui/Button'
 
 interface CaptureItem {
@@ -88,7 +88,8 @@ export function QuickCaptureDialog({ open, onClose }: { open: boolean; onClose: 
         continue
       }
 
-      const imageValidation = validateImageFile(file)
+      const imageSize = await resolveFileSize(file)
+      const imageValidation = validateImageFile({ type: file.type, size: imageSize })
       if (imageValidation.valid) {
         setItems((prev) => [...prev, { id, fileName: file.name, kind: 'image', status: 'uploading' }])
         try {

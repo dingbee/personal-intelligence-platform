@@ -1,6 +1,6 @@
 import { supabase } from '@/shared/lib/supabase'
 import type { Asset } from '@/shared/types/database'
-import { validateImageFile } from '@/modules/assets/validation'
+import { resolveFileSize, validateImageFile } from '@/modules/assets/validation'
 import { generateDerivatives } from '@/modules/assets/pipeline/generateDerivatives'
 
 const BUCKET = 'assets'
@@ -49,7 +49,8 @@ export async function uploadAsset(params: {
   workspaceId: string | null
   title?: string
 }): Promise<Asset> {
-  const validation = validateImageFile(params.file)
+  const size = await resolveFileSize(params.file)
+  const validation = validateImageFile({ type: params.file.type, size })
   if (!validation.valid) throw new Error(validation.error ?? 'Invalid image')
 
   const derivatives = await generateDerivatives(params.file)
@@ -85,7 +86,7 @@ export async function uploadAsset(params: {
       mime_type: params.file.type,
       width: derivatives.natural.width,
       height: derivatives.natural.height,
-      size_bytes: params.file.size,
+      size_bytes: size,
     })
     .select()
     .single()

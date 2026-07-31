@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_ASSET_UPLOAD_BYTES, validateImageFile } from '@/modules/assets/validation'
+import { MAX_ASSET_UPLOAD_BYTES, resolveFileSize, validateImageFile } from '@/modules/assets/validation'
 
 describe('validateImageFile', () => {
   it('accepts a normal jpeg', () => {
@@ -32,5 +32,28 @@ describe('validateImageFile', () => {
     const result = validateImageFile({ type: 'image/jpeg', size: 0 })
     expect(result.valid).toBe(false)
     expect(result.error).toContain('empty')
+  })
+})
+
+describe('resolveFileSize', () => {
+  it('returns file.size directly when it is already populated', async () => {
+    const file = new File([new Uint8Array(1024)], 'photo.jpg', { type: 'image/jpeg' })
+    await expect(resolveFileSize(file)).resolves.toBe(1024)
+  })
+
+  it('falls back to reading the actual bytes when file.size reads 0', async () => {
+    // Simulates the mobile quirk this exists for: a File whose metadata
+    // hasn't materialized yet reports size 0, but the underlying blob
+    // (read via arrayBuffer) has real content.
+    const mobileQuirkFile = {
+      size: 0,
+      arrayBuffer: async () => new ArrayBuffer(2048),
+    } as unknown as File
+    await expect(resolveFileSize(mobileQuirkFile)).resolves.toBe(2048)
+  })
+
+  it('returns 0 when the file is genuinely empty', async () => {
+    const file = new File([], 'empty.jpg', { type: 'image/jpeg' })
+    await expect(resolveFileSize(file)).resolves.toBe(0)
   })
 })
