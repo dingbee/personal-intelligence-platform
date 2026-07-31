@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  computeProfileCompletion,
   getMultiProfileValues,
   getSingleProfileValue,
   isProfileMemory,
@@ -86,5 +87,47 @@ describe('getMultiProfileValues', () => {
 
   it('returns an empty array when no rows match', () => {
     expect(getMultiProfileValues([], 'expertise')).toEqual([])
+  })
+})
+
+describe('computeProfileCompletion', () => {
+  it('reports 0 of 7 for an empty profile', () => {
+    expect(computeProfileCompletion([])).toEqual({ completed: 0, total: 7, percent: 0 })
+  })
+
+  it('counts a single-select field as complete once it has one row', () => {
+    const memories = [memory({ id: '1', source: 'profile:occupation', content: 'Business Owner' })]
+    expect(computeProfileCompletion(memories).completed).toBe(1)
+  })
+
+  it('counts a multi-select field as complete once it has at least one selected value', () => {
+    const memories = [memory({ id: '1', source: 'profile:expertise', content: 'Marketing' })]
+    expect(computeProfileCompletion(memories).completed).toBe(1)
+  })
+
+  it('does not double-count multiple rows for the same multi-select field', () => {
+    const memories = [
+      memory({ id: '1', source: 'profile:expertise', content: 'Marketing' }),
+      memory({ id: '2', source: 'profile:expertise', content: 'AI' }),
+    ]
+    expect(computeProfileCompletion(memories).completed).toBe(1)
+  })
+
+  it('reports 100% when every field has a value', () => {
+    const memories = [
+      memory({ id: '1', source: 'profile:occupation', content: 'Business Owner' }),
+      memory({ id: '2', source: 'profile:industry', content: 'Hospitality' }),
+      memory({ id: '3', source: 'profile:expertise', content: 'Marketing' }),
+      memory({ id: '4', source: 'profile:goals', content: 'Grow business' }),
+      memory({ id: '5', source: 'profile:communication_style', content: 'Professional' }),
+      memory({ id: '6', source: 'profile:answer_length', content: 'balanced' }),
+      memory({ id: '7', source: 'profile:decision_style', content: 'Analytical' }),
+    ]
+    expect(computeProfileCompletion(memories)).toEqual({ completed: 7, total: 7, percent: 100 })
+  })
+
+  it('ignores non-profile memories entirely', () => {
+    const memories = [memory({ id: '1', source: 'conversation', content: 'Likes concise answers' })]
+    expect(computeProfileCompletion(memories).completed).toBe(0)
   })
 })

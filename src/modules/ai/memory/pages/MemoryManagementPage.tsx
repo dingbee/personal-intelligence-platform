@@ -4,6 +4,7 @@ import { useMemories } from '@/modules/ai/memory/hooks/useMemories'
 import { MemoryCard } from '@/modules/ai/memory/components/MemoryCard'
 import { ProfileSection } from '@/modules/ai/memory/components/ProfileSection'
 import { MemoryTogglesSection } from '@/modules/ai/memory/components/MemoryTogglesSection'
+import { HowNovaUsesThisSection } from '@/modules/ai/memory/components/HowNovaUsesThisSection'
 import {
   filterAndSortMemories,
   type MemorySortOrder,
@@ -134,6 +135,7 @@ export function MemoryManagementPage() {
         </div>
       </div>
 
+      <HowNovaUsesThisSection />
       <ProfileSection />
       <MemoryTogglesSection />
 
@@ -200,7 +202,7 @@ export function MemoryManagementPage() {
             ) : (
               <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {filtered.map((memory) => (
-                  <MemoryCard key={memory.id} memory={memory} />
+                  <MemoryCard key={memory.id} memory={memory} allMemories={memories} />
                 ))}
               </div>
             )}

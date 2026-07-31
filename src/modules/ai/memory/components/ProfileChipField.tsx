@@ -1,11 +1,13 @@
 /** UX-13.6 Phase 2 — a labeled multi-select: curated options plus whatever's already selected (so a value NOVA already knows never disappears just because it's not in the curated list), rendered as toggleable chips. */
 export function ProfileChipField({
   label,
+  why,
   options,
   selected,
   onToggle,
 }: {
   label: string
+  why?: string
   options: string[]
   selected: string[]
   onToggle: (value: string) => void
@@ -36,6 +38,7 @@ export function ProfileChipField({
           )
         })}
       </div>
+      {why && <p className="text-xs text-[var(--color-ink-muted)]">{why}</p>}
     </div>
   )
 }

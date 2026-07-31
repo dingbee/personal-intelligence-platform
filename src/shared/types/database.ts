@@ -137,6 +137,14 @@ export type Conversation = {
   provider_id: string
   /** UX-13.5B: null = active/visible. Set = archived — hidden from the default list but restorable. Mirrors workspaces.archived_at. */
   archived_at: string | null
+  /** UX-13.6: pinned conversations sort first within the active list, independent of recency. */
+  is_pinned: boolean
+  /** UX-13.6: a separate flag from is_pinned — "pin to top" and "mark as favorite" are different user intents even though both are booleans. */
+  favorite: boolean
+  /** UX-13.6: reserved for a future custom-color affordance — no UI reads/writes this yet. */
+  color: string | null
+  /** UX-13.6: reserved for a future custom-icon affordance — no UI reads/writes this yet. */
+  icon: string | null
   created_at: string
   updated_at: string
 }

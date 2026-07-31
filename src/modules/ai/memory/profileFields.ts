@@ -61,3 +61,31 @@ export const DECISION_STYLE_OPTIONS = ['Analytical', 'Intuitive', 'Collaborative
 
 export type AnswerLength = 'brief' | 'balanced' | 'detailed'
 export const ANSWER_LENGTH_LABELS: Record<AnswerLength, string> = { brief: 'Brief', balanced: 'Balanced', detailed: 'Detailed' }
+
+/** UX-13.6 — the one-line "why this matters" shown under each Profile field, so filling it in feels like a deliberate tradeoff rather than a form to get through. */
+export const PROFILE_FIELD_WHY: Record<ProfileFieldKey, string> = {
+  occupation: 'Helps NOVA pitch suggestions at the right level of detail and responsibility.',
+  industry: "Lets NOVA use your industry's terminology instead of generic language.",
+  expertise: "Skips over the basics you already know; NOVA won't over-explain your own field.",
+  goals: 'Steers recommendations toward what you actually want to achieve.',
+  communication_style: 'Shapes tone — professional and formal, or casual and direct.',
+  answer_length: 'Controls how much NOVA writes before getting to the point.',
+  decision_style: 'Changes how NOVA frames choices — options and tradeoffs, or a clear recommendation.',
+}
+
+export interface ProfileCompletion {
+  completed: number
+  total: number
+  percent: number
+}
+
+const ALL_PROFILE_FIELDS: ProfileFieldKey[] = [...SINGLE_SELECT_FIELDS, ...MULTI_SELECT_FIELDS]
+
+/** UX-13.6 — a field counts as "complete" once it has at least one value (single-select: a row exists; multi-select: at least one chip selected). Purely a UI nudge, not a gate on anything. */
+export function computeProfileCompletion(memories: AiMemory[]): ProfileCompletion {
+  const total = ALL_PROFILE_FIELDS.length
+  const completed = ALL_PROFILE_FIELDS.filter((field) =>
+    SINGLE_SELECT_FIELDS.includes(field) ? getSingleProfileValue(memories, field) !== null : getMultiProfileValues(memories, field).length > 0,
+  ).length
+  return { completed, total, percent: Math.round((completed / total) * 100) }
+}

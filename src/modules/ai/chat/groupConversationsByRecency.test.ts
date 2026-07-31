@@ -4,7 +4,7 @@ import type { Conversation } from '@/shared/types/database'
 
 const NOW = new Date('2026-07-29T15:00:00.000Z')
 
-function conversation(id: string, updatedAt: string): Conversation {
+function conversation(id: string, updatedAt: string, overrides: Partial<Conversation> = {}): Conversation {
   return {
     id,
     user_id: 'u1',
@@ -13,8 +13,13 @@ function conversation(id: string, updatedAt: string): Conversation {
     title: `Conversation ${id}`,
     provider_id: 'anthropic',
     archived_at: null,
+    is_pinned: false,
+    favorite: false,
+    color: null,
+    icon: null,
     created_at: updatedAt,
     updated_at: updatedAt,
+    ...overrides,
   }
 }
 
@@ -82,5 +87,23 @@ describe('groupConversationsByRecency', () => {
       NOW,
     )
     expect(groups.map((g) => g.label)).toEqual(['Today', 'Yesterday', 'This Week', 'Last Month', 'Older'])
+  })
+
+  it('pulls a pinned conversation into its own Pinned group, first, regardless of recency', () => {
+    const groups = groupConversationsByRecency(
+      [
+        conversation('recent', '2026-07-29T10:00:00.000Z'),
+        conversation('pinned-but-old', '2026-05-01T10:00:00.000Z', { is_pinned: true }),
+      ],
+      NOW,
+    )
+    expect(groups.map((g) => g.label)).toEqual(['📌 Pinned', 'Today'])
+    expect(groups[0]!.conversations.map((c) => c.id)).toEqual(['pinned-but-old'])
+  })
+
+  it('never puts a pinned conversation in a date bucket too', () => {
+    const groups = groupConversationsByRecency([conversation('1', '2026-07-29T10:00:00.000Z', { is_pinned: true })], NOW)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.label).toBe('📌 Pinned')
   })
 })

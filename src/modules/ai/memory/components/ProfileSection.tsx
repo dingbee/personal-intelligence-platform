@@ -9,6 +9,7 @@ import {
   GOAL_OPTIONS,
   INDUSTRY_OPTIONS,
   OCCUPATION_OPTIONS,
+  PROFILE_FIELD_WHY,
   type AnswerLength,
 } from '@/modules/ai/memory/profileFields'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
@@ -29,11 +30,25 @@ export function ProfileSection() {
   return (
     <SurfaceCard className="flex flex-col gap-1">
       <div className="pb-2">
-        <SectionHeader level="section" title="Profile" description="Who are you?" />
+        <div className="flex items-start justify-between gap-4">
+          <SectionHeader level="section" title="Profile" description="Who are you?" />
+          <div className="shrink-0 text-right">
+            <p className="text-xs font-medium text-[var(--color-ink)]">
+              {profile.completion.completed}/{profile.completion.total} complete
+            </p>
+            <div className="mt-1 h-1.5 w-24 overflow-hidden rounded-pill bg-[var(--surface-inset)]">
+              <div
+                className="h-full rounded-pill bg-[var(--color-accent)] transition-all"
+                style={{ width: `${profile.completion.percent}%` }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <ProfileSelectField
         label="Occupation"
+        why={PROFILE_FIELD_WHY.occupation}
         options={OCCUPATION_OPTIONS}
         value={profile.getSingle('occupation')}
         onSelect={(value) => profile.setSingleValue('occupation', value)}
@@ -41,6 +56,7 @@ export function ProfileSection() {
       />
       <ProfileSelectField
         label="Primary Industry"
+        why={PROFILE_FIELD_WHY.industry}
         options={INDUSTRY_OPTIONS}
         value={profile.getSingle('industry')}
         onSelect={(value) => profile.setSingleValue('industry', value)}
@@ -48,18 +64,21 @@ export function ProfileSection() {
       />
       <ProfileChipField
         label="Expertise"
+        why={PROFILE_FIELD_WHY.expertise}
         options={EXPERTISE_OPTIONS}
         selected={profile.getMulti('expertise')}
         onToggle={(value) => profile.toggleMultiValue('expertise', value)}
       />
       <ProfileChipField
         label="Goals"
+        why={PROFILE_FIELD_WHY.goals}
         options={GOAL_OPTIONS}
         selected={profile.getMulti('goals')}
         onToggle={(value) => profile.toggleMultiValue('goals', value)}
       />
       <ProfileSelectField
         label="Communication Style"
+        why={PROFILE_FIELD_WHY.communication_style}
         options={COMMUNICATION_STYLE_OPTIONS}
         value={profile.getSingle('communication_style')}
         onSelect={(value) => profile.setSingleValue('communication_style', value)}
@@ -82,10 +101,12 @@ export function ProfileSection() {
             </label>
           ))}
         </div>
+        <p className="text-xs text-[var(--color-ink-muted)]">{PROFILE_FIELD_WHY.answer_length}</p>
       </div>
 
       <ProfileSelectField
         label="Decision Style"
+        why={PROFILE_FIELD_WHY.decision_style}
         options={DECISION_STYLE_OPTIONS}
         value={profile.getSingle('decision_style')}
         onSelect={(value) => profile.setSingleValue('decision_style', value)}

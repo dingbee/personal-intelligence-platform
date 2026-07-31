@@ -6,12 +6,15 @@ const OTHER_VALUE = '__other__'
 /** UX-13.6 Phase 2 — a labeled dropdown backed by a curated option list, with an "Other…" escape hatch (InlineTextForm) for anything not in the list — including whatever custom value is already stored, so switching to this redesign never silently drops an existing answer. */
 export function ProfileSelectField({
   label,
+  why,
   options,
   value,
   onSelect,
   onClear,
 }: {
   label: string
+  /** UX-13.6 — the "why this matters" line shown under the field, from PROFILE_FIELD_WHY. */
+  why?: string
   options: string[]
   value: string | null
   onSelect: (value: string) => void
@@ -52,6 +55,7 @@ export function ProfileSelectField({
           <option value={OTHER_VALUE}>{value && !isKnownOption ? value : 'Other…'}</option>
         </select>
       )}
+      {why && <p className="text-xs text-[var(--color-ink-muted)]">{why}</p>}
     </div>
   )
 }

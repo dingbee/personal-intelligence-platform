@@ -3,7 +3,14 @@ import type { Conversation } from '@/shared/types/database'
 import { DEFAULT_CHAT_PROVIDER_ID } from '@/modules/ai/providers/registry'
 import { listMessages, insertMessage } from '@/modules/ai/chat/api/messages'
 
-/** UX-13.5B — active (non-archived) conversations only, the default list every existing caller (ChatPage, PersonalIntelligenceTimeline, dashboardInteraction) expects. */
+/**
+ * UX-13.5B — active (non-archived) conversations only, the default list
+ * every existing caller (ChatPage, PersonalIntelligenceTimeline,
+ * dashboardInteraction) expects. UX-13.6: pinned conversations sort
+ * first regardless of recency (is_pinned desc), most-recently-active
+ * first within each group — the same "pinned items float to the top"
+ * convention as everywhere else pinning exists.
+ */
 export async function listConversations(params: {
   workspaceId: string | null
   documentId?: string
@@ -12,6 +19,7 @@ export async function listConversations(params: {
     .from('conversations')
     .select('*')
     .is('archived_at', null)
+    .order('is_pinned', { ascending: false })
     .order('updated_at', { ascending: false })
 
   if (params.documentId) query = query.eq('document_id', params.documentId)
@@ -97,6 +105,18 @@ export async function archiveConversation(id: string): Promise<void> {
 /** UX-13.5B — the inverse of archiveConversation; brings a conversation back into the default list. */
 export async function restoreConversation(id: string): Promise<void> {
   const { error } = await supabase.from('conversations').update({ archived_at: null }).eq('id', id)
+  if (error) throw error
+}
+
+/** UX-13.6 — pin/unpin: pinned conversations sort first in listConversations regardless of recency. Independent of favorite (a conversation can be either, both, or neither). */
+export async function setConversationPinned(id: string, isPinned: boolean): Promise<void> {
+  const { error } = await supabase.from('conversations').update({ is_pinned: isPinned }).eq('id', id)
+  if (error) throw error
+}
+
+/** UX-13.6 — favorite/unfavorite: a separate signal from pinning (doesn't affect list order), for a future "Favorites" filter/view. */
+export async function setConversationFavorite(id: string, favorite: boolean): Promise<void> {
+  const { error } = await supabase.from('conversations').update({ favorite }).eq('id', id)
   if (error) throw error
 }
 

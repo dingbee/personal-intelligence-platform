@@ -56,6 +56,8 @@ export function ChatPage() {
     archive,
     restore,
     duplicate,
+    togglePin,
+    toggleFavorite,
     updateProvider,
   } = useConversations(documentId)
   const [viewingArchived, setViewingArchived] = useState(false)
@@ -254,6 +256,8 @@ export function ChatPage() {
           if (id === selectedId) setSelectedId(null)
         }}
         onRestore={(id) => restore.mutate(id)}
+        onTogglePin={(id, isPinned) => togglePin.mutate({ id, isPinned })}
+        onToggleFavorite={(id, favorite) => toggleFavorite.mutate({ id, favorite })}
         onDelete={(id) => {
           remove.mutate(id)
           if (id === selectedId) setSelectedId(null)
@@ -278,6 +282,8 @@ export function ChatPage() {
           if (id === selectedId) setSelectedId(null)
         }}
         onRestore={(id) => restore.mutate(id)}
+        onTogglePin={(id, isPinned) => togglePin.mutate({ id, isPinned })}
+        onToggleFavorite={(id, favorite) => toggleFavorite.mutate({ id, favorite })}
         onDelete={(id) => {
           remove.mutate(id)
           if (id === selectedId) setSelectedId(null)

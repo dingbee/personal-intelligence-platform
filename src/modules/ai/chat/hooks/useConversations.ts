@@ -7,6 +7,8 @@ import {
   listConversations,
   renameConversation,
   restoreConversation,
+  setConversationFavorite,
+  setConversationPinned,
   updateConversationProvider,
 } from '@/modules/ai/chat/api/conversations'
 import { useAuth } from '@/modules/auth/useAuth'
@@ -79,6 +81,45 @@ export function useConversations(documentId?: string) {
   })
 
   /**
+   * UX-13.6 — optimistic in place (flip the flag, don't resort): the
+   * actual pinned-first reordering comes from listConversations' own
+   * `is_pinned desc` sort on the next refetch (onSettled), same as
+   * updateProvider's "flip the field now, let the real order arrive
+   * shortly after" tradeoff.
+   */
+  const togglePin = useMutation({
+    mutationFn: (params: { id: string; isPinned: boolean }) => setConversationPinned(params.id, params.isPinned),
+    onMutate: async (params) => {
+      await queryClient.cancelQueries({ queryKey })
+      const previous = queryClient.getQueryData<Conversation[]>(queryKey)
+      queryClient.setQueryData<Conversation[]>(queryKey, (old) =>
+        old?.map((c) => (c.id === params.id ? { ...c, is_pinned: params.isPinned } : c)),
+      )
+      return { previous }
+    },
+    onError: (_err, _params, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous)
+    },
+    onSettled: invalidate,
+  })
+
+  const toggleFavorite = useMutation({
+    mutationFn: (params: { id: string; favorite: boolean }) => setConversationFavorite(params.id, params.favorite),
+    onMutate: async (params) => {
+      await queryClient.cancelQueries({ queryKey })
+      const previous = queryClient.getQueryData<Conversation[]>(queryKey)
+      queryClient.setQueryData<Conversation[]>(queryKey, (old) =>
+        old?.map((c) => (c.id === params.id ? { ...c, favorite: params.favorite } : c)),
+      )
+      return { previous }
+    },
+    onError: (_err, _params, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous)
+    },
+    onSettled: invalidate,
+  })
+
+  /**
    * Optimistic: the header's ProviderSelect needs the change to take effect
    * immediately (no page refresh, no waiting on a refetch) so the very next
    * send already uses it — conversation.provider_id is read fresh from this
@@ -103,5 +144,5 @@ export function useConversations(documentId?: string) {
     onSettled: invalidate,
   })
 
-  return { ...query, create, rename, remove, archive, restore, duplicate, updateProvider }
+  return { ...query, create, rename, remove, archive, restore, duplicate, togglePin, toggleFavorite, updateProvider }
 }

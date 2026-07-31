@@ -20,7 +20,7 @@ import { SignalList } from '@/modules/intelligence/components/SignalList'
 import { WorkspaceInsightList } from '@/modules/intelligence/components/WorkspaceInsightList'
 import { PersonalIntelligenceTimeline } from '@/modules/intelligence/components/PersonalIntelligenceTimeline'
 
-export type DrawerState = 'collapsed' | 'expanded' | 'fullscreen'
+export type DrawerState = 'collapsed' | 'expanded' | 'minimized' | 'fullscreen'
 
 const STORAGE_KEY = 'nova-insight-drawer-state'
 
@@ -43,7 +43,7 @@ export interface NovaInsightDrawerProps {
 
 function readStoredState(): DrawerState {
   const stored = localStorage.getItem(STORAGE_KEY)
-  return stored === 'expanded' || stored === 'collapsed' ? stored : 'collapsed'
+  return stored === 'expanded' || stored === 'collapsed' || stored === 'minimized' ? stored : 'collapsed'
 }
 
 /** A named, individually-collapsible subsection — the "▶ Sources used" / "▶ Reasoning" rows from the brief. Renders nothing when it has no content, so an empty turn (no references, no signals, ...) never shows an empty disclosure triangle. */
@@ -68,10 +68,18 @@ function Section({ title, hasContent, children }: { title: string; hasContent: b
  * collapsed-by-default drawer with five named, individually-collapsible
  * subsections. No new intelligence logic.
  *
- * State (collapsed/expanded/fullscreen) persists to localStorage so a
- * user who expands it once doesn't have to re-expand it on every future
- * turn — same direct-localStorage pattern WorkspaceProvider already uses
- * for the current-workspace selection.
+ * State (collapsed/expanded/minimized/fullscreen) persists to
+ * localStorage so a user who expands it once doesn't have to re-expand
+ * it on every future turn — same direct-localStorage pattern
+ * WorkspaceProvider already uses for the current-workspace selection.
+ *
+ * UX-13.6 continued — "minimized" is distinct from "collapsed": collapsed
+ * still occupies a header row in the normal document flow between the
+ * message list and the input; minimized detaches entirely into a fixed
+ * floating pill so an expanded drawer's growth never has to compete with
+ * the message list for space while you're mid-read. Expanded content is
+ * also height-capped with its own internal scroll (rather than growing
+ * the whole page) for the same reason.
  */
 export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
   const [state, setState] = useState<DrawerState>(readStoredState)
@@ -80,6 +88,14 @@ export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
     setState(next)
     if (next === 'fullscreen') return // fullscreen is a transient view, not a persisted preference
     localStorage.setItem(STORAGE_KEY, next)
+  }
+
+  function toggleBody() {
+    if (state === 'fullscreen') {
+      setPersistedState('expanded')
+      return
+    }
+    setPersistedState(state === 'collapsed' ? 'expanded' : 'collapsed')
   }
 
   const hasContextUsed = props.contextTrace.retrievedChunks > 0 || props.contextTrace.graphNodes > 0 || props.contextTrace.memoriesUsed > 0 || props.references.length > 0
@@ -132,9 +148,9 @@ export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
     <div className="flex items-center justify-between gap-2">
       <button
         type="button"
-        onClick={() => setPersistedState(state === 'collapsed' ? 'expanded' : 'collapsed')}
+        onClick={toggleBody}
         className="flex items-center gap-1.5 text-sm font-medium text-[var(--color-ink)] transition-colors hover:text-[var(--color-accent)]"
-        aria-expanded={state !== 'collapsed'}
+        aria-expanded={state === 'expanded' || state === 'fullscreen'}
       >
         <span aria-hidden className={`inline-block transition-transform duration-200 ${state === 'collapsed' ? '' : 'rotate-90'}`}>
           ▸
@@ -142,17 +158,40 @@ export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
         <span aria-hidden>✨</span> NOVA Intelligence
       </button>
       {state !== 'collapsed' && (
-        <button
-          type="button"
-          onClick={() => setPersistedState(state === 'fullscreen' ? 'expanded' : 'fullscreen')}
-          aria-label={state === 'fullscreen' ? 'Exit fullscreen' : 'Expand to fullscreen'}
-          className="text-xs text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
-        >
-          {state === 'fullscreen' ? '⤡ Minimize' : '⤢ Maximize'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setPersistedState('minimized')}
+            aria-label="Minimize NOVA Intelligence panel"
+            className="text-xs text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
+          >
+            ─ Minimize
+          </button>
+          <button
+            type="button"
+            onClick={() => setPersistedState(state === 'fullscreen' ? 'expanded' : 'fullscreen')}
+            aria-label={state === 'fullscreen' ? 'Exit fullscreen' : 'Expand to fullscreen'}
+            className="text-xs text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
+          >
+            {state === 'fullscreen' ? '⤡ Exit fullscreen' : '⤢ Maximize'}
+          </button>
+        </div>
       )}
     </div>
   )
+
+  if (state === 'minimized') {
+    return (
+      <button
+        type="button"
+        onClick={() => setPersistedState('expanded')}
+        aria-label="Restore NOVA Intelligence panel"
+        className="fixed bottom-24 right-6 z-20 flex items-center gap-1.5 rounded-pill border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-ink)] shadow-raised transition-colors hover:text-[var(--color-accent)] sm:bottom-6"
+      >
+        <span aria-hidden>✨</span> NOVA Intelligence
+      </button>
+    )
+  }
 
   if (state === 'fullscreen') {
     return (
@@ -172,9 +211,14 @@ export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
           overflow-hidden clips content during the transition. Mobile gets
           the same transition — there's nothing here that needs a
           separate mobile treatment, the drawer already reflows via the
-          flex layout at any width. */}
+          flex layout at any width. The innermost max-h/overflow-y-auto
+          (UX-13.6 continued) caps how much of the message area an
+          expanded drawer can claim — content scrolls inside the drawer
+          instead of pushing the whole page. */}
       <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${state === 'expanded' ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-        <div className="overflow-hidden">{body}</div>
+        <div className="overflow-hidden">
+          <div className="max-h-[45vh] overflow-y-auto">{body}</div>
+        </div>
       </div>
     </div>
   )

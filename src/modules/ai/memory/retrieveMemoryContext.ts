@@ -1,8 +1,8 @@
 import { listMemories } from '@/modules/ai/memory/api/memory'
 import { formatMemoriesForPrompt } from '@/modules/ai/memory/formatMemoriesForPrompt'
 
-/** Prompt-sized cap — smaller than formatMemoriesForPrompt's own default, matching retrieveGraphContext's MAX_NODES/MAX_RELATIONSHIPS bounding for the same reason: this is supplementary context, not the main event. */
-const MAX_MEMORIES_PER_TYPE = 10
+/** Prompt-sized cap — smaller than formatMemoriesForPrompt's own default, matching retrieveGraphContext's MAX_NODES/MAX_RELATIONSHIPS bounding for the same reason: this is supplementary context, not the main event. Exported so the Memory page can show which stored memories actually make it into the prompt, without duplicating this number. */
+export const MAX_MEMORIES_PER_TYPE = 10
 
 export interface RetrieveMemoryContextParams {
   userId: string

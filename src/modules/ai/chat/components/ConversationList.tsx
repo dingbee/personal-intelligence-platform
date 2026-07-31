@@ -16,6 +16,8 @@ export interface ConversationListProps {
   onDuplicate: (id: string) => void
   onDelete: (id: string) => void
   onRestore: (id: string) => void
+  onTogglePin: (id: string, isPinned: boolean) => void
+  onToggleFavorite: (id: string, favorite: boolean) => void
   /** UX-13.5B — 'active' shows Rename/Duplicate/Archive/Delete; 'archived' shows Restore/Delete instead (an archived conversation is restored before it's renamed or duplicated). */
   mode: 'active' | 'archived'
   archivedCount: number
@@ -40,6 +42,8 @@ export function ConversationListContent({
   onDuplicate,
   onDelete,
   onRestore,
+  onTogglePin,
+  onToggleFavorite,
   mode,
   archivedCount,
   onToggleMode,
@@ -75,15 +79,31 @@ export function ConversationListContent({
           <button
             type="button"
             onClick={() => onSelect(conversation.id)}
-            className="min-w-0 flex-1 truncate px-3 py-2 text-left"
+            className="flex min-w-0 flex-1 items-center gap-1 truncate px-3 py-2 text-left"
           >
-            {conversation.title}
+            {conversation.is_pinned && (
+              <span aria-label="Pinned" className="shrink-0 text-xs">
+                📌
+              </span>
+            )}
+            {conversation.favorite && (
+              <span aria-label="Favorite" className="shrink-0 text-xs text-amber-500">
+                ★
+              </span>
+            )}
+            <span className="truncate">{conversation.title}</span>
           </button>
         )}
         <DropdownMenu trigger={<span aria-label="Conversation actions">⋯</span>}>
           {mode === 'active' ? (
             <>
               <DropdownMenuItem onClick={() => setRenamingId(conversation.id)}>Rename</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onTogglePin(conversation.id, !conversation.is_pinned)}>
+                {conversation.is_pinned ? 'Unpin' : 'Pin'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onToggleFavorite(conversation.id, !conversation.favorite)}>
+                {conversation.favorite ? 'Remove favorite' : 'Add to favorites'}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDuplicate(conversation.id)}>Duplicate</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onArchive(conversation.id)}>Archive</DropdownMenuItem>
               <DropdownMenuItem danger onClick={() => setConfirmDeleteId(conversation.id)}>

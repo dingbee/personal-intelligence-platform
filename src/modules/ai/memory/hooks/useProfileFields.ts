@@ -1,5 +1,11 @@
 import { useMemories } from '@/modules/ai/memory/hooks/useMemories'
-import { getMultiProfileValues, getSingleProfileValue, profileSource, type ProfileFieldKey } from '@/modules/ai/memory/profileFields'
+import {
+  computeProfileCompletion,
+  getMultiProfileValues,
+  getSingleProfileValue,
+  profileSource,
+  type ProfileFieldKey,
+} from '@/modules/ai/memory/profileFields'
 
 /**
  * UX-13.6 Phase 2 — the structured read/write layer over explicit_profile
@@ -39,5 +45,13 @@ export function useProfileFields() {
     else create.mutate({ memoryType: 'explicit_profile', content: value, source: profileSource(field) })
   }
 
-  return { isLoading, getSingle, getMulti, setSingleValue, clearSingleValue, toggleMultiValue }
+  return {
+    isLoading,
+    getSingle,
+    getMulti,
+    setSingleValue,
+    clearSingleValue,
+    toggleMultiValue,
+    completion: computeProfileCompletion(memories),
+  }
 }
