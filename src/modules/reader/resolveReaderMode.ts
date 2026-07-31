@@ -10,8 +10,13 @@ import type { DocumentFileType } from '@/shared/types/database'
  * pane EPUB has always used — that pane was never actually EPUB-specific,
  * it just reads document_chunks, which every extractor already produces.
  * A future format (e.g. images) adds one more case here, not a new route.
+ *
+ * UX-13 Phase B — 'spreadsheet' is the third mode: xlsx/csv/ods get a
+ * grid/sheet-tab view (SpreadsheetReaderView) instead of reflowed prose,
+ * since a spreadsheet's structure (rows/columns/sheets) is the point, not
+ * something to flatten into paragraphs the way document text is.
  */
-export type ReaderMode = 'pdf' | 'text'
+export type ReaderMode = 'pdf' | 'text' | 'spreadsheet'
 
 export function resolveReaderMode(fileType: DocumentFileType): ReaderMode | null {
   switch (fileType) {
@@ -22,6 +27,10 @@ export function resolveReaderMode(fileType: DocumentFileType): ReaderMode | null
     case 'markdown':
     case 'docx':
       return 'text'
+    case 'xlsx':
+    case 'csv':
+    case 'ods':
+      return 'spreadsheet'
     default:
       return null
   }

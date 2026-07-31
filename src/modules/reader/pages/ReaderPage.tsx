@@ -18,6 +18,9 @@ import { EmptyState } from '@/shared/components/ui/EmptyState'
 // downloads when someone actually opens a PDF, not on every page of the
 // app. See PdfReaderView's header comment.
 const PdfReaderView = lazy(() => import('@/modules/reader/pdf/PdfReaderView'))
+// UX-13 Phase B — same reasoning: SheetJS only downloads when someone
+// actually opens a spreadsheet. See SpreadsheetReaderView's header comment.
+const SpreadsheetReaderView = lazy(() => import('@/modules/reader/spreadsheet/SpreadsheetReaderView'))
 
 type SidePanelTab = 'chat' | 'summary' | 'flashcards' | 'highlights'
 /**
@@ -61,9 +64,13 @@ export function ReaderPage() {
   // call before ever linking here.
   const readerMode = document ? resolveReaderMode(document.file_type) : null
   const isPdf = readerMode === 'pdf'
+  const isSpreadsheet = readerMode === 'spreadsheet'
   // UX-13.7.1 — populated by PdfReaderView once it (lazily) loads the PDF
   // and knows its real page count; 0 until then.
   const [pdfPageCount, setPdfPageCount] = useState(0)
+  // UX-13 Phase B — same idea, populated by SpreadsheetReaderView once it
+  // (lazily) loads the workbook and knows its real sheet count.
+  const [sheetCount, setSheetCount] = useState(0)
 
   const isLoading = chaptersLoading || progressLoading
 
@@ -189,11 +196,17 @@ export function ReaderPage() {
   // just scoped to the whole document rather than one page, until the
   // document is reprocessed.
   const pdfPageAligned = isPdf && pdfPageCount > 0 && chapters.length === pdfPageCount
-  const sectionIndex = isPdf ? (pdfPageAligned ? activeIndex : 0) : activeIndex
+  // UX-13 Phase B — same "document_chunks aligned 1:1 with the real
+  // units" fallback as PDF's above: spreadsheet.ts's per-sheet chapters
+  // give exact alignment for any file processed after this phase; a
+  // spreadsheet processed before it falls back to the single "Full text"
+  // section until reprocessed.
+  const sheetAligned = isSpreadsheet && sheetCount > 0 && chapters.length === sheetCount
+  const sectionIndex = isPdf ? (pdfPageAligned ? activeIndex : 0) : isSpreadsheet ? (sheetAligned ? activeIndex : 0) : activeIndex
   const activeChapter = chapters.find((chapter) => chapter.index === sectionIndex) ?? chapters[0]
-  const pageCount = isPdf ? pdfPageCount : chapters.length
+  const pageCount = isPdf ? pdfPageCount : isSpreadsheet ? sheetCount : chapters.length
   const progressPercent = pageCount > 0 ? ((activeIndex + 1) / pageCount) * 100 : 0
-  const positionLabel = isPdf ? 'Page' : 'Chapter'
+  const positionLabel = isPdf ? 'Page' : isSpreadsheet ? 'Sheet' : 'Chapter'
 
   return (
     <div className="flex h-screen flex-col">
@@ -220,8 +233,10 @@ export function ReaderPage() {
           {/* Mobile-only: desktop always shows ChapterNav, so a toggle for
               it there would be redundant. Not shown for PDF — v1 has no
               chapter/thumbnail list to toggle (see PdfPageControls'
-              prev/next + jump-to-page instead). */}
-          {!isPdf && (
+              prev/next + jump-to-page instead). Not shown for spreadsheets
+              either — WorkbookNav's sheet tabs are already always visible,
+              same reasoning as PDF. */}
+          {!isPdf && !isSpreadsheet && (
             <button
               type="button"
               onClick={() => setActivePanel(activePanel === 'chapters' ? null : 'chapters')}
@@ -234,7 +249,10 @@ export function ReaderPage() {
               Chapters
             </button>
           )}
-          {TABS.map((tab) => (
+          {/* Highlights dropped for spreadsheets — a grid cell isn't a
+              passage of prose to select, see SpreadsheetReaderView's
+              header comment. */}
+          {TABS.filter((tab) => !(isSpreadsheet && tab.id === 'highlights')).map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -252,7 +270,7 @@ export function ReaderPage() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        {!isPdf && (
+        {!isPdf && !isSpreadsheet && (
           // Desktop: always visible, exactly as before (md:flex, ignores
           // activePanel entirely). Mobile: only when the Chapters toggle is
           // active — otherwise it would still eat width from the reading
@@ -280,6 +298,23 @@ export function ReaderPage() {
                 contentRef={contentRef}
                 onScroll={handleScroll}
                 onHighlight={(quote) => addHighlight.mutate(quote)}
+              />
+            </Suspense>
+          </div>
+        ) : isSpreadsheet ? (
+          <div className={`flex min-w-0 flex-1 flex-col ${activePanel !== null ? 'hidden md:flex' : ''}`}>
+            <Suspense
+              fallback={
+                <div className="flex flex-1 items-center justify-center">
+                  <Spinner />
+                </div>
+              }
+            >
+              <SpreadsheetReaderView
+                filePath={document.file_path}
+                sheetIndex={activeIndex}
+                onSheetChange={goToChapter}
+                onSheetCountChange={setSheetCount}
               />
             </Suspense>
           </div>

@@ -9,6 +9,9 @@ const EXTENSION_TO_FILE_TYPE: Record<string, DocumentFileType> = {
   txt: 'txt',
   md: 'markdown',
   markdown: 'markdown',
+  xlsx: 'xlsx',
+  csv: 'csv',
+  ods: 'ods',
 }
 
 const FILE_TYPE_LABEL: Record<DocumentFileType, string> = {
@@ -17,9 +20,12 @@ const FILE_TYPE_LABEL: Record<DocumentFileType, string> = {
   docx: 'Word',
   txt: 'Text',
   markdown: 'Markdown',
+  xlsx: 'Excel',
+  csv: 'CSV',
+  ods: 'OpenDocument Sheet',
 }
 
-const FILE_TYPE_ACCEPT = '.pdf,.epub,.docx,.txt,.md,.markdown'
+const FILE_TYPE_ACCEPT = '.pdf,.epub,.docx,.txt,.md,.markdown,.xlsx,.csv,.ods'
 
 export function getExtension(fileName: string): string {
   const parts = fileName.split('.')

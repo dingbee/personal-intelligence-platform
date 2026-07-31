@@ -12,4 +12,10 @@ describe('resolveReaderMode', () => {
     expect(resolveReaderMode('markdown')).toBe('text')
     expect(resolveReaderMode('docx')).toBe('text')
   })
+
+  it('maps xlsx, csv, and ods to the spreadsheet reader', () => {
+    expect(resolveReaderMode('xlsx')).toBe('spreadsheet')
+    expect(resolveReaderMode('csv')).toBe('spreadsheet')
+    expect(resolveReaderMode('ods')).toBe('spreadsheet')
+  })
 })

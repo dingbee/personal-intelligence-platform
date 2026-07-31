@@ -15,7 +15,7 @@ export type Profile = {
   updated_at: string
 }
 
-export type DocumentFileType = 'pdf' | 'epub' | 'docx' | 'txt' | 'markdown'
+export type DocumentFileType = 'pdf' | 'epub' | 'docx' | 'txt' | 'markdown' | 'xlsx' | 'csv' | 'ods'
 export type DocumentStatus = 'uploaded' | 'processing' | 'ready' | 'error'
 export type ProcessingStatus =
   | 'queued'

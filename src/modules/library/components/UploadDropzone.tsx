@@ -92,7 +92,7 @@ export function UploadDropzone({ collectionId }: { collectionId: string | null }
             browse
           </button>
         </p>
-        <p className="text-xs text-[var(--color-ink-muted)]">PDF, EPUB, DOCX, TXT, Markdown</p>
+        <p className="text-xs text-[var(--color-ink-muted)]">PDF, EPUB, DOCX, TXT, Markdown, Excel, CSV, ODS</p>
         <input
           ref={inputRef}
           type="file"
