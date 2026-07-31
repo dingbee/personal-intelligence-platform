@@ -1,0 +1,111 @@
+import { supabase } from '@/shared/lib/supabase'
+import type { KnowledgeNode } from '@/shared/types/database'
+import type { SourceReferenceItem } from '@/shared/components/knowledge/SourceReference'
+
+export interface EvidenceItem extends SourceReferenceItem {
+  createdAt: string
+}
+
+export interface RelatedConceptRef {
+  nodeId: string
+  title: string
+  relationshipType: string
+  confidence: number | null
+}
+
+export interface KnowledgeNodeEvidence {
+  node: KnowledgeNode
+  /** Counts only what's actually resolvable today — a source row whose document/note/conversation was since deleted (they're never cascade-removed, see knowledge_node_sources) doesn't inflate the count. */
+  countsBySourceType: Record<string, number>
+  evidence: EvidenceItem[]
+  relatedNodes: RelatedConceptRef[]
+}
+
+/**
+ * UX-13.11 Phase 2B — a node's "why do you exist" answer: every source
+ * that's ever referenced it (grouped by source type, with counts), plus
+ * every other node it's connected to via knowledge_links. This is the one
+ * genuinely new read query the audit found missing — everything it reads
+ * from (knowledge_node_sources, knowledge_links) already existed.
+ */
+export async function getKnowledgeNodeEvidence(nodeId: string): Promise<KnowledgeNodeEvidence> {
+  const [nodeResult, sourcesResult, outgoingLinksResult, incomingLinksResult] = await Promise.all([
+    supabase.from('knowledge_nodes').select('*').eq('id', nodeId).single(),
+    supabase.from('knowledge_node_sources').select('*').eq('node_id', nodeId),
+    supabase.from('knowledge_links').select('*').eq('source_type', 'knowledge_node').eq('source_id', nodeId),
+    supabase.from('knowledge_links').select('*').eq('target_type', 'knowledge_node').eq('target_id', nodeId),
+  ])
+  if (nodeResult.error) throw nodeResult.error
+  if (sourcesResult.error) throw sourcesResult.error
+  if (outgoingLinksResult.error) throw outgoingLinksResult.error
+  if (incomingLinksResult.error) throw incomingLinksResult.error
+
+  const sources = sourcesResult.data
+  const documentIds = sources.filter((s) => s.source_type === 'document').map((s) => s.source_id)
+  const noteIds = sources.filter((s) => s.source_type === 'note').map((s) => s.source_id)
+  const conversationIds = sources.filter((s) => s.source_type === 'conversation').map((s) => s.source_id)
+
+  const [documentsResult, notesResult, conversationsResult] = await Promise.all([
+    documentIds.length > 0
+      ? supabase.from('documents').select('id, title').in('id', documentIds)
+      : Promise.resolve({ data: [], error: null }),
+    noteIds.length > 0 ? supabase.from('notes').select('id, title').in('id', noteIds) : Promise.resolve({ data: [], error: null }),
+    conversationIds.length > 0
+      ? supabase.from('conversations').select('id, title').in('id', conversationIds)
+      : Promise.resolve({ data: [], error: null }),
+  ])
+  if (documentsResult.error) throw documentsResult.error
+  if (notesResult.error) throw notesResult.error
+  if (conversationsResult.error) throw conversationsResult.error
+
+  const titleById = new Map<string, string>()
+  for (const row of documentsResult.data ?? []) titleById.set(row.id, row.title)
+  for (const row of notesResult.data ?? []) titleById.set(row.id, row.title)
+  for (const row of conversationsResult.data ?? []) titleById.set(row.id, row.title)
+
+  const evidence: EvidenceItem[] = []
+  for (const source of sources) {
+    const label = titleById.get(source.source_id)
+    if (!label) continue
+    evidence.push({ type: source.source_type, id: source.source_id, label, createdAt: source.created_at })
+  }
+  evidence.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+  const countsBySourceType: Record<string, number> = {}
+  for (const item of evidence) countsBySourceType[item.type] = (countsBySourceType[item.type] ?? 0) + 1
+
+  const otherNodeIds = new Set<string>()
+  for (const link of outgoingLinksResult.data) if (link.target_type === 'knowledge_node') otherNodeIds.add(link.target_id)
+  for (const link of incomingLinksResult.data) if (link.source_type === 'knowledge_node') otherNodeIds.add(link.source_id)
+
+  let relatedNodes: RelatedConceptRef[] = []
+  if (otherNodeIds.size > 0) {
+    const { data: otherNodes, error: otherNodesError } = await supabase
+      .from('knowledge_nodes')
+      .select('id, title')
+      .in('id', Array.from(otherNodeIds))
+    if (otherNodesError) throw otherNodesError
+    const otherTitleById = new Map(otherNodes.map((n) => [n.id, n.title]))
+
+    relatedNodes = [
+      ...outgoingLinksResult.data
+        .filter((link) => link.target_type === 'knowledge_node')
+        .map((link) => ({
+          nodeId: link.target_id,
+          title: otherTitleById.get(link.target_id),
+          relationshipType: link.relationship_type ?? 'related_to',
+          confidence: link.confidence,
+        })),
+      ...incomingLinksResult.data
+        .filter((link) => link.source_type === 'knowledge_node')
+        .map((link) => ({
+          nodeId: link.source_id,
+          title: otherTitleById.get(link.source_id),
+          relationshipType: link.relationship_type ?? 'related_to',
+          confidence: link.confidence,
+        })),
+    ].filter((ref): ref is RelatedConceptRef => Boolean(ref.title))
+  }
+
+  return { node: nodeResult.data, countsBySourceType, evidence, relatedNodes }
+}

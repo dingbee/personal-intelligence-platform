@@ -9,10 +9,11 @@ export interface SourceReferenceItem {
 function hrefFor(item: SourceReferenceItem): string | null {
   if (item.type === 'document') return `/library/${item.id}`
   if (item.type === 'note') return `/notes/${item.id}`
+  if (item.type === 'conversation') return `/chat?conversationId=${item.id}`
   return null
 }
 
-/** Provenance chips linking back to where an AI-generated object came from. Only 'document' sources exist today (extraction is document-scoped); 'note' is wired for reuse once something else adopts this component. */
+/** Provenance chips linking back to where an AI-generated object came from. UX-13.11 Phase 2B: 'conversation' evidence joins 'document'/'note' now that the deterministic concept matcher links conversations too. */
 export function SourceReference({ sources }: { sources: SourceReferenceItem[] }) {
   if (sources.length === 0) return null
 

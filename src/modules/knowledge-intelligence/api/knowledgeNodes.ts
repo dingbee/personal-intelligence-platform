@@ -83,6 +83,26 @@ export async function listKnowledgeNodes(filters: KnowledgeNodeFilters = {}): Pr
   return data
 }
 
+export interface KnowledgeNodeTitle {
+  id: string
+  title: string
+  titleNormalized: string
+}
+
+/**
+ * Phase 2B — a lightweight vocabulary for the deterministic concept
+ * matcher (matchKnownConcepts): just enough to detect mentions, not the
+ * full row. Deliberately global (user_id only, no workspace filter) —
+ * node identity itself is shared across workspaces (resolveCanonicalNode
+ * dedups the same way), so a note in Workspace B should still be able to
+ * match a concept first extracted in Workspace A.
+ */
+export async function listKnowledgeNodeTitlesForUser(userId: string): Promise<KnowledgeNodeTitle[]> {
+  const { data, error } = await supabase.from('knowledge_nodes').select('id, title, title_normalized').eq('user_id', userId)
+  if (error) throw error
+  return data.map((row) => ({ id: row.id, title: row.title, titleNormalized: row.title_normalized }))
+}
+
 export interface KnowledgeNodeSourceRef {
   nodeId: string
   sourceType: string

@@ -8,6 +8,7 @@ import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatP
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
 import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { indexNote } from '@/modules/search/indexing/indexNote'
+import { linkKnownConceptsToSource } from '@/modules/knowledge-intelligence/api/linkKnownConcepts'
 
 export function useNote(noteId: string) {
   const { user } = useAuth()
@@ -38,6 +39,7 @@ export function useNote(noteId: string) {
     onSuccess: (note) => {
       invalidate()
       void indexNote(note, currentWorkspaceId)
+      void linkKnownConceptsToSource({ userId: note.user_id, sourceType: 'note', sourceId: note.id, text: `${note.title}\n\n${note.content}` })
     },
   })
 
@@ -78,6 +80,7 @@ export function useNote(noteId: string) {
     onSuccess: (note) => {
       invalidate()
       void indexNote(note, currentWorkspaceId)
+      void linkKnownConceptsToSource({ userId: note.user_id, sourceType: 'note', sourceId: note.id, text: `${note.title}\n\n${note.content}` })
     },
   })
 

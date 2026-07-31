@@ -12,6 +12,7 @@ import { retrieveSpreadsheetContext } from '@/modules/processing/api/retrieveSpr
 import { streamChatCompletion } from '@/modules/ai/orchestration/streamChatCompletion'
 import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { indexMessage } from '@/modules/search/indexing/indexMessage'
+import { linkKnownConceptsToSource } from '@/modules/knowledge-intelligence/api/linkKnownConcepts'
 import { resolveNovaContext } from '@/modules/intelligence/context/contextResolver'
 import { buildNovaContextPrompt } from '@/modules/intelligence/buildNovaContextPrompt'
 import { generateFollowUpSuggestions } from '@/modules/intelligence/conversation/generateFollowUpSuggestions'
@@ -62,6 +63,7 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
 
   const userMessage = await insertMessage({ conversationId, userId, role: 'user', content: text })
   void indexMessage(userMessage, workspaceId)
+  void linkKnownConceptsToSource({ userId, sourceType: 'conversation', sourceId: conversationId, text })
 
   const matches = await retrieveContext({ query: text, userId, workspaceId, documentId })
   // retrieveGraphContext/retrieveMemoryContext never throw (see their own
@@ -119,6 +121,7 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
     contextChunkIds: matches.map((match) => match.chunkId),
   })
   void indexMessage(assistantMessage, workspaceId)
+  void linkKnownConceptsToSource({ userId, sourceType: 'conversation', sourceId: conversationId, text: result.content })
 
   await touchConversation(conversationId)
 

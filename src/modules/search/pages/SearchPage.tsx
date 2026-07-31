@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useSearch } from '@/modules/search/hooks/useSearch'
+import { useConceptSearch } from '@/modules/search/hooks/useConceptSearch'
 import { SearchResultCard } from '@/modules/search/components/SearchResultCard'
+import { ConceptCard } from '@/modules/knowledge-intelligence/components/ConceptCard'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
@@ -9,6 +11,10 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 
 export function SearchPage() {
   const { search, results, loading, error } = useSearch()
+  // UX-13.11 Phase 2B — the Graph Layer branch: a distinct "what do I know
+  // about X" section, run in parallel with (not merged into) the flat
+  // document/note/conversation results above.
+  const { search: searchConcepts, concepts, loading: conceptsLoading } = useConceptSearch()
   const [searchParams] = useSearchParams()
   const [queryText, setQueryText] = useState(() => searchParams.get('q') ?? '')
   const [hasSearched, setHasSearched] = useState(false)
@@ -18,6 +24,7 @@ export function SearchPage() {
     event.preventDefault()
     setHasSearched(true)
     void search(queryText)
+    void searchConcepts(queryText)
   }
 
   // Deep-linked from the Command Bar's "Search library for '<query>'" —
@@ -29,6 +36,7 @@ export function SearchPage() {
     autoRunRef.current = true
     setHasSearched(true)
     void search(q)
+    void searchConcepts(q)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
@@ -37,7 +45,8 @@ export function SearchPage() {
       <div>
         <h1 className="text-2xl font-semibold text-[var(--color-ink)]">Search</h1>
         <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
-          Semantic search across your documents and past conversations — finds what you mean, not just what you typed.
+          Semantic search across your documents, notes, and past conversations, plus what your knowledge graph already
+          knows — finds what you mean, not just what you typed.
         </p>
       </div>
 
@@ -56,6 +65,17 @@ export function SearchPage() {
       </form>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {hasSearched && !conceptsLoading && concepts.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium text-[var(--color-ink-muted)]">Knowledge</h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {concepts.map((evidence) => (
+              <ConceptCard key={evidence.node.id} evidence={evidence} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-16">

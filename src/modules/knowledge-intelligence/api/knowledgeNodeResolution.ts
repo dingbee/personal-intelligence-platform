@@ -121,7 +121,14 @@ export async function resolveCanonicalNode(input: ResolveCanonicalNodeInput): Pr
   return { node, created: action === 'create' }
 }
 
-async function recordKnowledgeNodeSource(input: {
+/**
+ * Exported (Phase 2B) so a deterministic concept *matcher* — matching
+ * already-known nodes into new note/conversation text — can record
+ * evidence without going through the full resolveCanonicalNode path,
+ * which is for the LLM extraction pipeline that discovers/refreshes
+ * nodes. Matching never creates or refreshes a node, only links one.
+ */
+export async function recordKnowledgeNodeSource(input: {
   userId: string
   nodeId: string
   sourceType: string

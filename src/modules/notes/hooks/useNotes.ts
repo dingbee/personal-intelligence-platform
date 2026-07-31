@@ -3,6 +3,7 @@ import { createNote, deleteNote, listNotes, type NoteFilters } from '@/modules/n
 import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { indexNote } from '@/modules/search/indexing/indexNote'
+import { linkKnownConceptsToSource } from '@/modules/knowledge-intelligence/api/linkKnownConcepts'
 
 export function useNotes(filters: Omit<NoteFilters, 'workspaceId'> = {}) {
   const { user } = useAuth()
@@ -29,6 +30,7 @@ export function useNotes(filters: Omit<NoteFilters, 'workspaceId'> = {}) {
     onSuccess: (note) => {
       invalidate()
       void indexNote(note, currentWorkspaceId)
+      void linkKnownConceptsToSource({ userId: note.user_id, sourceType: 'note', sourceId: note.id, text: `${note.title}\n\n${note.content}` })
     },
   })
 
