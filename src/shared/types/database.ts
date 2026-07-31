@@ -349,6 +349,21 @@ export type WorkspaceObjective = {
   updated_at: string
 }
 
+/** UX-13.8.2 — an uploaded image and its generated derivatives. Deliberately not a `documents` row; see the 0022_assets.sql migration header. */
+export type Asset = {
+  id: string
+  workspace_id: string | null
+  owner_id: string
+  original_path: string
+  optimized_path: string
+  thumbnail_path: string
+  mime_type: string
+  width: number
+  height: number
+  size_bytes: number
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -551,6 +566,21 @@ export type Database = {
         Row: WorkspaceObjective
         Insert: Partial<WorkspaceObjective> & { workspace_id: string; user_id: string; content: string }
         Update: Partial<WorkspaceObjective>
+        Relationships: []
+      }
+      assets: {
+        Row: Asset
+        Insert: Partial<Asset> & {
+          owner_id: string
+          original_path: string
+          optimized_path: string
+          thumbnail_path: string
+          mime_type: string
+          width: number
+          height: number
+          size_bytes: number
+        }
+        Update: Partial<Asset>
         Relationships: []
       }
     }
