@@ -4,6 +4,7 @@ import { Button } from '@/shared/components/ui/Button'
 import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
+import { groupConversationsByRecency } from '@/modules/ai/chat/groupConversationsByRecency'
 
 export interface ConversationListProps {
   conversations: Conversation[]
@@ -49,6 +50,59 @@ export function ConversationListContent({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const searching = searchQuery.trim().length > 0
 
+  function renderRow(conversation: Conversation) {
+    return (
+      <div
+        key={conversation.id}
+        className={`group flex items-center gap-1 rounded-lg pr-1 text-sm ${
+          conversation.id === selectedId
+            ? 'bg-[var(--color-canvas)] text-[var(--color-ink)]'
+            : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]'
+        }`}
+      >
+        {renamingId === conversation.id ? (
+          <div className="flex-1 px-2 py-1">
+            <InlineTextForm
+              initialValue={conversation.title}
+              onSubmit={(title) => {
+                setRenamingId(null)
+                if (title !== conversation.title) onRename(conversation.id, title)
+              }}
+              onCancel={() => setRenamingId(null)}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onSelect(conversation.id)}
+            className="min-w-0 flex-1 truncate px-3 py-2 text-left"
+          >
+            {conversation.title}
+          </button>
+        )}
+        <DropdownMenu trigger={<span aria-label="Conversation actions">⋯</span>}>
+          {mode === 'active' ? (
+            <>
+              <DropdownMenuItem onClick={() => setRenamingId(conversation.id)}>Rename</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDuplicate(conversation.id)}>Duplicate</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onArchive(conversation.id)}>Archive</DropdownMenuItem>
+              <DropdownMenuItem danger onClick={() => setConfirmDeleteId(conversation.id)}>
+                Delete
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <>
+              <DropdownMenuItem onClick={() => onRestore(conversation.id)}>Restore</DropdownMenuItem>
+              <DropdownMenuItem danger onClick={() => setConfirmDeleteId(conversation.id)}>
+                Delete permanently
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenu>
+      </div>
+    )
+  }
+
   return (
     <>
       <div className="flex flex-col gap-2 p-3">
@@ -83,56 +137,15 @@ export function ConversationListContent({
             {searching ? 'No conversations match your search.' : mode === 'active' ? 'No conversations yet.' : 'No archived conversations.'}
           </p>
         )}
-        {conversations.map((conversation) => (
-          <div
-            key={conversation.id}
-            className={`group flex items-center gap-1 rounded-lg pr-1 text-sm ${
-              conversation.id === selectedId
-                ? 'bg-[var(--color-canvas)] text-[var(--color-ink)]'
-                : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]'
-            }`}
-          >
-            {renamingId === conversation.id ? (
-              <div className="flex-1 px-2 py-1">
-                <InlineTextForm
-                  initialValue={conversation.title}
-                  onSubmit={(title) => {
-                    setRenamingId(null)
-                    if (title !== conversation.title) onRename(conversation.id, title)
-                  }}
-                  onCancel={() => setRenamingId(null)}
-                />
+        {/* UX-13.6 Phase 3 — Today/Yesterday/This Week/Last Month/Older grouping applies only to the plain active list; archived and search results stay a flat list (already ordered by their own most-relevant sort) rather than being regrouped by recency too. */}
+        {mode === 'active' && !searching
+          ? groupConversationsByRecency(conversations).map((group) => (
+              <div key={group.label} className="mb-1">
+                <p className="px-3 pb-1 pt-2 text-xs font-medium text-[var(--color-ink-muted)]">{group.label}</p>
+                {group.conversations.map((conversation) => renderRow(conversation))}
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => onSelect(conversation.id)}
-                className="min-w-0 flex-1 truncate px-3 py-2 text-left"
-              >
-                {conversation.title}
-              </button>
-            )}
-            <DropdownMenu trigger={<span aria-label="Conversation actions">⋯</span>}>
-              {mode === 'active' ? (
-                <>
-                  <DropdownMenuItem onClick={() => setRenamingId(conversation.id)}>Rename</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDuplicate(conversation.id)}>Duplicate</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onArchive(conversation.id)}>Archive</DropdownMenuItem>
-                  <DropdownMenuItem danger onClick={() => setConfirmDeleteId(conversation.id)}>
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              ) : (
-                <>
-                  <DropdownMenuItem onClick={() => onRestore(conversation.id)}>Restore</DropdownMenuItem>
-                  <DropdownMenuItem danger onClick={() => setConfirmDeleteId(conversation.id)}>
-                    Delete permanently
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenu>
-          </div>
-        ))}
+            ))
+          : conversations.map((conversation) => renderRow(conversation))}
       </div>
       <ConfirmDialog
         open={confirmDeleteId !== null}

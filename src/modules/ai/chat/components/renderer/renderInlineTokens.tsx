@@ -22,7 +22,7 @@ export function renderInlineTokens(tokens: InlineToken[]): ReactNode {
             href={token.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[var(--color-accent)] underline underline-offset-2"
+            className="text-[var(--color-accent)] underline decoration-[var(--color-accent)]/40 underline-offset-2 transition-colors hover:decoration-[var(--color-accent)]"
           >
             {token.content}
           </a>

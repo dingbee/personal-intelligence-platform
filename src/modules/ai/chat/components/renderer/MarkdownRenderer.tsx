@@ -46,7 +46,10 @@ export function MarkdownRenderer({ content }: { content: string }) {
   try {
     const blocks = parseMarkdownBlocks(content)
     if (blocks.length === 0) return null
-    return <div className="flex flex-col gap-2">{blocks.map(renderBlock)}</div>
+    // UX-13.6 Phase 1 — gap-3 (up from gap-2) for more breathing room between
+    // blocks; HeadingBlock adds its own extra top margin on top of this for
+    // a clearer size/weight hierarchy between a heading and what precedes it.
+    return <div className="flex flex-col gap-3">{blocks.map(renderBlock)}</div>
   } catch {
     return <div className="whitespace-pre-wrap">{content}</div>
   }

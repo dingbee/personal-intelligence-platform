@@ -345,7 +345,8 @@ export function ChatPage() {
               </p>
             )}
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="flex flex-col gap-4">
+              {/* UX-13.6 Phase 1 — gap-5 (up from gap-4) gives each turn more breathing room, closer to how a real messaging app paces a conversation. */}
+              <div className="flex flex-col gap-5">
                 {messagesLoading ? (
                   <Spinner />
                 ) : (

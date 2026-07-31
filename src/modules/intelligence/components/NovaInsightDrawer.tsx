@@ -82,17 +82,28 @@ export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
     localStorage.setItem(STORAGE_KEY, next)
   }
 
-  const hasSourcesUsed = props.contextTrace.retrievedChunks > 0 || props.contextTrace.graphNodes > 0 || props.contextTrace.memoriesUsed > 0 || props.references.length > 0
-  const hasReasoning = Boolean(props.reasoningTrace)
+  const hasContextUsed = props.contextTrace.retrievedChunks > 0 || props.contextTrace.graphNodes > 0 || props.contextTrace.memoriesUsed > 0 || props.references.length > 0
   const hasEvidence = props.attentionItems.length > 0 || props.signals.length > 0
+  const hasReasoning = Boolean(props.reasoningTrace)
+  const hasInsights = props.workspaceInsights.length > 0
   const hasSuggestions = props.suggestions.length > 0 || props.actionCommands.length > 0
-  const hasRelatedKnowledge = props.workspaceInsights.length > 0
 
+  // UX-13.6 Phase 1 — matches the redesigned section order: Context Used,
+  // Evidence, Reasoning, Insights, Suggestions, Timeline. "Related
+  // knowledge" (UX-13.5D) is split into its own Insights and Timeline
+  // sections so each is independently collapsible rather than bundled.
   const body = (
     <div className="flex flex-col gap-2">
-      <Section title="Sources used" hasContent={hasSourcesUsed}>
+      <Section title="Context Used" hasContent={hasContextUsed}>
         <NovaContextUsedBadges contextTrace={props.contextTrace} />
         <ReferenceRow references={props.references} />
+      </Section>
+      <Section title="Evidence" hasContent={hasEvidence}>
+        <div className="flex items-center gap-2">
+          <EvidenceBadge level={props.evidenceLevel} />
+        </div>
+        <AttentionList items={props.attentionItems} />
+        <SignalList signals={props.signals} />
       </Section>
       <Section title="Reasoning" hasContent={hasReasoning}>
         {props.reasoningTrace && (
@@ -103,19 +114,15 @@ export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
         )}
         <ExplainAnswerPanel summary={props.explainSummary} />
       </Section>
-      <Section title="Evidence" hasContent={hasEvidence}>
-        <div className="flex items-center gap-2">
-          <EvidenceBadge level={props.evidenceLevel} />
-        </div>
-        <AttentionList items={props.attentionItems} />
-        <SignalList signals={props.signals} />
+      <Section title="Insights" hasContent={hasInsights}>
+        <WorkspaceInsightList insights={props.workspaceInsights} />
       </Section>
       <Section title="Suggestions" hasContent={hasSuggestions}>
         <NovaSuggestions suggestions={props.suggestions} onSelect={props.onSelectSuggestion} />
         <ActionChips commands={props.actionCommands} context={props.commandContext} actions={props.commandActions} />
       </Section>
-      <Section title="Related knowledge" hasContent={hasRelatedKnowledge}>
-        <WorkspaceInsightList insights={props.workspaceInsights} />
+      {/* Timeline has no hasContent gate — PersonalIntelligenceTimeline already renders null internally when there's nothing to show, so a second, duplicate emptiness check here would just be redundant. */}
+      <Section title="Timeline" hasContent>
         <PersonalIntelligenceTimeline workspaceId={props.workspaceId} />
       </Section>
     </div>
@@ -126,10 +133,12 @@ export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
       <button
         type="button"
         onClick={() => setPersistedState(state === 'collapsed' ? 'expanded' : 'collapsed')}
-        className="flex items-center gap-1.5 text-sm font-medium text-[var(--color-ink)]"
+        className="flex items-center gap-1.5 text-sm font-medium text-[var(--color-ink)] transition-colors hover:text-[var(--color-accent)]"
         aria-expanded={state !== 'collapsed'}
       >
-        <span aria-hidden>{state === 'collapsed' ? '▸' : '▾'}</span>
+        <span aria-hidden className={`inline-block transition-transform duration-200 ${state === 'collapsed' ? '' : 'rotate-90'}`}>
+          ▸
+        </span>
         <span aria-hidden>✨</span> NOVA Intelligence
       </button>
       {state !== 'collapsed' && (
@@ -137,7 +146,7 @@ export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
           type="button"
           onClick={() => setPersistedState(state === 'fullscreen' ? 'expanded' : 'fullscreen')}
           aria-label={state === 'fullscreen' ? 'Exit fullscreen' : 'Expand to fullscreen'}
-          className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+          className="text-xs text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
         >
           {state === 'fullscreen' ? '⤡ Minimize' : '⤢ Maximize'}
         </button>
@@ -157,7 +166,16 @@ export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
   return (
     <div className="flex flex-col gap-3 border-t border-[var(--color-border)] px-6 py-3">
       {header}
-      {state === 'expanded' && body}
+      {/* UX-13.6 Phase 1 — grid-template-rows 0fr/1fr is the CSS-only way to
+          animate a height that isn't known ahead of time (the section list
+          varies turn to turn), no measuring/JS required; the inner
+          overflow-hidden clips content during the transition. Mobile gets
+          the same transition — there's nothing here that needs a
+          separate mobile treatment, the drawer already reflows via the
+          flex layout at any width. */}
+      <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${state === 'expanded' ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+        <div className="overflow-hidden">{body}</div>
+      </div>
     </div>
   )
 }
