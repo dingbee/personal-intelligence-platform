@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useNote } from '@/modules/notes/hooks/useNote'
 import { useNotes } from '@/modules/notes/hooks/useNotes'
+import { NoteTagEditor } from '@/modules/notes/components/NoteTagEditor'
 import { useDocuments } from '@/modules/library/hooks/useDocuments'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
@@ -94,6 +95,11 @@ export function NoteDetailPage() {
             ))}
           </select>
         </label>
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-[var(--color-ink)]">Tags</span>
+          <NoteTagEditor noteId={note.id} />
+        </div>
 
         {note.source_chunk_ids && note.source_chunk_ids.length > 0 && (
           <p className="text-xs text-[var(--color-ink-muted)]">

@@ -27,3 +27,26 @@ export async function linkNoteToHighlight(params: {
   if (error) throw error
   return data
 }
+
+/** UX-13.7.2 — "Save conversation to Notes" provenance: connects the created note back to the conversation it was saved from, same polymorphic knowledge_links pattern as linkNoteToHighlight above. */
+export async function linkNoteToConversation(params: {
+  userId: string
+  workspaceId: string | null
+  noteId: string
+  conversationId: string
+}): Promise<KnowledgeLink> {
+  const { data, error } = await supabase
+    .from('knowledge_links')
+    .insert({
+      user_id: params.userId,
+      workspace_id: params.workspaceId,
+      source_type: 'note',
+      source_id: params.noteId,
+      target_type: 'conversation',
+      target_id: params.conversationId,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}

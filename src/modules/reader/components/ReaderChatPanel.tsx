@@ -5,6 +5,8 @@ import { useSendMessage } from '@/modules/ai/chat/hooks/useSendMessage'
 import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
+import { SaveConversationDialog } from '@/modules/notes/components/SaveConversationDialog'
+import { Button } from '@/shared/components/ui/Button'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
 import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
@@ -68,6 +70,7 @@ export function ReaderChatPanel({
   const { data: conversations = [], isLoading: conversationsLoading, create, updateProvider } =
     useConversations(documentId)
   const [conversationId, setConversationId] = useState<string | null>(null)
+  const [savingConversation, setSavingConversation] = useState(false)
   const defaultProviderId = useDefaultChatProviderId()
 
   useEffect(() => {
@@ -139,6 +142,14 @@ export function ReaderChatPanel({
           <span className="text-xs font-medium text-[var(--color-ink-muted)]">AI provider</span>
           <div className="flex items-center gap-2">
             {updateProvider.isPending && <Spinner size="sm" />}
+            <Button
+              variant="secondary"
+              className="px-2 py-1 text-xs"
+              onClick={() => setSavingConversation(true)}
+              disabled={messages.length === 0}
+            >
+              Save to Notes
+            </Button>
             <ProviderSelect
               value={conversation?.provider_id ?? defaultProviderId}
               onChange={handleProviderChange}
@@ -146,6 +157,16 @@ export function ReaderChatPanel({
             />
           </div>
         </div>
+      )}
+      {conversation && (
+        <SaveConversationDialog
+          open={savingConversation}
+          onClose={() => setSavingConversation(false)}
+          conversationId={conversation.id}
+          conversationTitle={conversation.title}
+          workspaceId={workspaceId}
+          messages={messages}
+        />
       )}
       {conversationProviderUnavailable && (
         <p className="px-4 pt-2 text-xs text-amber-600">

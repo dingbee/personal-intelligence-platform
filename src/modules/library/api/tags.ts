@@ -7,7 +7,8 @@ export async function listTags(): Promise<Tag[]> {
   return data
 }
 
-async function ensureTag(name: string, userId: string): Promise<Tag> {
+/** Exported so other modules whose entities share this same global tag pool (e.g. notes) can reuse the exact find-or-create logic rather than reimplementing it. */
+export async function ensureTag(name: string, userId: string): Promise<Tag> {
   const trimmed = name.trim().toLowerCase()
   const { data: existing, error: selectError } = await supabase
     .from('tags')

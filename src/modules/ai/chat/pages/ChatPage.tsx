@@ -12,6 +12,7 @@ import { ConversationTitleEditor } from '@/modules/ai/chat/components/Conversati
 import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
+import { SaveConversationDialog } from '@/modules/notes/components/SaveConversationDialog'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
 import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
@@ -82,6 +83,7 @@ export function ChatPage() {
   const [newProviderId, setNewProviderId] = useState<string | null>(null)
   const effectiveNewProviderId = newProviderId ?? defaultProviderId
   const [conversationDrawerOpen, setConversationDrawerOpen] = useState(false)
+  const [savingConversation, setSavingConversation] = useState(false)
 
   useEffect(() => {
     if (!selectedId && conversations.length > 0) setSelectedId(conversations[0]!.id)
@@ -323,6 +325,9 @@ export function ChatPage() {
               />
               <div className="flex shrink-0 items-center gap-2">
                 {updateProvider.isPending && <Spinner size="sm" />}
+                <Button variant="secondary" onClick={() => setSavingConversation(true)} disabled={!conversation || messages.length === 0}>
+                  Save to Notes
+                </Button>
                 <ProviderSelect
                   value={conversation?.provider_id ?? effectiveNewProviderId}
                   onChange={handleProviderChange}
@@ -330,6 +335,16 @@ export function ChatPage() {
                 />
               </div>
             </div>
+            {conversation && (
+              <SaveConversationDialog
+                open={savingConversation}
+                onClose={() => setSavingConversation(false)}
+                conversationId={conversation.id}
+                conversationTitle={conversation.title}
+                workspaceId={conversation.workspace_id}
+                messages={messages}
+              />
+            )}
             <div className="hidden px-6 pt-3 sm:block">
               <NovaStatusIndicator
                 status={sending ? 'thinking' : 'ready'}
