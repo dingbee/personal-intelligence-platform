@@ -6,6 +6,15 @@ export interface SearchResult {
   snippet: string
   similarity: number
   href: string
+  /**
+   * UX-13.11 Phase 2A — optional richer metadata, populated by providers
+   * that group multiple underlying rows into one result (conversations
+   * grouping messages today). Absent for providers with no equivalent
+   * concept; SearchResultCard renders it only when present.
+   */
+  matchCount?: number
+  updatedAt?: string
+  workspaceId?: string | null
 }
 
 export interface SearchQuery {

@@ -47,6 +47,14 @@ export function ChatPage() {
   // AI pipeline.
   const initialQuery = searchParams.get('initialQuery')
   const initialQuerySentRef = useRef(false)
+  // UX-13.11 Phase 2A — deep-linked from a grouped conversation search
+  // result's best-matching message: scrolls to and briefly highlights it
+  // once the conversation's messages have loaded, then strips the param.
+  const deepLinkMessageId = searchParams.get('messageId')
+  const deepLinkHandledRef = useRef(false)
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
+  useEffect(() => () => clearTimeout(highlightTimerRef.current), [])
 
   const {
     data: conversations = [],
@@ -97,6 +105,30 @@ export function ChatPage() {
   }, [selectedId])
 
   const { data: messages = [], isLoading: messagesLoading } = useMessages(selectedId)
+
+  useEffect(() => {
+    if (!deepLinkMessageId || deepLinkHandledRef.current) return
+    if (messagesLoading || messages.length === 0) return
+    const target = messages.find((m) => m.id === deepLinkMessageId)
+    if (!target) return
+    deepLinkHandledRef.current = true
+    document.getElementById(`message-${deepLinkMessageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightedMessageId(deepLinkMessageId)
+    // Timer lives in a ref rather than an effect-cleanup return: stripping
+    // the messageId param below changes this effect's own dependency, which
+    // would otherwise fire React's cleanup (canceling the timer) the moment
+    // it re-runs and hits the now-true deepLinkHandledRef guard.
+    highlightTimerRef.current = setTimeout(() => setHighlightedMessageId(null), 2500)
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        next.delete('messageId')
+        return next
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkMessageId, messagesLoading, messages])
   // Looks in both lists — opening an archived conversation to read (or restore) it works the same as opening an active one.
   const conversation = conversations.find((c) => c.id === selectedId) ?? archivedConversations.find((c) => c.id === selectedId)
   // Reading conversation.provider_id fresh here (rather than snapshotting it
@@ -371,7 +403,9 @@ export function ChatPage() {
                 {messagesLoading ? (
                   <Spinner />
                 ) : (
-                  messages.map((message) => <MessageBubble key={message.id} message={message} />)
+                  messages.map((message) => (
+                    <MessageBubble key={message.id} message={message} highlighted={message.id === highlightedMessageId} />
+                  ))
                 )}
                 {streamingText !== null && (
                   <MessageBubble
