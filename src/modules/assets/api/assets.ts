@@ -18,9 +18,15 @@ function extensionForMimeType(mimeType: string): string {
   return EXTENSION_BY_MIME_TYPE[mimeType] ?? 'bin'
 }
 
-export async function listAssets(params: { workspaceId?: string | null } = {}): Promise<Asset[]> {
+export async function listAssets(params: { workspaceId?: string | null; search?: string } = {}): Promise<Asset[]> {
   let query = supabase.from('assets').select('*').order('created_at', { ascending: false })
   if (params.workspaceId) query = query.eq('workspace_id', params.workspaceId)
+  // UX-13.9 — plain title match, the same non-semantic search documents'
+  // own Library search box already uses (library/api/documents.ts).
+  // Deliberately not a SearchProvider registered on the universal /search
+  // page — that page is semantic-only (every provider takes a query
+  // embedding), and embeddings for assets are out of scope this phase.
+  if (params.search) query = query.ilike('title', `%${params.search}%`)
   const { data, error } = await query
   if (error) throw error
   return data
@@ -37,7 +43,12 @@ export async function listAssets(params: { workspaceId?: string | null } = {}): 
  * objects are orphaned rather than rolled back — the same tradeoff
  * uploadDocument already makes, not a new one.
  */
-export async function uploadAsset(params: { file: File; userId: string; workspaceId: string | null }): Promise<Asset> {
+export async function uploadAsset(params: {
+  file: File
+  userId: string
+  workspaceId: string | null
+  title?: string
+}): Promise<Asset> {
   const validation = validateImageFile(params.file)
   if (!validation.valid) throw new Error(validation.error ?? 'Invalid image')
 
@@ -67,6 +78,7 @@ export async function uploadAsset(params: { file: File; userId: string; workspac
     .insert({
       workspace_id: params.workspaceId,
       owner_id: params.userId,
+      title: params.title?.trim() || params.file.name.replace(/\.[^/.]+$/, ''),
       original_path: originalPath,
       optimized_path: optimizedPath,
       thumbnail_path: thumbnailPath,
@@ -86,6 +98,18 @@ export async function getAssetSignedUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL_SECONDS)
   if (error) throw error
   return data.signedUrl
+}
+
+export async function getAsset(id: string): Promise<Asset> {
+  const { data, error } = await supabase.from('assets').select('*').eq('id', id).single()
+  if (error) throw error
+  return data
+}
+
+export async function renameAsset(id: string, title: string): Promise<Asset> {
+  const { data, error } = await supabase.from('assets').update({ title }).eq('id', id).select().single()
+  if (error) throw error
+  return data
 }
 
 export async function deleteAsset(asset: Pick<Asset, 'id' | 'original_path' | 'optimized_path' | 'thumbnail_path'>): Promise<void> {

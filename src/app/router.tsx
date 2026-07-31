@@ -20,6 +20,7 @@ import { MemoryManagementPage } from '@/modules/ai/memory/pages/MemoryManagement
 import { AiHealthPage } from '@/modules/ai/observability/pages/AiHealthPage'
 import { ProviderHealthDetailPage } from '@/modules/ai/observability/pages/ProviderHealthDetailPage'
 import { ReaderPage } from '@/modules/reader/pages/ReaderPage'
+import { ImageReaderPage } from '@/modules/assets/pages/ImageReaderPage'
 import { ExecutiveDashboardPage } from '@/modules/intelligence/dashboard/pages/ExecutiveDashboardPage'
 import { WorkspaceEvolutionPage } from '@/modules/evolution/pages/WorkspaceEvolutionPage'
 import { WorkspaceIntelligenceHubPage } from '@/modules/hub/pages/WorkspaceIntelligenceHubPage'
@@ -35,6 +36,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ReaderPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/library/assets/:assetId',
+    element: (
+      <ProtectedRoute>
+        <ImageReaderPage />
       </ProtectedRoute>
     ),
   },

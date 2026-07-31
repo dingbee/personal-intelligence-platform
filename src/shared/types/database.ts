@@ -354,6 +354,7 @@ export type Asset = {
   id: string
   workspace_id: string | null
   owner_id: string
+  title: string
   original_path: string
   optimized_path: string
   thumbnail_path: string

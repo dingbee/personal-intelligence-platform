@@ -50,3 +50,26 @@ export async function linkNoteToConversation(params: {
   if (error) throw error
   return data
 }
+
+/** UX-13.9 — "Save image to Notes" provenance: connects the created note back to the asset it was saved from, same polymorphic knowledge_links pattern. No new table — assets was deliberately kept generic-link-compatible (source_type/target_type are plain strings, not FK-enforced). */
+export async function linkNoteToAsset(params: {
+  userId: string
+  workspaceId: string | null
+  noteId: string
+  assetId: string
+}): Promise<KnowledgeLink> {
+  const { data, error } = await supabase
+    .from('knowledge_links')
+    .insert({
+      user_id: params.userId,
+      workspace_id: params.workspaceId,
+      source_type: 'note',
+      source_id: params.noteId,
+      target_type: 'asset',
+      target_id: params.assetId,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
