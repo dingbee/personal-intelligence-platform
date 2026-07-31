@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createMemory, deleteMemory, listMemories, updateMemory, type MemoryFilters } from '@/modules/ai/memory/api/memory'
+import {
+  createMemory,
+  deleteMemory,
+  listMemories,
+  setMemoryCategoryActive,
+  updateMemory,
+  type MemoryFilters,
+} from '@/modules/ai/memory/api/memory'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import type { AiMemoryType } from '@/shared/types/database'
@@ -36,5 +43,12 @@ export function useMemories(filters: Omit<MemoryFilters, 'workspaceId'> = {}) {
     onSuccess: invalidate,
   })
 
-  return { ...query, create, update, remove }
+  /** UX-13.6 Phase 2 — the "Remember preferences" / "Remember conversation style" bulk toggles: enables or disables every memory of one type at once, reusing the same setMemoryCategoryActive the UX-5.3A brief already specified but no UI called until now. */
+  const setCategoryActive = useMutation({
+    mutationFn: (params: { memoryType: AiMemoryType; isActive: boolean }) =>
+      setMemoryCategoryActive({ ...params, workspaceId: currentWorkspaceId }),
+    onSuccess: invalidate,
+  })
+
+  return { ...query, create, update, remove, setCategoryActive }
 }

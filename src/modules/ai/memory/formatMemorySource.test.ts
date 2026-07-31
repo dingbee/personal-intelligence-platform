@@ -17,4 +17,8 @@ describe('formatMemorySource', () => {
   it('falls back to User provided for an unrecognized source value', () => {
     expect(formatMemorySource('something-unexpected')).toBe('User provided')
   })
+
+  it('labels profile-sourced memories distinctly', () => {
+    expect(formatMemorySource('profile:occupation')).toBe('Set in your profile')
+  })
 })

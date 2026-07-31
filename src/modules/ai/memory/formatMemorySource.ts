@@ -11,6 +11,7 @@ export function formatMemorySource(source: string | null): string {
     case 'import':
       return 'Imported'
     default:
-      return 'User provided'
+      // UX-13.6 Phase 2 — profile-sourced rows (source: 'profile:<field>', see profileFields.ts) are set from the Profile section's dropdowns/chips, not typed in free-form.
+      return source?.startsWith('profile:') ? 'Set in your profile' : 'User provided'
   }
 }
