@@ -1,6 +1,7 @@
 import type { CommandContext } from '@/modules/commands/types'
 import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
 import type { ConceptEvolution } from '@/modules/evolution/conceptEvolution/conceptTrend'
+import type { Conversation } from '@/shared/types/database'
 import { getWorkspaceEvolutionSnapshot } from '@/modules/evolution/api/evolutionData'
 import { buildWorkspaceEvolutionReport, type WorkspaceEvolutionReport } from '@/modules/evolution/evolutionReport'
 import { computeKnowledgeGaps, type KnowledgeGap } from '@/modules/evolution/knowledgeGaps/knowledgeGaps'
@@ -10,6 +11,10 @@ import { detectGraphSignals } from '@/modules/knowledge/intelligence/graphSignal
 import { findContradictoryMemoryPairs } from '@/modules/intelligence/orchestrator/attentionEngine'
 import { hasUnreviewedMemory } from '@/modules/intelligence/orchestrator/signalEngine'
 import { generateDashboardRecommendations, type DashboardRecommendation } from '@/modules/intelligence/dashboard/dashboardRecommendations'
+import { listNotes, type NoteWithDocument } from '@/modules/notes/api/notes'
+import { listConversations } from '@/modules/ai/chat/api/conversations'
+
+const RECENT_LIST_LIMIT = 5
 
 export interface WorkspaceHubState {
   report: WorkspaceEvolutionReport
@@ -20,6 +25,8 @@ export interface WorkspaceHubState {
   documentRelationshipCount: number
   readDocumentCount: number
   totalReadyDocumentCount: number
+  recentNotes: NoteWithDocument[]
+  activeConversations: Conversation[]
 }
 
 /**
@@ -29,7 +36,11 @@ export interface WorkspaceHubState {
  * one snapshot fetch feeds both buildWorkspaceEvolutionReport (maturity,
  * timeline, concept evolution, health, forecasts — all UX-13) and, from the
  * same nodes/edges, detectGraphSignals (UX-10) for "AI insights" and the new
- * computeKnowledgeGaps composer for "knowledge gaps."
+ * computeKnowledgeGaps composer for "knowledge gaps." recentNotes and
+ * activeConversations (UX-13.7.3) are the one pair of fresh fetches — the
+ * evolution snapshot's own notes/conversations fields are reduced shapes
+ * (no id/title, just enough for timeline/activity math) and can't back a
+ * "recent notes" or "active conversations" list on their own.
  *
  * One known simplification: generateDashboardRecommendations's
  * informationOrganizationScore is passed as 100 (never triggers the
@@ -39,7 +50,11 @@ export interface WorkspaceHubState {
  * /dashboard, so duplicating that fetch here isn't worth it.
  */
 export async function buildWorkspaceHubState(workspaceId: string, commandContext: CommandContext): Promise<WorkspaceHubState> {
-  const snapshot = await getWorkspaceEvolutionSnapshot(workspaceId)
+  const [snapshot, recentNotes, conversations] = await Promise.all([
+    getWorkspaceEvolutionSnapshot(workspaceId),
+    listNotes({ workspaceId, limit: RECENT_LIST_LIMIT }),
+    listConversations({ workspaceId }),
+  ])
   const report = buildWorkspaceEvolutionReport(snapshot)
 
   const nodeSources = await listKnowledgeNodeSourcesForNodes(snapshot.concepts.map((c) => c.id))
@@ -66,5 +81,7 @@ export async function buildWorkspaceHubState(workspaceId: string, commandContext
     documentRelationshipCount: snapshot.edges.length,
     readDocumentCount: readyDocuments.filter((d) => d.hasReadingProgress).length,
     totalReadyDocumentCount: readyDocuments.length,
+    recentNotes,
+    activeConversations: conversations.slice(0, RECENT_LIST_LIMIT),
   }
 }

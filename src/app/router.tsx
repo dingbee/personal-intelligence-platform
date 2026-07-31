@@ -23,6 +23,7 @@ import { ReaderPage } from '@/modules/reader/pages/ReaderPage'
 import { ExecutiveDashboardPage } from '@/modules/intelligence/dashboard/pages/ExecutiveDashboardPage'
 import { WorkspaceEvolutionPage } from '@/modules/evolution/pages/WorkspaceEvolutionPage'
 import { WorkspaceIntelligenceHubPage } from '@/modules/hub/pages/WorkspaceIntelligenceHubPage'
+import { HomeRedirect } from '@/app/HomeRedirect'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -45,7 +46,7 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Navigate to="/library" replace /> },
+      { index: true, element: <HomeRedirect /> },
       { path: 'dashboard', element: <ExecutiveDashboardPage /> },
       { path: 'evolution', element: <WorkspaceEvolutionPage /> },
       { path: 'hub', element: <WorkspaceIntelligenceHubPage /> },

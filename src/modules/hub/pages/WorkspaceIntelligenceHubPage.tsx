@@ -8,6 +8,8 @@ import { RecommendedActionsSection } from '@/modules/intelligence/dashboard/comp
 import { SignalList } from '@/modules/intelligence/components/SignalList'
 import { WorkspaceGapsSection } from '@/modules/hub/components/WorkspaceGapsSection'
 import { WorkspaceObjectivesSection } from '@/modules/hub/components/WorkspaceObjectivesSection'
+import { RecentNotesSection } from '@/modules/hub/components/RecentNotesSection'
+import { ActiveConversationsSection } from '@/modules/hub/components/ActiveConversationsSection'
 import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
@@ -26,6 +28,11 @@ import { Spinner } from '@/shared/components/ui/Spinner'
  * pieces: computeKnowledgeGaps, buildExecutiveSummary, and the workspace
  * objectives checklist. See useWorkspaceHub/hubData.ts for the data
  * layer.
+ *
+ * UX-13.7.3 — Recent Notes and Active Conversations close the "recent
+ * work" gap the original pass left out, and HomeRedirect now makes this
+ * page the app's homepage once a workspace is selected ("Workspace →
+ * Hub" instead of "Workspace → Documents") — see src/app/HomeRedirect.tsx.
  */
 export function WorkspaceIntelligenceHubPage() {
   const { currentWorkspaceId } = useWorkspace()
@@ -40,7 +47,12 @@ export function WorkspaceIntelligenceHubPage() {
       {!currentWorkspaceId ? (
         <EmptyState
           title="Select a workspace"
-          description="The Hub is a per-workspace command center — pick a workspace from the switcher to see it."
+          description="The Hub is a per-workspace command center — pick a workspace from the switcher above, or create one if you don't have one yet."
+          action={
+            <Link to="/settings/workspaces" className="text-sm text-[var(--color-accent)] hover:underline">
+              Manage workspaces →
+            </Link>
+          }
         />
       ) : isLoading ? (
         <div className="flex justify-center py-16">
@@ -58,6 +70,34 @@ export function WorkspaceIntelligenceHubPage() {
             <StatCard label="Active Concepts" value={data.activeConcepts.length} />
             <StatCard label="Reading Progress" value={`${data.readDocumentCount} / ${data.totalReadyDocumentCount}`} />
             <StatCard label="Document Relationships" value={data.documentRelationshipCount} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <section className="flex flex-col gap-3">
+              <SectionHeader
+                level="section"
+                title="Recent Notes"
+                action={
+                  <Link to="/notes" className="text-sm text-[var(--color-accent)] hover:underline">
+                    All notes →
+                  </Link>
+                }
+              />
+              <RecentNotesSection notes={data.recentNotes} />
+            </section>
+
+            <section className="flex flex-col gap-3">
+              <SectionHeader
+                level="section"
+                title="Active Conversations"
+                action={
+                  <Link to="/chat" className="text-sm text-[var(--color-accent)] hover:underline">
+                    All conversations →
+                  </Link>
+                }
+              />
+              <ActiveConversationsSection conversations={data.activeConversations} />
+            </section>
           </div>
 
           <section className="flex flex-col gap-3">
