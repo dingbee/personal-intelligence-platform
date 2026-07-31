@@ -1,7 +1,9 @@
 import { supabase } from '@/shared/lib/supabase'
 import type { Conversation } from '@/shared/types/database'
 import { DEFAULT_CHAT_PROVIDER_ID } from '@/modules/ai/providers/registry'
+import { listMessages, insertMessage } from '@/modules/ai/chat/api/messages'
 
+/** UX-13.5B — active (non-archived) conversations only, the default list every existing caller (ChatPage, PersonalIntelligenceTimeline, dashboardInteraction) expects. */
 export async function listConversations(params: {
   workspaceId: string | null
   documentId?: string
@@ -9,12 +11,38 @@ export async function listConversations(params: {
   let query = supabase
     .from('conversations')
     .select('*')
+    .is('archived_at', null)
     .order('updated_at', { ascending: false })
 
   if (params.documentId) query = query.eq('document_id', params.documentId)
   else if (params.workspaceId) query = query.eq('workspace_id', params.workspaceId)
 
   const { data, error } = await query
+  if (error) throw error
+  return data
+}
+
+/** UX-13.5B — the archive view: hidden from the default list but still fully queryable/restorable. Ordered by when each was archived, most-recent-first. */
+export async function listArchivedConversations(params: {
+  workspaceId: string | null
+  documentId?: string
+}): Promise<Conversation[]> {
+  let query = supabase
+    .from('conversations')
+    .select('*')
+    .not('archived_at', 'is', null)
+    .order('archived_at', { ascending: false })
+
+  if (params.documentId) query = query.eq('document_id', params.documentId)
+  else if (params.workspaceId) query = query.eq('workspace_id', params.workspaceId)
+
+  const { data, error } = await query
+  if (error) throw error
+  return data
+}
+
+export async function getConversation(id: string): Promise<Conversation> {
+  const { data, error } = await supabase.from('conversations').select('*').eq('id', id).single()
   if (error) throw error
   return data
 }
@@ -60,7 +88,49 @@ export async function touchConversation(id: string): Promise<void> {
   if (error) throw error
 }
 
+/** UX-13.5B — hides a conversation from the default list without deleting it. Reversible via restoreConversation. */
+export async function archiveConversation(id: string): Promise<void> {
+  const { error } = await supabase.from('conversations').update({ archived_at: new Date().toISOString() }).eq('id', id)
+  if (error) throw error
+}
+
+/** UX-13.5B — the inverse of archiveConversation; brings a conversation back into the default list. */
+export async function restoreConversation(id: string): Promise<void> {
+  const { error } = await supabase.from('conversations').update({ archived_at: null }).eq('id', id)
+  if (error) throw error
+}
+
+/** Permanent, unrecoverable removal — a deliberate second action distinct from archiving; the UI requires explicit confirmation before calling this. */
 export async function deleteConversation(id: string): Promise<void> {
   const { error } = await supabase.from('conversations').delete().eq('id', id)
   if (error) throw error
+}
+
+/**
+ * UX-13.5B — clones a conversation's identity (title, provider, workspace/
+ * document scope) and its full message history into a brand-new
+ * conversation, so a user can branch off an existing thread without
+ * touching the original. Messages are inserted one at a time (not via
+ * Promise.all) so their created_at ordering — the only thing listMessages
+ * sorts by — matches the source conversation's order exactly.
+ */
+export async function duplicateConversation(id: string, userId: string): Promise<Conversation> {
+  const [source, messages] = await Promise.all([getConversation(id), listMessages(id)])
+  const copy = await createConversation({
+    userId,
+    workspaceId: source.workspace_id,
+    documentId: source.document_id,
+    title: `${source.title} (Copy)`,
+    providerId: source.provider_id,
+  })
+  for (const message of messages) {
+    await insertMessage({
+      conversationId: copy.id,
+      userId,
+      role: message.role,
+      content: message.content,
+      contextChunkIds: message.context_chunk_ids,
+    })
+  }
+  return copy
 }

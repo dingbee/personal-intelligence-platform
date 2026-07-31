@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  archiveConversation,
   createConversation,
   deleteConversation,
+  duplicateConversation,
   listConversations,
   renameConversation,
+  restoreConversation,
   updateConversationProvider,
 } from '@/modules/ai/chat/api/conversations'
 import { useAuth } from '@/modules/auth/useAuth'
@@ -30,13 +33,48 @@ export function useConversations(documentId?: string) {
     onSuccess: invalidate,
   })
 
+  /**
+   * UX-13.5A — optimistic for the same reason updateProvider is: the
+   * header title and the sidebar row both read straight from this
+   * query's cache, so a rename (whether user-typed or AI-generated)
+   * should be visible the instant it's submitted, not after a round
+   * trip. Rolls back on failure rather than leaving a title the
+   * database rejected.
+   */
   const rename = useMutation({
     mutationFn: (params: { id: string; title: string }) => renameConversation(params.id, params.title),
-    onSuccess: invalidate,
+    onMutate: async (params) => {
+      await queryClient.cancelQueries({ queryKey })
+      const previous = queryClient.getQueryData<Conversation[]>(queryKey)
+      queryClient.setQueryData<Conversation[]>(queryKey, (old) =>
+        old?.map((c) => (c.id === params.id ? { ...c, title: params.title } : c)),
+      )
+      return { previous }
+    },
+    onError: (_err, _params, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous)
+    },
+    onSettled: invalidate,
   })
 
   const remove = useMutation({
     mutationFn: (id: string) => deleteConversation(id),
+    onSuccess: invalidate,
+  })
+
+  /** UX-13.5B — removes the conversation from this (active) list; invalidating both the active and archived query keys is what makes it reappear in the archive view without a manual refetch. */
+  const archive = useMutation({
+    mutationFn: (id: string) => archiveConversation(id),
+    onSuccess: invalidate,
+  })
+
+  const restore = useMutation({
+    mutationFn: (id: string) => restoreConversation(id),
+    onSuccess: invalidate,
+  })
+
+  const duplicate = useMutation({
+    mutationFn: (id: string) => duplicateConversation(id, user!.id),
     onSuccess: invalidate,
   })
 
@@ -65,5 +103,5 @@ export function useConversations(documentId?: string) {
     onSettled: invalidate,
   })
 
-  return { ...query, create, rename, remove, updateProvider }
+  return { ...query, create, rename, remove, archive, restore, duplicate, updateProvider }
 }

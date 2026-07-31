@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useConversations } from '@/modules/ai/chat/hooks/useConversations'
+import { useArchivedConversations } from '@/modules/ai/chat/hooks/useArchivedConversations'
+import { useConversationSearch } from '@/modules/ai/chat/hooks/useConversationSearch'
 import { useMessages } from '@/modules/ai/chat/hooks/useMessages'
 import { useSendMessage } from '@/modules/ai/chat/hooks/useSendMessage'
+import { useGenerateConversationTitle } from '@/modules/ai/chat/hooks/useGenerateConversationTitle'
 import { ConversationList } from '@/modules/ai/chat/components/ConversationList'
 import { MobileConversationDrawer } from '@/modules/ai/chat/components/MobileConversationDrawer'
+import { ConversationTitleEditor } from '@/modules/ai/chat/components/ConversationTitleEditor'
 import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
@@ -18,16 +22,7 @@ import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { NovaStatusIndicator } from '@/modules/intelligence/components/NovaStatusIndicator'
-import { NovaContextUsedBadges } from '@/modules/intelligence/components/NovaContextUsedBadges'
-import { NovaSuggestions } from '@/modules/intelligence/components/NovaSuggestions'
-import { ReferenceRow } from '@/modules/intelligence/components/ReferenceRow'
-import { ExplainAnswerPanel } from '@/modules/intelligence/components/ExplainAnswerPanel'
-import { ActionChips } from '@/modules/intelligence/components/ActionChips'
-import { EvidenceBadge } from '@/modules/intelligence/components/EvidenceBadge'
-import { PersonalIntelligenceTimeline } from '@/modules/intelligence/components/PersonalIntelligenceTimeline'
-import { AttentionList } from '@/modules/intelligence/components/AttentionList'
-import { WorkspaceInsightList } from '@/modules/intelligence/components/WorkspaceInsightList'
-import { SignalList } from '@/modules/intelligence/components/SignalList'
+import { NovaInsightDrawer } from '@/modules/intelligence/components/NovaInsightDrawer'
 import { computeExplainSummary } from '@/modules/intelligence/explain/computeExplainSummary'
 import { computeEvidenceScore } from '@/modules/intelligence/evidence/computeEvidenceScore'
 import { isContinuationMessage } from '@/modules/intelligence/conversation/detectContinuation'
@@ -41,8 +36,6 @@ import { selectContext } from '@/modules/intelligence/planner/contextSelector'
 import { buildReasoningTrace } from '@/modules/intelligence/planner/reasoningTrace'
 import { buildDecisionFramework } from '@/modules/intelligence/decision/decisionFrameworkBuilder'
 import { detectLearningIntelligence } from '@/modules/intelligence/learning/learningEngine'
-import { ReasoningIndicators } from '@/modules/intelligence/components/ReasoningIndicators'
-import { PlanPreviewPanel } from '@/modules/intelligence/components/PlanPreviewPanel'
 
 export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -54,8 +47,27 @@ export function ChatPage() {
   const initialQuery = searchParams.get('initialQuery')
   const initialQuerySentRef = useRef(false)
 
-  const { data: conversations = [], isLoading: conversationsLoading, create, remove, updateProvider } =
-    useConversations(documentId)
+  const {
+    data: conversations = [],
+    isLoading: conversationsLoading,
+    create,
+    rename,
+    remove,
+    archive,
+    restore,
+    duplicate,
+    updateProvider,
+  } = useConversations(documentId)
+  const [viewingArchived, setViewingArchived] = useState(false)
+  const { data: archivedConversations = [] } = useArchivedConversations(documentId)
+  const [searchQuery, setSearchQuery] = useState('')
+  const { data: searchResults } = useConversationSearch(searchQuery, documentId)
+  const displayedConversations = searchQuery.trim()
+    ? (searchResults ?? [])
+    : viewingArchived
+      ? archivedConversations
+      : conversations
+  const generateTitle = useGenerateConversationTitle()
   // Deep-linked from a search result — if it's outside the current
   // workspace/document filter it still opens (messages load independently
   // of the sidebar list), it just won't be highlighted in that list.
@@ -81,7 +93,8 @@ export function ChatPage() {
   }, [selectedId])
 
   const { data: messages = [], isLoading: messagesLoading } = useMessages(selectedId)
-  const conversation = conversations.find((c) => c.id === selectedId)
+  // Looks in both lists — opening an archived conversation to read (or restore) it works the same as opening an active one.
+  const conversation = conversations.find((c) => c.id === selectedId) ?? archivedConversations.find((c) => c.id === selectedId)
   // Reading conversation.provider_id fresh here (rather than snapshotting it
   // into a ref) is what makes a provider switch take effect on the very
   // next send: this hook re-runs every render, so once the mutation below
@@ -183,6 +196,17 @@ export function ChatPage() {
 
   async function handleSend(text: string) {
     if (!selectedId) return
+    // UX-13.5A — fires alongside the send, not after it: title generation
+    // only needs the user's own message, not the assistant's response, so
+    // there's no reason to make the title wait on a full streamed reply.
+    // Gated on the title still being the untouched default so a user who
+    // renames mid-stream is never overwritten (see useGenerateConversationTitle's
+    // no-throw contract — this never surfaces an error to the sender).
+    if (messages.length === 0 && conversation?.title === 'New conversation') {
+      generateTitle.mutate(text, {
+        onSuccess: (result) => rename.mutate({ id: selectedId, title: result.title }),
+      })
+    }
     const history = messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
     await send(selectedId, text, history)
   }
@@ -219,26 +243,50 @@ export function ChatPage() {
   return (
     <div className="-m-4 flex h-[calc(100vh-3.5rem)] md:-m-8">
       <ConversationList
-        conversations={conversations}
+        conversations={displayedConversations}
         selectedId={selectedId}
         onSelect={setSelectedId}
         onNew={() => void handleNew()}
+        onRename={(id, title) => rename.mutate({ id, title })}
+        onDuplicate={(id) => duplicate.mutate(id, { onSuccess: (created) => setSelectedId(created.id) })}
+        onArchive={(id) => {
+          archive.mutate(id)
+          if (id === selectedId) setSelectedId(null)
+        }}
+        onRestore={(id) => restore.mutate(id)}
         onDelete={(id) => {
           remove.mutate(id)
           if (id === selectedId) setSelectedId(null)
         }}
+        mode={viewingArchived ? 'archived' : 'active'}
+        archivedCount={archivedConversations.length}
+        onToggleMode={() => setViewingArchived((v) => !v)}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
       />
       <MobileConversationDrawer
         open={conversationDrawerOpen}
         onClose={() => setConversationDrawerOpen(false)}
-        conversations={conversations}
+        conversations={displayedConversations}
         selectedId={selectedId}
         onSelect={setSelectedId}
         onNew={() => void handleNew()}
+        onRename={(id, title) => rename.mutate({ id, title })}
+        onDuplicate={(id) => duplicate.mutate(id, { onSuccess: (created) => setSelectedId(created.id) })}
+        onArchive={(id) => {
+          archive.mutate(id)
+          if (id === selectedId) setSelectedId(null)
+        }}
+        onRestore={(id) => restore.mutate(id)}
         onDelete={(id) => {
           remove.mutate(id)
           if (id === selectedId) setSelectedId(null)
         }}
+        mode={viewingArchived ? 'archived' : 'active'}
+        archivedCount={archivedConversations.length}
+        onToggleMode={() => setViewingArchived((v) => !v)}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -263,7 +311,10 @@ export function ChatPage() {
         ) : (
           <>
             <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] px-6 py-3">
-              <h2 className="truncate text-sm font-medium text-[var(--color-ink)]">{conversation?.title}</h2>
+              <ConversationTitleEditor
+                title={conversation?.title ?? ''}
+                onRename={(title) => rename.mutate({ id: conversation!.id, title })}
+              />
               <div className="flex shrink-0 items-center gap-2">
                 {updateProvider.isPending && <Spinner size="sm" />}
                 <ProviderSelect
@@ -309,45 +360,30 @@ export function ChatPage() {
               </div>
             </div>
             {!sending && contextTrace && (
-              <div className="flex flex-col gap-3 border-t border-[var(--color-border)] px-6 py-3">
-                {reasoningTrace && <ReasoningIndicators trace={reasoningTrace} />}
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <NovaContextUsedBadges contextTrace={contextTrace} />
-                  <EvidenceBadge
-                    level={computeEvidenceScore({
-                      contextTrace,
-                      isContinuation: isContinuationMessage(lastUserMessage ?? ''),
-                    })}
-                  />
-                </div>
-                <ReferenceRow references={references} />
-                <AttentionList items={interactionState?.attention ?? []} />
-                <NovaSuggestions suggestions={suggestions} onSelect={(suggestion) => void handleSend(suggestion)} />
-                <ActionChips
-                  commands={interactionState ? interactionState.actions.map((a) => a.command) : actionChips}
-                  context={commandContext}
-                  actions={commandActions}
-                />
-                <SignalList signals={interactionState?.signals ?? signals} />
-                {reasoningTrace && <PlanPreviewPanel trace={reasoningTrace} />}
-                <ExplainAnswerPanel
-                  summary={computeExplainSummary({
-                    contextTrace,
-                    workspaceName: currentWorkspaceName,
-                    userQuery: lastUserMessage ?? '',
-                    model: model ?? 'unknown',
-                  })}
-                />
-                <details className="text-xs text-[var(--color-ink-muted)]">
-                  <summary className="cursor-pointer select-none hover:text-[var(--color-ink)]">
-                    More from your knowledge
-                  </summary>
-                  <div className="mt-2 flex flex-col gap-3">
-                    <WorkspaceInsightList insights={interactionState?.workspace ?? []} />
-                    <PersonalIntelligenceTimeline workspaceId={currentWorkspaceId} />
-                  </div>
-                </details>
-              </div>
+              <NovaInsightDrawer
+                contextTrace={contextTrace}
+                references={references}
+                evidenceLevel={computeEvidenceScore({
+                  contextTrace,
+                  isContinuation: isContinuationMessage(lastUserMessage ?? ''),
+                })}
+                reasoningTrace={reasoningTrace}
+                explainSummary={computeExplainSummary({
+                  contextTrace,
+                  workspaceName: currentWorkspaceName,
+                  userQuery: lastUserMessage ?? '',
+                  model: model ?? 'unknown',
+                })}
+                suggestions={suggestions}
+                onSelectSuggestion={(suggestion) => void handleSend(suggestion)}
+                actionCommands={interactionState ? interactionState.actions.map((a) => a.command) : actionChips}
+                commandContext={commandContext}
+                commandActions={commandActions}
+                attentionItems={interactionState?.attention ?? []}
+                signals={interactionState?.signals ?? signals}
+                workspaceInsights={interactionState?.workspace ?? []}
+                workspaceId={currentWorkspaceId}
+              />
             )}
             <ChatInput disabled={sending} onSend={(text) => void handleSend(text)} />
           </>

@@ -135,6 +135,8 @@ export type Conversation = {
   document_id: string | null
   title: string
   provider_id: string
+  /** UX-13.5B: null = active/visible. Set = archived — hidden from the default list but restorable. Mirrors workspaces.archived_at. */
+  archived_at: string | null
   created_at: string
   updated_at: string
 }

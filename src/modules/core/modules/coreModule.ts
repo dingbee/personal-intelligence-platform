@@ -26,6 +26,11 @@ registerPlatformModule({
     { id: 'rewrite', label: 'Rewrite', description: 'Rephrase content for tone, clarity, or length.' },
     { id: 'outline', label: 'Outline', description: 'Produce a structural outline of the content.' },
     { id: 'mind-map', label: 'Mind Map', description: 'Map out concepts and how they relate to each other.' },
+    {
+      id: 'generate-conversation-title',
+      label: 'Generate Conversation Title',
+      description: "Produce a concise, intent-capturing title from a conversation's first message.",
+    },
   ],
   providers: [
     // "available" means the code path is real (edge function + client adapter wired up),
@@ -72,6 +77,18 @@ registerPlatformModule({
         'and concepts. Respond with ONLY a JSON array of objects shaped like ' +
         '{"front": "question or term", "back": "answer or definition"} — no markdown code fences, ' +
         'no other text.\n\nContent:\n{{content}}',
+    },
+    {
+      id: 'generate-conversation-title@1.0',
+      capabilityId: 'generate-conversation-title',
+      version: '1.0',
+      active: true,
+      template:
+        'Generate a short title for a conversation that opens with the message below. The title must ' +
+        'capture the intent behind the message, not just repeat its words. Rules: 3 to 6 words; Title ' +
+        'Case; no punctuation; no emojis; no quotation marks; never a generic title like "New ' +
+        'Conversation", "Help", "Question", or anything starting with "Conversation about". Respond ' +
+        'with ONLY the title text, nothing else.\n\nMessage:\n{{message}}',
     },
   ],
 })
