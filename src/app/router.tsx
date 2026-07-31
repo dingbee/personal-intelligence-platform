@@ -22,6 +22,7 @@ import { ProviderHealthDetailPage } from '@/modules/ai/observability/pages/Provi
 import { ReaderPage } from '@/modules/reader/pages/ReaderPage'
 import { ExecutiveDashboardPage } from '@/modules/intelligence/dashboard/pages/ExecutiveDashboardPage'
 import { WorkspaceEvolutionPage } from '@/modules/evolution/pages/WorkspaceEvolutionPage'
+import { WorkspaceIntelligenceHubPage } from '@/modules/hub/pages/WorkspaceIntelligenceHubPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/library" replace /> },
       { path: 'dashboard', element: <ExecutiveDashboardPage /> },
       { path: 'evolution', element: <WorkspaceEvolutionPage /> },
+      { path: 'hub', element: <WorkspaceIntelligenceHubPage /> },
       { path: 'library', element: <LibraryPage /> },
       { path: 'library/:documentId', element: <DocumentDetailPage /> },
       { path: 'notes', element: <NotesPage /> },

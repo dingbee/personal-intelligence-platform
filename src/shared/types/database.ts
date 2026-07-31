@@ -337,6 +337,18 @@ export type AiRequest = {
   created_at: string
 }
 
+export type WorkspaceObjectiveStatus = 'active' | 'done' | 'dismissed'
+
+export type WorkspaceObjective = {
+  id: string
+  workspace_id: string
+  user_id: string
+  content: string
+  status: WorkspaceObjectiveStatus
+  created_at: string
+  updated_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -535,6 +547,12 @@ export type Database = {
         Update: Partial<AiMemory>
         Relationships: []
       }
+      workspace_objectives: {
+        Row: WorkspaceObjective
+        Insert: Partial<WorkspaceObjective> & { workspace_id: string; user_id: string; content: string }
+        Update: Partial<WorkspaceObjective>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -565,6 +583,7 @@ export type Database = {
       message_role: MessageRole
       ai_request_status: AiRequestStatus
       ai_memory_type: AiMemoryType
+      workspace_objective_status: WorkspaceObjectiveStatus
     }
   }
 }
