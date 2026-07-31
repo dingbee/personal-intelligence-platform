@@ -22,7 +22,10 @@ export function SourceReference({ sources }: { sources: SourceReferenceItem[] })
       {sources.map((source) => {
         const href = hrefFor(source)
         const pill = (
-          <span className="inline-block rounded-pill bg-[var(--surface-inset)] px-1.5 py-0.5 text-xs text-[var(--color-ink-muted)] shadow-inset transition-colors hover:text-[var(--color-ink)]">
+          <span
+            title={source.label}
+            className="inline-block max-w-[12rem] truncate rounded-pill bg-[var(--surface-inset)] px-1.5 py-0.5 align-bottom text-xs text-[var(--color-ink-muted)] shadow-inset transition-colors hover:text-[var(--color-ink)]"
+          >
             {source.label}
           </span>
         )

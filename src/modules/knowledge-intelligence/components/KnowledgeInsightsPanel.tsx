@@ -42,7 +42,7 @@ export function KnowledgeInsightsPanel() {
                       key={connection.nodeId}
                       className="flex items-center justify-between gap-2 text-xs text-[var(--color-ink)]"
                     >
-                      <span className="truncate">{connection.title}</span>
+                      <span className="min-w-0 truncate">{connection.title}</span>
                       <ConfidenceBadge confidence={connection.confidence} />
                     </li>
                   ))}

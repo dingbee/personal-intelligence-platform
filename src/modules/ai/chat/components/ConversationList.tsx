@@ -79,7 +79,7 @@ export function ConversationListContent({
           <button
             type="button"
             onClick={() => onSelect(conversation.id)}
-            className="flex min-w-0 flex-1 items-center gap-1 truncate px-3 py-2 text-left"
+            className="flex min-w-0 flex-1 items-center gap-1 px-3 py-2 text-left"
           >
             {conversation.is_pinned && (
               <span aria-label="Pinned" className="shrink-0 text-xs">
@@ -91,7 +91,7 @@ export function ConversationListContent({
                 ★
               </span>
             )}
-            <span className="truncate">{conversation.title}</span>
+            <span className="min-w-0 truncate">{conversation.title}</span>
           </button>
         )}
         <DropdownMenu trigger={<span aria-label="Conversation actions">⋯</span>}>

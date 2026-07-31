@@ -152,8 +152,10 @@ export function ReaderPage() {
         <Link to="/library" className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
           ← Library
         </Link>
-        <h1 className="truncate text-sm font-medium text-[var(--color-ink)]">{document.title}</h1>
-        <div className="ml-auto flex items-center gap-3 text-xs text-[var(--color-ink-muted)]">
+        <h1 className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-ink)]" title={document.title}>
+          {document.title}
+        </h1>
+        <div className="ml-auto flex shrink-0 items-center gap-3 text-xs text-[var(--color-ink-muted)]">
           {/* Chapter counter + progress bar dropped below md — on a narrow
               phone there isn't room for them alongside the tab buttons
               (including the new mobile-only Chapters toggle below), and

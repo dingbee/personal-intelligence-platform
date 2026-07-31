@@ -43,7 +43,7 @@ export function WorkspaceCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            {!isArchived && <span aria-hidden className="text-[var(--color-accent)]">◉</span>}
+            {!isArchived && <span aria-hidden className="shrink-0 text-[var(--color-accent)]">◉</span>}
             {renaming ? (
               <InlineTextForm
                 initialValue={workspace.name}
@@ -54,12 +54,20 @@ export function WorkspaceCard({
                 onCancel={() => setRenaming(false)}
               />
             ) : (
-              <h3 className="truncate font-medium text-[var(--color-ink)]" title={workspace.name}>
+              <h3 className="min-w-0 truncate font-medium text-[var(--color-ink)]" title={workspace.name}>
                 {workspace.name}
               </h3>
             )}
-            {isCurrent && <StatusBadge label="Current workspace" variant="info" />}
-            {isArchived && <StatusBadge label="Archived" variant="neutral" />}
+            {isCurrent && (
+              <span className="shrink-0">
+                <StatusBadge label="Current workspace" variant="info" />
+              </span>
+            )}
+            {isArchived && (
+              <span className="shrink-0">
+                <StatusBadge label="Archived" variant="neutral" />
+              </span>
+            )}
           </div>
           <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
             Created {formatRelativeTime(workspace.created_at)}

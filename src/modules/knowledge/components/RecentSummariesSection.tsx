@@ -20,11 +20,11 @@ export function RecentSummariesSection() {
       <ul className="flex flex-col gap-3">
         {summaries.map((summary) => (
           <li key={`${summary.document_id}-${summary.chapter_index}`} className="rounded-lg bg-[var(--color-canvas)] p-3">
-            <div className="flex items-center justify-between text-xs text-[var(--color-ink-muted)]">
-              <span className="truncate font-medium text-[var(--color-ink)]">
+            <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-ink-muted)]">
+              <span className="min-w-0 truncate font-medium text-[var(--color-ink)]">
                 {summary.document?.title ?? 'Unknown document'} · Chapter {summary.chapter_index + 1}
               </span>
-              <span>{new Date(summary.updated_at).toLocaleDateString()}</span>
+              <span className="shrink-0">{new Date(summary.updated_at).toLocaleDateString()}</span>
             </div>
             <p className="mt-1.5 text-sm text-[var(--color-ink-muted)]">{previewText(summary.content)}</p>
             <Link

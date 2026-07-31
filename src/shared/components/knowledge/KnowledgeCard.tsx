@@ -16,8 +16,12 @@ export function KnowledgeCard({
   return (
     <div className="flex flex-col gap-2 rounded-card border border-[var(--color-border)] bg-[var(--surface-raised)] p-4 shadow-raised transition-shadow hover:shadow-floating">
       <div className="flex items-center gap-2">
-        <StatusBadge label={typeLabel} variant="info" />
-        <h3 className="truncate text-sm font-medium text-[var(--color-ink)]">{title}</h3>
+        <span className="shrink-0">
+          <StatusBadge label={typeLabel} variant="info" />
+        </span>
+        <h3 className="min-w-0 truncate text-sm font-medium text-[var(--color-ink)]" title={title}>
+          {title}
+        </h3>
       </div>
       {description && <p className="text-sm text-[var(--color-ink-muted)]">{description}</p>}
       {children}

@@ -97,12 +97,12 @@ function CollectionTreeItem({
               : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]'
           }`}
         >
-          <button type="button" onClick={() => onSelect(node.id)} className="flex-1 truncate px-3 py-1.5 text-left">
+          <button type="button" onClick={() => onSelect(node.id)} className="min-w-0 flex-1 truncate px-3 py-1.5 text-left">
             {node.name}
           </button>
           <DropdownMenu
             trigger={
-              <span aria-hidden className="opacity-0 group-hover:opacity-100">
+              <span aria-hidden className="shrink-0 opacity-0 group-hover:opacity-100">
                 ⋯
               </span>
             }
