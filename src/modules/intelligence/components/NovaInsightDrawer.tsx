@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import type { Reference } from '@/modules/intelligence/references/referenceTypes'
 import type { EvidenceLevel } from '@/modules/intelligence/evidence/computeEvidenceScore'
@@ -19,8 +18,7 @@ import { AttentionList } from '@/modules/intelligence/components/AttentionList'
 import { SignalList } from '@/modules/intelligence/components/SignalList'
 import { WorkspaceInsightList } from '@/modules/intelligence/components/WorkspaceInsightList'
 import { PersonalIntelligenceTimeline } from '@/modules/intelligence/components/PersonalIntelligenceTimeline'
-
-export type DrawerState = 'collapsed' | 'expanded' | 'minimized' | 'fullscreen'
+import { InsightDrawerShell } from '@/modules/intelligence/components/InsightDrawerShell'
 
 const STORAGE_KEY = 'nova-insight-drawer-state'
 
@@ -39,11 +37,6 @@ export interface NovaInsightDrawerProps {
   signals: IntelligenceSignal[]
   workspaceInsights: WorkspaceInsight[]
   workspaceId: string | null
-}
-
-function readStoredState(): DrawerState {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  return stored === 'expanded' || stored === 'collapsed' || stored === 'minimized' ? stored : 'collapsed'
 }
 
 /** A named, individually-collapsible subsection — the "▶ Sources used" / "▶ Reasoning" rows from the brief. Renders nothing when it has no content, so an empty turn (no references, no signals, ...) never shows an empty disclosure triangle. */
@@ -68,158 +61,59 @@ function Section({ title, hasContent, children }: { title: string; hasContent: b
  * collapsed-by-default drawer with five named, individually-collapsible
  * subsections. No new intelligence logic.
  *
- * State (collapsed/expanded/minimized/fullscreen) persists to
- * localStorage so a user who expands it once doesn't have to re-expand
- * it on every future turn — same direct-localStorage pattern
- * WorkspaceProvider already uses for the current-workspace selection.
- *
- * UX-13.6 continued — "minimized" is distinct from "collapsed": collapsed
- * still occupies a header row in the normal document flow between the
- * message list and the input; minimized detaches entirely into a fixed
- * floating pill so an expanded drawer's growth never has to compete with
- * the message list for space while you're mid-read. Expanded content is
- * also height-capped with its own internal scroll (rather than growing
- * the whole page) for the same reason.
+ * State (collapsed/expanded/minimized/fullscreen) and the chrome that
+ * drives it live in InsightDrawerShell (UX-13.10.2) — this component now
+ * only assembles the six named sections and hands them to the shell as
+ * children, so a user who expands it once doesn't have to re-expand it on
+ * every future turn (localStorage persistence, unchanged behavior).
  */
 export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
-  const [state, setState] = useState<DrawerState>(readStoredState)
-
-  function setPersistedState(next: DrawerState) {
-    setState(next)
-    if (next === 'fullscreen') return // fullscreen is a transient view, not a persisted preference
-    localStorage.setItem(STORAGE_KEY, next)
-  }
-
-  function toggleBody() {
-    if (state === 'fullscreen') {
-      setPersistedState('expanded')
-      return
-    }
-    setPersistedState(state === 'collapsed' ? 'expanded' : 'collapsed')
-  }
-
   const hasContextUsed = props.contextTrace.retrievedChunks > 0 || props.contextTrace.graphNodes > 0 || props.contextTrace.memoriesUsed > 0 || props.references.length > 0
   const hasEvidence = props.attentionItems.length > 0 || props.signals.length > 0
   const hasReasoning = Boolean(props.reasoningTrace)
   const hasInsights = props.workspaceInsights.length > 0
   const hasSuggestions = props.suggestions.length > 0 || props.actionCommands.length > 0
 
-  // UX-13.6 Phase 1 — matches the redesigned section order: Context Used,
-  // Evidence, Reasoning, Insights, Suggestions, Timeline. "Related
-  // knowledge" (UX-13.5D) is split into its own Insights and Timeline
-  // sections so each is independently collapsible rather than bundled.
-  const body = (
-    <div className="flex flex-col gap-2">
-      <Section title="Context Used" hasContent={hasContextUsed}>
-        <NovaContextUsedBadges contextTrace={props.contextTrace} />
-        <ReferenceRow references={props.references} />
-      </Section>
-      <Section title="Evidence" hasContent={hasEvidence}>
-        <div className="flex items-center gap-2">
-          <EvidenceBadge level={props.evidenceLevel} />
-        </div>
-        <AttentionList items={props.attentionItems} />
-        <SignalList signals={props.signals} />
-      </Section>
-      <Section title="Reasoning" hasContent={hasReasoning}>
-        {props.reasoningTrace && (
-          <>
-            <ReasoningIndicators trace={props.reasoningTrace} />
-            <PlanPreviewPanel trace={props.reasoningTrace} />
-          </>
-        )}
-        <ExplainAnswerPanel summary={props.explainSummary} />
-      </Section>
-      <Section title="Insights" hasContent={hasInsights}>
-        <WorkspaceInsightList insights={props.workspaceInsights} />
-      </Section>
-      <Section title="Suggestions" hasContent={hasSuggestions}>
-        <NovaSuggestions suggestions={props.suggestions} onSelect={props.onSelectSuggestion} />
-        <ActionChips commands={props.actionCommands} context={props.commandContext} actions={props.commandActions} />
-      </Section>
-      {/* Timeline has no hasContent gate — PersonalIntelligenceTimeline already renders null internally when there's nothing to show, so a second, duplicate emptiness check here would just be redundant. */}
-      <Section title="Timeline" hasContent>
-        <PersonalIntelligenceTimeline workspaceId={props.workspaceId} />
-      </Section>
-    </div>
-  )
-
-  const header = (
-    <div className="flex items-center justify-between gap-2">
-      <button
-        type="button"
-        onClick={toggleBody}
-        className="flex items-center gap-1.5 text-sm font-medium text-[var(--color-ink)] transition-colors hover:text-[var(--color-accent)]"
-        aria-expanded={state === 'expanded' || state === 'fullscreen'}
-      >
-        <span aria-hidden className={`inline-block transition-transform duration-200 ${state === 'collapsed' ? '' : 'rotate-90'}`}>
-          ▸
-        </span>
-        <span aria-hidden>✨</span> NOVA Intelligence
-      </button>
-      {state !== 'collapsed' && (
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setPersistedState('minimized')}
-            aria-label="Minimize NOVA Intelligence panel"
-            className="text-xs text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
-          >
-            ─ Minimize
-          </button>
-          <button
-            type="button"
-            onClick={() => setPersistedState(state === 'fullscreen' ? 'expanded' : 'fullscreen')}
-            aria-label={state === 'fullscreen' ? 'Exit fullscreen' : 'Expand to fullscreen'}
-            className="text-xs text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
-          >
-            {state === 'fullscreen' ? '⤡ Exit fullscreen' : '⤢ Maximize'}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-
-  if (state === 'minimized') {
-    return (
-      <button
-        type="button"
-        onClick={() => setPersistedState('expanded')}
-        aria-label="Restore NOVA Intelligence panel"
-        className="fixed bottom-24 right-6 z-20 flex items-center gap-1.5 rounded-pill border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-ink)] shadow-raised transition-colors hover:text-[var(--color-accent)] sm:bottom-6"
-      >
-        <span aria-hidden>✨</span> NOVA Intelligence
-      </button>
-    )
-  }
-
-  if (state === 'fullscreen') {
-    return (
-      <div className="fixed inset-0 z-20 flex flex-col overflow-y-auto bg-[var(--color-surface)] p-6">
-        {header}
-        <div className="mt-4">{body}</div>
-      </div>
-    )
-  }
-
   return (
-    <div className="flex flex-col gap-3 border-t border-[var(--color-border)] px-6 py-3">
-      {header}
-      {/* UX-13.6 Phase 1 — grid-template-rows 0fr/1fr is the CSS-only way to
-          animate a height that isn't known ahead of time (the section list
-          varies turn to turn), no measuring/JS required; the inner
-          overflow-hidden clips content during the transition. Mobile gets
-          the same transition — there's nothing here that needs a
-          separate mobile treatment, the drawer already reflows via the
-          flex layout at any width. The innermost max-h/overflow-y-auto
-          (UX-13.6 continued) caps how much of the message area an
-          expanded drawer can claim — content scrolls inside the drawer
-          instead of pushing the whole page. */}
-      <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${state === 'expanded' ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-        <div className="overflow-hidden">
-          <div className="max-h-[45vh] overflow-y-auto">{body}</div>
-        </div>
+    <InsightDrawerShell storageKey={STORAGE_KEY} label="NOVA Intelligence">
+      {/* UX-13.6 Phase 1 — matches the redesigned section order: Context
+          Used, Evidence, Reasoning, Insights, Suggestions, Timeline.
+          "Related knowledge" (UX-13.5D) is split into its own Insights and
+          Timeline sections so each is independently collapsible rather
+          than bundled. */}
+      <div className="flex flex-col gap-2">
+        <Section title="Context Used" hasContent={hasContextUsed}>
+          <NovaContextUsedBadges contextTrace={props.contextTrace} />
+          <ReferenceRow references={props.references} />
+        </Section>
+        <Section title="Evidence" hasContent={hasEvidence}>
+          <div className="flex items-center gap-2">
+            <EvidenceBadge level={props.evidenceLevel} />
+          </div>
+          <AttentionList items={props.attentionItems} />
+          <SignalList signals={props.signals} />
+        </Section>
+        <Section title="Reasoning" hasContent={hasReasoning}>
+          {props.reasoningTrace && (
+            <>
+              <ReasoningIndicators trace={props.reasoningTrace} />
+              <PlanPreviewPanel trace={props.reasoningTrace} />
+            </>
+          )}
+          <ExplainAnswerPanel summary={props.explainSummary} />
+        </Section>
+        <Section title="Insights" hasContent={hasInsights}>
+          <WorkspaceInsightList insights={props.workspaceInsights} />
+        </Section>
+        <Section title="Suggestions" hasContent={hasSuggestions}>
+          <NovaSuggestions suggestions={props.suggestions} onSelect={props.onSelectSuggestion} />
+          <ActionChips commands={props.actionCommands} context={props.commandContext} actions={props.commandActions} />
+        </Section>
+        {/* Timeline has no hasContent gate — PersonalIntelligenceTimeline already renders null internally when there's nothing to show, so a second, duplicate emptiness check here would just be redundant. */}
+        <Section title="Timeline" hasContent>
+          <PersonalIntelligenceTimeline workspaceId={props.workspaceId} />
+        </Section>
       </div>
-    </div>
+    </InsightDrawerShell>
   )
 }

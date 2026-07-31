@@ -18,7 +18,7 @@ import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { buildReaderInteractionState, type ReaderInteractionState } from '@/modules/reader/intelligence/readerInteraction'
 import type { LocalSuggestionId } from '@/modules/reader/intelligence/chapterSuggestions'
-import { ReaderIntelligencePanel } from '@/modules/reader/components/ReaderIntelligencePanel'
+import { ReaderInsightDrawer } from '@/modules/reader/components/ReaderInsightDrawer'
 
 export interface ReaderChatPanelProps {
   documentId: string
@@ -55,7 +55,9 @@ const ANALYST_QUESTIONS = [
  * provider-awareness model (ProviderSelect, unavailable-provider warning,
  * updateProvider switching) and, as of UX-9, the same reference/evidence/
  * signal rendering ChatPage already has, plus Reader-specific insights/
- * journey/suggestions (ReaderIntelligencePanel).
+ * journey/suggestions (ReaderIntelligencePanel, collapsed by default
+ * inside ReaderInsightDrawer as of UX-13.10.2 — same InsightDrawerShell
+ * NovaInsightDrawer uses on the main Chat page).
  *
  * Chapter-awareness note (UX-9 Phase 3/10, see the phase report): this
  * does NOT modify AIService — retrieveContext already scopes to
@@ -232,7 +234,7 @@ export function ReaderChatPanel({
         )}
       </div>
       {!sending && readerInteractionState && (
-        <ReaderIntelligencePanel
+        <ReaderInsightDrawer
           state={{ ...readerInteractionState, signals: [...readerInteractionState.signals, ...signals] }}
           workspaceId={workspaceId}
           onLocalSuggestion={onLocalSuggestion}

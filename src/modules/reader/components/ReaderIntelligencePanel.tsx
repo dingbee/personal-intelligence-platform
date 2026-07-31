@@ -15,8 +15,10 @@ const JOURNEY_LABEL: Record<ReaderInteractionState['journey']['status'], string>
 /**
  * UX-9 Phase 9/10 — everything here reuses existing primitives (plain
  * text rows, ReferenceRow/SignalList from UX-7/8) and existing routes;
- * no new design language. Mounted inside ReaderChatPanel (Phase 10), not
- * a new Reader tab — keeps the existing tab bar/header untouched.
+ * no new design language. Mounted inside ReaderInsightDrawer (UX-13.10.2,
+ * previously directly inside ReaderChatPanel) — this component owns only
+ * its content now, not its own border/padding, since the drawer shell
+ * provides that framing.
  */
 export function ReaderIntelligencePanel({
   state,
@@ -32,7 +34,7 @@ export function ReaderIntelligencePanel({
   commandActions: CommandActions
 }) {
   return (
-    <div className="flex flex-col gap-3 border-t border-[var(--color-border)] p-4 text-xs text-[var(--color-ink-muted)]">
+    <div className="flex flex-col gap-3 text-xs text-[var(--color-ink-muted)]">
       <ReferenceRow references={state.references} />
 
       {state.insights.length > 0 && (
