@@ -1,4 +1,4 @@
-export type CommandCategory = 'navigation' | 'workspace' | 'ai' | 'search' | 'notes' | 'reader' | 'settings' | 'memory'
+export type CommandCategory = 'navigation' | 'workspace' | 'ai' | 'search' | 'notes' | 'reader' | 'settings' | 'memory' | 'capture'
 
 /** What a command's isAvailable/execute can read about "here and now" — resolved once per render by useCommandContext. */
 export interface CommandContext {
@@ -16,6 +16,8 @@ export interface CommandActions {
   setCurrentWorkspaceId: (id: string | null) => void
   createNote: () => Promise<{ id: string }>
   createConversationWithQuery: (query: string) => Promise<{ id: string }>
+  /** Opens the global Quick Capture dialog (UX-13 Knowledge Capture) — owned by AppShell alongside commandBarOpen. */
+  openQuickCapture: () => void
 }
 
 export interface Command {

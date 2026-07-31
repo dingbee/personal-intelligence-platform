@@ -11,7 +11,7 @@ import type { CommandActions } from '@/modules/commands/types'
  * bag, so filterCommands and the command modules are trivially testable
  * without a component tree.
  */
-export function useCommandActions(): CommandActions {
+export function useCommandActions(params: { onOpenQuickCapture?: () => void } = {}): CommandActions {
   const navigate = useNavigate()
   const { setCurrentWorkspaceId } = useWorkspace()
   const { create: createNoteMutation } = useNotes()
@@ -37,5 +37,6 @@ export function useCommandActions(): CommandActions {
       navigate(`/chat?conversationId=${conversation.id}&initialQuery=${encodeURIComponent(query)}`)
       return { id: conversation.id }
     },
+    openQuickCapture: params.onOpenQuickCapture ?? (() => {}),
   }
 }

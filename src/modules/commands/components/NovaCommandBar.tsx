@@ -18,14 +18,22 @@ import type { Command } from '@/modules/commands/types'
  * directly rather than a new FloatingCard variant, since this needs
  * full-screen-on-mobile behavior FloatingCard doesn't provide.
  */
-export function NovaCommandBar({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function NovaCommandBar({
+  open,
+  onClose,
+  onOpenQuickCapture,
+}: {
+  open: boolean
+  onClose: () => void
+  onOpenQuickCapture: () => void
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
 
   const context = useCommandContext()
-  const actions = useCommandActions()
+  const actions = useCommandActions({ onOpenQuickCapture })
   const { workspaces } = useWorkspace()
 
   useEffect(() => {

@@ -4,10 +4,12 @@ import { Sidebar } from '@/shared/components/layout/Sidebar'
 import { TopBar } from '@/shared/components/layout/TopBar'
 import { MobileNavDrawer } from '@/shared/components/layout/MobileNavDrawer'
 import { NovaCommandBar } from '@/modules/commands/components/NovaCommandBar'
+import { QuickCaptureDialog } from '@/modules/capture/components/QuickCaptureDialog'
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [commandBarOpen, setCommandBarOpen] = useState(false)
+  const [quickCaptureOpen, setQuickCaptureOpen] = useState(false)
 
   // Global Cmd/Ctrl+K — no existing keyboard-shortcut handling anywhere
   // else in the app to collide with. preventDefault stops the browser's
@@ -27,7 +29,12 @@ export function AppShell() {
     <div className="flex h-screen bg-[var(--surface-base)]">
       <Sidebar />
       <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
-      <NovaCommandBar open={commandBarOpen} onClose={() => setCommandBarOpen(false)} />
+      <NovaCommandBar
+        open={commandBarOpen}
+        onClose={() => setCommandBarOpen(false)}
+        onOpenQuickCapture={() => setQuickCaptureOpen(true)}
+      />
+      <QuickCaptureDialog open={quickCaptureOpen} onClose={() => setQuickCaptureOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar onOpenNav={() => setMobileNavOpen(true)} onOpenCommandBar={() => setCommandBarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 md:p-8">

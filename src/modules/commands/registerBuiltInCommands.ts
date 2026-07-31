@@ -4,6 +4,7 @@ import { manageWorkspacesCommand, switchToAllWorkspacesCommand } from '@/modules
 import { askNovaCommand } from '@/modules/commands/commands/aiCommands'
 import { openSearchCommand } from '@/modules/commands/commands/searchCommands'
 import { createNoteCommand } from '@/modules/commands/commands/noteCommands'
+import { quickCaptureCommand } from '@/modules/commands/commands/captureCommands'
 import { manageMemoriesCommand, reviewMemorySuggestionsCommand } from '@/modules/commands/commands/memoryCommands'
 import { openKnowledgeGraphCommand } from '@/modules/commands/commands/knowledgeCommands'
 import {
@@ -43,6 +44,7 @@ commandRegistry.register(switchToAllWorkspacesCommand)
 commandRegistry.register(askNovaCommand)
 commandRegistry.register(openSearchCommand)
 commandRegistry.register(createNoteCommand)
+commandRegistry.register(quickCaptureCommand)
 commandRegistry.register(manageMemoriesCommand)
 commandRegistry.register(reviewMemorySuggestionsCommand)
 commandRegistry.register(openKnowledgeGraphCommand)

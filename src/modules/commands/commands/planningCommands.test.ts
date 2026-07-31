@@ -39,6 +39,7 @@ describe('planning commands', () => {
         capturedQuery = query
         return { id: 'conv-1' }
       },
+      openQuickCapture: () => {},
     }
     await planProjectCommand.execute(commandContext(), actions)
     expect(capturedQuery).toBe('Help me plan my project.')
@@ -55,6 +56,7 @@ describe('planning commands', () => {
           capturedQuery = query
           return { id: 'conv-1' }
         },
+        openQuickCapture: () => {},
       }
       await command.execute(commandContext(), actions)
       expect(classifyIntent(capturedQuery).intent).toBe('plan')
