@@ -4,6 +4,7 @@ import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { getChapterSummary, saveChapterSummary } from '@/modules/reader/api/chapterSummaries'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { retrieveGraphContext } from '@/modules/knowledge-intelligence/api/retrieveGraphContext'
+import { retrieveSpreadsheetContext } from '@/modules/processing/api/retrieveSpreadsheetContext'
 import { withProviderAvailability } from '@/modules/ai/orchestration/withProviderAvailability'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
@@ -36,6 +37,13 @@ export function useChapterSummary(documentId: string, chapterIndex: number) {
         userId: user!.id,
         workspaceId: currentWorkspaceId,
       })
+      // UX-13.10.1 — same <spreadsheet_analysis> block Chat is grounded in
+      // (retrieveSpreadsheetContext), so for a spreadsheet document the
+      // Summary panel and Chat draw from the exact same computed figures —
+      // the "single source of truth" fix for the Information-panel-vs-Chat
+      // contradiction. No-op (returns null) for every non-spreadsheet
+      // document or one with no analysis computed yet.
+      const spreadsheetContext = await retrieveSpreadsheetContext(documentId)
       const {
         result: { content, model },
       } = await withProviderAvailability(
@@ -46,6 +54,7 @@ export function useChapterSummary(documentId: string, chapterIndex: number) {
               capabilityId: 'summarize',
               variables: { content: chapterText },
               knowledgeContext,
+              spreadsheetContext,
               userId: user!.id,
               workspaceId: currentWorkspaceId,
               providerId: candidateId,

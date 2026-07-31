@@ -2,7 +2,12 @@ import type { ColumnDataType, ColumnMeaning } from '@/modules/processing/spreads
 import { isNonEmptyCell, looksLikeCurrencyText, parseDateValue, parseNumericValue } from '@/modules/processing/spreadsheet/cellParsing'
 
 const DATE_HEADER = /\b(date|period|month|year|quarter|time|when|day)\b/i
-const CURRENCY_HEADER = /\b(price|revenue|cost|amount|expense|expenses|profit|margin|value|salary|budget|income|sales|total|fee|payment|cogs)\b/i
+// UX-13.10.1 — expanded past the literal accounting terms to how people
+// actually phrase these columns: "turnover"/"takings"/"collections" for
+// revenue, "overhead"/"expenditure"/"outflow" for expenses, "surplus" for
+// profit. Users ask "what were the largest expenses," not "what was COGS."
+const CURRENCY_HEADER =
+  /\b(price|revenue|cost|costs|amount|expense|expenses|expenditure|profit|margin|value|salary|budget|income|sales|turnover|earnings|receipts|takings|collections|total|fee|payment|cogs|spending|overhead|outflow|inflow|surplus)\b/i
 const CATEGORY_HEADER = /\b(region|category|type|status|department|segment|product|country|city|channel)\b/i
 const MAX_CATEGORY_DISTINCT = 50
 

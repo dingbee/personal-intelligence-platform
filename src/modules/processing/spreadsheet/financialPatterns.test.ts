@@ -35,4 +35,19 @@ describe('classifyFinancialPattern', () => {
     const columns = [col('Category'), col('Revenue'), col('Cost'), col('Profit')]
     expect(classifyFinancialPattern(columns)).toBe('income-statement')
   })
+
+  it('classifies an income statement built from real-world synonyms (Turnover + Overhead + Surplus)', () => {
+    const columns = [col('Turnover'), col('Overhead'), col('Surplus')]
+    expect(classifyFinancialPattern(columns)).toBe('income-statement')
+  })
+
+  it('classifies sales data described as "Takings" rather than "Revenue"', () => {
+    const columns = [col('Customer'), col('Region'), col('Takings')]
+    expect(classifyFinancialPattern(columns)).toBe('sales-data')
+  })
+
+  it('classifies an expense sheet described with "Expenditure" instead of "Expense"', () => {
+    const columns = [col('Department'), col('Expenditure')]
+    expect(classifyFinancialPattern(columns)).toBe('expense-sheet')
+  })
 })

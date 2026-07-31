@@ -7,6 +7,13 @@ interface PatternRule {
 
 const has = (headers: string[], re: RegExp) => headers.some((h) => re.test(h))
 
+// UX-13.10.1 — same vocabulary expansion as columnAnalysis's CURRENCY_HEADER:
+// real spreadsheets say "turnover," "takings," "overhead," "surplus," not
+// only the literal accounting terms.
+const REVENUE_WORDS = /revenue|sales|income|turnover|earnings|receipts|takings|collections|inflow/i
+const COST_WORDS = /cost|costs|expense|expenses|expenditure|cogs|spending|overhead|outflow/i
+const PROFIT_WORDS = /profit|margin|net|surplus|earnings/i
+
 /**
  * UX-13.10 — ordered rule table, first match wins, same shape as
  * classifyIntent: fully deterministic, no AI call, ships with an explicit
@@ -16,7 +23,7 @@ const has = (headers: string[], re: RegExp) => headers.some((h) => re.test(h))
 const RULES: PatternRule[] = [
   {
     pattern: 'income-statement',
-    matches: (h) => has(h, /revenue|sales|income/i) && has(h, /cost|expense|cogs/i) && has(h, /profit|margin|net/i),
+    matches: (h) => has(h, REVENUE_WORDS) && has(h, COST_WORDS) && has(h, PROFIT_WORDS),
   },
   {
     pattern: 'inventory',
@@ -28,11 +35,11 @@ const RULES: PatternRule[] = [
   },
   {
     pattern: 'expense-sheet',
-    matches: (h) => has(h, /category|department|type/i) && has(h, /amount|cost|expense/i) && !has(h, /revenue|sales|income/i),
+    matches: (h) => has(h, /category|department|type/i) && (has(h, COST_WORDS) || has(h, /\bamount\b/i)) && !has(h, REVENUE_WORDS),
   },
   {
     pattern: 'sales-data',
-    matches: (h) => (has(h, /customer|product/i) || has(h, /region/i)) && has(h, /revenue|sales|amount/i),
+    matches: (h) => (has(h, /customer|product/i) || has(h, /region/i)) && (has(h, REVENUE_WORDS) || has(h, /\bamount\b/i)),
   },
 ]
 

@@ -38,6 +38,13 @@ describe('detectColumnType', () => {
   it('returns text for an entirely empty column', () => {
     expect(detectColumnType('Empty', [null, undefined, ''])).toBe('text')
   })
+
+  it('detects currency from real-world synonyms users actually type: Turnover, Takings, Overhead, Surplus', () => {
+    expect(detectColumnType('Turnover', [1000, 2000])).toBe('currency')
+    expect(detectColumnType('Takings', [500, 750])).toBe('currency')
+    expect(detectColumnType('Overhead', [300, 450])).toBe('currency')
+    expect(detectColumnType('Surplus', [200, 100])).toBe('currency')
+  })
 })
 
 describe('detectColumnMeaning', () => {

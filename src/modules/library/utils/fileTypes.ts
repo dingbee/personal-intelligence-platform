@@ -45,6 +45,17 @@ export function isSupportedFile(fileName: string): boolean {
   return fileTypeFromName(fileName) !== null
 }
 
+/**
+ * UX-13.10.1 — Supabase Storage (S3-compatible) rejects or mishandles keys
+ * containing characters like `[`, `]`, `{`, `}`, `#`, `%`, backtick, etc.
+ * (surfaced as "Invalid key" on upload — e.g. "ARUSHA_SUPERMARKETS_LIST[1].xlsx").
+ * Only the storage *path* needs this — `file_name`/`title` keep the exact
+ * original filename, since those are just display strings, not object keys.
+ */
+export function sanitizeStorageFilename(fileName: string): string {
+  return fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
+}
+
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   const units = ['KB', 'MB', 'GB']

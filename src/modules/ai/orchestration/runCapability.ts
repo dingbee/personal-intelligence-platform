@@ -21,6 +21,14 @@ export interface RunCapabilityParams {
    * the raw content. Omit to leave a capability's prompt exactly as before.
    */
   knowledgeContext?: string | null
+  /**
+   * UX-13.10.1 — same <spreadsheet_analysis> block buildSystemPrompt
+   * appends for Chat, so the Reader's spreadsheet Summary panel is
+   * grounded in the exact same precomputed figures Chat answers from —
+   * one computed analysis object feeding both surfaces, never two
+   * independent interpretations of the same sheet.
+   */
+  spreadsheetContext?: string | null
 }
 
 /**
@@ -32,7 +40,7 @@ export interface RunCapabilityParams {
  * keeping capabilities and their execution decoupled.
  */
 export async function runCapability(params: RunCapabilityParams): Promise<StreamChatCompletionResult> {
-  const { capabilityId, variables, userId, workspaceId, providerId = DEFAULT_CHAT_PROVIDER_ID, requestedProviderId, knowledgeContext } = params
+  const { capabilityId, variables, userId, workspaceId, providerId = DEFAULT_CHAT_PROVIDER_ID, requestedProviderId, knowledgeContext, spreadsheetContext } = params
 
   const template = getActivePrompt(capabilityId)
   if (!template) throw new Error(`No active prompt template for capability "${capabilityId}"`)
@@ -40,6 +48,9 @@ export async function runCapability(params: RunCapabilityParams): Promise<Stream
   let system = renderPromptTemplate(template.template, variables)
   if (knowledgeContext) {
     system += `\n\n<knowledge_connections>\n${knowledgeContext}\n</knowledge_connections>`
+  }
+  if (spreadsheetContext) {
+    system += `\n\n<spreadsheet_analysis>\n${spreadsheetContext}\n</spreadsheet_analysis>`
   }
 
   return streamChatCompletion({

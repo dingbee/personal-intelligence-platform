@@ -1,6 +1,6 @@
 import { supabase } from '@/shared/lib/supabase'
 import type { DocumentRow, DocumentStatus } from '@/shared/types/database'
-import { fileTypeFromName } from '@/modules/library/utils/fileTypes'
+import { fileTypeFromName, sanitizeStorageFilename } from '@/modules/library/utils/fileTypes'
 
 export type DocumentSort = 'newest' | 'oldest' | 'title-asc' | 'title-desc' | 'largest' | 'smallest'
 
@@ -75,7 +75,7 @@ export async function uploadDocument(params: {
     throw new Error(`Unsupported file type: ${file.name}`)
   }
 
-  const storagePath = `${userId}/${crypto.randomUUID()}-${file.name}`
+  const storagePath = `${userId}/${crypto.randomUUID()}-${sanitizeStorageFilename(file.name)}`
   const { error: uploadError } = await supabase.storage
     .from('documents')
     .upload(storagePath, file, { upsert: false })
