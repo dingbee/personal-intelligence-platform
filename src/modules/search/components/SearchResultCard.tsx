@@ -4,6 +4,7 @@ import type { SearchResult } from '@/modules/search/types'
 const SOURCE_LABEL: Record<string, string> = {
   document: 'Document',
   conversation: 'Conversation',
+  note: 'Note',
 }
 
 export function SearchResultCard({ result }: { result: SearchResult }) {

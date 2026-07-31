@@ -168,6 +168,14 @@ export type MessageEmbedding = {
   created_at: string
 }
 
+export type NoteEmbedding = {
+  id: string
+  note_id: string
+  model: string
+  embedding: number[]
+  created_at: string
+}
+
 export type ReadingProgress = {
   document_id: string
   user_id: string
@@ -450,6 +458,12 @@ export type Database = {
         Update: Partial<MessageEmbedding>
         Relationships: []
       }
+      note_embeddings: {
+        Row: NoteEmbedding
+        Insert: Partial<NoteEmbedding> & { note_id: string; model: string; embedding: number[] }
+        Update: Partial<NoteEmbedding>
+        Relationships: []
+      }
       conversations: {
         Row: Conversation
         Insert: Partial<Conversation> & { user_id: string }
@@ -606,6 +620,15 @@ export type Database = {
           filter_workspace_id?: string | null
         }
         Returns: { message_id: string; conversation_id: string; content: string; similarity: number }[]
+      }
+      match_notes: {
+        Args: {
+          query_embedding: number[]
+          match_count?: number
+          filter_user_id?: string
+          filter_workspace_id?: string | null
+        }
+        Returns: { note_id: string; title: string; content: string; similarity: number }[]
       }
     }
     Enums: {

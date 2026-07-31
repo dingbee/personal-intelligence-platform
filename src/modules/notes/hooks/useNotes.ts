@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createNote, deleteNote, listNotes, type NoteFilters } from '@/modules/notes/api/notes'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
+import { indexNote } from '@/modules/search/indexing/indexNote'
 
 export function useNotes(filters: Omit<NoteFilters, 'workspaceId'> = {}) {
   const { user } = useAuth()
@@ -25,7 +26,10 @@ export function useNotes(filters: Omit<NoteFilters, 'workspaceId'> = {}) {
       documentId?: string | null
       sourceChunkIds?: string[] | null
     }) => createNote({ ...params, userId: user!.id, workspaceId: currentWorkspaceId }),
-    onSuccess: invalidate,
+    onSuccess: (note) => {
+      invalidate()
+      void indexNote(note, currentWorkspaceId)
+    },
   })
 
   const remove = useMutation({

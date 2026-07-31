@@ -7,6 +7,7 @@ import { withProviderAvailability } from '@/modules/ai/orchestration/withProvide
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
 import { runWithFallback } from '@/modules/ai/router/runWithFallback'
+import { indexNote } from '@/modules/search/indexing/indexNote'
 
 export function useNote(noteId: string) {
   const { user } = useAuth()
@@ -34,7 +35,10 @@ export function useNote(noteId: string) {
         content: updates.content,
         document_id: updates.documentId,
       }),
-    onSuccess: invalidate,
+    onSuccess: (note) => {
+      invalidate()
+      void indexNote(note, currentWorkspaceId)
+    },
   })
 
   // Only 'summarize' has an active prompt template today (see the Phase 6A
@@ -71,7 +75,10 @@ export function useNote(noteId: string) {
         },
       })
     },
-    onSuccess: invalidate,
+    onSuccess: (note) => {
+      invalidate()
+      void indexNote(note, currentWorkspaceId)
+    },
   })
 
   return { note: query.data, isLoading: query.isLoading, isError: query.isError, save, summarize }
