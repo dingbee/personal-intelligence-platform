@@ -12,6 +12,15 @@ export interface RunCapabilityParams {
   providerId?: string
   /** Phase 8C: the caller's chain[0], for fallback logging — pass it whenever this call is one candidate in a runWithFallback loop, even when it equals `providerId`. */
   requestedProviderId?: string
+  /**
+   * UX-13 Unified Intelligence Pipeline — the same <knowledge_connections>
+   * block AIService.sendMessage appends to the chat prompt (see
+   * buildSystemPrompt), passed through so a one-shot capability like
+   * Summarize can be grounded in the same canonical extracted knowledge
+   * Chat uses, instead of forming its own independent interpretation of
+   * the raw content. Omit to leave a capability's prompt exactly as before.
+   */
+  knowledgeContext?: string | null
 }
 
 /**
@@ -23,12 +32,15 @@ export interface RunCapabilityParams {
  * keeping capabilities and their execution decoupled.
  */
 export async function runCapability(params: RunCapabilityParams): Promise<StreamChatCompletionResult> {
-  const { capabilityId, variables, userId, workspaceId, providerId = DEFAULT_CHAT_PROVIDER_ID, requestedProviderId } = params
+  const { capabilityId, variables, userId, workspaceId, providerId = DEFAULT_CHAT_PROVIDER_ID, requestedProviderId, knowledgeContext } = params
 
   const template = getActivePrompt(capabilityId)
   if (!template) throw new Error(`No active prompt template for capability "${capabilityId}"`)
 
-  const system = renderPromptTemplate(template.template, variables)
+  let system = renderPromptTemplate(template.template, variables)
+  if (knowledgeContext) {
+    system += `\n\n<knowledge_connections>\n${knowledgeContext}\n</knowledge_connections>`
+  }
 
   return streamChatCompletion({
     provider: getChatProvider(providerId),
