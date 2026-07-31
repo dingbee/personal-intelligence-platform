@@ -41,6 +41,22 @@ export const pdfProcessor: DocumentProcessor = {
     const { info } = (await pdf.getMetadata()) as { info: PdfInfo }
     const text = normalizeText(pageTexts.join('\n\n'))
 
+    // UX-13.7.1 — one chapter per PDF page (not just a text join) so the
+    // existing chapter-aware chunker (processDocument.ts already selects it
+    // whenever chapters is non-empty) page-aligns document_chunks the same
+    // way EPUB chapters already do. That's what lets the PDF reader's page
+    // view reuse the highlight/notes/chat-panel/summary/flashcards
+    // components as-is, unmodified — they're keyed on a generic
+    // chapterIndex, not on EPUB specifically. Pages already processed
+    // before this change keep working (a single un-paginated "Full text"
+    // section, same fallback groupChunksIntoChapters already has) until
+    // reprocessed.
+    const chapters = pageTexts.map((pageText, index) => ({
+      index,
+      title: `Page ${index + 1}`,
+      text: normalizeText(pageText),
+    }))
+
     return {
       text,
       title: info.Title?.trim() || null,
@@ -49,7 +65,7 @@ export const pdfProcessor: DocumentProcessor = {
       pageCount: pdf.numPages,
       wordCount: countWords(text),
       charCount: text.length,
-      chapters: null,
+      chapters,
     }
   },
 }

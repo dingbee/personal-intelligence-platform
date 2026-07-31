@@ -14,7 +14,7 @@ export interface ExtractionResult {
   pageCount: number | null
   wordCount: number
   charCount: number
-  /** Only populated for formats with real chapter structure (EPUB). */
+  /** Populated for formats with a real chapter structure (EPUB) or a natural page structure (PDF, one chapter per page). Null for plain text formats with neither. */
   chapters: ExtractedChapter[] | null
 }
 

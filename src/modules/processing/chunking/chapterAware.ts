@@ -4,7 +4,8 @@ import { paragraphChunker } from '@/modules/processing/chunking/paragraph'
 /**
  * Chunks chapter-by-chapter, tagging each chunk with its chapter. Falls back
  * to plain paragraph chunking over the full text when no chapter structure
- * is available (only EPUB extraction currently produces chapters).
+ * is available (EPUB extraction produces real chapters; PDF extraction
+ * produces one chapter per page — UX-13.7.1).
  *
  * Note: `charStart`/`charEnd` are relative to each chapter's own text, not
  * a single offset space across the whole document — chapters are extracted

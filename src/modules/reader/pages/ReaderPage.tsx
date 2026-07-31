@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useReaderChapters } from '@/modules/reader/hooks/useReaderChapters'
 import { useReadingProgress } from '@/modules/reader/hooks/useReadingProgress'
@@ -12,6 +12,11 @@ import { ReaderChatPanel } from '@/modules/reader/components/ReaderChatPanel'
 import type { LocalSuggestionId } from '@/modules/reader/intelligence/chapterSuggestions'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
+
+// UX-13.7.1 — lazy-loaded so pdfjs-dist (a genuinely large library) only
+// downloads when someone actually opens a PDF, not on every page of the
+// app. See PdfReaderView's header comment.
+const PdfReaderView = lazy(() => import('@/modules/reader/pdf/PdfReaderView'))
 
 type SidePanelTab = 'chat' | 'summary' | 'flashcards' | 'highlights'
 /**
@@ -50,6 +55,11 @@ export function ReaderPage() {
   const contentRef = useRef<HTMLDivElement>(null)
   const scrollSaveTimeout = useRef<ReturnType<typeof setTimeout>>(undefined)
 
+  const isPdf = document?.file_type === 'pdf'
+  // UX-13.7.1 — populated by PdfReaderView once it (lazily) loads the PDF
+  // and knows its real page count; 0 until then.
+  const [pdfPageCount, setPdfPageCount] = useState(0)
+
   const isLoading = chaptersLoading || progressLoading
 
   // Only set the initial chapter once, after reading progress has loaded —
@@ -58,7 +68,9 @@ export function ReaderPage() {
   // Chapter 4" deep link) wins over saved progress — it's an explicit
   // destination, not a resume point. Stripped from the URL immediately so
   // it doesn't fight manual chapter navigation afterwards or re-trigger on
-  // a later remount.
+  // a later remount. UX-13.7.1: for a PDF, the same chapter_index field
+  // stores the current *page* instead — same "resume where you left off"
+  // contract, just a different unit.
   useEffect(() => {
     if (activeIndex !== null || progressLoading) return
     const chapterParam = searchParams.get('chapter')
@@ -132,19 +144,31 @@ export function ReaderPage() {
     )
   }
 
-  if (document.file_type !== 'epub') {
+  if (document.file_type !== 'epub' && document.file_type !== 'pdf') {
     return (
       <div className="p-8">
         <EmptyState
           title="Reader coming soon for this file type"
-          description="The reading workspace currently supports EPUB. Other formats arrive in a later milestone."
+          description="The reading workspace currently supports EPUB and PDF. Other formats arrive in a later milestone."
         />
       </div>
     )
   }
 
-  const activeChapter = chapters.find((chapter) => chapter.index === activeIndex) ?? chapters[0]
-  const progressPercent = chapters.length > 0 ? ((activeIndex + 1) / chapters.length) * 100 : 0
+  // UX-13.7.1 — when the PDF was processed (or reprocessed) after this
+  // phase shipped, document_chunks are page-aligned 1:1 with the PDF's
+  // real pages (see pdf.ts's per-page chapters), so the section shown in
+  // the side panel can track the visible page exactly. A PDF processed
+  // before this phase falls back to groupChunksIntoChapters's single
+  // "Full text" section (index 0) — chat/highlights/notes still work,
+  // just scoped to the whole document rather than one page, until the
+  // document is reprocessed.
+  const pdfPageAligned = isPdf && pdfPageCount > 0 && chapters.length === pdfPageCount
+  const sectionIndex = isPdf ? (pdfPageAligned ? activeIndex : 0) : activeIndex
+  const activeChapter = chapters.find((chapter) => chapter.index === sectionIndex) ?? chapters[0]
+  const pageCount = isPdf ? pdfPageCount : chapters.length
+  const progressPercent = pageCount > 0 ? ((activeIndex + 1) / pageCount) * 100 : 0
+  const positionLabel = isPdf ? 'Page' : 'Chapter'
 
   return (
     <div className="flex h-screen flex-col">
@@ -156,29 +180,35 @@ export function ReaderPage() {
           {document.title}
         </h1>
         <div className="ml-auto flex shrink-0 items-center gap-3 text-xs text-[var(--color-ink-muted)]">
-          {/* Chapter counter + progress bar dropped below md — on a narrow
-              phone there isn't room for them alongside the tab buttons
-              (including the new mobile-only Chapters toggle below), and
-              they're not needed to operate the reader. */}
-          <span className="hidden md:inline">
-            Chapter {activeIndex + 1} of {chapters.length}
-          </span>
+          {/* Chapter/page counter + progress bar dropped below md — on a
+              narrow phone there isn't room for them alongside the tab
+              buttons (including the mobile-only Chapters toggle below),
+              and they're not needed to operate the reader. */}
+          {pageCount > 0 && (
+            <span className="hidden md:inline">
+              {positionLabel} {activeIndex + 1} of {pageCount}
+            </span>
+          )}
           <div className="hidden h-1 w-24 overflow-hidden rounded-full bg-[var(--color-canvas)] md:block">
             <div className="h-full bg-[var(--color-accent)]" style={{ width: `${progressPercent}%` }} />
           </div>
           {/* Mobile-only: desktop always shows ChapterNav, so a toggle for
-              it there would be redundant. */}
-          <button
-            type="button"
-            onClick={() => setActivePanel(activePanel === 'chapters' ? null : 'chapters')}
-            className={`rounded-md px-2 py-1 font-medium md:hidden ${
-              activePanel === 'chapters'
-                ? 'bg-[var(--color-ink)] text-white'
-                : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
-            }`}
-          >
-            Chapters
-          </button>
+              it there would be redundant. Not shown for PDF — v1 has no
+              chapter/thumbnail list to toggle (see PdfPageControls'
+              prev/next + jump-to-page instead). */}
+          {!isPdf && (
+            <button
+              type="button"
+              onClick={() => setActivePanel(activePanel === 'chapters' ? null : 'chapters')}
+              className={`rounded-md px-2 py-1 font-medium md:hidden ${
+                activePanel === 'chapters'
+                  ? 'bg-[var(--color-ink)] text-white'
+                  : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
+              }`}
+            >
+              Chapters
+            </button>
+          )}
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -197,52 +227,76 @@ export function ReaderPage() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        {/* Desktop: always visible, exactly as before (md:flex, ignores
-            activePanel entirely). Mobile: only when the Chapters toggle is
-            active — otherwise it would still eat width from the reading
-            pane even with no AI panel open, which was the root of the
-            reported issue. */}
-        <div className={`h-full ${activePanel === 'chapters' ? 'flex' : 'hidden md:flex'}`}>
-          <ChapterNav chapters={chapters} activeIndex={activeIndex} onSelect={goToChapter} />
-        </div>
+        {!isPdf && (
+          // Desktop: always visible, exactly as before (md:flex, ignores
+          // activePanel entirely). Mobile: only when the Chapters toggle is
+          // active — otherwise it would still eat width from the reading
+          // pane even with no AI panel open, which was the root of the
+          // reported issue.
+          <div className={`h-full ${activePanel === 'chapters' ? 'flex' : 'hidden md:flex'}`}>
+            <ChapterNav chapters={chapters} activeIndex={activeIndex} onSelect={goToChapter} />
+          </div>
+        )}
 
-        {/* Desktop: always visible alongside whichever AI tab is open, as
-            before. Mobile: hidden whenever any panel (chapters or an AI
-            tab) is active, so that panel gets the full viewport instead of
-            being squeezed — this is what makes activePanel === null give
-            the reading pane maximum width by default. */}
-        <div
-          ref={contentRef}
-          onScroll={handleScroll}
-          className={`flex-1 overflow-y-auto ${activePanel !== null ? 'hidden md:block' : ''}`}
-        >
-          <SelectionHighlightButton containerRef={contentRef} onHighlight={(quote) => addHighlight.mutate(quote)} />
-          <article className="mx-auto max-w-[68ch] px-6 py-12">
-            <h2 className="mb-6 text-2xl font-semibold text-[var(--color-ink)]">{activeChapter?.title}</h2>
-            <div className="flex flex-col gap-4 text-base leading-relaxed text-[var(--color-ink)]">
-              {activeChapter?.content.split('\n\n').map((paragraph, i) => <p key={i}>{paragraph}</p>)}
-            </div>
+        {isPdf ? (
+          <div className={`flex min-w-0 flex-1 flex-col ${activePanel !== null ? 'hidden md:flex' : ''}`}>
+            <Suspense
+              fallback={
+                <div className="flex flex-1 items-center justify-center">
+                  <Spinner />
+                </div>
+              }
+            >
+              <PdfReaderView
+                filePath={document.file_path}
+                pageIndex={activeIndex}
+                onPageChange={goToChapter}
+                onPageCountChange={setPdfPageCount}
+                contentRef={contentRef}
+                onScroll={handleScroll}
+                onHighlight={(quote) => addHighlight.mutate(quote)}
+              />
+            </Suspense>
+          </div>
+        ) : (
+          // Desktop: always visible alongside whichever AI tab is open, as
+          // before. Mobile: hidden whenever any panel (chapters or an AI
+          // tab) is active, so that panel gets the full viewport instead of
+          // being squeezed — this is what makes activePanel === null give
+          // the reading pane maximum width by default.
+          <div
+            ref={contentRef}
+            onScroll={handleScroll}
+            className={`flex-1 overflow-y-auto ${activePanel !== null ? 'hidden md:block' : ''}`}
+          >
+            <SelectionHighlightButton containerRef={contentRef} onHighlight={(quote) => addHighlight.mutate(quote)} />
+            <article className="mx-auto max-w-[68ch] px-6 py-12">
+              <h2 className="mb-6 text-2xl font-semibold text-[var(--color-ink)]">{activeChapter?.title}</h2>
+              <div className="flex flex-col gap-4 text-base leading-relaxed text-[var(--color-ink)]">
+                {activeChapter?.content.split('\n\n').map((paragraph, i) => <p key={i}>{paragraph}</p>)}
+              </div>
 
-            <div className="mt-12 flex justify-between border-t border-[var(--color-border)] pt-6 text-sm">
-              <button
-                type="button"
-                disabled={activeIndex === 0}
-                onClick={() => goToChapter(activeIndex - 1)}
-                className="text-[var(--color-accent)] hover:underline disabled:pointer-events-none disabled:text-[var(--color-ink-muted)]"
-              >
-                ← Previous chapter
-              </button>
-              <button
-                type="button"
-                disabled={activeIndex >= chapters.length - 1}
-                onClick={() => goToChapter(activeIndex + 1)}
-                className="text-[var(--color-accent)] hover:underline disabled:pointer-events-none disabled:text-[var(--color-ink-muted)]"
-              >
-                Next chapter →
-              </button>
-            </div>
-          </article>
-        </div>
+              <div className="mt-12 flex justify-between border-t border-[var(--color-border)] pt-6 text-sm">
+                <button
+                  type="button"
+                  disabled={activeIndex === 0}
+                  onClick={() => goToChapter(activeIndex - 1)}
+                  className="text-[var(--color-accent)] hover:underline disabled:pointer-events-none disabled:text-[var(--color-ink-muted)]"
+                >
+                  ← Previous chapter
+                </button>
+                <button
+                  type="button"
+                  disabled={activeIndex >= chapters.length - 1}
+                  onClick={() => goToChapter(activeIndex + 1)}
+                  className="text-[var(--color-accent)] hover:underline disabled:pointer-events-none disabled:text-[var(--color-ink-muted)]"
+                >
+                  Next chapter →
+                </button>
+              </div>
+            </article>
+          </div>
+        )}
 
         {/* Desktop: fixed w-96 sidebar, same as before. Mobile: full width
             — a phone only ever shows one panel at a time, so there's no
@@ -255,7 +309,7 @@ export function ReaderPage() {
                 documentTitle={document.title}
                 workspaceId={document.workspace_id}
                 chapters={chapters}
-                activeChapterIndex={activeIndex}
+                activeChapterIndex={sectionIndex}
                 scrollFraction={progress.scrollFraction}
                 hasProgress={hasProgress}
                 progressUpdatedAt={progressUpdatedAt}
@@ -282,7 +336,9 @@ export function ReaderPage() {
             )}
             {activePanel === 'highlights' && (
               <div className="p-4">
-                <h3 className="mb-3 text-sm font-medium text-[var(--color-ink)]">Highlights in this chapter</h3>
+                <h3 className="mb-3 text-sm font-medium text-[var(--color-ink)]">
+                  Highlights {isPdf ? 'on this page' : 'in this chapter'}
+                </h3>
                 <HighlightsList
                   documentId={documentId!}
                   chapterIndex={activeIndex}

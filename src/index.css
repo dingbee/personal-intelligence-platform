@@ -83,3 +83,31 @@
     outline-offset: 2px;
   }
 }
+
+/* UX-13.7.1 — the PDF reader's text layer: pdfjs-dist's TextLayer class
+   positions each word span itself (inline transform/font-size), but the
+   "invisible text over the canvas, selectable, highlighted on selection"
+   behavior is a CSS-only concern it deliberately leaves to the host app
+   (this is the same handful of rules pdfjs-dist's own pdf_viewer.css
+   ships, reproduced here directly instead of importing that stylesheet
+   wholesale — it also carries unrelated toolbar/sidebar/annotation
+   styles this app doesn't use and don't belong bleeding into a
+   Tailwind-based design system). */
+.pdf-text-layer {
+  overflow: hidden;
+  line-height: 1;
+  user-select: text;
+}
+
+.pdf-text-layer span,
+.pdf-text-layer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.pdf-text-layer ::selection {
+  background: color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
