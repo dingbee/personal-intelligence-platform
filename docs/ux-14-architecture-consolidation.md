@@ -198,7 +198,7 @@ These require real code changes and are **not performed in this sprint** — eac
 
 **R1 — Thread `buildReasoningPlan` into `AIService.sendMessage`.** Move the plan computation from `ChatPage.tsx` into `AIService.sendMessage`, using signals derived from data already in scope there (`matches.length > 0`, `graphContext !== null`, `memoryContext !== null` — the pre-response equivalents of what `contextTrace` computes post-hoc). Extend `buildNovaContextPrompt` (or add a sibling) to render the plan into the system prompt. Return the plan in `SendMessageResult` so `ChatPage.tsx` reads it back for the trace panel instead of recomputing it. This is the smallest change identified that makes planner reasoning actually influence responses — no new AI call, no new fetch, reuses the existing rule-based classifier. **Not agent execution** — the plan still only shapes prompt text, never selects a code path. Deferred: this changes what every live chat response looks like, and per the Blueprint's own risk note needs the same staged, mocked-then-real-transcript verification this project has applied to every other `AIService` change.
 
-**R2 — Consolidate `suggestionEngine.ts` and `dashboardRecommendations.ts`.** Either merge into one function taking a `scope: 'chat-turn' | 'workspace-view'` parameter, or keep them separate with an explicit, written reason (e.g., genuinely different trigger data shapes). Required before Proactive Intelligence's persistence layer (Blueprint §3) is built — persisting on top of two still-separate engines would bake the duplication into a database table. Deferred to UX-14 implementation.
+**R2 — Consolidate `suggestionEngine.ts` and `dashboardRecommendations.ts`.** ~~Deferred to UX-14 implementation~~ **Done (UX-14.1).** Merged into `src/modules/intelligence/recommendations/recommendationEngine.ts` — one exported `Recommendation` type, one `generateRecommendations({ scope: 'chat' | 'dashboard', ... })` function. Each scope's rule branches are unchanged from their original files (same conditions, same reason text, same command ids); characterization tests ported from both original test suites unchanged, plus two new tests asserting scope isolation (a dashboard-only signal has no effect under `scope: 'chat'` and vice versa). All four call sites updated (`orchestrator.ts`, `dashboardInteraction.ts`, `hub/hubData.ts`, plus the two rendering/summary consumers `RecommendedActionsSection.tsx` and `executiveSummary.ts`). Verified: tsc clean, 956/956 vitest (up from 954 — net of 15 ported tests removed, 17 added), lint clean, build clean.
 
 **R3 (optional, lower priority) — Reconcile `workspaceInsightEngine`/`dashboardInsights`.** Not required; flagged so a future phase doesn't extend both independently without noticing they're adjacent.
 
@@ -244,9 +244,9 @@ Not part of UX-14, not scoped here beyond naming:
 
 ## Implementation Order
 
-1. **This sprint (done):** Zero-risk docstring corrections.
-2. **UX-14, early:** R2 — consolidate the recommendation engines, since Blueprint §3 (Proactive Intelligence, increment 1) explicitly depends on this happening first.
-3. **UX-14, later:** R1 — thread the planner into `AIService.sendMessage`, matching the Blueprint's own sequencing (Intelligence Layer, §4, fourth/last — smallest in scope but highest in live blast radius).
+1. **Done (this sprint):** Zero-risk docstring corrections.
+2. **Done (UX-14.1):** R2 — recommendation engines consolidated, since Blueprint §3 (Proactive Intelligence, increment 1) explicitly depended on this happening first.
+3. **UX-14, next:** R1 — thread the planner into `AIService.sendMessage`, matching the Blueprint's own sequencing (Intelligence Layer, §4, fourth/last — smallest in scope but highest in live blast radius).
 4. **Not UX-14:** R3 and the two future-exploration infrastructure spikes (background execution, agent permission model).
 
 ---

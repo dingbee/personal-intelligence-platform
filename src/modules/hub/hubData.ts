@@ -10,7 +10,7 @@ import { computeConceptClusters } from '@/modules/knowledge/intelligence/concept
 import { detectGraphSignals } from '@/modules/knowledge/intelligence/graphSignals'
 import { findContradictoryMemoryPairs } from '@/modules/intelligence/orchestrator/attentionEngine'
 import { hasUnreviewedMemory } from '@/modules/intelligence/orchestrator/signalEngine'
-import { generateDashboardRecommendations, type DashboardRecommendation } from '@/modules/intelligence/dashboard/dashboardRecommendations'
+import { generateRecommendations, type Recommendation } from '@/modules/intelligence/recommendations/recommendationEngine'
 import { listNotes, type NoteWithDocument } from '@/modules/notes/api/notes'
 import { listConversations } from '@/modules/ai/chat/api/conversations'
 
@@ -21,7 +21,7 @@ export interface WorkspaceHubState {
   activeConcepts: ConceptEvolution[]
   signals: IntelligenceSignal[]
   gaps: KnowledgeGap[]
-  recommendations: DashboardRecommendation[]
+  recommendations: Recommendation[]
   documentRelationshipCount: number
   readDocumentCount: number
   totalReadyDocumentCount: number
@@ -42,7 +42,7 @@ export interface WorkspaceHubState {
  * (no id/title, just enough for timeline/activity math) and can't back a
  * "recent notes" or "active conversations" list on their own.
  *
- * One known simplification: generateDashboardRecommendations's
+ * One known simplification: generateRecommendations's dashboard-scope
  * informationOrganizationScore is passed as 100 (never triggers the
  * "organize your library" recommendation) rather than recomputed here — that
  * score needs full per-document tag/collection data the evolution snapshot
@@ -62,7 +62,8 @@ export async function buildWorkspaceHubState(workspaceId: string, commandContext
   const signals = detectGraphSignals({ nodes: snapshot.concepts, edges: snapshot.edges, clusters, nodeSources })
   const gaps = computeKnowledgeGaps({ health: report.health, signals })
 
-  const recommendations = generateDashboardRecommendations({
+  const recommendations = generateRecommendations({
+    scope: 'dashboard',
     commandContext,
     hasGraphContext: snapshot.concepts.length > 0,
     hasMemoryToReview: findContradictoryMemoryPairs(snapshot.memories).length > 0 || hasUnreviewedMemory(snapshot.memories),

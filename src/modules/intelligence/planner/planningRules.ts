@@ -8,7 +8,7 @@ export interface PlanningRule {
    * Real command ids only — either already registered in commandRegistry
    * (see registerBuiltInCommands.ts) or 'reader-continue', the one
    * per-instance factory (buildContinueReadingCommand) every other reuse
-   * of this module already special-cases the same way (suggestionEngine.ts,
+   * of this module already special-cases the same way (recommendationEngine.ts,
    * graphSuggestions.ts). No new command is invented here.
    */
   suggestedCommandIds: string[]

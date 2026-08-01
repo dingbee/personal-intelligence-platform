@@ -1,14 +1,14 @@
 import type { WorkspaceMaturity } from '@/modules/evolution/workspaceEvolution/workspaceMaturity'
 import type { KnowledgeHealthReport } from '@/modules/evolution/knowledgeHealth/knowledgeHealthScore'
 import type { KnowledgeGap } from '@/modules/evolution/knowledgeGaps/knowledgeGaps'
-import type { DashboardRecommendation } from '@/modules/intelligence/dashboard/dashboardRecommendations'
+import type { Recommendation } from '@/modules/intelligence/recommendations/recommendationEngine'
 
 export interface BuildExecutiveSummaryInput {
   workspaceName: string
   maturity: WorkspaceMaturity
   health: KnowledgeHealthReport
   gaps: KnowledgeGap[]
-  recommendations: DashboardRecommendation[]
+  recommendations: Recommendation[]
 }
 
 /**

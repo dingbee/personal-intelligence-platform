@@ -17,7 +17,7 @@ import { hasUnreviewedMemory } from '@/modules/intelligence/orchestrator/signalE
 import { computeKnowledgeGrowth, computeIntelligenceScore, type GrowthMetric, type IntelligenceScore } from '@/modules/intelligence/dashboard/dashboardMetrics'
 import { generateExecutiveInsights, type ExecutiveInsight } from '@/modules/intelligence/dashboard/dashboardInsights'
 import { buildAttentionCenter } from '@/modules/intelligence/dashboard/dashboardSignals'
-import { generateDashboardRecommendations, type DashboardRecommendation } from '@/modules/intelligence/dashboard/dashboardRecommendations'
+import { generateRecommendations, type Recommendation } from '@/modules/intelligence/recommendations/recommendationEngine'
 import { resolveWorkspaceIntelligenceSummaries, type WorkspaceIntelligenceSummary } from '@/modules/intelligence/dashboard/dashboardResolver'
 
 const GROWTH_WINDOW_DAYS = 30
@@ -30,7 +30,7 @@ export interface DashboardState {
   growth: GrowthMetric[]
   insights: ExecutiveInsight[]
   attention: AttentionItem[]
-  recommendations: DashboardRecommendation[]
+  recommendations: Recommendation[]
   workspaceSummaries: WorkspaceIntelligenceSummary[]
 }
 
@@ -175,7 +175,8 @@ export async function buildDashboardState(params: BuildDashboardStateParams): Pr
   })
   const attention = buildAttentionCenter({ attentionItems: rawAttentionItems, graphSignals })
 
-  const recommendations = generateDashboardRecommendations({
+  const recommendations = generateRecommendations({
+    scope: 'dashboard',
     commandContext: params.commandContext,
     hasGraphContext: concepts.length > 0,
     hasMemoryToReview: contradictoryMemoryPairCount > 0 || hasUnreviewedMemory(memories),

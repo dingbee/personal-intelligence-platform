@@ -1,4 +1,4 @@
-import type { DashboardRecommendation, RecommendationCategory } from '@/modules/intelligence/dashboard/dashboardRecommendations'
+import type { Recommendation, RecommendationCategory } from '@/modules/intelligence/recommendations/recommendationEngine'
 import type { CommandActions, CommandContext } from '@/modules/commands/types'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 
@@ -15,7 +15,7 @@ export function RecommendedActionsSection({
   commandContext,
   commandActions,
 }: {
-  recommendations: DashboardRecommendation[]
+  recommendations: Recommendation[]
   commandContext: CommandContext
   commandActions: CommandActions
 }) {

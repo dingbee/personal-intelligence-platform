@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { buildExecutiveSummary } from '@/modules/hub/executiveSummary'
 import type { WorkspaceMaturity } from '@/modules/evolution/workspaceEvolution/workspaceMaturity'
-import type { DashboardRecommendation } from '@/modules/intelligence/dashboard/dashboardRecommendations'
+import type { Recommendation } from '@/modules/intelligence/recommendations/recommendationEngine'
 import type { Command } from '@/modules/commands/types'
 
 const maturity: WorkspaceMaturity = { stage: 'active', label: 'Active', reason: '4 items added in the last 30 days.' }
 
 const stubCommand: Command = { id: 'stub', title: 'Stub', icon: '✨', category: 'navigation', execute: () => {} }
 
-function recommendation(reason: string): DashboardRecommendation {
+function recommendation(reason: string): Recommendation {
   return { category: 'explore', command: stubCommand, reason }
 }
 

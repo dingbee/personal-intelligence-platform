@@ -21,7 +21,7 @@ export interface ChapterSuggestionsInput {
   hasSummary: boolean
   hasFlashcards: boolean
   highlightCount: number
-  /** True once this turn's contextTrace showed graph nodes — same gating suggestionEngine.ts (UX-8) uses for "Explore knowledge graph." */
+  /** True once this turn's contextTrace showed graph nodes — same gating recommendationEngine.ts (UX-8/UX-14.1) uses for "Explore knowledge graph." */
   hasGraphContext: boolean
 }
 

@@ -2,7 +2,7 @@ import type { ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import type { Reference } from '@/modules/intelligence/references/referenceTypes'
 import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
 import type { EvidenceLevel } from '@/modules/intelligence/evidence/computeEvidenceScore'
-import type { Command } from '@/modules/commands/types'
+import type { Recommendation } from '@/modules/intelligence/recommendations/recommendationEngine'
 
 export type ContextSourceKey =
   | 'continuation'
@@ -60,24 +60,21 @@ export interface WorkspaceInsight {
   value: string
 }
 
-/** Phase 6 — every command here is either an existing registry command or a thin, existing-route-only wrapper (see suggestionEngine.ts). */
-export interface ActionSuggestion {
-  command: Command
-  reason: string
-}
-
 /**
  * Phase 1/8 output. Immutable, pure data — no functions, no live
  * subscriptions. `context` is the ranked/decided source list (Phase 2);
  * references/evidence/suggestions/signals are the UX-6/UX-7 fields the
- * orchestrator composes rather than recomputes.
+ * orchestrator composes rather than recomputes. `actions` — UX-14.1
+ * (Architecture Consolidation) — is the chat-scope output of the one
+ * canonical recommendation engine, not a chat-only type; see
+ * recommendations/recommendationEngine.ts.
  */
 export interface InteractionState {
   context: ContextSourceDecision[]
   references: Reference[]
   evidence: EvidenceLevel
   suggestions: string[]
-  actions: ActionSuggestion[]
+  actions: Recommendation[]
   attention: AttentionItem[]
   resurfacedKnowledge: ResurfacedKnowledgeItem[]
   workspace: WorkspaceInsight[]

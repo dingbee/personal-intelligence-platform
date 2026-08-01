@@ -11,7 +11,7 @@ import { detectAttentionItems } from '@/modules/intelligence/orchestrator/attent
 import { detectOrchestratorSignals } from '@/modules/intelligence/orchestrator/signalEngine'
 import { resurfaceKnowledge } from '@/modules/intelligence/orchestrator/resurfacingEngine'
 import { computeWorkspaceInsights, type WorkspaceStatsSummary } from '@/modules/intelligence/orchestrator/workspaceInsightEngine'
-import { deriveActionSuggestions } from '@/modules/intelligence/orchestrator/suggestionEngine'
+import { generateRecommendations } from '@/modules/intelligence/recommendations/recommendationEngine'
 import type { CommandContext } from '@/modules/commands/types'
 import type { ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import type { Reference } from '@/modules/intelligence/references/referenceTypes'
@@ -133,7 +133,8 @@ export async function buildInteractionState(params: BuildInteractionStateParams)
 
   const relatedConversationItem = resurfacedKnowledge.find((item) => item.type === 'conversation') ?? null
 
-  const actions = deriveActionSuggestions({
+  const actions = generateRecommendations({
+    scope: 'chat',
     commandContext: params.commandContext,
     hasGraphContext: params.contextTrace.graphNodes > 0,
     relatedConversation: relatedConversationItem ? { id: relatedConversationItem.id, title: relatedConversationItem.title } : null,
