@@ -97,7 +97,7 @@ function AddMemoryForm({ onSubmit, onCancel }: { onSubmit: (type: AiMemoryType, 
  * (UX-5.3B) is unchanged.
  */
 export function MemoryManagementPage() {
-  const { data: memories = [], isLoading, create } = useMemories()
+  const { data: memories = [], isLoading, create, rememberCandidate: rememberCandidateShared } = useMemories()
   const [typeFilter, setTypeFilter] = useState<MemoryTypeFilter>('all')
   const [sortOrder, setSortOrder] = useState<MemorySortOrder>('newest')
   const [pendingCandidates, setPendingCandidates] = useState<MemoryCandidate[]>([])
@@ -113,10 +113,7 @@ export function MemoryManagementPage() {
   }
 
   function rememberCandidate(candidate: MemoryCandidate) {
-    // UX-14.3 — candidate.confidence was computed by scoreMemoryConfidence
-    // (used for the approval panel's badge and the MIN_CONFIDENCE filter)
-    // but never made it past this call before now.
-    create.mutate({ memoryType: candidate.type, content: candidate.content, source: 'conversation', confidence: candidate.confidence })
+    rememberCandidateShared(candidate)
     dismissCandidate(candidate)
   }
 

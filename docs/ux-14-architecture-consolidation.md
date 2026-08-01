@@ -310,6 +310,78 @@ Nullable, no default, no backfill — every pre-existing row (17 at time of migr
 
 ---
 
+#### UX-14.3.5 — Memory Capture Pipeline: Discovery + Activation (completed)
+
+UX-14.3 left this document's own roadmap item 1 open: `detectMemoryCandidates` was fully built, tested, and (as of UX-14.3) persisted correctly with confidence — but had zero live callers, so `MemoryApprovalPanel` never had anything to show in production. This milestone closes exactly that gap. Not a reopening of UX-14.3 — UX-14.3's persistence fix is untouched; this milestone only supplies the missing caller.
+
+**Phase 1 architecture audit, grounded in code.**
+
+- `detectMemoryCandidates(text, sourceConversationId): MemoryCandidate[]` (`memoryDetection/detectMemoryCandidates.ts`) is a pure, synchronous, regex-based scorer with a built-in privacy gate (`containsSensitiveTopic` suppresses all candidates from a message touching health/political/religious/financial/legal/identity content before any pattern runs). No AI call, no network I/O — safe to run inline on the client with no latency or cost impact.
+- `useSendMessage.ts` (`src/modules/ai/chat/hooks/useSendMessage.ts`) is the single hook both `ChatPage.tsx` and `ReaderChatPanel.tsx` call — already the wiring point UX-14.2 used to thread `reasoningPlan` to both surfaces at once. It receives `text` (the raw user message) as a parameter to `send()`, so it already has everything `detectMemoryCandidates` needs.
+- `MemoryApprovalPanel.tsx` (UX-5.3B) already implements the exact approval UI this milestone's Phase 3 example describes verbatim: confidence badge, content, Dismiss button, Remember button behind a `ConfirmDialog`. It renders `null` when `candidates.length === 0`, so it is safe to mount unconditionally on every chat surface.
+
+**Answers to the three required questions:**
+
+1. **Where should candidate detection occur?** Inside `useSendMessage`, not inside `AIService.sendMessage`. Detection is a client-side, UI-facing concern (it feeds an approval queue a component renders) with no bearing on the AI response itself — it does not belong in the orchestration layer the way `reasoningPlan` (which is genuinely part of the request/response contract) did. Keeping it in the hook also means it runs identically for both `ChatPage` and `ReaderChatPanel` without touching `AIService.ts` at all.
+2. **At what point in the conversation lifecycle?** After the turn completes, in the same success branch as `reasoningPlan`/`contextTrace`/`suggestions`/`signals` are already set.
+3. **Before, after, or asynchronously after response generation?** After — synchronously, in `send()`'s existing `try` success path, not as a background job. Detection is regex-based and effectively instantaneous, so a background job would add complexity (a queue, a poll, a new loading state) for no measurable benefit, and would contradict the milestone's own constraint against background agents/jobs.
+
+**Recommended (and implemented) option:** wire detection once into `useSendMessage`, run it synchronously right after a successful `send()` resolves, over the just-sent user `text` — the same message content the example in this milestone's brief (`"I am working on a hospitality AI platform."`) detects a candidate from. This is the lowest-risk option: one call site instead of two, no new AI calls, no change to `sendMessage`'s existing return contract, and no change to existing chat behavior (streaming, error handling, message persistence all untouched).
+
+**Phase 2 — connected flow (implemented).**
+
+```
+User types message → send(conversationId, text, history)
+  → sendMessage() (AIService, unchanged) → assistant response persisted (unchanged)
+  → detectMemoryCandidates(text, conversationId)   ← NEW, client-side, synchronous
+  → memoryCandidates state (useSendMessage)         ← NEW
+  → MemoryApprovalPanel (ChatPage / ReaderChatPanel) ← NEW mount, existing component
+  → user clicks Remember → useMemories().rememberCandidate(candidate)
+      → createMemory({ memoryType, content, source: 'conversation', confidence })  -- UX-14.3's column
+  → user clicks Dismiss → dismissMemoryCandidate(candidate) → candidate dropped, nothing persisted
+```
+
+No automatic saving at any point — the queue is populated, nothing is written to `ai_memory` until a human clicks Remember and confirms the `ConfirmDialog`. `memoryCandidates` resets to `[]` at the start of every `send()` call, same lifecycle as `reasoningPlan`/`contextTrace`, so a candidate never survives past the turn that raised it, dismissed or not.
+
+**Phase 3 — approval workflow (activated, not rebuilt).** `MemoryApprovalPanel` (UX-5.3B) is reused byte-for-byte — no props changed, no markup changed. It is now mounted as a sibling to each surface's existing insight drawer, immediately before `ChatInput`, matching the exact position `NovaInsightDrawer`/`ReaderInsightDrawer` already occupy in each page. `onRemember` closes over the new shared `useMemories().rememberCandidate` and this hook's `dismissMemoryCandidate`; `onDismiss` closes over `dismissMemoryCandidate` alone.
+
+**Phase 4 — persistence (reused, not duplicated).** `rememberCandidate` is now a single shared function in `useMemories.ts` — `create.mutate({ memoryType: candidate.type, content: candidate.content, source: 'conversation', confidence: candidate.confidence })` — used identically by `MemoryManagementPage.tsx` (refactored off its own local duplicate), `ChatPage.tsx`, and `ReaderChatPanel.tsx`. It writes through the exact `confidence` column UX-14.3 added; no second confidence system, no new migration.
+
+**Duplication found and removed.** `MemoryManagementPage.tsx` previously had its own local `rememberCandidate` doing the same `create.mutate(...)` call UX-14.3 had already fixed there. That duplicate is now deleted; the page calls the shared `useMemories().rememberCandidate` instead. Without this consolidation, a third surface (ChatPage/ReaderChatPanel) would have meant a third hand-written copy of the same mapping — exactly the kind of duplication this sprint's rules exist to prevent.
+
+**Files changed:**
+- `src/modules/ai/memory/hooks/useMemories.ts` — added shared `rememberCandidate(candidate)`, returned from the hook.
+- `src/modules/ai/chat/hooks/useSendMessage.ts` — added `memoryCandidates` state (reset on send, set from `detectMemoryCandidates(text, conversationId)` on success) and `dismissMemoryCandidate`; both returned from the hook. `sendMessage`'s call, return type, and error handling are unchanged.
+- `src/modules/ai/chat/pages/ChatPage.tsx` — mounts `MemoryApprovalPanel` next to `NovaInsightDrawer`, wired to the new hook state and the shared `rememberCandidate`.
+- `src/modules/reader/components/ReaderChatPanel.tsx` — same mount, next to `ReaderInsightDrawer`.
+- `src/modules/ai/memory/pages/MemoryManagementPage.tsx` — local `rememberCandidate` replaced with the shared one; local `dismissCandidate` (scoped to this page's own, still-unwired `pendingCandidates` queue) kept as-is, since that queue is a separate, pre-existing piece of local state this milestone did not touch.
+
+**Database changes:** none. Reuses `ai_memory.confidence` from `supabase/migrations/0027_ai_memory_confidence.sql` (UX-14.3) exactly as instructed — no new column, no new table, no new migration.
+
+**Security/privacy considerations.**
+- No automatic memory creation at any point — every candidate requires an explicit Remember click plus a `ConfirmDialog` confirmation.
+- `containsSensitiveTopic` (pre-existing, unchanged) runs inside `detectMemoryCandidates` before any pattern match, suppressing candidates from any message touching health, political, religious, or financial/legal/identity-sensitive content — this milestone activates that gate for the first time in a live surface, it does not weaken or bypass it.
+- Detection runs entirely client-side over text the user already sent; no new data leaves the client, no new table is read or written beyond the existing `create`/`ai_memory` path UX-5.3B/UX-14.3 already established.
+- A dismissed or ignored candidate is simply dropped from in-memory React state on the next `send()` — never logged, never persisted, never recoverable.
+
+**Testing Requirement — evaluated, no harness built.** A lightweight Memory Test Harness was considered per the milestone's instruction and judged unnecessary: `detectMemoryCandidates` itself already has full unit coverage from UX-5.3B, unchanged by this milestone; the new code in `useSendMessage`/`ChatPage`/`ReaderChatPanel`/`MemoryManagementPage` is thin, type-checked wiring (state plumbing and prop-passing) with no new logic to characterize; and this codebase's established convention — confirmed again here, as it was in UX-14.3 — is not to unit-test hooks, pages, or thin Supabase-API wrapper functions directly (only one file in the entire repo mocks the Supabase client). Building a harness capable of exercising the full approve/dismiss/persist loop would require the same mocked-Supabase Playwright investment flagged twice already (UX-14.2, UX-14.3) and still not authorized. `tsc -b` plus the existing `detectMemoryCandidates.test.ts` suite together already cover everything that changed at a level proportionate to the change.
+
+**Verification.**
+- `tsc -b`: clean.
+- `vitest run`: 959/959 passing, unchanged count — consistent with the Testing Requirement conclusion above (no new test file; nothing new to characterize beyond what's already covered).
+- `lint`/`build`: clean.
+- Browser: boot-smoke-tested (fresh dev server, Playwright against pre-installed Chromium, zero console/page errors, app renders). **Not verified live**, for the same disclosed reason as UX-14.2 and UX-14.3: no mocked-Supabase harness and no live-production test account exist in this environment, so the full authenticated loop (send a message containing a detectable pattern → candidate appears → Save Memory → appears in Memory Management with confidence intact → Dismiss removes it → existing retrieval unaffected) could not be exercised end-to-end. Unlike UX-14.2/UX-14.3, this gap is now the single largest deliberately-unverified surface in Memory Intelligence, since this is the milestone that makes the pipeline live for the first time — closing it (via a committed mock harness or a staging environment) should be a prerequisite before UX-14.4, not an optional nice-to-have.
+
+**Remaining Memory Intelligence roadmap** (superseding UX-14.3's item 1, which this milestone completes):
+1. ~~Wire `detectMemoryCandidates` into a real chat surface~~ **Done (this milestone).**
+2. Near-duplicate reinforcement — strengthen an existing memory instead of inserting a near-duplicate candidate.
+3. On-read confidence decay (Blueprint's recommended approach — no stored decaying value, no background job).
+4. Confidence-weighted selection in `formatMemoriesForPrompt`'s cap logic, replacing pure recency.
+5. Surface confidence on `MemoryCard`/`MemoryApprovalPanel`'s persisted display.
+6. A committed browser-verification harness (mocked Supabase or staging) — flagged three milestones running now (UX-14.2, UX-14.3, UX-14.3.5), each time as a real, disclosed gap rather than a silently-skipped check.
+
+---
+
 **R2 — Consolidate `suggestionEngine.ts` and `dashboardRecommendations.ts`.** ~~Deferred to UX-14 implementation~~ **Done (UX-14.1).** Merged into `src/modules/intelligence/recommendations/recommendationEngine.ts` — one exported `Recommendation` type, one `generateRecommendations({ scope: 'chat' | 'dashboard', ... })` function. Each scope's rule branches are unchanged from their original files (same conditions, same reason text, same command ids); characterization tests ported from both original test suites unchanged, plus two new tests asserting scope isolation (a dashboard-only signal has no effect under `scope: 'chat'` and vice versa). All four call sites updated (`orchestrator.ts`, `dashboardInteraction.ts`, `hub/hubData.ts`, plus the two rendering/summary consumers `RecommendedActionsSection.tsx` and `executiveSummary.ts`). Verified: tsc clean, 956/956 vitest (up from 954 — net of 15 ported tests removed, 17 added), lint clean, build clean.
 
 **R3 (optional, lower priority) — Reconcile `workspaceInsightEngine`/`dashboardInsights`.** Not required; flagged so a future phase doesn't extend both independently without noticing they're adjacent.

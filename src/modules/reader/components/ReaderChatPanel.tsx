@@ -20,6 +20,8 @@ import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { buildReaderInteractionState, type ReaderInteractionState } from '@/modules/reader/intelligence/readerInteraction'
 import type { LocalSuggestionId } from '@/modules/reader/intelligence/chapterSuggestions'
 import { ReaderInsightDrawer } from '@/modules/reader/components/ReaderInsightDrawer'
+import { MemoryApprovalPanel } from '@/modules/ai/memory/memoryDetection/MemoryApprovalPanel'
+import { useMemories } from '@/modules/ai/memory/hooks/useMemories'
 
 export interface ReaderChatPanelProps {
   documentId: string
@@ -100,10 +102,18 @@ export function ReaderChatPanel({
 
   const { data: messages = [], isLoading: messagesLoading } = useMessages(conversationId)
   const conversation = conversations.find((c) => c.id === conversationId)
-  const { send, streamingText, sending, error, contextTrace, references, signals } = useSendMessage(
-    conversation?.provider_id ?? defaultProviderId,
-    documentId,
-  )
+  const {
+    send,
+    streamingText,
+    sending,
+    error,
+    contextTrace,
+    references,
+    signals,
+    memoryCandidates,
+    dismissMemoryCandidate,
+  } = useSendMessage(conversation?.provider_id ?? defaultProviderId, documentId)
+  const { rememberCandidate } = useMemories()
   const saveMessage = useSaveMessageToNote({
     conversationId: conversation?.id ?? '',
     conversationTitle: conversation?.title ?? documentTitle,
@@ -254,6 +264,16 @@ export function ReaderChatPanel({
           onLocalSuggestion={onLocalSuggestion}
           commandContext={commandContext}
           commandActions={commandActions}
+        />
+      )}
+      {!sending && (
+        <MemoryApprovalPanel
+          candidates={memoryCandidates}
+          onRemember={(candidate) => {
+            rememberCandidate(candidate)
+            dismissMemoryCandidate(candidate)
+          }}
+          onDismiss={dismissMemoryCandidate}
         />
       )}
       <ChatInput disabled={sending} onSend={(text) => void handleSend(text)} />

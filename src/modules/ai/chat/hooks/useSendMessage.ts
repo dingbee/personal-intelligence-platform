@@ -12,6 +12,8 @@ import type { ReasoningPlan } from '@/modules/intelligence/planner/plannerTypes'
 import { normalizeAiError } from '@/modules/ai/orchestration/normalizeAiError'
 import { PROVIDER_UNAVAILABLE_MESSAGE } from '@/modules/ai/providers/availability'
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
+import { detectMemoryCandidates } from '@/modules/ai/memory/memoryDetection/detectMemoryCandidates'
+import type { MemoryCandidate } from '@/modules/ai/memory/memoryDetection/types'
 
 /**
  * Not a react-query mutation on purpose — streaming token-by-token updates
@@ -47,6 +49,10 @@ export function useSendMessage(providerId: string, documentId?: string) {
   // UX-14.2 — the plan AIService now computes before the LLM call; ChatPage
   // renders this instead of recomputing buildReasoningPlan itself.
   const [reasoningPlan, setReasoningPlan] = useState<ReasoningPlan | null>(null)
+  // UX-14.3.5 — candidates detected from the just-sent user message, queued
+  // for user approval; never persisted until MemoryApprovalPanel's Remember
+  // action calls useMemories().rememberCandidate.
+  const [memoryCandidates, setMemoryCandidates] = useState<MemoryCandidate[]>([])
 
   async function send(
     conversationId: string,
@@ -60,6 +66,7 @@ export function useSendMessage(providerId: string, documentId?: string) {
     setReferences([])
     setModel(null)
     setReasoningPlan(null)
+    setMemoryCandidates([])
 
     // An empty chain means nothing survived candidacy filtering at all
     // (no key configured anywhere, or everything's disabled) — ai-chat
@@ -94,6 +101,7 @@ export function useSendMessage(providerId: string, documentId?: string) {
       setReferences(result.references)
       setModel(result.model)
       setReasoningPlan(result.reasoningPlan)
+      setMemoryCandidates(detectMemoryCandidates(text, conversationId))
       await queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
       await queryClient.invalidateQueries({ queryKey: ['conversations'] })
       return result.message
@@ -114,6 +122,10 @@ export function useSendMessage(providerId: string, documentId?: string) {
     }
   }
 
+  function dismissMemoryCandidate(candidate: MemoryCandidate) {
+    setMemoryCandidates((current) => current.filter((c) => c !== candidate))
+  }
+
   return {
     send,
     streamingText,
@@ -125,5 +137,7 @@ export function useSendMessage(providerId: string, documentId?: string) {
     references,
     model,
     reasoningPlan,
+    memoryCandidates,
+    dismissMemoryCandidate,
   }
 }

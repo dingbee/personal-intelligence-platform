@@ -10,6 +10,7 @@ import {
 import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import type { AiMemoryType } from '@/shared/types/database'
+import type { MemoryCandidate } from '@/modules/ai/memory/memoryDetection/types'
 
 /** No consumer wires this into chat/RAG yet (Phase UX-5 is the memory foundation only) — this is the CRUD layer a future write/read integration will call into. */
 export function useMemories(filters: Omit<MemoryFilters, 'workspaceId'> = {}) {
@@ -51,5 +52,17 @@ export function useMemories(filters: Omit<MemoryFilters, 'workspaceId'> = {}) {
     onSuccess: invalidate,
   })
 
-  return { ...query, create, update, remove, setCategoryActive }
+  /**
+   * UX-14.3.5 — the one "turn an approved MemoryCandidate into a real row"
+   * mapping, shared by every surface that renders MemoryApprovalPanel
+   * (MemoryManagementPage, ChatPage, ReaderChatPanel) instead of each
+   * re-deriving the same createMemory params. Carries candidate.confidence
+   * through — the exact discard point UX-14.3 fixed — so every caller gets
+   * that for free rather than needing to remember to pass it themselves.
+   */
+  function rememberCandidate(candidate: MemoryCandidate) {
+    create.mutate({ memoryType: candidate.type, content: candidate.content, source: 'conversation', confidence: candidate.confidence })
+  }
+
+  return { ...query, create, update, remove, setCategoryActive, rememberCandidate }
 }

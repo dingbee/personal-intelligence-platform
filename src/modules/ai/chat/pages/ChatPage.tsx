@@ -38,6 +38,8 @@ import { selectContext } from '@/modules/intelligence/planner/contextSelector'
 import { buildReasoningTrace } from '@/modules/intelligence/planner/reasoningTrace'
 import { buildDecisionFramework } from '@/modules/intelligence/decision/decisionFrameworkBuilder'
 import { detectLearningIntelligence } from '@/modules/intelligence/learning/learningEngine'
+import { MemoryApprovalPanel } from '@/modules/ai/memory/memoryDetection/MemoryApprovalPanel'
+import { useMemories } from '@/modules/ai/memory/hooks/useMemories'
 
 export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -137,10 +139,21 @@ export function ChatPage() {
   // next send: this hook re-runs every render, so once the mutation below
   // updates the conversations cache, the next render's `send` closes over
   // the new value automatically.
-  const { send, streamingText, sending, error, suggestions, contextTrace, references, model, signals, reasoningPlan } = useSendMessage(
-    conversation?.provider_id ?? effectiveNewProviderId,
-    documentId,
-  )
+  const {
+    send,
+    streamingText,
+    sending,
+    error,
+    suggestions,
+    contextTrace,
+    references,
+    model,
+    signals,
+    reasoningPlan,
+    memoryCandidates,
+    dismissMemoryCandidate,
+  } = useSendMessage(conversation?.provider_id ?? effectiveNewProviderId, documentId)
+  const { rememberCandidate } = useMemories()
   // UX-6 Phase 7 status indicator — workspace name from the already-loaded
   // list (no new query), "understanding" from the last user turn.
   const { workspaces, currentWorkspaceId } = useWorkspace()
@@ -448,6 +461,16 @@ export function ChatPage() {
                 signals={interactionState?.signals ?? signals}
                 workspaceInsights={interactionState?.workspace ?? []}
                 workspaceId={currentWorkspaceId}
+              />
+            )}
+            {!sending && (
+              <MemoryApprovalPanel
+                candidates={memoryCandidates}
+                onRemember={(candidate) => {
+                  rememberCandidate(candidate)
+                  dismissMemoryCandidate(candidate)
+                }}
+                onDismiss={dismissMemoryCandidate}
               />
             )}
             <ChatInput disabled={sending} onSend={(text) => void handleSend(text)} />
