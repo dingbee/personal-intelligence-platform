@@ -34,7 +34,6 @@ import { buildInteractionState } from '@/modules/intelligence/orchestrator/orche
 import type { InteractionState } from '@/modules/intelligence/orchestrator/types'
 import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
-import { buildReasoningPlan, type PlannerSignals } from '@/modules/intelligence/planner/planner'
 import { selectContext } from '@/modules/intelligence/planner/contextSelector'
 import { buildReasoningTrace } from '@/modules/intelligence/planner/reasoningTrace'
 import { buildDecisionFramework } from '@/modules/intelligence/decision/decisionFrameworkBuilder'
@@ -138,7 +137,7 @@ export function ChatPage() {
   // next send: this hook re-runs every render, so once the mutation below
   // updates the conversations cache, the next render's `send` closes over
   // the new value automatically.
-  const { send, streamingText, sending, error, suggestions, contextTrace, references, model, signals } = useSendMessage(
+  const { send, streamingText, sending, error, suggestions, contextTrace, references, model, signals, reasoningPlan } = useSendMessage(
     conversation?.provider_id ?? effectiveNewProviderId,
     documentId,
   )
@@ -190,34 +189,29 @@ export function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sending, contextTrace, references, suggestions, signals])
 
-  // UX-12 Phase 9/10 — the reasoning layer. Every step here is pure and
-  // synchronous (no new fetch): classifyIntent/buildReasoningPlan/
-  // selectContext/buildDecisionFramework/detectLearningIntelligence/
-  // buildReasoningTrace all compute directly from data already in scope
-  // (lastUserMessage, commandContext, contextTrace). detectLearningIntelligence
-  // is called with journey: null here — a real DocumentJourney (UX-9) is
-  // only available in the document-scoped Reader Chat panel, not this
-  // general chat surface, so Learning Mode naturally stays absent here
-  // rather than being faked; see the phase report's deferred items.
+  // UX-14.2 (Planner Integration) — buildReasoningPlan now runs inside
+  // AIService.sendMessage, before the LLM call, and its output is carried
+  // through as `reasoningPlan` (via useSendMessage). This useMemo only
+  // renders that plan — it no longer computes one. selectContext/
+  // buildDecisionFramework/detectLearningIntelligence/buildReasoningTrace
+  // stay here, unchanged, composing the already-computed plan with data
+  // that's still only available client-side. detectLearningIntelligence is
+  // called with journey: null here — a real DocumentJourney (UX-9) is only
+  // available in the document-scoped Reader Chat panel, not this general
+  // chat surface, so Learning Mode naturally stays absent here rather than
+  // being faked; see the UX-12 phase report's deferred items.
   const reasoningTrace = useMemo(() => {
-    if (sending || !contextTrace) return null
+    if (sending || !contextTrace || !reasoningPlan) return null
     const text = lastUserMessage ?? ''
-    const plannerSignals: PlannerSignals = {
-      hasInProgressDocument: Boolean(commandContext.inProgressDocument),
-      hasMemoryContext: contextTrace.memoriesUsed > 0,
-      hasGraphContext: contextTrace.graphNodes > 0,
-      isContinuation: isContinuationMessage(text),
-    }
-    const plan = buildReasoningPlan({ text, signals: plannerSignals })
     return buildReasoningTrace({
       contextTrace,
-      plan,
-      selectedContext: selectContext(plan.requiredContext),
+      plan: reasoningPlan,
+      selectedContext: selectContext(reasoningPlan.requiredContext),
       decisionFramework: buildDecisionFramework(text),
-      learningMode: detectLearningIntelligence({ intent: plan.intent, journey: null, unreviewedHighlightCount: 0 }),
+      learningMode: detectLearningIntelligence({ intent: reasoningPlan.intent, journey: null, unreviewedHighlightCount: 0 }),
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sending, contextTrace, lastUserMessage, commandContext.inProgressDocument])
+  }, [sending, contextTrace, reasoningPlan, lastUserMessage])
 
   const { data: availability } = useProviderAvailability()
   const { data: overrides } = useProviderOverrides()

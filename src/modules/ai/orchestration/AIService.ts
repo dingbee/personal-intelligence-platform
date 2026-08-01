@@ -17,6 +17,9 @@ import { resolveNovaContext } from '@/modules/intelligence/context/contextResolv
 import { buildNovaContextPrompt } from '@/modules/intelligence/buildNovaContextPrompt'
 import { generateFollowUpSuggestions } from '@/modules/intelligence/conversation/generateFollowUpSuggestions'
 import { detectSignals } from '@/modules/intelligence/signals/signalDetector'
+import { buildReasoningPlan } from '@/modules/intelligence/planner/planner'
+import type { ReasoningPlan } from '@/modules/intelligence/planner/plannerTypes'
+import { isContinuationMessage } from '@/modules/intelligence/conversation/detectContinuation'
 import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
 import { resolveReferences } from '@/modules/intelligence/references/referenceResolver'
 import type { Reference } from '@/modules/intelligence/references/referenceTypes'
@@ -48,6 +51,15 @@ export interface SendMessageResult {
   references: Reference[]
   /** The provider's own reported model id (UX-7 Phase 5's "Explain My Answer" — previously computed but discarded). Null when the provider doesn't report one. */
   model: string | null
+  /**
+   * UX-14.2 (Planner Integration) — computed here, before the LLM call,
+   * instead of after the response inside ChatPage (Architecture
+   * Consolidation Sprint, Required Refactor R1). Not injected into the
+   * prompt below — that's explicitly out of scope for this sprint; the
+   * plan is only carried through so ChatPage can render it instead of
+   * recomputing it a second time.
+   */
+  reasoningPlan: ReasoningPlan
 }
 
 /**
@@ -90,6 +102,20 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
       signals: [],
       references: actionOutcome.references ?? [],
       model: null,
+      // This path deliberately short-circuits retrieval/resolveNovaContext
+      // entirely, so hasInProgressDocument/hasMemoryContext stay false
+      // rather than adding a new fetch to a pipeline designed to skip the
+      // normal one; hasGraphContext mirrors the same signal contextTrace
+      // above already reports for this branch.
+      reasoningPlan: buildReasoningPlan({
+        text,
+        signals: {
+          hasInProgressDocument: false,
+          hasMemoryContext: false,
+          hasGraphContext: Boolean(actionOutcome.references?.length),
+          isContinuation: isContinuationMessage(text),
+        },
+      }),
     }
   }
 
@@ -125,6 +151,23 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
     workspaceId,
     graphContextText: graphContext,
     memoryContextText: memoryContext,
+  })
+  // UX-14.2 (Planner Integration) — same PlannerSignals shape and
+  // derivation ChatPage used to compute after the response arrived,
+  // moved here so it runs before the LLM call. hasInProgressDocument now
+  // reads resolveNovaContext's activityContext instead of the client's
+  // separately-cached commandContext — same underlying
+  // getMostRecentReadingProgress query, not a new signal source.
+  // Deliberately not appended to `system` below — carrying the plan
+  // through the return value is this sprint's entire scope.
+  const reasoningPlan = buildReasoningPlan({
+    text,
+    signals: {
+      hasInProgressDocument: Boolean(novaContext.activityContext?.inProgressDocument),
+      hasMemoryContext: contextTrace.memoriesUsed > 0,
+      hasGraphContext: contextTrace.graphNodes > 0,
+      isContinuation: isContinuationMessage(text),
+    },
   })
   system = `${system}\n\n${buildNovaContextPrompt(novaContext, text)}`
 
@@ -171,5 +214,6 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
     }),
     references,
     model: result.model,
+    reasoningPlan,
   }
 }

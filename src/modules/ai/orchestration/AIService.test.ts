@@ -141,6 +141,33 @@ describe('sendMessage', () => {
     expect(result.references).toEqual([])
   })
 
+  // UX-14.2 (Planner Integration) — buildReasoningPlan now runs inside
+  // sendMessage, before the LLM call, instead of after the response in
+  // ChatPage. The planner's own correctness (intent/strategy rules) is
+  // covered exhaustively in planner.test.ts; these assertions cover only
+  // the new integration point — that a plan is returned, shaped correctly,
+  // and never leaks into the prompt sent to the provider.
+  it('returns a reasoningPlan alongside the message, computed before the LLM call', async () => {
+    const result = await sendMessage(baseParams())
+    expect(result.reasoningPlan).toMatchObject({
+      intent: expect.any(String),
+      strategy: expect.any(String),
+      requiredContext: expect.any(Array),
+      responseStrategy: expect.any(String),
+      suggestedCommandIds: expect.any(Array),
+    })
+  })
+
+  it('does not inject the reasoning plan into the prompt sent to the provider (carried through the return value only, per UX-14.2 scope)', async () => {
+    await sendMessage(baseParams())
+    const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+    // The plan's own field names never appear as literal prompt text —
+    // this sprint explicitly does not wire planner output into prompt
+    // construction.
+    expect(lastCall?.system).not.toContain('reasoningPlan')
+    expect(lastCall?.system).not.toContain('suggestedCommandIds')
+  })
+
   it('resolves a chapter reference from this turn\'s retrieved matches', async () => {
     retrieveContextMock.mockResolvedValueOnce([
       { chunkId: 'chunk-1', documentId: 'doc-1', content: 'Some passage', similarity: 0.9 },
@@ -170,6 +197,22 @@ describe('sendMessage', () => {
       expect(result.message.content).toBe('Saved to Notes: "NOVA Reply".')
       expect(result.references).toEqual([{ type: 'note', id: 'note-1', title: 'NOVA Reply' }])
       expect(result.contextTrace).toEqual({ retrievedChunks: 0, graphNodes: 1, memoriesUsed: 0 })
+    })
+
+    // UX-14.2 — the planner runs exactly once per request regardless of
+    // which branch handles it; the workspace-action short-circuit gets its
+    // own plan too, not a stubbed-out null, so the reasoning panel doesn't
+    // regress for turns that went through a workspace action.
+    it('still returns a reasoningPlan when a workspace action short-circuits the normal chat path', async () => {
+      runWorkspaceActionMock.mockResolvedValueOnce({ responseText: 'Saved to Notes: "NOVA Reply".' })
+      const result = await sendMessage({ ...baseParams(), text: 'Save this' })
+      expect(result.reasoningPlan).toMatchObject({
+        intent: expect.any(String),
+        strategy: expect.any(String),
+        requiredContext: expect.any(Array),
+        responseStrategy: expect.any(String),
+        suggestedCommandIds: expect.any(Array),
+      })
     })
 
     it('falls through to the normal chat path when nothing matches (router returns null)', async () => {

@@ -8,6 +8,7 @@ import type { Message } from '@/shared/types/database'
 import type { ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
 import type { Reference } from '@/modules/intelligence/references/referenceTypes'
+import type { ReasoningPlan } from '@/modules/intelligence/planner/plannerTypes'
 import { normalizeAiError } from '@/modules/ai/orchestration/normalizeAiError'
 import { PROVIDER_UNAVAILABLE_MESSAGE } from '@/modules/ai/providers/availability'
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
@@ -43,6 +44,9 @@ export function useSendMessage(providerId: string, documentId?: string) {
   // UX-7: this turn's resolved reference chips + the model that answered.
   const [references, setReferences] = useState<Reference[]>([])
   const [model, setModel] = useState<string | null>(null)
+  // UX-14.2 — the plan AIService now computes before the LLM call; ChatPage
+  // renders this instead of recomputing buildReasoningPlan itself.
+  const [reasoningPlan, setReasoningPlan] = useState<ReasoningPlan | null>(null)
 
   async function send(
     conversationId: string,
@@ -55,6 +59,7 @@ export function useSendMessage(providerId: string, documentId?: string) {
     setSignals([])
     setReferences([])
     setModel(null)
+    setReasoningPlan(null)
 
     // An empty chain means nothing survived candidacy filtering at all
     // (no key configured anywhere, or everything's disabled) — ai-chat
@@ -88,6 +93,7 @@ export function useSendMessage(providerId: string, documentId?: string) {
       setSignals(result.signals)
       setReferences(result.references)
       setModel(result.model)
+      setReasoningPlan(result.reasoningPlan)
       await queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
       await queryClient.invalidateQueries({ queryKey: ['conversations'] })
       return result.message
@@ -118,5 +124,6 @@ export function useSendMessage(providerId: string, documentId?: string) {
     signals,
     references,
     model,
+    reasoningPlan,
   }
 }

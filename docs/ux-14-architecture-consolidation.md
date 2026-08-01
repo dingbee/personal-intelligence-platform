@@ -196,7 +196,44 @@ Green (`AIService.ts`) is the only node that reaches the live model prompt. Red 
 
 These require real code changes and are **not performed in this sprint** — each has its own blast radius and belongs to UX-14 implementation, sequenced per the Blueprint.
 
-**R1 — Thread `buildReasoningPlan` into `AIService.sendMessage`.** Move the plan computation from `ChatPage.tsx` into `AIService.sendMessage`, using signals derived from data already in scope there (`matches.length > 0`, `graphContext !== null`, `memoryContext !== null` — the pre-response equivalents of what `contextTrace` computes post-hoc). Extend `buildNovaContextPrompt` (or add a sibling) to render the plan into the system prompt. Return the plan in `SendMessageResult` so `ChatPage.tsx` reads it back for the trace panel instead of recomputing it. This is the smallest change identified that makes planner reasoning actually influence responses — no new AI call, no new fetch, reuses the existing rule-based classifier. **Not agent execution** — the plan still only shapes prompt text, never selects a code path. Deferred: this changes what every live chat response looks like, and per the Blueprint's own risk note needs the same staged, mocked-then-real-transcript verification this project has applied to every other `AIService` change.
+**R1 — Thread `buildReasoningPlan` into `AIService.sendMessage`.** ~~Deferred to UX-14 implementation~~ **Done (UX-14.2 — Planner Integration).** Full record below.
+
+#### UX-14.2 — Planner Integration (completed)
+
+**Old execution path.** The planner ran entirely client-side, after the response already existed:
+
+```
+User → AIService.sendMessage() → Prompt → LLM → Response
+     → ChatPage → buildReasoningPlan() → Reasoning Panel
+```
+
+`buildReasoningPlan` was invoked inside a `useMemo` in `ChatPage.tsx`, gated on `contextTrace` — a field only available once `AIService.sendMessage`'s promise had already resolved. Its output fed only the reasoning-trace UI panel; it could not have influenced the response, because the response already existed by the time it ran.
+
+**New execution path.**
+
+```
+User → AIService.sendMessage()
+     → retrieveContext / retrieveGraphContext / retrieveMemoryContext
+     → resolveNovaContext()
+     → buildReasoningPlan()   ← moved here, before the LLM call
+     → Prompt Builder (unchanged — does not read the plan)
+     → LLM → Response
+     → ChatPage renders the returned plan (no longer computes one)
+```
+
+`buildReasoningPlan` now runs inside `AIService.sendMessage`, immediately after `resolveNovaContext` resolves and before the final system prompt is assembled — matching the target architecture in the sprint instructions exactly. It is **not** injected into the prompt (out of scope for this sprint by explicit instruction); the plan is returned as a new `reasoningPlan` field on `SendMessageResult` and carried through `useSendMessage` as new hook state, and `ChatPage.tsx`'s reasoning-trace `useMemo` now renders that returned plan instead of computing one itself.
+
+**Rationale.** This is the smallest change that makes the planner's execution genuinely precede the response instead of following it, without touching prompt construction, without new AI calls, and without adding any new fetch: every signal the planner needs (`hasMemoryContext`/`hasGraphContext` from the already-built `contextTrace`; `hasInProgressDocument` from `resolveNovaContext`'s `activityContext`, the same underlying `getMostRecentReadingProgress` query `commandContext.inProgressDocument` used before, just read at a different point in the pipeline; `isContinuation` from `text`) was already available inside `AIService.sendMessage` at that point — the planner itself (`planner.ts`, `planningRules.ts`, `intentClassifier.ts`, etc.) is byte-for-byte unchanged. The workspace-action short-circuit branch (Save to Notes, Generate Briefing) also now computes its own plan, so the planner runs exactly once per request on every path, not conditionally — with `hasInProgressDocument`/`hasMemoryContext` fixed at `false` there rather than adding a new fetch to a path deliberately designed to skip the normal pipeline.
+
+**Regression verification.**
+
+- `tsc -b`: clean.
+- `vitest run`: 959/959 passing (up from 956 — 3 new tests in `AIService.test.ts` asserting `reasoningPlan` is present and shaped correctly on both the normal-chat and workspace-action paths, and that its field names never appear as literal text in the prompt sent to the provider).
+- `lint`/`build`: clean.
+- Every pre-existing `AIService.test.ts` assertion on `result.contextTrace`/`result.message`/prompt content passes unchanged — direct evidence prompt text is unaffected.
+- Browser: the app was rebuilt and boot-smoke-tested (fresh dev server, Playwright, zero console/page errors, login page renders correctly) — this confirms no import/render-breaking regression from the refactor. **Not verified**: the authenticated chat flow, Reader chat, reasoning panel, context trace, memory loading, and recommendation generation could not be exercised live, since doing so would require either credentials against the live production Supabase project (deliberately avoided — this app is connected to a real business's data, and no test account exists) or building a new mocked-Supabase Playwright harness from scratch (a nontrivial side-investment; flagged to the user mid-sprint, no response received, so not undertaken unprompted). This gap is real and should be closed — either by adding a committed mock harness or a proper staging environment — before UX-14.3 (which does inject planner output into the prompt) ships, since that step has materially higher live-response risk than this one.
+
+**Not agent execution** — the plan still only shapes what gets carried through data, never selects a code path or takes an action on its own.
 
 **R2 — Consolidate `suggestionEngine.ts` and `dashboardRecommendations.ts`.** ~~Deferred to UX-14 implementation~~ **Done (UX-14.1).** Merged into `src/modules/intelligence/recommendations/recommendationEngine.ts` — one exported `Recommendation` type, one `generateRecommendations({ scope: 'chat' | 'dashboard', ... })` function. Each scope's rule branches are unchanged from their original files (same conditions, same reason text, same command ids); characterization tests ported from both original test suites unchanged, plus two new tests asserting scope isolation (a dashboard-only signal has no effect under `scope: 'chat'` and vice versa). All four call sites updated (`orchestrator.ts`, `dashboardInteraction.ts`, `hub/hubData.ts`, plus the two rendering/summary consumers `RecommendedActionsSection.tsx` and `executiveSummary.ts`). Verified: tsc clean, 956/956 vitest (up from 954 — net of 15 ported tests removed, 17 added), lint clean, build clean.
 
@@ -229,7 +266,7 @@ Not part of UX-14, not scoped here beyond naming:
 
 | Item | Risk | Mitigation |
 |---|---|---|
-| R1 (planner → prompt) | Changes what every live chat response looks like; response tone/length/focus could shift in ways not caught by unit tests alone | Stage behind the same mocked-backend-then-real-transcript verification this project used for the Reliability & Truth Audit; do not ship on unit tests alone |
+| R1 (planner → prompt) | ~~Changes what every live chat response looks like~~ **Mitigated in UX-14.2**: the plan is deliberately *not* injected into the prompt this sprint, so response tone/length/focus cannot shift — verified directly (existing prompt-content assertions in `AIService.test.ts` pass unchanged, plus a new assertion that plan field names never appear in the prompt). The live-response risk this row describes now applies to UX-14.3 (Intelligence Prompt Layer), not this step. | For UX-14.3: stage behind the same mocked-backend-then-real-transcript verification this project used for the Reliability & Truth Audit; do not ship on unit tests alone |
 | R2 (suggestion engine merge) | Low technical risk (both already return the same `Command` + `reason` shape) but could silently change which suggestions appear on which surface if scope isn't preserved carefully | Write characterization tests capturing current output of both functions *before* refactoring, diff after |
 | Doing nothing (leaving both R1 and R2 unaddressed) | UX-14's Proactive Intelligence and Intelligence Layer phases would each build on a still-fragmented base — any later consolidation would then need to migrate two live features simultaneously instead of refactoring pre-feature code | Sequence R2 before Proactive Intelligence persistence, R1 before/alongside Intelligence Layer work, per Implementation Order below |
 | Terminology collision ("profile" x2) | Low risk technically (data is already correctly separated) but real risk of a future contributor building a competing preference store because they didn't realize `profileFields.ts` already exists | Addressed by this document; a naming pass is a Future Opportunity, not required |
@@ -246,8 +283,9 @@ Not part of UX-14, not scoped here beyond naming:
 
 1. **Done (this sprint):** Zero-risk docstring corrections.
 2. **Done (UX-14.1):** R2 — recommendation engines consolidated, since Blueprint §3 (Proactive Intelligence, increment 1) explicitly depended on this happening first.
-3. **UX-14, next:** R1 — thread the planner into `AIService.sendMessage`, matching the Blueprint's own sequencing (Intelligence Layer, §4, fourth/last — smallest in scope but highest in live blast radius).
-4. **Not UX-14:** R3 and the two future-exploration infrastructure spikes (background execution, agent permission model).
+3. **Done (UX-14.2 — Planner Integration):** R1 — the planner now executes inside `AIService.sendMessage`, before the LLM call, carried through (not yet injected into) the prompt.
+4. **UX-14, next:** UX-14.3 (Intelligence Prompt Layer) — let the now-available `reasoningPlan` contribute structured context to the prompt. Materially higher live-response risk than UX-14.2; needs the mocked-backend-then-real-transcript verification this sprint's browser pass could not complete (see UX-14.2's Regression verification note).
+5. **Not UX-14:** R3 and the two future-exploration infrastructure spikes (background execution, agent permission model).
 
 ---
 
@@ -263,3 +301,5 @@ For this Consolidation Sprint specifically (not for UX-14 features, which remain
 - [x] Zero-risk refactors identified and executed (2); required refactors identified, sequenced, and explicitly deferred with rationale rather than silently built.
 - [x] No schema, migration, or UI changes made.
 - [x] `docs/ux-14-architecture-consolidation.md` produced.
+- [x] UX-14.1 (Recommendation Consolidation) executed and verified.
+- [x] UX-14.2 (Planner Integration) executed and verified — planner runs before the LLM call, output carried through unchanged, prompt text provably untouched (tsc/vitest/lint/build clean, 959/959 tests). Live authenticated browser verification (reasoning panel, context trace, memory loading, recommendation generation, Reader chat) not completed — no mocked-Supabase harness exists in this repo and the live production database was deliberately not used for interactive testing; recorded as an open gap under UX-14.2 above, not glossed over.
