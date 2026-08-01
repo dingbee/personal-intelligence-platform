@@ -73,7 +73,11 @@ A living engineering inventory — not user documentation. First drafted as part
 | Concept Card in Universal Search (Phase 2B) | ✅ | main | ✅ | ✅ | ❌ |
 | Node drill-down page (Overview/Related/Timeline, Phase 2B) | ✅ | main | ✅ | ✅ | ❌ |
 | Knowledge Confidence scoring (source count/diversity/freshness/relationships) | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ✅ |
+| Knowledge Actions: Merge Notes | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ✅ |
+| Knowledge Actions: Generate Briefing (concept → grounded Note, linked back as evidence) | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ✅ |
+| Knowledge Actions: Export Knowledge Package (concept → Markdown download) | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ✅ |
 | Node lifecycle (merge/rename/archive) | 🔲 | — | — | — | — |
+| Note → Task / Conversation → Project actions | 🔲 | — | — | — | — |
 | Explorer virtualization/pagination | 🔲 | — | — | — | — |
 | Contradiction detection | 🔲 | — | — | — | — |
 | Reading-coverage confidence signal | 🔲 | — | — | — | — |
@@ -123,4 +127,5 @@ A living engineering inventory — not user documentation. First drafted as part
 - Acceptance pass completed by the user against the deployed application; all ⚙️ Implemented rows promoted to ✅ Accepted as a batch confirmation ("all fine"), not itemized per-row feedback. If a specific row is later found not to work, flip it back to ⚙️ and record what broke — don't silently re-mark it ✅.
 - The NOVA PIP Manual (`docs/manual/`) now has all 8 planned chapters, covering every ✅ Accepted feature above. The one exception is "Deployment reconciliation," which is an engineering/ops item rather than a user-facing feature, so it isn't a Manual chapter itself — it's mentioned contextually where relevant.
 - Screenshots are not yet part of the Manual — chapters document behavior first; visual capture is a follow-up pass.
-- 🔲 Backlog rows (Knowledge Confidence scoring, node lifecycle, Explorer virtualization, ranking refinements, hybrid/lexical search, zero-result recovery) remain the canonical UX-13 remainder, per the roadmap sequencing already agreed: Universal Search maturity → Knowledge Confidence → Knowledge Actions → Knowledge Collections → Natural Language Commands.
+- 🔲 Backlog rows (node lifecycle, note→task/conversation→project, Explorer virtualization, contradiction detection, reading-coverage) remain the canonical UX-13 remainder, per the roadmap sequencing already agreed: Universal Search maturity → Knowledge Confidence → Knowledge Actions → Knowledge Collections → Natural Language Commands.
+- Knowledge Actions v1 deliberately shipped three actions that reuse existing infrastructure end-to-end (Notes CRUD, the capability/prompt-template pattern, knowledge_node_sources provenance) and deferred note→task/conversation→project, since those need new Task/Project schema entities — a real design decision, not something to invent unilaterally mid-phase.

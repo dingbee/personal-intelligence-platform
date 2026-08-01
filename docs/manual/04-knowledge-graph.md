@@ -15,6 +15,8 @@ This is where NOVA stops being a place you store things and starts being a syste
 - **Deterministic concept matcher** — as of Phase 2B, every new note and every chat message is scanned (instantly, with no AI call) for mentions of concepts the graph already knows about, and that mention becomes new evidence for that concept
 - **Node drill-down page** — click any concept to see its Overview (evidence counts by source type), Related Concepts (with confidence scores), every referencing document/note/conversation, and a chronological Timeline of when each mention happened
 - **Knowledge Confidence** — every concept now carries a computed confidence score (shown as a percentage badge on both its Concept Card and its drill-down page's Overview), answering "how sure are we?" rather than just listing sources
+- **Generate Briefing** — a Knowledge Actions v1 capability on a concept's drill-down page: an LLM synthesizes the concept's own evidence and relationships into a short briefing, which is saved as a real Note and linked back to the concept as new evidence — knowledge acting on itself, not just being viewed
+- **Export Knowledge Package** — a one-click Markdown export of a concept's full picture (description, confidence, related concepts, evidence by source type) as a downloadable file, entirely client-side with no AI call
 
 ## Navigation
 
@@ -28,12 +30,15 @@ This is where NOVA stops being a place you store things and starts being a syste
 - After extracting concepts from several documents, you click "Reconcile knowledge graph" — NOVA finds that "Revenue," "Google Ads," and "Marketing Campaign" are related, and those relationships now show up on each concept's card.
 - You write a note mentioning "Revenue" by name — without you doing anything AI-related, that note is now linked as evidence on the existing "Revenue" node, because the deterministic matcher recognized the mention.
 - A concept with a single, months-old document mention shows a low confidence percentage; a concept corroborated by fresh documents, notes, and conversations alike shows a high one — at a glance, before you dig into the evidence yourself.
+- Before a meeting about "Mtoni River Lodge," you click Generate Briefing on that concept's page — NOVA writes a few sentences summarizing what's known and how it relates to Revenue, saved as a note you can skim in seconds.
+- You want to share what NOVA knows about a concept with someone outside the platform — Export Knowledge Package gives you a clean Markdown file you can send or paste anywhere.
 
 ## Typical Workflows
 
 1. **Extract, then reconcile**: upload documents, run "Analyze Document" on the important ones, then periodically run "Reconcile knowledge graph" to discover cross-document relationships once you have enough nodes.
 2. **Explore by concept, not by file**: instead of remembering which document had something, open the Knowledge Explorer, search for the concept, and see every source that ever mentioned it.
 3. **Let evidence accumulate passively**: once a concept exists, just write notes and have conversations normally — the deterministic matcher keeps attaching new evidence to existing concepts without any extra action from you.
+4. **Act on a concept, not just view it**: from a concept's drill-down page, generate a briefing when you need a quick synthesis, or export the whole package when you need to take it outside NOVA.
 
 ## Best Practices
 
@@ -41,12 +46,14 @@ This is where NOVA stops being a place you store things and starts being a syste
 - Reconcile the graph periodically rather than after every single extraction — cross-document relationship detection is more useful with a reasonable number of nodes to consider at once.
 - Use the drill-down page's Timeline to sanity-check a concept's evidence — if something looks wrong (evidence that shouldn't be there), it usually traces back to a coincidental text match worth being aware of.
 - Treat a low confidence score as a prompt to add corroborating evidence (a note, a related document), not as a verdict that the concept is wrong — confidence measures how well-attested something is in your own knowledge base, not whether it's true.
+- Generate a briefing after a concept has real evidence attached, not immediately after it's discovered — a briefing on a concept with one thin source will read as thin as the underlying evidence.
 
 ## Common Mistakes
 
 - Expecting notes and conversations to spontaneously become new concepts — the deterministic matcher only *links* already-known concepts, it never discovers new ones; new concept discovery is still the LLM extraction step, document-triggered.
 - Assuming a concept's "workspace" reflects everywhere it's used — a concept's `workspace_id` reflects only where it was *first* discovered; the concept itself is shared across all your workspaces by design, so the same "Marketing" concept in two different workspaces is one node, not two.
 - Deleting a source document and expecting its concepts to disappear too — document deletion doesn't cascade to the graph; the concept and its other evidence remain, only that one piece of evidence becomes an orphaned reference.
+- Expecting Generate Briefing to research beyond what's already in the graph — it's grounded only in the concept's existing evidence and related concepts, the same discipline as every other capability in NOVA; it won't tell you something the platform doesn't already know.
 
 ## Related Features
 
@@ -60,6 +67,8 @@ This is where NOVA stops being a place you store things and starts being a syste
 - Concept/entity discovery and cross-document relationship detection are both LLM-based — this is genuine model reasoning about what matters and how things relate
 - Canonical dedup and evidence linking are **not** AI — dedup is exact-normalized-string matching, and the deterministic matcher is pure text matching against already-known titles. This split is deliberate: discovery needs judgment (LLM), linking doesn't (fast, free, predictable)
 - Knowledge Confidence is also **not** AI — it's a deterministic weighted formula (source count, source-type diversity, freshness, relationship count), computed from data the graph already has, with no model call involved
+- Generate Briefing is LLM-based, but tightly grounded: the prompt is built only from the concept's own description, related concepts, and evidence source labels — the model is instructed not to invent facts beyond what's given
+- Export Knowledge Package is **not** AI — it's deterministic Markdown formatting of the same evidence the drill-down page already displays, entirely in the browser
 
 ## Limitations
 
@@ -73,3 +82,5 @@ This is where NOVA stops being a place you store things and starts being a syste
 - Contradiction detection between sources, and a reading-coverage signal, both folded into Knowledge Confidence once that infrastructure exists
 - Node lifecycle operations (merge/rename/archive)
 - Explorer virtualization/pagination for graphs that outgrow the current unbounded fetch
+- Convert conversation → project, once a Project entity exists elsewhere in the platform to convert into
+- Knowledge Collections — curating a mix of concepts, documents, notes, and conversations into a single named workspace, more powerful than tags/folders

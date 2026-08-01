@@ -1,6 +1,8 @@
 import { Link, useParams } from 'react-router-dom'
 import { useKnowledgeNodeEvidence } from '@/modules/knowledge-intelligence/hooks/useKnowledgeNodeEvidence'
+import { useGenerateBriefing } from '@/modules/knowledge-intelligence/hooks/useGenerateBriefing'
 import type { EvidenceItem } from '@/modules/knowledge-intelligence/api/knowledgeNodeEvidence'
+import { buildKnowledgeExportMarkdown, knowledgeExportFilename } from '@/modules/knowledge-intelligence/api/knowledgeExportMarkdown'
 import { SourceReference } from '@/shared/components/knowledge/SourceReference'
 import { ConfidenceBadge } from '@/shared/components/knowledge/ConfidenceBadge'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
@@ -9,6 +11,7 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Button } from '@/shared/components/ui/Button'
 import { formatRelativeTime } from '@/shared/utils/formatRelativeTime'
+import { downloadTextFile } from '@/shared/utils/downloadTextFile'
 
 const SOURCE_TYPE_LABEL: Record<string, string> = { document: 'Documents', note: 'Notes', conversation: 'Conversations' }
 
@@ -24,6 +27,7 @@ const SOURCE_TYPE_LABEL: Record<string, string> = { document: 'Documents', note:
 export function KnowledgeNodeDetailPage() {
   const { nodeId } = useParams<{ nodeId: string }>()
   const { data: evidence, isLoading, isError } = useKnowledgeNodeEvidence(nodeId!)
+  const generateBriefing = useGenerateBriefing(nodeId!)
 
   if (isLoading) {
     return (
@@ -73,6 +77,29 @@ export function KnowledgeNodeDetailPage() {
 
       {/* UX-13 roadmap Phase 2 — Knowledge Confidence: "how sure are we", not just "here are the documents". Deterministic (source count + diversity + freshness + relationship density), see computeKnowledgeConfidence. */}
       <StatCard label="Knowledge Confidence" value={`${Math.round(confidence * 100)}%`} />
+
+      {/* Knowledge Actions v1 — "knowledge stops being passive": act on a concept, not just view it. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="secondary" loading={generateBriefing.isPending} onClick={() => generateBriefing.mutate()}>
+          Generate briefing
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => downloadTextFile(knowledgeExportFilename(node.title), buildKnowledgeExportMarkdown(evidence))}
+        >
+          Export knowledge package
+        </Button>
+        {generateBriefing.isSuccess && generateBriefing.data && (
+          <Link to={`/notes/${generateBriefing.data.id}`} className="text-sm text-[var(--color-accent)] hover:underline">
+            Briefing saved as a note →
+          </Link>
+        )}
+        {generateBriefing.isError && (
+          <span className="text-sm text-red-600">
+            {generateBriefing.error instanceof Error ? generateBriefing.error.message : 'Failed to generate briefing.'}
+          </span>
+        )}
+      </div>
 
       {countEntries.length > 0 && (
         <div className="flex flex-col gap-3">

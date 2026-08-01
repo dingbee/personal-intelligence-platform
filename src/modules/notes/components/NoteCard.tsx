@@ -11,27 +11,51 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-export function NoteCard({ note, onDelete }: { note: NoteWithDocument; onDelete: () => void }) {
+export function NoteCard({
+  note,
+  onDelete,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+}: {
+  note: NoteWithDocument
+  onDelete: () => void
+  /** Knowledge Actions v1 — Merge Notes selection mode. */
+  selectable?: boolean
+  selected?: boolean
+  onToggleSelect?: () => void
+}) {
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
       <div className="flex items-start justify-between gap-2">
+        {selectable && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            aria-label={`Select ${note.title} for merge`}
+            className="mt-1 size-4 shrink-0 accent-[var(--color-accent)]"
+          />
+        )}
         <Link to={`/notes/${note.id}`} className="min-w-0 flex-1">
           <h3 className="truncate font-medium text-[var(--color-ink)] hover:text-[var(--color-accent)]">
             {note.title}
           </h3>
         </Link>
-        <DropdownMenu trigger={<span aria-hidden>⋯</span>}>
-          <Link
-            to={`/notes/${note.id}`}
-            role="menuitem"
-            className="block w-full px-3 py-2 text-left text-sm text-[var(--color-ink)] hover:bg-[var(--color-canvas)]"
-          >
-            Edit
-          </Link>
-          <DropdownMenuItem danger onClick={onDelete}>
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenu>
+        {!selectable && (
+          <DropdownMenu trigger={<span aria-hidden>⋯</span>}>
+            <Link
+              to={`/notes/${note.id}`}
+              role="menuitem"
+              className="block w-full px-3 py-2 text-left text-sm text-[var(--color-ink)] hover:bg-[var(--color-canvas)]"
+            >
+              Edit
+            </Link>
+            <DropdownMenuItem danger onClick={onDelete}>
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenu>
+        )}
       </div>
 
       {note.content && <p className="text-sm text-[var(--color-ink-muted)]">{previewText(note.content)}</p>}

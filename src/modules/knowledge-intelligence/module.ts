@@ -35,6 +35,11 @@ registerPlatformModule({
       label: 'Detect Cross-Document Relationships',
       description: 'Infer relationships between concepts and entities extracted from different documents.',
     },
+    {
+      id: 'generate-briefing',
+      label: 'Generate Briefing',
+      description: "Synthesize a concept's accumulated evidence and relationships into a short briefing.",
+    },
   ],
   prompts: [
     {
@@ -89,6 +94,19 @@ registerPlatformModule({
         'objects shaped like {"source": "exact title from the list", "target": "exact title from the ' +
         'list", "relationshipType": "short label such as relates_to, part_of, causes, contrasts_with", ' +
         '"confidence": 0.0 to 1.0} — no markdown code fences, no other text.\n\nItems:\n{{nodes}}',
+    },
+    {
+      id: 'generate-briefing@1.0',
+      capabilityId: 'generate-briefing',
+      version: '1.0',
+      active: true,
+      template:
+        'You are writing a short briefing on "{{title}}" for someone reviewing their own knowledge base. ' +
+        'Base the briefing only on the information given below — do not invent facts, sources, or ' +
+        'relationships that are not listed. Write 3 to 6 sentences covering what is known, the most ' +
+        'important related concepts, and any notable gap in the evidence. Respond with plain prose, no ' +
+        'headings, no markdown, no preamble.\n\nDescription: {{description}}\n\nRelated concepts:\n' +
+        '{{relatedConcepts}}\n\nEvidence sources:\n{{evidenceSources}}',
     },
   ],
 })

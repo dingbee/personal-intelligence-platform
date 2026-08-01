@@ -12,24 +12,28 @@ Notes are where your own thinking lives — separate from documents you've uploa
 - **Create note from highlight** — while reading, select text and save it as a note directly, carrying a link back to the source document
 - **Note ↔ Asset linking** — notes created from an image (via the Image Reader's "Save to Notes") carry a link back to that image
 - **Summarize** — an AI action available on a note that replaces its content with a condensed version, grounded in the note's own existing text
+- **Merge Notes** — a Knowledge Actions v1 capability: select two or more notes from the Notes list and combine them into one, with their content joined under headings and their tags unioned; the originals are deleted
 
 ## Navigation
 
 - **Notes** (sidebar) — the full list of your notes, most recently updated first
 - Click a note to open its detail page, where you edit title and content directly and see any linked source
 - From a document Reader or the Chat page, look for **Save to Notes** to create a note without visiting the Notes page first
+- On the Notes list, click **Merge notes** to enter selection mode, check two or more notes, then click **Merge**
 
 ## Real-World Examples
 
 - While reading a PDF report, you highlight a key sentence and save it as a note — the note keeps a reference back to exactly where it came from in the document.
 - After a long Chat conversation about marketing strategy, you click Save to Notes once, rather than manually copying the exchange — the whole conversation becomes a note you can tag and revisit.
 - You jot a quick standalone thought directly in Notes — no document or conversation behind it, just your own writing.
+- You have three separate notes from different days about the same trip planning conversation — you select all three and merge them into one consolidated note instead of manually copying content between them.
 
 ## Typical Workflows
 
 1. **Capture while reading**: highlight → Save as Note → tag it → move on, without breaking your reading flow.
 2. **Capture after a conversation**: finish a useful Chat exchange → Save to Notes → the note is now independently searchable and taggable.
 3. **Write, then let NOVA condense**: write a longer note freeform, then use Summarize when you want the condensed version instead of the draft.
+4. **Consolidate scattered notes**: once several notes on the same topic pile up, select them in the Notes list and merge — one note to maintain going forward instead of several fragments.
 
 ## Best Practices
 
@@ -42,6 +46,7 @@ Notes are where your own thinking lives — separate from documents you've uploa
 - Treating Notes as a dumping ground with no titles or tags, then being unable to find anything later — Notes only pays off as a system if it's organized at roughly the same discipline as the Library.
 - Forgetting that Summarize replaces the note's content, not appends to it — save first if you want to keep the original alongside the summary.
 - Not realizing a note created from a highlight or conversation still carries provenance — that link is what makes the note more than just a copy-paste; use it to jump back to the source.
+- Merging notes expecting the originals to survive — merge is destructive by design (the merged note is the new source of truth), so review the confirmation dialog before confirming.
 
 ## Related Features
 
@@ -62,5 +67,5 @@ Notes are where your own thinking lives — separate from documents you've uploa
 
 ## Future Roadmap
 
-- Convert note → task, as part of the broader Knowledge Actions phase (turning passive knowledge into workflows)
+- Convert note → task, once a Task entity exists elsewhere in the platform to convert into
 - Natural language commands like "collect everything related to hospitality" spanning notes alongside every other source
