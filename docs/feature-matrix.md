@@ -127,9 +127,13 @@ A living engineering inventory — not user documentation. First drafted as part
 
 ---
 
-## Platform Integration Sprint
+## Platform Coherence Sprint v1
 
-Not a new feature phase — a correctness/coherence pass across the five Knowledge Intelligence initiative phases above, auditing their integration points and fixing inconsistencies found. All ⚙️ Implemented, none ✅ Accepted yet.
+Not a new feature phase — a correctness/coherence pass across the five Knowledge Intelligence initiative phases above, auditing their integration points and fixing inconsistencies found. Retroactively renamed from "Platform Integration Sprint" to align with the "Platform Coherence" naming this and its v2 successor share: both exist for the same reason — making independently implemented capabilities behave as one product, not a feature addition in themselves. All ⚙️ Implemented, none ✅ Accepted yet.
+
+- Cross-feature integration
+- Shared behavior reconciliation
+- Knowledge Intelligence consistency
 
 | Fix | Status | Branch | Accepted | Manual | Tests |
 |---|---|---|---|---|---|
@@ -155,23 +159,28 @@ Not a new feature phase — a correctness/coherence pass across the five Knowled
 - Knowledge Actions v1 deliberately shipped three actions that reuse existing infrastructure end-to-end (Notes CRUD, the capability/prompt-template pattern, knowledge_node_sources provenance) and deferred note→task/conversation→project, since those need new Task/Project schema entities — a real design decision, not something to invent unilaterally mid-phase.
 - Knowledge Collections v1 added exactly one new table (`knowledge_collections`, identity/metadata only) — membership reuses the existing generic `knowledge_links` polymorphic-edge table (`source_type='knowledge_collection'`) the same way linkNoteToHighlight/linkNoteToConversation/linkNoteToAsset already do, so no new join table or per-type schema was needed to span documents/notes/conversations/images/concepts in one collection.
 - Natural Language Knowledge Commands v1 shipped its first (and so far only) recognized command, "Create an executive briefing on X," typed directly into NOVA chat. No new orchestration pipeline was built — `AIService.sendMessage` deterministically recognizes the phrase (no LLM call spent on intent classification) and, when matched, calls Search (`searchKnowledgeConcepts`) to resolve the topic to a concept, then reuses the exact same `generateBriefing` pipeline the concept drill-down page's own button calls (which itself now also folds in Collections membership, not just Confidence/Knowledge Graph/Notes as before). An unrecognized topic gets a graceful "couldn't find that concept" reply instead of a wasted or hallucinated LLM call.
-- All 5 phases of the originally agreed Knowledge Intelligence initiative remainder sequence (Universal Search maturity → Knowledge Confidence → Knowledge Actions → Knowledge Collections → Natural Language Commands) are now ⚙️ Implemented. The initiative itself remains paused pending acceptance; the current objective is the Platform Integration Sprint (see below), not a new feature phase.
+- All 5 phases of the originally agreed Knowledge Intelligence initiative remainder sequence (Universal Search maturity → Knowledge Confidence → Knowledge Actions → Knowledge Collections → Natural Language Commands) are now ⚙️ Implemented. The initiative itself remains paused pending acceptance; the current objective is Platform Coherence Sprint v1 (see below), not a new feature phase.
 
 ## AI Workspace Actions v1
 
-A new, separately named workstream — not a Knowledge Intelligence initiative phase and not part of the Platform Integration Sprint. Restores and generalizes Chat's "Save to Notes" functionality behind a reusable pathway, per explicit user direction: `Chat UI → Workspace Action Router → Save Knowledge Action → Create Note → Index → Knowledge linking → Confirmation`.
+A new, separately named workstream — not a Knowledge Intelligence initiative phase and not part of Platform Coherence Sprint v1. Restores and generalizes Chat's "Save to Notes" functionality behind a reusable pathway, per explicit user direction: `Chat UI → Workspace Action Router → Save Knowledge Action → Create Note → Index → Knowledge linking → Confirmation`.
 
 - **Workspace Action Router** (`src/modules/workspace-actions/`): a small `WorkspaceAction<TPayload> { id, match, run }` registry (`registerWorkspaceAction`/`matchWorkspaceAction`/`runWorkspaceAction`), following the same registration-on-import convention as `coreModule`/`knowledge-intelligence/module.ts`/`search/registerBuiltInProviders`/`commands/registerBuiltInCommands`. Generalizes the single hardcoded `if (parseExecutiveBriefingCommand(text))` branch that used to live inside `AIService.sendMessage` into a real router now that a second natural-language command exists — the "not needed yet, now needed" simplification flagged in the prior Product Readiness Audit. The pre-existing "Create an executive briefing on X" command was migrated into this router (`generateBriefingAction.ts`) unchanged in behavior; it is not a new capability.
 - **Save Knowledge Action** (`saveMessageToNote()` in `src/modules/notes/api/saveMessageToNote.ts`): the single function behind both entry points below — Create Note → link to conversation → link to the specific message → index → link known concepts. This is the one save pipeline; neither entry point duplicates note-creation logic.
 - **Entry point 1 — per-message Save button**: `MessageBubble` gained an optional `onSave`/`saved`/`saving` prop set, wired from `ChatPage` and `ReaderChatPanel` via a new `useSaveMessageToNote` hook. Available on both the user's own messages and NOVA's replies.
 - **Entry point 2 — natural language**: "Save this", "Remember this", "Capture this", "Add this to my notes" (`isSaveToNotesCommand`, pure regex, no LLM call) resolve "this" to the most recent **assistant** message in the conversation — a scoping decision (the natural reading of "save this" said right after a reply), not an oversight; saving the user's own last message is a plausible future variant, not this one.
 - **Provenance**: notes saved this way carry `generation_metadata: {savedFrom: 'chat-message', conversationId, messageId, messageCreatedAt}` (same JSONB column Summarize already uses for its own provenance shape) plus two `knowledge_links` rows — `target_type='conversation'` (pre-existing) and the new `target_type='message'` (`linkNoteToMessage`, added to the polymorphic `knowledge_links` table with zero schema changes, mirroring `linkNoteToAsset`).
-- **Audit finding fixed in passing**: `SaveConversationDialog` (the existing whole-conversation save dialog) never called `indexNote()`/`linkKnownConceptsToSource()` — the exact same "indexing left to the caller, and the caller forgot" bug class the Platform Integration Sprint fixed for Generate Briefing, independently rediscovered here. Fixed by adding the two missing calls; no behavior change to the dialog's UI or scope options.
+- **Audit finding fixed in passing**: `SaveConversationDialog` (the existing whole-conversation save dialog) never called `indexNote()`/`linkKnownConceptsToSource()` — the exact same "indexing left to the caller, and the caller forgot" bug class Platform Coherence Sprint v1 fixed for Generate Briefing, independently rediscovered here. Fixed by adding the two missing calls; no behavior change to the dialog's UI or scope options.
 - Verified in a real browser against a mocked Supabase backend: per-message Save button renders on both roles, creates the note with correct provenance and both links, transitions to "Saved"; the "Save this" chat command produces NOVA's confirmation reply and creates an equivalent note via the same underlying function. tsc/vitest (947 tests)/lint/build all pass.
 
 ## Platform Coherence Sprint v2
 
-Like the Platform Integration Sprint, a correctness/coherence pass — not a new feature phase — this time following the Product Readiness Audit. Scope was fixed in advance to four items: Explorer navigation, graph terminology, a shared source-resolution helper, and Collection membership error handling. All ⚙️ Implemented, none ✅ Accepted yet.
+Like Platform Coherence Sprint v1, a correctness/coherence pass — not a new feature phase — this time following the Product Readiness Audit. Scope was fixed in advance to four items: Explorer navigation, graph terminology, a shared source-resolution helper, and Collection membership error handling. All ⚙️ Implemented, none ✅ Accepted yet.
+
+- Navigation consistency
+- Terminology clarification
+- Shared source resolution
+- Error-state consistency
 
 | Fix | Status | Branch | Accepted | Manual | Tests |
 |---|---|---|---|---|---|
