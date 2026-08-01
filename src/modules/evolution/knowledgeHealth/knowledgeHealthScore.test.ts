@@ -56,6 +56,7 @@ function memory(id: string, overrides: Partial<AiMemory> = {}): AiMemory {
     is_active: true,
     created_at: daysAgo(30),
     updated_at: daysAgo(1),
+    confidence: null,
     ...overrides,
   }
 }

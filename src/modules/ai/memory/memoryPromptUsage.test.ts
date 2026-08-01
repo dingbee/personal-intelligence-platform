@@ -13,6 +13,7 @@ function memory(id: string, updatedAt: string, overrides: Partial<AiMemory> = {}
     is_active: true,
     created_at: updatedAt,
     updated_at: updatedAt,
+    confidence: null,
     ...overrides,
   }
 }

@@ -113,7 +113,10 @@ export function MemoryManagementPage() {
   }
 
   function rememberCandidate(candidate: MemoryCandidate) {
-    create.mutate({ memoryType: candidate.type, content: candidate.content, source: 'conversation' })
+    // UX-14.3 — candidate.confidence was computed by scoreMemoryConfidence
+    // (used for the approval panel's badge and the MIN_CONFIDENCE filter)
+    // but never made it past this call before now.
+    create.mutate({ memoryType: candidate.type, content: candidate.content, source: 'conversation', confidence: candidate.confidence })
     dismissCandidate(candidate)
   }
 

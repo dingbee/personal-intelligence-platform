@@ -330,6 +330,8 @@ export type AiMemory = {
   is_active: boolean
   created_at: string
   updated_at: string
+  /** UX-14.3 — 0..1, from scoreMemoryConfidence at approval time. Null for every row created before this column existed, and for manually-authored memories/profile fields, which aren't inferences and have no natural confidence value. */
+  confidence: number | null
 }
 
 export type ProviderOverride = {

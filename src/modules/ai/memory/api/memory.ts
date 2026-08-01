@@ -28,6 +28,8 @@ export async function createMemory(params: {
   memoryType: AiMemoryType
   content: string
   source?: string | null
+  /** UX-14.3 — from scoreMemoryConfidence, when the caller has a real detected candidate. Omitted (not defaulted) for manually-authored memories/profile fields, which aren't inferences. */
+  confidence?: number | null
 }): Promise<AiMemory> {
   const { data, error } = await supabase
     .from('ai_memory')
@@ -37,6 +39,7 @@ export async function createMemory(params: {
       memory_type: params.memoryType,
       content: params.content,
       source: params.source ?? null,
+      confidence: params.confidence ?? null,
     })
     .select()
     .single()
@@ -44,9 +47,10 @@ export async function createMemory(params: {
   return data
 }
 
+/** UX-14.3 — `confidence` added so a future recalculation can update the persisted value instead of only being able to overwrite content/source; no current caller updates it (there is no live recalculation trigger yet — see the UX-14.3 discovery notes), this just keeps the API from needing another change when one exists. */
 export async function updateMemory(
   id: string,
-  updates: Partial<Pick<AiMemory, 'content' | 'source'>>,
+  updates: Partial<Pick<AiMemory, 'content' | 'source' | 'confidence'>>,
 ): Promise<AiMemory> {
   const { data, error } = await supabase.from('ai_memory').update(updates).eq('id', id).select().single()
   if (error) throw error

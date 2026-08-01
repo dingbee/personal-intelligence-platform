@@ -61,12 +61,15 @@ Building a parallel `user_profile` table while the `ai_memory` convention keeps 
 
 ## 2. Memory Intelligence
 
-### Current state
+**Phase 1 (Confidence Persistence): ⚙️ Implemented — UX-14.3.** `confidence` is now a real, persisted column, populated on the one path that produces a real score (`MemoryApprovalPanel`'s "Remember" action) and safely null everywhere else. Reinforcement, decay, and prompt-selection ranking (this section's original Target state) remain not implemented — explicitly out of scope for UX-14.3 by instruction. Full record in `docs/ux-14-architecture-consolidation.md`.
 
-- `ai_memory` (`database.ts:322-333`): `memory_type ('explicit_profile' | 'learned_preference' | 'conversation_memory')`, `content`, `source`, `is_active`, `workspace_id` (nullable = global), timestamps. No `confidence` column.
-- `scoreMemoryConfidence.ts` computes a deterministic 0-1 score (regex/heuristic: penalizes questions, hypotheticals, hedging, temporary language; rewards strong/explicit markers) **only at detection time**, to gate `MemoryApprovalPanel` before a candidate is ever inserted. The score is discarded after that decision — never persisted on the row.
-- Lifecycle is a single manual `is_active` boolean (migration `0018_ai_memory_active_flag.sql`), toggled individually or by category via `setMemoryActive`/`setMemoryCategoryActive`. Full CRUD exists: `createMemory`, `updateMemory`, `deleteMemory`, `deleteAllMemories` (`src/modules/ai/memory/api/memory.ts`).
-- Already live in the chat runtime: `retrieveMemoryContext` (capped at `MAX_MEMORIES_PER_TYPE = 10`) → `formatMemoriesForPrompt` → system prompt, in every `AIService.sendMessage` call.
+### Current state (as of UX-14.3)
+
+- `ai_memory` (`database.ts`): `memory_type ('explicit_profile' | 'learned_preference' | 'conversation_memory')`, `content`, `source`, `is_active`, `workspace_id` (nullable = global), timestamps, **`confidence numeric | null`** (added `0027_ai_memory_confidence.sql`).
+- `scoreMemoryConfidence.ts` computes a deterministic 0-1 score (regex/heuristic: penalizes questions, hypotheticals, hedging, temporary language; rewards strong/explicit markers) at detection time (`detectMemoryCandidates.ts`), for `MemoryApprovalPanel`'s badge and its `MIN_CONFIDENCE` filter. **Grounded discovery finding**: `detectMemoryCandidates` is called only from its own test file — nothing in live chat (`ChatPage.tsx`, `ReaderChatPanel.tsx`) ever invokes it against a real message, so `MemoryApprovalPanel`'s candidate queue is always empty in production today. The confidence-scoring pipeline is real and tested but not wired into live chat — a separate, larger gap than "discarded confidence," recorded here rather than silently fixed (wiring detection into chat is new capability, not persistence).
+- The one place a real confidence value is produced end-to-end is `MemoryManagementPage.tsx`'s `rememberCandidate` — previously discarded at that exact call site (`create.mutate({ memoryType, content, source: 'conversation' })`, no `confidence` field); now passes it through.
+- Lifecycle is a single manual `is_active` boolean (migration `0018_ai_memory_active_flag.sql`), toggled individually or by category via `setMemoryActive`/`setMemoryCategoryActive`. Full CRUD exists: `createMemory`, `updateMemory`, `deleteMemory`, `deleteAllMemories` (`src/modules/ai/memory/api/memory.ts`) — both `createMemory` and `updateMemory` now accept an optional `confidence`.
+- Already live in the chat runtime: `retrieveMemoryContext` (capped at `MAX_MEMORIES_PER_TYPE = 10`) → `formatMemoriesForPrompt` → system prompt, in every `AIService.sendMessage` call. `confidence` flows through automatically wherever `AiMemory` rows are loaded (`listMemories` selects `*`) — no retrieval code changed, per instruction.
 
 ### Current limitations
 
@@ -75,28 +78,28 @@ Building a parallel `user_profile` table while the `ai_memory` convention keeps 
 3. No decay — a `learned_preference` from months ago carries the same weight as one from yesterday.
 4. The prompt-injection cap (`MAX_MEMORIES_PER_TYPE`) selects by recency (implied "most-recently-updated first" per existing code comments), not confidence or relevance — a low-confidence recent memory can crowd out a high-confidence older one in what the model actually sees.
 
-### Target state
+### Target state (remaining, not this phase)
 
-Persist confidence as a first-class, evolving attribute: reinforced when a similar fact recurs, decayed when unused, and used to rank which memories are selected into the prompt when the cap is hit — replacing pure recency with confidence-weighted selection. Surfaced to the user on existing memory cards ("NOVA is fairly confident about this, based on 4 mentions").
+Reinforce confidence when a similar fact recurs, decay it when unused, and use it to rank which memories are selected into the prompt when the cap is hit — replacing pure recency with confidence-weighted selection. Surface it to the user on existing memory cards ("NOVA is fairly confident about this, based on 4 mentions"). None of this is built yet; UX-14.3 Phase 1 only made the value durable and retrievable, per its explicit constraints (no decay, no aging, no ranking change, no UI redesign).
 
-### Required components
+### Required components (Phase 1 — done)
 
-- Persist confidence at write time (detection already computes it — just stop discarding it; manual entries default to a fixed baseline).
-- A reinforcement step: when a newly detected candidate closely matches an existing active memory, strengthen the existing row instead of inserting a near-duplicate. (Whether near-duplicate matching already exists in `detectMemoryCandidates.ts` needs verification before assuming this is new logic vs. a hook into existing logic.)
-- A decay calculation — see Dependencies below for why this should be computed on read, not stored.
-- Update `formatMemoriesForPrompt`'s selection-when-capped logic from recency-first to confidence-weighted.
+- ~~Persist confidence at write time~~ **Done** — `rememberCandidate` passes `candidate.confidence` through; manual entries and profile fields correctly stay `null` (not an inference, not a fabricated baseline).
+- A reinforcement step (near-duplicate detection confirmed **not** to exist in `detectMemoryCandidates.ts` — grounded, not assumed) — **not built**, future work.
+- A decay calculation — **not built**, future work; still recommend on-read computation over a stored decaying value (see Dependencies).
+- `formatMemoriesForPrompt`'s selection-when-capped logic — **unchanged**, per explicit instruction ("do not change ranking, do not change filtering").
 
 ### Database impact
 
-Additive only: `confidence numeric` (nullable — existing rows honestly represented as "not yet scored," not backfilled with a fabricated value) and optionally `last_reinforced_at timestamptz` on `ai_memory`. No destructive change, no new table.
+Additive only: `confidence numeric` (nullable, `check (confidence is null or (confidence between 0 and 1))`) on `ai_memory` — applied both to the live Supabase project and as `supabase/migrations/0027_ai_memory_confidence.sql`. No `last_reinforced_at` added — nothing in this phase uses it, and adding unused schema would be speculative; a future reinforcement phase adds it when it has a real writer. No destructive change, no new table.
 
 ### AI runtime impact
 
-Moderate: the memory write path gains a confidence-assignment/reinforcement step; `formatMemoriesForPrompt`'s cap logic changes from recency to confidence ranking.
+None. `formatMemoriesForPrompt`'s cap logic is unchanged; the write path gained one optional field, not new logic.
 
 ### UI impact
 
-Additive to `MemoryCard`/`MemoryApprovalPanel`, which already display a confidence label at approval time (`confidenceLabel()`) — extending that same rendering to persisted, updatable confidence on existing memory cards, not a new surface.
+None in this phase (explicit constraint: "no UI redesign"). `confidence` is available on every `AiMemory` object returned by `listMemories`/`useMemories` for a future consumer, but `MemoryCard` does not render it yet.
 
 ### Dependencies
 

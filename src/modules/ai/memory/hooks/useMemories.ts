@@ -28,13 +28,14 @@ export function useMemories(filters: Omit<MemoryFilters, 'workspaceId'> = {}) {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['ai-memory'] })
 
   const create = useMutation({
-    mutationFn: (params: { memoryType: AiMemoryType; content: string; source?: string | null }) =>
+    mutationFn: (params: { memoryType: AiMemoryType; content: string; source?: string | null; confidence?: number | null }) =>
       createMemory({ ...params, userId: user!.id, workspaceId: currentWorkspaceId }),
     onSuccess: invalidate,
   })
 
   const update = useMutation({
-    mutationFn: (params: { id: string; content: string }) => updateMemory(params.id, { content: params.content }),
+    mutationFn: (params: { id: string; content: string; confidence?: number | null }) =>
+      updateMemory(params.id, { content: params.content, ...(params.confidence !== undefined && { confidence: params.confidence }) }),
     onSuccess: invalidate,
   })
 

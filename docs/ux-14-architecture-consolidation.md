@@ -235,6 +235,81 @@ User → AIService.sendMessage()
 
 **Not agent execution** — the plan still only shapes what gets carried through data, never selects a code path or takes an action on its own.
 
+---
+
+#### UX-14.3 — Memory Intelligence, Phase 1: Confidence Persistence (completed)
+
+Not one of this document's original R1/R2/R3 findings — a new milestone from the Blueprint's Memory Intelligence section, sequenced as UX-14.3 by explicit instruction (superseding the six-milestone table's earlier ordering, where Memory Intelligence was listed as 14.4 — noted here for consistency, not treated as a discrepancy to resolve).
+
+**Phase 1 discovery, grounded in code, not assumption.**
+
+- Confidence is computed in exactly one place: `scoreMemoryConfidence.ts`, a deterministic regex/heuristic scorer (0-1), called from `detectMemoryCandidates.ts` at candidate-detection time. No duplicate confidence logic exists for memories — `computeKnowledgeConfidence` (knowledge-graph nodes) is a genuinely separate system (different table, different formula, different domain), confirmed, not assumed to be a duplicate.
+- **The exact discard point**: `MemoryManagementPage.tsx`'s `rememberCandidate` — `create.mutate({ memoryType: candidate.type, content: candidate.content, source: 'conversation' })` — never included `candidate.confidence` in the payload, even though `createMemory`'s caller had it in scope the whole time. Confidence was computed, displayed once in `MemoryApprovalPanel`'s badge, used to gate the `MIN_CONFIDENCE` filter, then dropped at this exact line.
+- **A larger discovery, not assumed away**: `detectMemoryCandidates` is called only from its own test file (`detectMemoryCandidates.test.ts`) — grep across the entire `src/` tree found no call site in `ChatPage.tsx`, `ReaderChatPanel.tsx`, or anywhere else in live code. `MemoryApprovalPanel`'s candidate queue is therefore always empty in production today; the confidence-scoring pipeline this phase persists is real, tested, and correct, but not currently exercised by any live chat message. This is a separate, larger gap ("detection isn't wired into chat") than "confidence is discarded," and wiring it up is new capability, not persistence — explicitly not done here, recorded as a roadmap item below instead.
+- `is_active` lifecycle, full CRUD, and live prompt injection (`retrieveMemoryContext` → `formatMemoriesForPrompt` → every `AIService.sendMessage` call) were all confirmed unchanged and already correct — no rediscovery needed there.
+
+**Old data flow.**
+
+```
+scoreMemoryConfidence() → MemoryCandidate.confidence (0..1)
+  → MemoryApprovalPanel badge + MIN_CONFIDENCE filter
+  → rememberCandidate() → createMemory({ memoryType, content, source })  -- confidence dropped here
+  → ai_memory row, no confidence column, no way to ever recover the score
+```
+
+**New data flow.**
+
+```
+scoreMemoryConfidence() → MemoryCandidate.confidence (0..1)
+  → MemoryApprovalPanel badge + MIN_CONFIDENCE filter  -- unchanged
+  → rememberCandidate() → createMemory({ memoryType, content, source, confidence })
+  → ai_memory.confidence (persisted, checked 0..1)
+  → listMemories() (select *) → every AiMemory consumer, confidence available automatically
+  → retrieveMemoryContext / formatMemoriesForPrompt / system prompt -- UNCHANGED, does not read confidence
+```
+
+**Schema changes.** One additive migration, applied both to the live Supabase project (`uzshazetfkjkrdnxwjtl`) and committed as `supabase/migrations/0027_ai_memory_confidence.sql`:
+
+```sql
+alter table public.ai_memory
+  add column confidence numeric
+  check (confidence is null or (confidence >= 0 and confidence <= 1));
+```
+
+Nullable, no default, no backfill — every pre-existing row (17 at time of migration) reads `confidence: null`, honestly representing "never scored" rather than a fabricated value. No `last_reinforced_at` or other speculative column added — nothing in this phase writes one.
+
+**APIs touched.**
+
+- `src/shared/types/database.ts` — `AiMemory` gains `confidence: number | null`.
+- `src/modules/ai/memory/api/memory.ts` — `createMemory` accepts optional `confidence`; `updateMemory`'s allowed-fields `Pick` extended to include `confidence` (no current caller updates it — see roadmap — but the API no longer needs a second change when one exists).
+- `src/modules/ai/memory/hooks/useMemories.ts` — `create`/`update` mutations thread `confidence` through to the API layer.
+- `src/modules/ai/memory/pages/MemoryManagementPage.tsx` — `rememberCandidate` passes `candidate.confidence` instead of dropping it.
+- `retrieveMemoryContext.ts`, `formatMemoriesForPrompt.ts`, `listMemories` — **zero changes**; confidence flows through automatically because `listMemories` already does `select('*')`, exactly as the instruction required ("do not change retrieval behavior, do not change prompt text").
+
+**Duplication.** None found or removed — `scoreMemoryConfidence` was already the sole implementation; this phase added no second scoring path.
+
+**Risks found.**
+
+- The dead-code detection-pipeline finding (above) means this phase's persistence fix currently has zero live effect until `detectMemoryCandidates` is wired into a real chat surface — a real, disclosed limitation, not silently glossed over.
+- `updateMemory`'s widened `Pick` is inert until a caller exists; flagged as intentional forward-compatibility (per instruction: "support future growth without another schema redesign"), not scope creep, since it adds no new behavior on its own.
+
+**Verification.**
+
+- `tsc -b`: clean (after adding `confidence: null` to 8 pre-existing test fixtures that constructed `AiMemory` object literals — a required, mechanical fix once the field became non-optional on the type, not new test coverage).
+- `vitest run`: 959/959 passing, unchanged count — no new test file added for the thin API-layer pass-through, consistent with this codebase's existing convention (only one file in the entire repo mocks the Supabase client directly; API wrapper functions are conventionally left untested at that layer).
+- `lint`/`build`: clean.
+- **Live database verification** (transaction-wrapped, rolled back, zero footprint left in production): confirmed 17/17 existing rows read `confidence: null` after the migration; confirmed a valid value (`0.82`) inserts and round-trips correctly; confirmed an out-of-range value (`1.5`) is rejected by the check constraint (`23514 check_violation`).
+- Browser: boot-smoke-tested (fresh dev server, zero console/page errors, login renders). **Not verified live**: the authenticated `rememberCandidate` flow itself, for the same reason as UX-14.2 (no mocked-Supabase harness, no live-production test account) — and moot in any case, since (per the discovery finding above) no live chat path currently produces a real `MemoryCandidate` to remember.
+
+**Remaining Memory Intelligence roadmap** (not this phase, in rough order):
+1. Wire `detectMemoryCandidates` into a real chat surface (ChatPage/ReaderChatPanel) so `MemoryApprovalPanel` has something to show — the actual prerequisite for this phase's persistence to matter in practice. New capability, needs its own scoping pass.
+2. Near-duplicate reinforcement (confirmed not to exist today) — strengthen an existing memory instead of inserting a near-duplicate candidate.
+3. On-read confidence decay (Blueprint's recommended approach — no stored decaying value, no background job).
+4. Confidence-weighted selection in `formatMemoriesForPrompt`'s cap logic, replacing pure recency — explicitly deferred by this phase's own constraints ("do not change ranking").
+5. Surface confidence on `MemoryCard`/`MemoryApprovalPanel`'s persisted display — explicitly deferred by this phase's "no UI redesign" constraint.
+
+---
+
 **R2 — Consolidate `suggestionEngine.ts` and `dashboardRecommendations.ts`.** ~~Deferred to UX-14 implementation~~ **Done (UX-14.1).** Merged into `src/modules/intelligence/recommendations/recommendationEngine.ts` — one exported `Recommendation` type, one `generateRecommendations({ scope: 'chat' | 'dashboard', ... })` function. Each scope's rule branches are unchanged from their original files (same conditions, same reason text, same command ids); characterization tests ported from both original test suites unchanged, plus two new tests asserting scope isolation (a dashboard-only signal has no effect under `scope: 'chat'` and vice versa). All four call sites updated (`orchestrator.ts`, `dashboardInteraction.ts`, `hub/hubData.ts`, plus the two rendering/summary consumers `RecommendedActionsSection.tsx` and `executiveSummary.ts`). Verified: tsc clean, 956/956 vitest (up from 954 — net of 15 ported tests removed, 17 added), lint clean, build clean.
 
 **R3 (optional, lower priority) — Reconcile `workspaceInsightEngine`/`dashboardInsights`.** Not required; flagged so a future phase doesn't extend both independently without noticing they're adjacent.
@@ -284,8 +359,10 @@ Not part of UX-14, not scoped here beyond naming:
 1. **Done (this sprint):** Zero-risk docstring corrections.
 2. **Done (UX-14.1):** R2 — recommendation engines consolidated, since Blueprint §3 (Proactive Intelligence, increment 1) explicitly depended on this happening first.
 3. **Done (UX-14.2 — Planner Integration):** R1 — the planner now executes inside `AIService.sendMessage`, before the LLM call, carried through (not yet injected into) the prompt.
-4. **UX-14, next:** UX-14.3 (Intelligence Prompt Layer) — let the now-available `reasoningPlan` contribute structured context to the prompt. Materially higher live-response risk than UX-14.2; needs the mocked-backend-then-real-transcript verification this sprint's browser pass could not complete (see UX-14.2's Regression verification note).
-5. **Not UX-14:** R3 and the two future-exploration infrastructure spikes (background execution, agent permission model).
+4. **Done (UX-14.3 — Memory Intelligence, Phase 1: Confidence Persistence):** `ai_memory.confidence` persisted, retrieval untouched, the exact discard point at `MemoryManagementPage.tsx`'s `rememberCandidate` closed. Reordered ahead of the Intelligence Prompt Layer milestone by explicit instruction.
+5. **UX-14, next (per current instruction):** Intelligence Prompt Layer — let the now-available `reasoningPlan` contribute structured context to the prompt. Materially higher live-response risk than UX-14.2/14.3; needs the mocked-backend-then-real-transcript verification this sprint's browser passes could not complete (see UX-14.2's and UX-14.3's Regression/Verification notes).
+6. **Not yet scheduled:** wiring `detectMemoryCandidates` into live chat (UX-14.3's own discovery — see its Remaining Memory Intelligence roadmap), reinforcement/decay, confidence-weighted prompt selection.
+7. **Not UX-14:** R3 and the two future-exploration infrastructure spikes (background execution, agent permission model).
 
 ---
 
@@ -296,10 +373,11 @@ For this Consolidation Sprint specifically (not for UX-14 features, which remain
 - [x] `profileFields.ts` confirmed as the sole source of truth for personalization data — no competing writer found; the only ambiguity found was naming (`profiles` table vs. `ai_memory` convention), not data duplication.
 - [x] All five named engines (`dashboardRecommendations`, `suggestionEngine`, `attentionEngine`, `resurfacingEngine`, `workspaceInsightEngine`) mapped to explicit ownership, with genuine duplication (recommendations) distinguished from healthy reuse (attention/resurfacing) and borderline cases (workspace insights) named rather than glossed over.
 - [x] The exact point where planner output disappears identified with file/line precision (`ChatPage.tsx`'s `reasoningTrace` `useMemo`, gated on post-response `contextTrace`), and the smallest fix identified without inventing agent execution.
-- [x] Root cause of discarded memory confidence confirmed: computed once at approval time by original design, never persisted — not a bug, a scoped-out phase boundary (per the Blueprint's Memory Intelligence section).
+- [x] Root cause of discarded memory confidence confirmed: computed once at approval time by original design, never persisted — not a bug, a scoped-out phase boundary (per the Blueprint's Memory Intelligence section). **Fixed in UX-14.3.**
 - [x] Notification architecture gap scoped to the smallest viable path (already specified in the Blueprint; not re-derived here).
 - [x] Zero-risk refactors identified and executed (2); required refactors identified, sequenced, and explicitly deferred with rationale rather than silently built.
 - [x] No schema, migration, or UI changes made.
 - [x] `docs/ux-14-architecture-consolidation.md` produced.
 - [x] UX-14.1 (Recommendation Consolidation) executed and verified.
 - [x] UX-14.2 (Planner Integration) executed and verified — planner runs before the LLM call, output carried through unchanged, prompt text provably untouched (tsc/vitest/lint/build clean, 959/959 tests). Live authenticated browser verification (reasoning panel, context trace, memory loading, recommendation generation, Reader chat) not completed — no mocked-Supabase harness exists in this repo and the live production database was deliberately not used for interactive testing; recorded as an open gap under UX-14.2 above, not glossed over.
+- [x] UX-14.3 (Memory Intelligence, Phase 1: Confidence Persistence) executed and verified — additive migration applied live and committed, discard point closed, retrieval/prompt/ranking untouched (tsc/vitest/lint/build clean, 959/959 tests unchanged). Schema behavior verified directly against the live database in a rolled-back transaction (legacy rows null, valid values persist, out-of-range values rejected by the check constraint, zero footprint left behind). Discovered and disclosed, not fixed: the detection pipeline this phase persists confidence for has no live caller today, so the fix has no observable effect until a future phase wires it up.
