@@ -12,6 +12,7 @@ import '@/modules/core/modules/coreModule'
 import '@/modules/knowledge-intelligence/module'
 import '@/modules/search/registerBuiltInProviders'
 import '@/modules/commands/registerBuiltInCommands'
+import '@/modules/workspace-actions/registerBuiltInWorkspaceActions'
 
 export function App() {
   useEffect(() => {

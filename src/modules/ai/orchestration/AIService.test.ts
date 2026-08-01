@@ -47,6 +47,14 @@ vi.mock('@/modules/settings/api/profile', () => ({ getProfile: vi.fn(async () =>
 // UX-7: the reference resolver's own lookups — same reasoning, no real Supabase call from this suite.
 vi.mock('@/modules/processing/api/chunks', () => ({ getChunkLocations: vi.fn(async () => []) }))
 vi.mock('@/modules/library/api/documents', () => ({ getDocumentTitles: vi.fn(async () => []) }))
+// AI Workspace Actions v1 — the router itself is unit-tested in
+// workspace-actions/registry.test.ts; here it's mocked so this suite can
+// assert on how sendMessage wires its result, without depending on which
+// actions happen to be registered.
+const { runWorkspaceActionMock } = vi.hoisted(() => ({
+  runWorkspaceActionMock: vi.fn(async () => null as { responseText: string; references?: unknown[] } | null),
+}))
+vi.mock('@/modules/workspace-actions/registry', () => ({ runWorkspaceAction: runWorkspaceActionMock }))
 
 // getChatProvider/the real chat provider instances aren't mocked — they're
 // plain, hardcoded objects (see providers/registry.ts), and since
@@ -148,5 +156,33 @@ describe('sendMessage', () => {
     expect(result.references).toEqual([
       { type: 'chapter', documentId: 'doc-1', documentTitle: 'Atomic Habits', chapterIndex: 3, chapterTitle: 'The Turning Point' },
     ])
+  })
+
+  describe('workspace action routing', () => {
+    it('short-circuits the normal retrieval/LLM path when the router recognizes a workspace action command', async () => {
+      runWorkspaceActionMock.mockResolvedValueOnce({
+        responseText: 'Saved to Notes: "NOVA Reply".',
+        references: [{ type: 'note', id: 'note-1', title: 'NOVA Reply' }],
+      })
+
+      const result = await sendMessage({ ...baseParams(), text: 'Save this' })
+
+      expect(result.message.content).toBe('Saved to Notes: "NOVA Reply".')
+      expect(result.references).toEqual([{ type: 'note', id: 'note-1', title: 'NOVA Reply' }])
+      expect(result.contextTrace).toEqual({ retrievedChunks: 0, graphNodes: 1, memoriesUsed: 0 })
+    })
+
+    it('falls through to the normal chat path when nothing matches (router returns null)', async () => {
+      runWorkspaceActionMock.mockResolvedValueOnce(null)
+      const result = await sendMessage(baseParams())
+      expect(result.message.content).toBe('Hello there.')
+    })
+
+    it('reports graphNodes: 0 when a matched action produces no reference', async () => {
+      runWorkspaceActionMock.mockResolvedValueOnce({ responseText: "There's nothing to save yet." })
+      const result = await sendMessage({ ...baseParams(), text: 'Save this' })
+      expect(result.contextTrace).toEqual({ retrievedChunks: 0, graphNodes: 0, memoriesUsed: 0 })
+      expect(result.references).toEqual([])
+    })
   })
 })

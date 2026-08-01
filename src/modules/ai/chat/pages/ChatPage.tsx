@@ -13,6 +13,7 @@ import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
 import { SaveConversationDialog } from '@/modules/notes/components/SaveConversationDialog'
+import { useSaveMessageToNote } from '@/modules/notes/hooks/useSaveMessageToNote'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
@@ -146,6 +147,11 @@ export function ChatPage() {
   const { workspaces, currentWorkspaceId } = useWorkspace()
   const currentWorkspaceName = workspaces.find((w) => w.id === currentWorkspaceId)?.name ?? null
   const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content ?? null
+  const saveMessage = useSaveMessageToNote({
+    conversationId: conversation?.id ?? '',
+    conversationTitle: conversation?.title ?? '',
+    workspaceId: conversation?.workspace_id ?? null,
+  })
 
   // UX-7: everything below is derived purely from data already in scope —
   // no new AIService fields beyond contextTrace/model (added this phase).
@@ -406,7 +412,14 @@ export function ChatPage() {
                   <Spinner />
                 ) : (
                   messages.map((message) => (
-                    <MessageBubble key={message.id} message={message} highlighted={message.id === highlightedMessageId} />
+                    <MessageBubble
+                      key={message.id}
+                      message={message}
+                      highlighted={message.id === highlightedMessageId}
+                      onSave={() => saveMessage.save(message)}
+                      saved={saveMessage.isSaved(message.id)}
+                      saving={saveMessage.isSaving(message.id)}
+                    />
                   ))
                 )}
                 {streamingText !== null && (

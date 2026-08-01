@@ -9,6 +9,8 @@ Notes are where your own thinking lives — separate from documents you've uploa
 - **Notes CRUD** — create, edit, and delete notes from a dedicated Notes list and detail page
 - **Note tags** — the same cross-cutting tagging model documents use, applied to notes
 - **Save conversation → Note** — turn an entire Chat conversation into a note in one action, from either the main Chat page or the in-Reader Chat panel
+- **Save a single message → Note** (AI Workspace Actions v1) — save just one message from a conversation, either your own question or NOVA's reply, via a **Save to Notes** button under that specific message; the note keeps a provenance link to both the conversation and that exact message
+- **Save by typing it** (AI Workspace Actions v1) — say "Save this," "Remember this," "Capture this," or "Add this to my notes" in Chat, and NOVA saves its own most recent reply as a note the same way the per-message button does, no menu required
 - **Create note from highlight** — while reading, select text and save it as a note directly, carrying a link back to the source document
 - **Note ↔ Asset linking** — notes created from an image (via the Image Reader's "Save to Notes") carry a link back to that image
 - **Summarize** — an AI action available on a note that replaces its content with a condensed version, grounded in the note's own existing text
@@ -19,12 +21,14 @@ Notes are where your own thinking lives — separate from documents you've uploa
 - **Notes** (sidebar) — the full list of your notes, most recently updated first
 - Click a note to open its detail page, where you edit title and content directly and see any linked source
 - From a document Reader or the Chat page, look for **Save to Notes** to create a note without visiting the Notes page first
+- Under any individual Chat message, click the small **Save to Notes** link to save just that message — or type "Save this" / "Remember this" / "Capture this" / "Add this to my notes" to save NOVA's last reply without touching the mouse
 - On the Notes list, click **Merge notes** to enter selection mode, check two or more notes, then click **Merge**
 
 ## Real-World Examples
 
 - While reading a PDF report, you highlight a key sentence and save it as a note — the note keeps a reference back to exactly where it came from in the document.
 - After a long Chat conversation about marketing strategy, you click Save to Notes once, rather than manually copying the exchange — the whole conversation becomes a note you can tag and revisit.
+- NOVA gives you a single useful answer buried in an otherwise ordinary conversation — instead of saving the whole thing, you click Save to Notes under just that reply, or simply type "Remember this."
 - You jot a quick standalone thought directly in Notes — no document or conversation behind it, just your own writing.
 - You have three separate notes from different days about the same trip planning conversation — you select all three and merge them into one consolidated note instead of manually copying content between them.
 

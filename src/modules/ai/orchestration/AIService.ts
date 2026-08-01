@@ -20,8 +20,7 @@ import { detectSignals } from '@/modules/intelligence/signals/signalDetector'
 import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
 import { resolveReferences } from '@/modules/intelligence/references/referenceResolver'
 import type { Reference } from '@/modules/intelligence/references/referenceTypes'
-import { parseExecutiveBriefingCommand } from '@/modules/knowledge-intelligence/api/executiveBriefingCommand'
-import { runExecutiveBriefingCommand } from '@/modules/knowledge-intelligence/api/runExecutiveBriefingCommand'
+import { runWorkspaceAction } from '@/modules/workspace-actions/registry'
 
 export interface SendMessageParams {
   conversationId: string
@@ -67,26 +66,19 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
   void indexMessage(userMessage, workspaceId)
   void linkKnownConceptsToSource({ userId, sourceType: 'conversation', sourceId: conversationId, text })
 
-  // UX-13 roadmap Phase 5 — Natural Language Knowledge Commands v1: a
-  // recognized command short-circuits the normal retrieval/LLM-chat path
-  // entirely (deterministic, no hallucination risk) rather than being
-  // just another piece of prompt context. Search/Confidence/Knowledge
-  // Graph/Collections/Save Note all happen inside
-  // runExecutiveBriefingCommand -> generateBriefing, reusing the exact
-  // same pipeline the concept drill-down page's own button uses.
-  const briefingCommand = parseExecutiveBriefingCommand(text)
-  if (briefingCommand) {
-    const commandResult = await runExecutiveBriefingCommand({
-      topic: briefingCommand.topic,
-      userId,
-      workspaceId,
-      chain: providerChain,
-    })
+  // AI Workspace Actions v1 — a recognized command (Generate Briefing, Save
+  // to Notes, ...) short-circuits the normal retrieval/LLM-chat path
+  // entirely (deterministic, no hallucination risk) rather than being just
+  // another piece of prompt context. The router tries each registered
+  // action's `match` in order; a null result means nothing matched and we
+  // fall through to the normal chat path below.
+  const actionOutcome = await runWorkspaceAction(text, { userId, workspaceId, conversationId, chain: providerChain })
+  if (actionOutcome) {
     const assistantMessage = await insertMessage({
       conversationId,
       userId,
       role: 'assistant',
-      content: commandResult.responseText,
+      content: actionOutcome.responseText,
     })
     void indexMessage(assistantMessage, workspaceId)
     await touchConversation(conversationId)
@@ -94,9 +86,9 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
     return {
       message: assistantMessage,
       suggestions: [],
-      contextTrace: { retrievedChunks: 0, graphNodes: commandResult.found ? 1 : 0, memoriesUsed: 0 },
+      contextTrace: { retrievedChunks: 0, graphNodes: actionOutcome.references?.length ? 1 : 0, memoriesUsed: 0 },
       signals: [],
-      references: commandResult.found ? [{ type: 'note', id: commandResult.note.id, title: commandResult.note.title }] : [],
+      references: actionOutcome.references ?? [],
       model: null,
     }
   }

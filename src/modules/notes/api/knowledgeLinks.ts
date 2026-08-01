@@ -73,3 +73,26 @@ export async function linkNoteToAsset(params: {
   if (error) throw error
   return data
 }
+
+/** AI Workspace Actions v1 — "Save to Notes" message-level provenance: connects the created note back to the exact chat message it was saved from, same polymorphic knowledge_links pattern as the three functions above (target_type='message' needs no schema change). */
+export async function linkNoteToMessage(params: {
+  userId: string
+  workspaceId: string | null
+  noteId: string
+  messageId: string
+}): Promise<KnowledgeLink> {
+  const { data, error } = await supabase
+    .from('knowledge_links')
+    .insert({
+      user_id: params.userId,
+      workspace_id: params.workspaceId,
+      source_type: 'note',
+      source_id: params.noteId,
+      target_type: 'message',
+      target_id: params.messageId,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}

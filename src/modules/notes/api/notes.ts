@@ -49,6 +49,8 @@ export async function createNote(params: {
   content?: string
   documentId?: string | null
   sourceChunkIds?: string[] | null
+  /** AI Workspace Actions v1 — provenance for a note created from something else (e.g. a saved chat message: {savedFrom, conversationId, messageId, messageCreatedAt}), same convention Summarize already uses for {capability, provider, model, generated_at}. */
+  generationMetadata?: Record<string, unknown> | null
 }): Promise<Note> {
   const { data, error } = await supabase
     .from('notes')
@@ -59,6 +61,7 @@ export async function createNote(params: {
       content: params.content,
       document_id: params.documentId ?? null,
       source_chunk_ids: params.sourceChunkIds ?? null,
+      generation_metadata: params.generationMetadata ?? null,
     })
     .select()
     .single()

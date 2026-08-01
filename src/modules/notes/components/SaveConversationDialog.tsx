@@ -11,6 +11,8 @@ import {
 import { createNote } from '@/modules/notes/api/notes'
 import { addTagToNote } from '@/modules/notes/api/noteTags'
 import { linkNoteToConversation } from '@/modules/notes/api/knowledgeLinks'
+import { indexNote } from '@/modules/search/indexing/indexNote'
+import { linkKnownConceptsToSource } from '@/modules/knowledge-intelligence/api/linkKnownConcepts'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { Button } from '@/shared/components/ui/Button'
@@ -101,6 +103,11 @@ export function SaveConversationDialog({
       })
       await Promise.all(tags.map((tagName) => addTagToNote({ noteId: note.id, tagName, userId: user!.id })))
       await linkNoteToConversation({ userId: user!.id, workspaceId: targetWorkspaceId, noteId: note.id, conversationId })
+      // Same indexing/linking contract every other note-creation path in
+      // this codebase follows (saveMessageToNote, useMergeNotes,
+      // generateBriefing) — this dialog was the one path still missing it.
+      void indexNote(note, targetWorkspaceId)
+      void linkKnownConceptsToSource({ userId: user!.id, sourceType: 'note', sourceId: note.id, text: `${note.title}\n\n${note.content}` })
       return note
     },
     onSuccess: (note) => setSavedNoteId(note.id),

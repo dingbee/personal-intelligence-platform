@@ -16,6 +16,7 @@ Chat is how you talk to NOVA directly — and unlike a generic AI chatbot, every
 - **AI Health Dashboard** — observability into every AI request: latency, success/failure, which provider actually served each request, and fallback events
 - **Memory** — NOVA remembers explicit facts you've told it, preferences it's learned, and relevant context from past conversations, and surfaces where that memory is actually influencing a given answer
 - **Natural Language Knowledge Commands** — certain phrasings typed into Chat trigger a concrete action instead of a conversational answer; v1 recognizes "Create an executive briefing on X," which pulls Search, Confidence, Collections, Knowledge Graph, and Notes together to generate and save a grounded briefing (see Chapter 4)
+- **AI Workspace Actions v1** — a shared router (behind both the executive briefing command above and the commands below) that recognizes a chat message as an action rather than a question; also recognizes "Save this," "Remember this," "Capture this," and "Add this to my notes," which save NOVA's most recent reply as a note the same way the per-message **Save to Notes** button does (see Chapter 2)
 
 ## Navigation
 
@@ -30,6 +31,7 @@ Chat is how you talk to NOVA directly — and unlike a generic AI chatbot, every
 - Open a spreadsheet in the Reader and ask "which region performs best?" in the docked Chat panel — the answer is grounded in the Spreadsheet Intelligence Analyst Layer's actual computed aggregates, not a guess from raw cell text.
 - Your preferred provider has an outage mid-conversation — the fallback chain retries with your next configured provider automatically, and the AI Health Dashboard shows exactly when and why that happened.
 - You type "Create an executive briefing on Revenue" into Chat — instead of a conversational answer, NOVA returns a completed briefing with a confidence percentage, and confirms it's been saved as a note.
+- NOVA gives a reply worth keeping — you type "Remember this" instead of reaching for a button, and NOVA confirms it's been saved to Notes, linked back to this exact message.
 
 ## Typical Workflows
 
@@ -49,6 +51,7 @@ Chat is how you talk to NOVA directly — and unlike a generic AI chatbot, every
 - Confusing a provider being "unavailable" (not configured/reachable) with a provider being "not preferred" — the UI only hides truly unavailable providers, not ones you simply haven't chosen.
 - Not noticing when a conversation's provider has silently become unavailable since it was set — the warning banner on the conversation header is the signal to switch.
 - Assuming the executive briefing command understands loose phrasing — v1 only recognizes a specific pattern ("create/generate/write a(n) (executive) briefing on/about/for X"); anything else is answered as an ordinary chat message instead.
+- Expecting "Save this" to save your own last message — it saves NOVA's most recent reply, the natural reading of "this" right after NOVA answers; to save your own message, use that message's own **Save to Notes** button instead.
 
 ## Related Features
 
@@ -64,6 +67,7 @@ Chat is how you talk to NOVA directly — and unlike a generic AI chatbot, every
 - The reasoning trace and evidence scoring shown in the Insight Drawer are computed, not model-reported — they reflect what actually happened in the request, not the model's self-description of its own reasoning
 - Fallback and provider routing logic is fully deterministic engineering, not AI-driven — reliability doesn't depend on a model being right
 - Recognizing the executive briefing command itself is **not** AI — it's a deterministic phrase match, so no model call (and no risk of misclassifying a normal question as a command) is spent just deciding what you asked for; the briefing content that command produces is LLM-generated, same as Generate Briefing everywhere else
+- Recognizing "Save this" and its variants is also **not** AI — same deterministic phrase match, and the save itself (note creation, linking, indexing) is entirely non-AI too; nothing about the Save to Notes path invokes a model
 
 ## Limitations
 
@@ -72,5 +76,5 @@ Chat is how you talk to NOVA directly — and unlike a generic AI chatbot, every
 
 ## Future Roadmap
 
-- More recognized natural-language commands beyond "create an executive briefing on X" ("compare this month's figures with last month," "summarize everything about Mtoni") rather than just the one v1 phrasing
+- More recognized workspace-action commands beyond "create an executive briefing on X" and "save this" ("compare this month's figures with last month," "summarize everything about Mtoni") rather than just today's two
 - Recognizing loose variations in phrasing (today's command matching is a fixed pattern, not flexible intent understanding)

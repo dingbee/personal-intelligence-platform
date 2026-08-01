@@ -6,6 +6,7 @@ import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
 import { SaveConversationDialog } from '@/modules/notes/components/SaveConversationDialog'
+import { useSaveMessageToNote } from '@/modules/notes/hooks/useSaveMessageToNote'
 import { Button } from '@/shared/components/ui/Button'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
@@ -103,6 +104,11 @@ export function ReaderChatPanel({
     conversation?.provider_id ?? defaultProviderId,
     documentId,
   )
+  const saveMessage = useSaveMessageToNote({
+    conversationId: conversation?.id ?? '',
+    conversationTitle: conversation?.title ?? documentTitle,
+    workspaceId,
+  })
 
   const commandContext = useCommandContext()
   const commandActions = useCommandActions()
@@ -224,7 +230,15 @@ export function ReaderChatPanel({
             {messagesLoading ? (
               <Spinner size="sm" />
             ) : (
-              messages.map((message) => <MessageBubble key={message.id} message={message} />)
+              messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  onSave={() => saveMessage.save(message)}
+                  saved={saveMessage.isSaved(message.id)}
+                  saving={saveMessage.isSaving(message.id)}
+                />
+              ))
             )}
             {streamingText !== null && (
               <MessageBubble message={{ role: 'assistant', content: streamingText || '…', context_chunk_ids: [] }} />

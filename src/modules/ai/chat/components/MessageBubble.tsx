@@ -4,10 +4,17 @@ import { MarkdownRenderer } from '@/modules/ai/chat/components/renderer/Markdown
 export function MessageBubble({
   message,
   highlighted,
+  onSave,
+  saved,
+  saving,
 }: {
   message: Pick<Message, 'role' | 'content' | 'context_chunk_ids'> & { id?: string }
   /** UX-13.11 Phase 2A — briefly true right after a Universal Search deep-link scrolls this message into view. */
   highlighted?: boolean
+  /** AI Workspace Actions v1 — per-message "Save to Notes". Omitted entirely (streaming placeholder, no message.id yet) hides the control rather than rendering it disabled. */
+  onSave?: () => void
+  saved?: boolean
+  saving?: boolean
 }) {
   const isUser = message.role === 'user'
 
@@ -24,12 +31,26 @@ export function MessageBubble({
           {/* UX-13.5C — a user's own typed message is never markdown-rendered: it's shown exactly as typed, so a literal "*" or "#" never surprises them by turning into formatting. Only assistant responses (which the AI may format with real markdown) go through MarkdownRenderer. */}
           {isUser ? <div className="whitespace-pre-wrap">{message.content}</div> : <MarkdownRenderer content={message.content} />}
         </div>
-        {!isUser && message.context_chunk_ids.length > 0 && (
-          <p className="mt-1 px-1 text-xs text-[var(--color-ink-muted)]">
-            Based on {message.context_chunk_ids.length} passage{message.context_chunk_ids.length === 1 ? '' : 's'} from
-            your library
-          </p>
-        )}
+        <div className="mt-1 flex items-center justify-between gap-2 px-1">
+          {!isUser && message.context_chunk_ids.length > 0 ? (
+            <p className="text-xs text-[var(--color-ink-muted)]">
+              Based on {message.context_chunk_ids.length} passage{message.context_chunk_ids.length === 1 ? '' : 's'} from
+              your library
+            </p>
+          ) : (
+            <span />
+          )}
+          {onSave && (
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saved || saving}
+              className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] disabled:hover:text-[var(--color-ink-muted)]"
+            >
+              {saved ? 'Saved' : saving ? 'Saving…' : 'Save to Notes'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
