@@ -72,6 +72,7 @@ describe('saveMessageToNote', () => {
           conversationId: 'conv-1',
           messageId: 'message-1',
           messageCreatedAt: message.created_at,
+          artifactKind: 'note',
         },
       }),
     )

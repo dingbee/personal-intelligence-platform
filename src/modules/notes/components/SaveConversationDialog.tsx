@@ -17,6 +17,9 @@ import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
+import { detectArtifactKind } from '@/modules/ai/artifacts/detectArtifactKind'
+import { withArtifactKind } from '@/modules/ai/artifacts/artifactMetadata'
+import { ARTIFACT_KIND_DEFINITIONS, ARTIFACT_KIND_ORDER, type ArtifactKind } from '@/modules/ai/artifacts/artifactTypes'
 
 const SCOPE_OPTIONS: { value: ConversationSaveScope; label: string }[] = [
   { value: 'entire', label: 'Entire conversation' },
@@ -66,6 +69,11 @@ export function SaveConversationDialog({
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [savedNoteId, setSavedNoteId] = useState<string | null>(null)
+  // UX-14.4 Phase 1 — Save As: pre-filled from the deterministic detector,
+  // overridable by the user. `kindTouched` stops the auto-detect effect
+  // below from clobbering a manual choice when `scope` changes afterward.
+  const [artifactKind, setArtifactKind] = useState<ArtifactKind>('note')
+  const [kindTouched, setKindTouched] = useState(false)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -86,9 +94,20 @@ export function SaveConversationDialog({
     setTags([])
     setTagInput('')
     setSavedNoteId(null)
+    setArtifactKind('note')
+    setKindTouched(false)
   }, [open, conversationTitle, workspaceId])
 
   const filtered = filterMessagesForScope({ messages, scope, selectedMessageIds: selectedIds })
+
+  // Re-detect whenever what's being saved changes (scope/selection), but
+  // only until the user picks a kind themselves — same "suggest, don't
+  // override a real choice" rule Save As follows everywhere else.
+  useEffect(() => {
+    if (kindTouched || filtered.length === 0) return
+    setArtifactKind(detectArtifactKind(formatConversationAsNoteContent(filtered)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, kindTouched])
 
   const save = useMutation({
     mutationFn: async () => {
@@ -100,6 +119,7 @@ export function SaveConversationDialog({
         title: title.trim() || conversationTitle,
         content,
         sourceChunkIds: sourceChunkIds.length > 0 ? sourceChunkIds : null,
+        generationMetadata: withArtifactKind(null, artifactKind),
       })
       await Promise.all(tags.map((tagName) => addTagToNote({ noteId: note.id, tagName, userId: user!.id })))
       await linkNoteToConversation({ userId: user!.id, workspaceId: targetWorkspaceId, noteId: note.id, conversationId })
@@ -194,6 +214,24 @@ export function SaveConversationDialog({
           )}
 
           <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="font-medium text-[var(--color-ink)]">Save as</span>
+            <select
+              value={artifactKind}
+              onChange={(e) => {
+                setArtifactKind(e.target.value as ArtifactKind)
+                setKindTouched(true)
+              }}
+              className="rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] px-2.5 py-1.5 text-sm text-[var(--color-ink)] shadow-inset outline-none"
+            >
+              {ARTIFACT_KIND_ORDER.map((kind) => (
+                <option key={kind} value={kind}>
+                  {ARTIFACT_KIND_DEFINITIONS[kind].label}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-[var(--color-ink)]">Workspace</span>

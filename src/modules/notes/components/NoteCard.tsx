@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import type { NoteWithDocument } from '@/modules/notes/api/notes'
 import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
+import { ArtifactKindBadge } from '@/modules/notes/components/ArtifactKindBadge'
+import { getArtifactKind } from '@/modules/ai/artifacts/artifactMetadata'
 
 function previewText(content: string): string {
   const trimmed = content.trim()
@@ -38,9 +40,14 @@ export function NoteCard({
           />
         )}
         <Link to={`/notes/${note.id}`} className="min-w-0 flex-1">
-          <h3 className="truncate font-medium text-[var(--color-ink)] hover:text-[var(--color-accent)]">
-            {note.title}
-          </h3>
+          <div className="flex min-w-0 items-center gap-2">
+            <h3 className="min-w-0 truncate font-medium text-[var(--color-ink)] hover:text-[var(--color-accent)]">
+              {note.title}
+            </h3>
+            <span className="shrink-0">
+              <ArtifactKindBadge kind={getArtifactKind(note)} />
+            </span>
+          </div>
         </Link>
         {!selectable && (
           <DropdownMenu trigger={<span aria-hidden>⋯</span>}>

@@ -10,6 +10,9 @@ import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
+import { KnowledgeCard } from '@/shared/components/knowledge/KnowledgeCard'
+import { getArtifactKind } from '@/modules/ai/artifacts/artifactMetadata'
+import { ARTIFACT_KIND_DEFINITIONS } from '@/modules/ai/artifacts/artifactTypes'
 
 export function NoteDetailPage() {
   const { noteId } = useParams<{ noteId: string }>()
@@ -58,12 +61,21 @@ export function NoteDetailPage() {
   }
 
   const isDirty = title !== note.title || content !== note.content || documentId !== note.document_id
+  const artifactKind = getArtifactKind(note)
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <Link to="/notes" className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
         ← Back to Notes
       </Link>
+
+      {/* UX-14.4 Phase 1 — Knowledge Card activation: the Phase 7B rendering
+          primitives already exist, this is the first note-facing surface
+          that puts them to use, for the one kind that's genuinely a
+          compact-summary artifact rather than free-form prose. */}
+      {artifactKind === 'knowledge_card' && (
+        <KnowledgeCard title={note.title} typeLabel={ARTIFACT_KIND_DEFINITIONS.knowledge_card.label} description={note.content} />
+      )}
 
       <div className="flex flex-col gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
         <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
