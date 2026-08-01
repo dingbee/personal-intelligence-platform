@@ -195,7 +195,7 @@ export function KnowledgeExplorerPage() {
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(({ node, sources, connections }) => {
+          {filtered.map(({ node, sources, connections, confidence }) => {
             const provenance = node.generation_metadata ? formatProvenance(node.generation_metadata) : null
             return (
               <KnowledgeCard
@@ -203,6 +203,7 @@ export function KnowledgeExplorerPage() {
                 title={node.title}
                 typeLabel={node.node_type === 'concept' ? 'Concept' : 'Entity'}
                 description={node.description}
+                confidence={confidence}
               >
                 {connections.length > 0 && (
                   <div>

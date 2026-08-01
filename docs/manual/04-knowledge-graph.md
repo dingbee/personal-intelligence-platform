@@ -9,7 +9,7 @@ This is where NOVA stops being a place you store things and starts being a syste
 - **Knowledge extraction** — LLM-driven discovery of concepts and entities from a document, triggered manually from that document's Detail page ("Analyze Document")
 - **Cross-document relationship detection** — a separate, also-manual step ("Reconcile knowledge graph") that finds relationships between concepts discovered across different documents, not just within one
 - **Canonical node dedup** — the same concept mentioned in five different documents becomes one node, not five; matching is exact-normalized-title, and every source that mentions it accumulates as evidence on that one node
-- **Knowledge Explorer** — a searchable, filterable card grid of every concept/entity, showing its connections and source documents
+- **Knowledge Explorer** — a searchable, filterable card grid of every concept/entity, showing its connections, sources across documents/notes/conversations, and Knowledge Confidence — the same confidence score shown consistently on the Concept Card in Search and the drill-down page
 - **Interactive Concept Graph** — a visual, SVG-based graph you can navigate: focus a node, expand or collapse its neighbors, pin nodes in view, trace the shortest path between two concepts
 - **Graph clustering** — real connected-component analysis over the AI-discovered relationships, surfaced as named clusters in the Explorer, not just a type-based grouping
 - **Deterministic concept matcher** — as of Phase 2B, every new note and every chat message is scanned (instantly, with no AI call) for mentions of concepts the graph already knows about, and that mention becomes new evidence for that concept
@@ -26,7 +26,7 @@ This is where NOVA stops being a place you store things and starts being a syste
 - A document's **Detail page** has the "Analyze Document" control that triggers extraction for that document
 - Click any concept card (in the Explorer, or from a Universal Search Concept Card) to reach its dedicated drill-down page
 - **Knowledge → Collections →** (from the Knowledge dashboard's header) — the Collections list and, from there, each collection's own page
-- Every document, note, conversation, image, and concept's own page has an **"Add to collection"** button
+- Every document, note, conversation, image, and concept's own page has an **"Add to collection"** control that also shows which collections that item already belongs to, with a link to each
 
 ## Real-World Examples
 

@@ -59,4 +59,4 @@ A workspace is a bounded slice of your knowledge — a project, a business, an a
 
 ## Future Roadmap
 
-- Workspace Intelligence refinements and Personal Dashboard refinements are both named as remaining UX-13 items — expect the executive summary and gap detection to get sharper as Knowledge Confidence scoring (Chapter 4) becomes available to draw on
+- Workspace Intelligence refinements and Personal Dashboard refinements are both named as remaining Knowledge Intelligence initiative items — expect the executive summary and gap detection to get sharper as Knowledge Confidence scoring (Chapter 4) becomes available to draw on

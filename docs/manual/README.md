@@ -1,6 +1,6 @@
 # The NOVA PIP Manual
 
-NOVA is your Personal Intelligence Platform (PIP) — a system that captures what you read, write, and discuss, and turns it into something that can answer questions on your behalf, not just store files for later. This manual documents the platform as it exists today, verified working in the deployed application as of the UX-13 Stabilization & Acceptance Sprint.
+NOVA is your Personal Intelligence Platform (PIP) — a system that captures what you read, write, and discuss, and turns it into something that can answer questions on your behalf, not just store files for later. This manual documents the platform as it exists today, verified working in the deployed application as of the Stabilization & Acceptance Sprint.
 
 ## How this manual is organized
 
@@ -33,7 +33,7 @@ Screenshots are marked as pending throughout — this manual documents behavior 
 
 ## The four-layer architecture
 
-As of UX-13, NOVA PIP is organized around four interacting layers, and every chapter in this manual sits inside one of them:
+NOVA PIP is organized around four interacting layers, and every chapter in this manual sits inside one of them:
 
 - **Knowledge Layer** — documents, notes, images, spreadsheets, conversations (Chapters 1, 2, 6)
 - **Intelligence Layer** — search, graph, summaries, analysis, reasoning (Chapters 3, 4, 5)

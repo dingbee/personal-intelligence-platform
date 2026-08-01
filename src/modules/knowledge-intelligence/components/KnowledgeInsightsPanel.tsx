@@ -26,12 +26,13 @@ export function KnowledgeInsightsPanel() {
       emptyMessage="No knowledge extracted yet — open a document and run Analyze Document to get started."
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {preview.map(({ node, sources, connections }) => (
+        {preview.map(({ node, sources, connections, confidence }) => (
           <KnowledgeCard
             key={node.id}
             title={node.title}
             typeLabel={node.node_type === 'concept' ? 'Concept' : 'Entity'}
             description={node.description}
+            confidence={confidence}
           >
             {connections.length > 0 && (
               <div>

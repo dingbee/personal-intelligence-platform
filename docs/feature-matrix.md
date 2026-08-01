@@ -1,6 +1,6 @@
 # NOVA PIP Feature Matrix
 
-A living engineering inventory — not user documentation. First drafted as part of the UX-13 Stabilization & Acceptance Sprint, from git history and test coverage. Updated after the user's full acceptance walkthrough of the deployed application.
+A living engineering inventory — not user documentation. First drafted as part of a Stabilization & Acceptance Sprint, from git history and test coverage. Updated after the user's full acceptance walkthrough of the deployed application. Feature work tracked here belongs to the Knowledge Intelligence initiative.
 
 **Status legend**
 
@@ -124,13 +124,32 @@ A living engineering inventory — not user documentation. First drafted as part
 
 ---
 
+## Platform Integration Sprint
+
+Not a new feature phase — a correctness/coherence pass across the five Knowledge Intelligence initiative phases above, auditing their integration points and fixing inconsistencies found. All ⚙️ Implemented, none ✅ Accepted yet.
+
+| Fix | Status | Branch | Accepted | Manual | Tests |
+|---|---|---|---|---|---|
+| Generate Briefing: search indexing + concept-linking moved into the shared `generateBriefing()` function itself (previously only the concept-page hook did this — briefings created via the chat command were silently unsearchable and unlinked) | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | — | ✅ (existing coverage) |
+| `useKnowledgeNodeDetails` (Explorer + Dashboard insights): now resolves note/conversation sources, not just documents (a pre-Phase-2B filter was silently dropping them) — same underlying data as the Concept Card/drill-down page, now displayed consistently everywhere | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ❌ |
+| Knowledge Confidence now computed and shown on the Explorer's and Dashboard's concept cards, not just the Concept Card in Search and the drill-down page — same `computeKnowledgeConfidence`, fed from the same batched query, no new fetch | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ❌ |
+| `AddToCollectionButton` now shows an item's existing collection membership (removable, linked) instead of only offering to add — previously there was no way to see from an item's own page which collections it already belonged to | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ❌ |
+| Merge Notes carries forward Collection membership to the merged note (previously silently dropped, since the originals — and their membership links — get deleted) | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ❌ |
+| Docs: "UX-13" references replaced with "Knowledge Intelligence initiative" per user direction — code comments (git-historical, e.g. "UX-13.11 Phase 2B") were deliberately left as-is; only the living docs (this file, the Manual) were updated | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | — | ✅ | — |
+
+### Remaining known inconsistencies (not fixed this sprint — see Integration Report)
+
+- Universal Search has no Collections branch — collections aren't searchable by name, and flat search results don't indicate collection membership. Building this is a new capability, not composition of existing ones, so it's out of scope for a "no expansion" sprint.
+- Deleting a document/note/conversation/asset that's a Collection member leaves an orphaned `knowledge_links` row pointing at nothing — consistent with the pre-existing, already-documented "knowledge_links never cascades on deletion" behavior for graph evidence, not a new gap, but worth deciding whether Collections specifically should behave differently.
+- Collection-level actions (export a whole collection, generate a briefing spanning a collection) don't exist — only per-item actions do.
+
 ## Notes
 
 - Acceptance pass completed by the user against the deployed application; all ⚙️ Implemented rows promoted to ✅ Accepted as a batch confirmation ("all fine"), not itemized per-row feedback. If a specific row is later found not to work, flip it back to ⚙️ and record what broke — don't silently re-mark it ✅.
 - The NOVA PIP Manual (`docs/manual/`) now has all 8 planned chapters, covering every ✅ Accepted feature above. The one exception is "Deployment reconciliation," which is an engineering/ops item rather than a user-facing feature, so it isn't a Manual chapter itself — it's mentioned contextually where relevant.
 - Screenshots are not yet part of the Manual — chapters document behavior first; visual capture is a follow-up pass.
-- 🔲 Backlog rows (node lifecycle, note→task/conversation→project, Explorer virtualization, contradiction detection, reading-coverage) remain the canonical UX-13 remainder, per the roadmap sequencing already agreed: Universal Search maturity → Knowledge Confidence → Knowledge Actions → Knowledge Collections → Natural Language Commands.
+- 🔲 Backlog rows (node lifecycle, note→task/conversation→project, Explorer virtualization, contradiction detection, reading-coverage) remain the canonical Knowledge Intelligence initiative remainder, per the roadmap sequencing already agreed: Universal Search maturity → Knowledge Confidence → Knowledge Actions → Knowledge Collections → Natural Language Commands.
 - Knowledge Actions v1 deliberately shipped three actions that reuse existing infrastructure end-to-end (Notes CRUD, the capability/prompt-template pattern, knowledge_node_sources provenance) and deferred note→task/conversation→project, since those need new Task/Project schema entities — a real design decision, not something to invent unilaterally mid-phase.
 - Knowledge Collections v1 added exactly one new table (`knowledge_collections`, identity/metadata only) — membership reuses the existing generic `knowledge_links` polymorphic-edge table (`source_type='knowledge_collection'`) the same way linkNoteToHighlight/linkNoteToConversation/linkNoteToAsset already do, so no new join table or per-type schema was needed to span documents/notes/conversations/images/concepts in one collection.
 - Natural Language Knowledge Commands v1 shipped its first (and so far only) recognized command, "Create an executive briefing on X," typed directly into NOVA chat. No new orchestration pipeline was built — `AIService.sendMessage` deterministically recognizes the phrase (no LLM call spent on intent classification) and, when matched, calls Search (`searchKnowledgeConcepts`) to resolve the topic to a concept, then reuses the exact same `generateBriefing` pipeline the concept drill-down page's own button calls (which itself now also folds in Collections membership, not just Confidence/Knowledge Graph/Notes as before). An unrecognized topic gets a graceful "couldn't find that concept" reply instead of a wasted or hallucinated LLM call.
-- All 5 phases of the originally agreed UX-13 remainder sequence (Universal Search maturity → Knowledge Confidence → Knowledge Actions → Knowledge Collections → Natural Language Commands) are now ⚙️ Implemented. Nothing scripted remains queued; further work needs fresh direction.
+- All 5 phases of the originally agreed Knowledge Intelligence initiative remainder sequence (Universal Search maturity → Knowledge Confidence → Knowledge Actions → Knowledge Collections → Natural Language Commands) are now ⚙️ Implemented. The initiative itself remains paused pending acceptance; the current objective is the Platform Integration Sprint (see below), not a new feature phase.

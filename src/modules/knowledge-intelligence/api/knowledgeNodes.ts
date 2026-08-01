@@ -107,15 +107,23 @@ export interface KnowledgeNodeSourceRef {
   nodeId: string
   sourceType: string
   sourceId: string
+  createdAt: string
 }
 
-/** Phase 9C: the reverse direction of the same gap — given a set of (possibly merged) nodes, look up every document each one came from, not just its original source_id. Used to show all source documents on a knowledge card. */
+/**
+ * Phase 9C: the reverse direction of the same gap — given a set of
+ * (possibly merged) nodes, look up every document each one came from, not
+ * just its original source_id. Used to show all source documents on a
+ * knowledge card. `createdAt` is included (Platform Integration Sprint) so
+ * useKnowledgeNodeDetails can compute each node's Knowledge Confidence
+ * from this same batched query instead of a per-node fetch.
+ */
 export async function listKnowledgeNodeSourcesForNodes(nodeIds: string[]): Promise<KnowledgeNodeSourceRef[]> {
   if (nodeIds.length === 0) return []
   const { data, error } = await supabase
     .from('knowledge_node_sources')
-    .select('node_id, source_type, source_id')
+    .select('node_id, source_type, source_id, created_at')
     .in('node_id', nodeIds)
   if (error) throw error
-  return data.map((row) => ({ nodeId: row.node_id, sourceType: row.source_type, sourceId: row.source_id }))
+  return data.map((row) => ({ nodeId: row.node_id, sourceType: row.source_type, sourceId: row.source_id, createdAt: row.created_at }))
 }
