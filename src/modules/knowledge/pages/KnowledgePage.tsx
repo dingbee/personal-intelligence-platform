@@ -26,7 +26,7 @@ export function KnowledgePage() {
               to="/knowledge/graph"
               className="rounded-control border border-[var(--color-border)] bg-[var(--surface-raised)] px-3 py-1.5 text-sm font-medium text-[var(--color-ink)] shadow-raised transition-colors hover:bg-[var(--surface-base)]"
             >
-              View Graph →
+              Content Connections →
             </Link>
           </div>
         }

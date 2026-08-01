@@ -58,7 +58,7 @@ A living engineering inventory — not user documentation. First drafted as part
 | Memory management (explicit/learned/conversation memory) | ✅ | main | ✅ | ✅ | ✅ |
 | Command Bar / NOVA command palette | ✅ | main | ✅ | ✅ | ✅ |
 
-## Knowledge Graph & Intelligence
+## AI Knowledge Graph & Intelligence
 
 | Feature | Status | Branch | Accepted | Manual | Tests |
 |---|---|---|---|---|---|
@@ -66,6 +66,7 @@ A living engineering inventory — not user documentation. First drafted as part
 | Cross-document relationship detection | ✅ | main | ✅ | ✅ | ✅ |
 | Canonical node dedup (resolveCanonicalNode, Phase 9A) | ✅ | main | ✅ | ✅ | ✅ |
 | Knowledge Explorer (card grid + filters) | ✅ | main | ✅ | ✅ | ❌ |
+| Content Connections graph (documents/notes/highlights/tags, `/knowledge/graph` — distinct from the AI Knowledge Graph below, previously undocumented and mislabeled "Knowledge Graph") | ✅ | main | ✅ | ✅ | ❌ |
 | Interactive Concept Graph (SVG, focus/expand/pin) | ✅ | main | ✅ | ✅ | ✅ |
 | Graph clustering (connected components) | ✅ | main | ✅ | ✅ | ✅ |
 | Deterministic concept matcher (Phase 2B) | ✅ | main | ✅ | ✅ | ✅ |
@@ -167,3 +168,21 @@ A new, separately named workstream — not a Knowledge Intelligence initiative p
 - **Provenance**: notes saved this way carry `generation_metadata: {savedFrom: 'chat-message', conversationId, messageId, messageCreatedAt}` (same JSONB column Summarize already uses for its own provenance shape) plus two `knowledge_links` rows — `target_type='conversation'` (pre-existing) and the new `target_type='message'` (`linkNoteToMessage`, added to the polymorphic `knowledge_links` table with zero schema changes, mirroring `linkNoteToAsset`).
 - **Audit finding fixed in passing**: `SaveConversationDialog` (the existing whole-conversation save dialog) never called `indexNote()`/`linkKnownConceptsToSource()` — the exact same "indexing left to the caller, and the caller forgot" bug class the Platform Integration Sprint fixed for Generate Briefing, independently rediscovered here. Fixed by adding the two missing calls; no behavior change to the dialog's UI or scope options.
 - Verified in a real browser against a mocked Supabase backend: per-message Save button renders on both roles, creates the note with correct provenance and both links, transitions to "Saved"; the "Save this" chat command produces NOVA's confirmation reply and creates an equivalent note via the same underlying function. tsc/vitest (947 tests)/lint/build all pass.
+
+## Platform Coherence Sprint v2
+
+Like the Platform Integration Sprint, a correctness/coherence pass — not a new feature phase — this time following the Product Readiness Audit. Scope was fixed in advance to four items: Explorer navigation, graph terminology, a shared source-resolution helper, and Collection membership error handling. All ⚙️ Implemented, none ✅ Accepted yet.
+
+| Fix | Status | Branch | Accepted | Manual | Tests |
+|---|---|---|---|---|---|
+| Knowledge Explorer cards now open the concept drill-down page (`/knowledge/nodes/:id`) — `KnowledgeCard` gained an optional `to` prop that makes its title a `Link`, reusing the same target `ConceptCard` already links to; previously Explorer cards were static, the only card grid in the app that didn't reach the drill-down page | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | — | — (UI wiring, browser-verified) |
+| Graph terminology clarified: the AI-extracted concept/entity graph is now consistently labeled "AI Knowledge Graph" everywhere (Explorer's Reconcile button, Interactive Graph panel, Graph Intelligence panel), and the separate documents/notes/highlights/tags relationship graph — previously also just called "Knowledge Graph," a genuine naming collision — is now "Content Connections." Both systems are unchanged; only labels and docs moved | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | — |
+| Shared source-reference resolution (`src/modules/knowledge-intelligence/api/sourceResolution.ts`: `fetchTitlesByIds` + `resolveSourceItems`) extracted from three near-identical implementations in `getKnowledgeNodeEvidence` (Evidence), `listCollectionItems` (Collections), and `useKnowledgeNodeDetails` (Explorer/Dashboard) — same skip-if-unresolved behavior everywhere now enforced by one function instead of three copies of it | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | — | ✅ |
+| Collection membership error handling: a failed items fetch on a Collection's detail page previously fell back to `[]` and rendered "Nothing in this collection yet" — indistinguishable from a genuinely empty collection. Now shows a loading spinner while fetching, a distinct error state with a Retry button on failure, and the same for `AddToCollectionButton`'s reverse "which collections is this item in" query | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | — | — (UI wiring, browser-verified) |
+
+### Audit findings from this sprint (not fixed — out of scope or pre-existing)
+
+- **The Content Connections graph was completely undocumented before this sprint** — Chapter 4 of the Manual only ever covered the AI Knowledge Graph, and `docs/feature-matrix.md` had no row for the other graph at all, despite it existing since Phase 6C. Fixed as part of the terminology-clarification pass (new Manual section, new feature-matrix row) since it was the direct cause of the naming collision this sprint was asked to resolve.
+- **`AddToCollectionButton`'s "Added" indicator can go stale if the membership fetch fails**: the dropdown's per-collection "Added" label derives from the same `membership` query the new error banner covers, but the dropdown itself isn't disabled during an error — a user could click "Add" on a collection the item is actually already in (silently a harmless no-op via the existing `knowledge_links` insert) rather than seeing it pre-marked "Added". Flagged, not fixed: disabling the dropdown during a membership error is a small additional behavior change beyond "add loading/error/retry," so it was left for a follow-up rather than expanding scope mid-sprint.
+- **Content Connections' own graph query threw a client-side error in browser testing** (`Cannot read properties of undefined (reading 'map')`, surfaced via the page's existing `isError` handling — the error state itself displayed correctly). This traces into `useKnowledgeGraph`'s composition of `listDocuments`/`listNotes`/`listRecentHighlights`/`listTags`/`listKnowledgeLinks`, none of which this sprint touched — it may be a gap in the test harness's mock fixtures (highlights/tags tables weren't fully seeded) or a genuine pre-existing bug under some data condition. Not investigated further, since this sprint's item 2 was scoped to labels and documentation only, not to `useKnowledgeGraph`'s data-fetching logic. Worth a dedicated look before Content Connections is accepted.
+- **Knowledge Confidence's source-count accounting still differs slightly between `useKnowledgeNodeDetails` and `getKnowledgeNodeEvidence`**: the Explorer/Dashboard path counts every `knowledge_node_sources` row toward confidence, including ones whose title can't be resolved (e.g. a deleted document); the Evidence/drill-down path only counts resolved evidence. Predates this sprint, surfaced while extracting `resolveSourceItems` — deliberately left unchanged (a behavior change here wasn't part of "no behavior changes"), but the two paths could in theory report a slightly different confidence percentage for the same concept.

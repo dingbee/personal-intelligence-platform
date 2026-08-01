@@ -25,7 +25,7 @@ Screenshots are marked as pending throughout — this manual documents behavior 
 1. [Library & Reading](./01-library-and-reading.md) — documents, books, spreadsheets, images: uploading, organizing, and reading them
 2. [Notes](./02-notes.md) — your own writing, and writing NOVA helps you capture from everything else
 3. [Chat & AI](./03-chat-and-ai.md) — talking to NOVA, grounded in your own knowledge
-4. [Knowledge Graph & Intelligence](./04-knowledge-graph.md) — the concepts and entities NOVA extracts, and how they connect
+4. [AI Knowledge Graph & Intelligence](./04-knowledge-graph.md) — the concepts and entities NOVA extracts, how they connect, and the separate Content Connections graph (documents/notes/highlights/tags)
 5. [Universal Search](./05-universal-search.md) — finding files, and increasingly, finding knowledge
 6. [Knowledge Capture](./06-knowledge-capture.md) — getting anything into NOVA in one motion
 7. [Workspace Intelligence](./07-workspace-intelligence.md) — the executive view of what a workspace knows
@@ -40,7 +40,7 @@ NOVA PIP is organized around four interacting layers, and every chapter in this 
 - **Memory Layer** — personalization, preferences, long-term context (part of Chapter 3, Settings)
 - **Execution Layer** — commands, automations, and future agents (Chapter 6, and where UX-14+ will land)
 
-This is a deliberate architectural principle, not incidental structure: every new capability is expected to plug into one of these four layers by reusing an existing pipeline, rather than becoming an isolated subsystem. That's why, for example, Notes and Conversations both feed the same Knowledge Graph that Documents do (Chapter 4), and why Universal Search spans all three Knowledge Layer sources plus the Graph itself (Chapter 5) rather than being document-only.
+This is a deliberate architectural principle, not incidental structure: every new capability is expected to plug into one of these four layers by reusing an existing pipeline, rather than becoming an isolated subsystem. That's why, for example, Notes and Conversations both feed the same AI Knowledge Graph that Documents do (Chapter 4), and why Universal Search spans all three Knowledge Layer sources plus the AI Knowledge Graph itself (Chapter 5) rather than being document-only.
 
 ## What "accepted" means in this manual
 

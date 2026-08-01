@@ -21,7 +21,8 @@ const TYPE_LABEL: Record<string, string> = {
 export function KnowledgeCollectionDetailPage() {
   const { collectionId } = useParams<{ collectionId: string }>()
   const navigate = useNavigate()
-  const { collection, isLoading, isError, items, remove, removeItem } = useKnowledgeCollection(collectionId!)
+  const { collection, isLoading, isError, items, itemsLoading, itemsError, refetchItems, remove, removeItem } =
+    useKnowledgeCollection(collectionId!)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   if (isLoading) {
@@ -70,7 +71,21 @@ export function KnowledgeCollectionDetailPage() {
         }
       />
 
-      {items.length === 0 ? (
+      {itemsLoading ? (
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
+      ) : itemsError ? (
+        <EmptyState
+          title="Couldn't load this collection's items"
+          description="Something went wrong fetching what's in this collection — your items are still there, this is just a failed request."
+          action={
+            <Button variant="secondary" onClick={() => void refetchItems()}>
+              Retry
+            </Button>
+          }
+        />
+      ) : items.length === 0 ? (
         <EmptyState
           title="Nothing in this collection yet"
           description="Add documents, notes, conversations, images, or concepts to it from their own pages."

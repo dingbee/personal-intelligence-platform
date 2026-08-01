@@ -99,7 +99,7 @@ export function KnowledgeExplorerPage() {
         title="Knowledge Intelligence"
         actions={
           <Button variant="secondary" loading={reconcile.isPending} onClick={() => reconcile.mutate()}>
-            {reconcile.isPending ? 'Finding connections…' : 'Reconcile knowledge graph'}
+            {reconcile.isPending ? 'Finding connections…' : 'Reconcile AI Knowledge Graph'}
           </Button>
         }
         isLoading={insights.isLoading}
@@ -114,7 +114,7 @@ export function KnowledgeExplorerPage() {
         </div>
         {reconcile.isError && (
           <p className="text-sm text-red-600">
-            {reconcile.error instanceof Error ? reconcile.error.message : 'Failed to reconcile the knowledge graph.'}
+            {reconcile.error instanceof Error ? reconcile.error.message : 'Failed to reconcile the AI Knowledge Graph.'}
           </p>
         )}
         {reconcile.isSuccess && (
@@ -136,7 +136,7 @@ export function KnowledgeExplorerPage() {
 
       {graphNodes.data && graphNodes.data.length > 0 && (
         <InsightPanel
-          title="Interactive Graph"
+          title="AI Knowledge Graph"
           description="Focus a concept, expand or collapse its neighbors, pin it in view, or trace the shortest path between two concepts."
           isLoading={false}
           isEmpty={false}
@@ -204,6 +204,7 @@ export function KnowledgeExplorerPage() {
                 typeLabel={node.node_type === 'concept' ? 'Concept' : 'Entity'}
                 description={node.description}
                 confidence={confidence}
+                to={`/knowledge/nodes/${node.id}`}
               >
                 {connections.length > 0 && (
                   <div>

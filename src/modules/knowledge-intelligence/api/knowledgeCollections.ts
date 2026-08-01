@@ -1,6 +1,7 @@
 import { supabase } from '@/shared/lib/supabase'
 import type { KnowledgeCollection, KnowledgeLink } from '@/shared/types/database'
 import type { EvidenceItem } from '@/modules/knowledge-intelligence/api/knowledgeNodeEvidence'
+import { fetchTitlesByIds, resolveSourceItems } from '@/modules/knowledge-intelligence/api/sourceResolution'
 
 /** The item types a Knowledge Collection can hold — matches the source/target types already used elsewhere in knowledge_links (see linkNoteToHighlight/linkNoteToConversation/linkNoteToAsset, and knowledgeNodeEvidence's source types). */
 export type CollectionItemType = 'document' | 'note' | 'conversation' | 'asset' | 'knowledge_node'
@@ -123,31 +124,22 @@ export async function listCollectionItems(collectionId: string): Promise<Evidenc
   }
 
   const [documents, notes, conversations, assets, knowledgeNodes] = await Promise.all([
-    fetchTitles('documents', idsByType.get('document')),
-    fetchTitles('notes', idsByType.get('note')),
-    fetchTitles('conversations', idsByType.get('conversation')),
-    fetchTitles('assets', idsByType.get('asset')),
-    fetchTitles('knowledge_nodes', idsByType.get('knowledge_node')),
+    fetchTitlesByIds('documents', idsByType.get('document')),
+    fetchTitlesByIds('notes', idsByType.get('note')),
+    fetchTitlesByIds('conversations', idsByType.get('conversation')),
+    fetchTitlesByIds('assets', idsByType.get('asset')),
+    fetchTitlesByIds('knowledge_nodes', idsByType.get('knowledge_node')),
   ])
 
   const titleById = new Map<string, string>()
   for (const row of [...documents, ...notes, ...conversations, ...assets, ...knowledgeNodes]) titleById.set(row.id, row.title)
 
-  const items: EvidenceItem[] = []
-  for (const link of links) {
-    const label = titleById.get(link.target_id)
-    if (!label) continue
-    items.push({ type: link.target_type, id: link.target_id, label, createdAt: link.created_at })
-  }
+  const items = resolveSourceItems(
+    links.map((link) => ({ type: link.target_type, id: link.target_id, createdAt: link.created_at })),
+    (_type, id) => titleById.get(id),
+  )
   items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   return items
-}
-
-async function fetchTitles(table: string, ids: string[] | undefined): Promise<{ id: string; title: string }[]> {
-  if (!ids || ids.length === 0) return []
-  const { data, error } = await supabase.from(table).select('id, title').in('id', ids)
-  if (error) throw error
-  return data
 }
 
 /**

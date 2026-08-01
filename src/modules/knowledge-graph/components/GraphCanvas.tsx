@@ -81,9 +81,11 @@ export interface GraphInteractivity {
 interface GraphCanvasProps {
   data: KnowledgeGraphData
   interactive?: GraphInteractivity
+  /** Platform Coherence Sprint v2 — this canvas renders both the Content Connections graph (document/note/highlight/tag) and the AI Knowledge Graph (concept/entity); a caller-supplied accessibility label keeps the two identifiable instead of both announcing as the same generic "Knowledge graph." */
+  label?: string
 }
 
-export function GraphCanvas({ data, interactive }: GraphCanvasProps) {
+export function GraphCanvas({ data, interactive, label = 'Knowledge graph' }: GraphCanvasProps) {
   const navigate = useNavigate()
   const { positioned, width, height, activeRowOrder } = useMemo(() => layoutNodes(data.nodes), [data.nodes])
   const nodesById = useMemo(() => new Map(positioned.map((n) => [n.id, n])), [positioned])
@@ -108,7 +110,7 @@ export function GraphCanvas({ data, interactive }: GraphCanvasProps) {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
-        <svg width={width} height={height} role="img" aria-label="Knowledge graph">
+        <svg width={width} height={height} role="img" aria-label={label}>
           <g>
             {positionedEdges.map(({ edge, source, target }) => (
               <line

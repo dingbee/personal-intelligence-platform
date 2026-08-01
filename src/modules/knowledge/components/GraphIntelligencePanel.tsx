@@ -38,8 +38,8 @@ export function GraphIntelligencePanel({
 
   return (
     <InsightPanel
-      title="Graph Intelligence"
-      description="Insights, clusters, and connections discovered across your knowledge graph."
+      title="AI Knowledge Graph Intelligence"
+      description="Insights, clusters, and connections discovered across your AI Knowledge Graph."
       isLoading={false}
       isEmpty={isEmpty}
       emptyMessage="Extract knowledge from a few documents to see graph insights here."

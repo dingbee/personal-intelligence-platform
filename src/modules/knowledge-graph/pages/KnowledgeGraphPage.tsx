@@ -13,9 +13,14 @@ export function KnowledgeGraphPage() {
         <Link to="/knowledge" className="text-sm text-[var(--color-accent)] hover:underline">
           ← Back to Knowledge
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">Knowledge Graph</h1>
+        <h1 className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">Content Connections</h1>
         <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
-          How your documents, notes, highlights, and tags connect. Click a node to open it.
+          How your documents, notes, highlights, and tags connect to each other. Click a node to open it. This is
+          separate from the AI Knowledge Graph (concepts and entities extracted by AI) — see the{' '}
+          <Link to="/knowledge/explorer" className="text-[var(--color-accent)] hover:underline">
+            Knowledge Explorer
+          </Link>{' '}
+          for that.
         </p>
       </div>
 
@@ -25,15 +30,15 @@ export function KnowledgeGraphPage() {
         </div>
       ) : isError ? (
         <p className="text-sm text-red-600">
-          Couldn't load the knowledge graph: {error instanceof Error ? error.message : 'Unknown error'}
+          Couldn't load content connections: {error instanceof Error ? error.message : 'Unknown error'}
         </p>
       ) : !data || data.nodes.length === 0 ? (
         <EmptyState
-          title="Nothing to graph yet"
+          title="No connections yet"
           description="Add documents, notes, and highlights — and link a note to a highlight — to see connections here."
         />
       ) : (
-        <GraphCanvas data={data} />
+        <GraphCanvas data={data} label="Content connections graph" />
       )}
     </div>
   )

@@ -33,7 +33,16 @@ export function AddToCollectionButton({ itemType, itemId }: { itemType: Collecti
   const queryClient = useQueryClient()
   const membershipQueryKey = ['collections-containing-item', itemType, itemId]
 
-  const { data: membership = [] } = useQuery({
+  // Platform Coherence Sprint v2 — a failed membership fetch previously
+  // rendered no chips at all, indistinguishable from "not in any
+  // collection" — `membershipError`/`refetchMembership` make that failure
+  // visible with a retry, instead of silently understating membership.
+  const {
+    data: membership = [],
+    isError: membershipError,
+    isLoading: membershipLoading,
+    refetch: refetchMembership,
+  } = useQuery({
     queryKey: membershipQueryKey,
     queryFn: () => listCollectionsContainingItem(itemType, itemId),
   })
@@ -139,6 +148,15 @@ export function AddToCollectionButton({ itemType, itemId }: { itemType: Collecti
           </div>
         )}
       </div>
+      {membershipLoading && <span className="text-xs text-[var(--color-ink-muted)]">Loading collections…</span>}
+      {membershipError && (
+        <span className="inline-flex items-center gap-1.5 text-xs text-red-600">
+          Couldn't load which collections this belongs to.
+          <button type="button" onClick={() => void refetchMembership()} className="font-medium hover:underline">
+            Retry
+          </button>
+        </span>
+      )}
       {membership.map((collection) => (
         <span
           key={collection.id}

@@ -2,6 +2,7 @@ import { supabase } from '@/shared/lib/supabase'
 import type { KnowledgeNode } from '@/shared/types/database'
 import type { SourceReferenceItem } from '@/shared/components/knowledge/SourceReference'
 import { computeKnowledgeConfidence } from '@/modules/knowledge-intelligence/confidence/knowledgeConfidence'
+import { fetchTitlesByIds, resolveSourceItems } from '@/modules/knowledge-intelligence/api/sourceResolution'
 
 export interface EvidenceItem extends SourceReferenceItem {
   createdAt: string
@@ -48,30 +49,19 @@ export async function getKnowledgeNodeEvidence(nodeId: string): Promise<Knowledg
   const noteIds = sources.filter((s) => s.source_type === 'note').map((s) => s.source_id)
   const conversationIds = sources.filter((s) => s.source_type === 'conversation').map((s) => s.source_id)
 
-  const [documentsResult, notesResult, conversationsResult] = await Promise.all([
-    documentIds.length > 0
-      ? supabase.from('documents').select('id, title').in('id', documentIds)
-      : Promise.resolve({ data: [], error: null }),
-    noteIds.length > 0 ? supabase.from('notes').select('id, title').in('id', noteIds) : Promise.resolve({ data: [], error: null }),
-    conversationIds.length > 0
-      ? supabase.from('conversations').select('id, title').in('id', conversationIds)
-      : Promise.resolve({ data: [], error: null }),
+  const [documents, notes, conversations] = await Promise.all([
+    fetchTitlesByIds('documents', documentIds),
+    fetchTitlesByIds('notes', noteIds),
+    fetchTitlesByIds('conversations', conversationIds),
   ])
-  if (documentsResult.error) throw documentsResult.error
-  if (notesResult.error) throw notesResult.error
-  if (conversationsResult.error) throw conversationsResult.error
 
   const titleById = new Map<string, string>()
-  for (const row of documentsResult.data ?? []) titleById.set(row.id, row.title)
-  for (const row of notesResult.data ?? []) titleById.set(row.id, row.title)
-  for (const row of conversationsResult.data ?? []) titleById.set(row.id, row.title)
+  for (const row of [...documents, ...notes, ...conversations]) titleById.set(row.id, row.title)
 
-  const evidence: EvidenceItem[] = []
-  for (const source of sources) {
-    const label = titleById.get(source.source_id)
-    if (!label) continue
-    evidence.push({ type: source.source_type, id: source.source_id, label, createdAt: source.created_at })
-  }
+  const evidence = resolveSourceItems(
+    sources.map((source) => ({ type: source.source_type, id: source.source_id, createdAt: source.created_at })),
+    (_type, id) => titleById.get(id),
+  )
   evidence.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
   const countsBySourceType: Record<string, number> = {}

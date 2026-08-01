@@ -21,6 +21,11 @@ export function useKnowledgeCollection(collectionId: string) {
     queryFn: () => listCollectionItems(collectionId),
     enabled: Boolean(collectionId),
   })
+  // Platform Coherence Sprint v2 — a failed items fetch previously had no
+  // visible signal: `items` fell back to `[]` and the page rendered
+  // "Nothing in this collection yet," indistinguishable from a genuinely
+  // empty collection. `itemsError`/`refetchItems` let the page show an
+  // actual error state with a retry action instead.
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['knowledge-collection', collectionId] })
@@ -49,6 +54,8 @@ export function useKnowledgeCollection(collectionId: string) {
     isError: collectionQuery.isError,
     items: itemsQuery.data ?? [],
     itemsLoading: itemsQuery.isLoading,
+    itemsError: itemsQuery.isError,
+    refetchItems: itemsQuery.refetch,
     update,
     remove,
     removeItem,

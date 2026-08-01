@@ -66,6 +66,7 @@ export function InteractiveConceptGraph({ nodes, edges }: { nodes: KnowledgeNode
 
       <GraphCanvas
         data={graphData}
+        label="AI Knowledge Graph"
         interactive={{
           focusedNodeId: viewState.focusedNodeId,
           highlightedNodeIds,

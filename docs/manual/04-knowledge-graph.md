@@ -1,8 +1,10 @@
-# Chapter 4: Knowledge Graph & Intelligence
+# Chapter 4: AI Knowledge Graph & Intelligence
 
 ## Purpose
 
 This is where NOVA stops being a place you store things and starts being a system that knows things. Every important concept and entity across your documents, notes, and conversations becomes a node in a graph — one canonical node per concept, no matter how many times or where it's mentioned — with relationships between them and a full evidence trail back to every source.
+
+**This chapter is about the AI Knowledge Graph specifically** — concepts and entities the AI has extracted. NOVA has a second, separate graph — **Content Connections** — showing how your documents, notes, highlights, and tags literally link to each other (e.g., a note created from a highlight, a highlight belonging to a document). The two are deliberately not merged: one is AI-discovered meaning, the other is direct structural connection. See the dedicated section near the end of this chapter for Content Connections; everything else below is the AI Knowledge Graph.
 
 ## Feature Overview
 
@@ -63,6 +65,15 @@ This is where NOVA stops being a place you store things and starts being a syste
 - Expecting Generate Briefing to research beyond what's already in the graph — it's grounded only in the concept's existing evidence and related concepts, the same discipline as every other capability in NOVA; it won't tell you something the platform doesn't already know.
 - Confusing Knowledge Collections with the Library's document Collections (folders) — they're two different features with two different pages; a document can be in a Library folder and a Knowledge Collection at the same time, independently.
 - Deleting a Knowledge Collection expecting its contents to be deleted too — deleting a collection only removes the collection and its membership links; every document, note, conversation, image, and concept inside it is untouched.
+
+## Content Connections (a separate, simpler graph)
+
+Reached via **Knowledge → Content Connections** (a button on the Knowledge dashboard, not the sidebar), this is a second, independent graph — not a view or a subset of the AI Knowledge Graph above.
+
+- **What it shows**: direct structural links between the things you've saved — which document a note or highlight came from, which highlights belong to which document, which tags apply to which documents. No AI is involved: these are the same relationships you created by highlighting, tagging, or saving, drawn as a graph instead of listed.
+- **How it differs from the AI Knowledge Graph**: the AI Knowledge Graph's nodes are concepts and entities an LLM decided matter; Content Connections' nodes are the literal documents/notes/highlights/tags you already have, and its edges are direct relationships (e.g. "this note came from this highlight"), not AI-inferred ones.
+- **Why both exist**: they answer different questions. "What does NOVA know about Revenue, and where did that understanding come from?" is the AI Knowledge Graph. "What did I save from this specific document, and what's tagged the way?" is Content Connections.
+- Empty until you have documents with notes/highlights/tags attached — an upload with nothing linked to it yet won't show anything here.
 
 ## Related Features
 

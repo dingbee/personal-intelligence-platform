@@ -8,6 +8,7 @@ import { useNotes } from '@/modules/notes/hooks/useNotes'
 import { useConversations } from '@/modules/ai/chat/hooks/useConversations'
 import { computeKnowledgeConfidence } from '@/modules/knowledge-intelligence/confidence/knowledgeConfidence'
 import type { SourceReferenceItem } from '@/shared/components/knowledge/SourceReference'
+import { resolveSourceItems } from '@/modules/knowledge-intelligence/api/sourceResolution'
 
 export interface KnowledgeConnection {
   nodeId: string
@@ -83,7 +84,10 @@ export function useKnowledgeNodeDetails(documentId?: string) {
     for (const note of notes) titleByTypeAndId.set(`note:${note.id}`, note.title)
     for (const conversation of conversations) titleByTypeAndId.set(`conversation:${conversation.id}`, conversation.title)
 
-    const sourcesByNodeId = new Map<string, SourceReferenceItem[]>()
+    // Confidence bookkeeping counts every source regardless of whether its
+    // title can still be resolved — unchanged from before this sprint's
+    // resolveSourceItems extraction, kept as its own pass since it isn't
+    // the duplicated "resolve a label" logic that helper unifies.
     const sourcesByNodeIdForConfidence = new Map<string, { sourceCounts: Record<string, number>; mostRecentEvidenceAt: string | null }>()
     for (const source of nodeSources) {
       const confidenceEntry = sourcesByNodeIdForConfidence.get(source.nodeId) ?? { sourceCounts: {}, mostRecentEvidenceAt: null }
@@ -92,12 +96,17 @@ export function useKnowledgeNodeDetails(documentId?: string) {
         confidenceEntry.mostRecentEvidenceAt = source.createdAt
       }
       sourcesByNodeIdForConfidence.set(source.nodeId, confidenceEntry)
+    }
 
-      const label = titleByTypeAndId.get(`${source.sourceType}:${source.sourceId}`)
-      if (!label) continue
-      const list = sourcesByNodeId.get(source.nodeId) ?? []
-      list.push({ type: source.sourceType, id: source.sourceId, label })
-      sourcesByNodeId.set(source.nodeId, list)
+    const resolvedSources = resolveSourceItems(
+      nodeSources.map((source) => ({ type: source.sourceType, id: source.sourceId, nodeId: source.nodeId })),
+      (type, id) => titleByTypeAndId.get(`${type}:${id}`),
+    )
+    const sourcesByNodeId = new Map<string, SourceReferenceItem[]>()
+    for (const resolved of resolvedSources) {
+      const list = sourcesByNodeId.get(resolved.nodeId) ?? []
+      list.push({ type: resolved.type, id: resolved.id, label: resolved.label })
+      sourcesByNodeId.set(resolved.nodeId, list)
     }
 
     return nodes.map((node) => {
