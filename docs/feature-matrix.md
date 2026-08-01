@@ -72,9 +72,11 @@ A living engineering inventory — not user documentation. First drafted as part
 | Knowledge Node → note/conversation evidence linking (Phase 2B) | ✅ | main | ✅ | ✅ | ❌ |
 | Concept Card in Universal Search (Phase 2B) | ✅ | main | ✅ | ✅ | ❌ |
 | Node drill-down page (Overview/Related/Timeline, Phase 2B) | ✅ | main | ✅ | ✅ | ❌ |
-| Knowledge Confidence scoring | 🔲 | — | — | — | — |
+| Knowledge Confidence scoring (source count/diversity/freshness/relationships) | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ✅ |
 | Node lifecycle (merge/rename/archive) | 🔲 | — | — | — | — |
 | Explorer virtualization/pagination | 🔲 | — | — | — | — |
+| Contradiction detection | 🔲 | — | — | — | — |
+| Reading-coverage confidence signal | 🔲 | — | — | — | — |
 
 ## Universal Search
 

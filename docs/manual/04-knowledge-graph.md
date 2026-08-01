@@ -14,6 +14,7 @@ This is where NOVA stops being a place you store things and starts being a syste
 - **Graph clustering** — real connected-component analysis over the AI-discovered relationships, surfaced as named clusters in the Explorer, not just a type-based grouping
 - **Deterministic concept matcher** — as of Phase 2B, every new note and every chat message is scanned (instantly, with no AI call) for mentions of concepts the graph already knows about, and that mention becomes new evidence for that concept
 - **Node drill-down page** — click any concept to see its Overview (evidence counts by source type), Related Concepts (with confidence scores), every referencing document/note/conversation, and a chronological Timeline of when each mention happened
+- **Knowledge Confidence** — every concept now carries a computed confidence score (shown as a percentage badge on both its Concept Card and its drill-down page's Overview), answering "how sure are we?" rather than just listing sources
 
 ## Navigation
 
@@ -26,6 +27,7 @@ This is where NOVA stops being a place you store things and starts being a syste
 - You've uploaded a dozen documents mentioning "Mtoni River Lodge" over months. Because of canonical dedup, there's one "Mtoni River Lodge" node, not twelve — its drill-down page shows every document, note, and conversation that ever mentioned it, in one place.
 - After extracting concepts from several documents, you click "Reconcile knowledge graph" — NOVA finds that "Revenue," "Google Ads," and "Marketing Campaign" are related, and those relationships now show up on each concept's card.
 - You write a note mentioning "Revenue" by name — without you doing anything AI-related, that note is now linked as evidence on the existing "Revenue" node, because the deterministic matcher recognized the mention.
+- A concept with a single, months-old document mention shows a low confidence percentage; a concept corroborated by fresh documents, notes, and conversations alike shows a high one — at a glance, before you dig into the evidence yourself.
 
 ## Typical Workflows
 
@@ -38,6 +40,7 @@ This is where NOVA stops being a place you store things and starts being a syste
 - Run "Analyze Document" on documents that actually matter, not everything indiscriminately — extraction is a manual, deliberate step for a reason; not every upload needs to become graph nodes.
 - Reconcile the graph periodically rather than after every single extraction — cross-document relationship detection is more useful with a reasonable number of nodes to consider at once.
 - Use the drill-down page's Timeline to sanity-check a concept's evidence — if something looks wrong (evidence that shouldn't be there), it usually traces back to a coincidental text match worth being aware of.
+- Treat a low confidence score as a prompt to add corroborating evidence (a note, a related document), not as a verdict that the concept is wrong — confidence measures how well-attested something is in your own knowledge base, not whether it's true.
 
 ## Common Mistakes
 
@@ -56,15 +59,17 @@ This is where NOVA stops being a place you store things and starts being a syste
 
 - Concept/entity discovery and cross-document relationship detection are both LLM-based — this is genuine model reasoning about what matters and how things relate
 - Canonical dedup and evidence linking are **not** AI — dedup is exact-normalized-string matching, and the deterministic matcher is pure text matching against already-known titles. This split is deliberate: discovery needs judgment (LLM), linking doesn't (fast, free, predictable)
+- Knowledge Confidence is also **not** AI — it's a deterministic weighted formula (source count, source-type diversity, freshness, relationship count), computed from data the graph already has, with no model call involved
 
 ## Limitations
 
 - No node lifecycle management yet — you can't merge two nodes that should be one, split one that shouldn't be one, rename a node directly, or archive one
 - The Knowledge Explorer's node list and graph rendering are not paginated or virtualized — very large graphs may render slowly
-- No Knowledge Confidence score yet — a concept with one weak mention and a concept with forty corroborating sources currently look structurally the same on the card
+- Knowledge Confidence doesn't yet detect contradictions between sources, or factor in how much of a source document you've actually read — it measures corroboration and freshness, not correctness or your own engagement with the material
+- Knowledge Confidence is scoped to concepts/entities only — individual documents, notes, and spreadsheets don't carry their own confidence score, since "corroboration" is only meaningful for something that aggregates evidence across sources
 
 ## Future Roadmap
 
-- Knowledge Confidence scoring — computed from source count, freshness, corroboration, and contradiction detection, letting NOVA eventually answer "how certain are we?" rather than just "here are the documents"
+- Contradiction detection between sources, and a reading-coverage signal, both folded into Knowledge Confidence once that infrastructure exists
 - Node lifecycle operations (merge/rename/archive)
 - Explorer virtualization/pagination for graphs that outgrow the current unbounded fetch
