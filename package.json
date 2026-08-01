@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify:bundle": "node scripts/verify-bundle-splitting.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8",
