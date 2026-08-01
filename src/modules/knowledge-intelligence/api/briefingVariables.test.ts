@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildBriefingVariables } from '@/modules/knowledge-intelligence/api/briefingVariables'
 import type { KnowledgeNodeEvidence } from '@/modules/knowledge-intelligence/api/knowledgeNodeEvidence'
-import type { KnowledgeNode } from '@/shared/types/database'
+import type { KnowledgeCollection, KnowledgeNode } from '@/shared/types/database'
 
 function makeNode(overrides: Partial<KnowledgeNode> = {}): KnowledgeNode {
   return {
@@ -36,15 +36,21 @@ describe('buildBriefingVariables', () => {
       confidence: 0.6,
     }
 
-    const result = buildBriefingVariables(evidence)
+    const collections: KnowledgeCollection[] = [
+      { id: 'coll-1', user_id: 'user-1', workspace_id: null, name: 'Q1 Planning', description: null, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
+    ]
+
+    const result = buildBriefingVariables(evidence, collections)
 
     expect(result.title).toBe('Revenue')
     expect(result.description).toBe('Money coming into the business.')
     expect(result.relatedConcepts).toBe('- Marketing Campaign (relates to)')
     expect(result.evidenceSources).toBe('- [document] Q1 Report\n- [note] Revenue thoughts')
+    expect(result.confidence).toBe('60%')
+    expect(result.collections).toBe('- Q1 Planning')
   })
 
-  it('falls back to placeholder text when there is no description, related concepts, or evidence', () => {
+  it('falls back to placeholder text when there is no description, related concepts, evidence, or collections', () => {
     const evidence: KnowledgeNodeEvidence = {
       node: makeNode({ description: null }),
       countsBySourceType: {},
@@ -58,5 +64,7 @@ describe('buildBriefingVariables', () => {
     expect(result.description).toBe('No description recorded.')
     expect(result.relatedConcepts).toBe('None recorded.')
     expect(result.evidenceSources).toBe('None recorded.')
+    expect(result.confidence).toBe('0%')
+    expect(result.collections).toBe('None.')
   })
 })

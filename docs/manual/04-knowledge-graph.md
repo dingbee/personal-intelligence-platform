@@ -18,6 +18,7 @@ This is where NOVA stops being a place you store things and starts being a syste
 - **Generate Briefing** — a Knowledge Actions v1 capability on a concept's drill-down page: an LLM synthesizes the concept's own evidence and relationships into a short briefing, which is saved as a real Note and linked back to the concept as new evidence — knowledge acting on itself, not just being viewed
 - **Export Knowledge Package** — a one-click Markdown export of a concept's full picture (description, confidence, related concepts, evidence by source type) as a downloadable file, entirely client-side with no AI call
 - **Knowledge Collections** — curated groupings that can hold any mix of documents, notes, conversations, images, and concepts in one named collection, unlike the Library's document-only, single-parent Collections (folders); "Add to collection" is available from every item's own page
+- **"Create an executive briefing on X" (Chat command)** — typed directly into NOVA chat, this triggers the same Generate Briefing pipeline as the concept page's button (see Chapter 3), without needing to navigate to the concept first
 
 ## Navigation
 
@@ -92,5 +93,5 @@ This is where NOVA stops being a place you store things and starts being a syste
 - Node lifecycle operations (merge/rename/archive)
 - Explorer virtualization/pagination for graphs that outgrow the current unbounded fetch
 - Convert conversation → project, once a Project entity exists elsewhere in the platform to convert into
-- Natural language commands over the graph and collections alike (e.g. "summarize everything about Mtoni")
+- More natural-language commands beyond "create an executive briefing on X" (e.g. "summarize everything about Mtoni," "show every revenue spreadsheet")
 - Collection-level actions (export a whole collection, generate a briefing spanning a collection) — v1 only supports these per-item

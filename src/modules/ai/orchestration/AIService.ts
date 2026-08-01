@@ -20,6 +20,8 @@ import { detectSignals } from '@/modules/intelligence/signals/signalDetector'
 import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
 import { resolveReferences } from '@/modules/intelligence/references/referenceResolver'
 import type { Reference } from '@/modules/intelligence/references/referenceTypes'
+import { parseExecutiveBriefingCommand } from '@/modules/knowledge-intelligence/api/executiveBriefingCommand'
+import { runExecutiveBriefingCommand } from '@/modules/knowledge-intelligence/api/runExecutiveBriefingCommand'
 
 export interface SendMessageParams {
   conversationId: string
@@ -64,6 +66,40 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
   const userMessage = await insertMessage({ conversationId, userId, role: 'user', content: text })
   void indexMessage(userMessage, workspaceId)
   void linkKnownConceptsToSource({ userId, sourceType: 'conversation', sourceId: conversationId, text })
+
+  // UX-13 roadmap Phase 5 — Natural Language Knowledge Commands v1: a
+  // recognized command short-circuits the normal retrieval/LLM-chat path
+  // entirely (deterministic, no hallucination risk) rather than being
+  // just another piece of prompt context. Search/Confidence/Knowledge
+  // Graph/Collections/Save Note all happen inside
+  // runExecutiveBriefingCommand -> generateBriefing, reusing the exact
+  // same pipeline the concept drill-down page's own button uses.
+  const briefingCommand = parseExecutiveBriefingCommand(text)
+  if (briefingCommand) {
+    const commandResult = await runExecutiveBriefingCommand({
+      topic: briefingCommand.topic,
+      userId,
+      workspaceId,
+      chain: providerChain,
+    })
+    const assistantMessage = await insertMessage({
+      conversationId,
+      userId,
+      role: 'assistant',
+      content: commandResult.responseText,
+    })
+    void indexMessage(assistantMessage, workspaceId)
+    await touchConversation(conversationId)
+
+    return {
+      message: assistantMessage,
+      suggestions: [],
+      contextTrace: { retrievedChunks: 0, graphNodes: commandResult.found ? 1 : 0, memoriesUsed: 0 },
+      signals: [],
+      references: commandResult.found ? [{ type: 'note', id: commandResult.note.id, title: commandResult.note.title }] : [],
+      model: null,
+    }
+  }
 
   const matches = await retrieveContext({ query: text, userId, workspaceId, documentId })
   // retrieveGraphContext/retrieveMemoryContext never throw (see their own

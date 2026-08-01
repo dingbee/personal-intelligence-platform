@@ -104,9 +104,11 @@ registerPlatformModule({
         'You are writing a short briefing on "{{title}}" for someone reviewing their own knowledge base. ' +
         'Base the briefing only on the information given below — do not invent facts, sources, or ' +
         'relationships that are not listed. Write 3 to 6 sentences covering what is known, the most ' +
-        'important related concepts, and any notable gap in the evidence. Respond with plain prose, no ' +
-        'headings, no markdown, no preamble.\n\nDescription: {{description}}\n\nRelated concepts:\n' +
-        '{{relatedConcepts}}\n\nEvidence sources:\n{{evidenceSources}}',
+        'important related concepts, and any notable gap in the evidence. If the knowledge confidence is ' +
+        'low, say so plainly rather than overstating certainty. Respond with plain prose, no headings, no ' +
+        'markdown, no preamble.\n\nKnowledge confidence: {{confidence}}\n\nDescription: {{description}}\n\n' +
+        'Related concepts:\n{{relatedConcepts}}\n\nEvidence sources:\n{{evidenceSources}}\n\n' +
+        'Part of these collections:\n{{collections}}',
     },
   ],
 })

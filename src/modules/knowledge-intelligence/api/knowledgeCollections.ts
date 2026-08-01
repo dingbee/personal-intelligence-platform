@@ -149,3 +149,27 @@ async function fetchTitles(table: string, ids: string[] | undefined): Promise<{ 
   if (error) throw error
   return data
 }
+
+/**
+ * The reverse of listCollectionItems — given an item, which collections
+ * (if any) contain it. Used by the Executive Briefing natural-language
+ * command (UX-13 roadmap Phase 5) to fold "Collections" into a briefing's
+ * context alongside Search/Confidence/Knowledge Graph/Notes.
+ */
+export async function listCollectionsContainingItem(itemType: CollectionItemType, itemId: string): Promise<KnowledgeCollection[]> {
+  const { data: links, error } = await supabase
+    .from('knowledge_links')
+    .select('*')
+    .eq('source_type', MEMBERSHIP_SOURCE_TYPE)
+    .eq('target_type', itemType)
+    .eq('target_id', itemId)
+  if (error) throw error
+  if (links.length === 0) return []
+
+  const { data: collections, error: collectionsError } = await supabase
+    .from('knowledge_collections')
+    .select('*')
+    .in('id', links.map((link) => link.source_id))
+  if (collectionsError) throw collectionsError
+  return collections
+}
