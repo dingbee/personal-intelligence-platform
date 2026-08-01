@@ -47,7 +47,7 @@ export function KnowledgeNodeDetailPage() {
     )
   }
 
-  const { node, countsBySourceType, evidence: items, relatedNodes } = evidence
+  const { node, countsBySourceType, evidence: items, relatedNodes, confidence } = evidence
   const countEntries = Object.entries(countsBySourceType).filter(([, count]) => count > 0)
 
   const evidenceByType = new Map<string, EvidenceItem[]>()
@@ -70,6 +70,9 @@ export function KnowledgeNodeDetailPage() {
         <h1 className="mt-1.5 text-2xl font-semibold text-[var(--color-ink)]">{node.title}</h1>
         {node.description && <p className="mt-1 text-sm text-[var(--color-ink-muted)]">{node.description}</p>}
       </div>
+
+      {/* UX-13 roadmap Phase 2 — Knowledge Confidence: "how sure are we", not just "here are the documents". Deterministic (source count + diversity + freshness + relationship density), see computeKnowledgeConfidence. */}
+      <StatCard label="Knowledge Confidence" value={`${Math.round(confidence * 100)}%`} />
 
       {countEntries.length > 0 && (
         <div className="flex flex-col gap-3">

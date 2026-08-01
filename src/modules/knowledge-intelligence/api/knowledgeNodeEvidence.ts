@@ -1,6 +1,7 @@
 import { supabase } from '@/shared/lib/supabase'
 import type { KnowledgeNode } from '@/shared/types/database'
 import type { SourceReferenceItem } from '@/shared/components/knowledge/SourceReference'
+import { computeKnowledgeConfidence } from '@/modules/knowledge-intelligence/confidence/knowledgeConfidence'
 
 export interface EvidenceItem extends SourceReferenceItem {
   createdAt: string
@@ -19,6 +20,8 @@ export interface KnowledgeNodeEvidence {
   countsBySourceType: Record<string, number>
   evidence: EvidenceItem[]
   relatedNodes: RelatedConceptRef[]
+  /** UX-13 roadmap Phase 2 — 0-1, see computeKnowledgeConfidence. Deterministic, computed from the same evidence/relatedNodes already fetched here — no extra query. */
+  confidence: number
 }
 
 /**
@@ -107,5 +110,11 @@ export async function getKnowledgeNodeEvidence(nodeId: string): Promise<Knowledg
     ].filter((ref): ref is RelatedConceptRef => Boolean(ref.title))
   }
 
-  return { node: nodeResult.data, countsBySourceType, evidence, relatedNodes }
+  const confidence = computeKnowledgeConfidence({
+    sourceCounts: countsBySourceType,
+    mostRecentEvidenceAt: evidence[0]?.createdAt ?? null,
+    relatedConceptCount: relatedNodes.length,
+  })
+
+  return { node: nodeResult.data, countsBySourceType, evidence, relatedNodes, confidence }
 }

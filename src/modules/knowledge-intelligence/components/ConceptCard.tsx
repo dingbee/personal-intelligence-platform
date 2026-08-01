@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { KnowledgeNodeEvidence } from '@/modules/knowledge-intelligence/api/knowledgeNodeEvidence'
+import { ConfidenceBadge } from '@/shared/components/knowledge/ConfidenceBadge'
 
 const SOURCE_TYPE_LABEL: Record<string, string> = {
   document: 'document',
@@ -14,7 +15,7 @@ const SOURCE_TYPE_LABEL: Record<string, string> = {
  * SearchResultCard grid documents/notes/conversations render into.
  */
 export function ConceptCard({ evidence }: { evidence: KnowledgeNodeEvidence }) {
-  const { node, countsBySourceType, relatedNodes } = evidence
+  const { node, countsBySourceType, relatedNodes, confidence } = evidence
   const countEntries = Object.entries(countsBySourceType).filter(([, count]) => count > 0)
 
   return (
@@ -22,9 +23,12 @@ export function ConceptCard({ evidence }: { evidence: KnowledgeNodeEvidence }) {
       to={`/knowledge/nodes/${node.id}`}
       className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:border-[var(--color-accent)]"
     >
-      <span className="inline-block rounded bg-[var(--color-canvas)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-ink-muted)]">
-        {node.node_type === 'concept' ? 'Concept' : 'Entity'}
-      </span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-block rounded bg-[var(--color-canvas)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-ink-muted)]">
+          {node.node_type === 'concept' ? 'Concept' : 'Entity'}
+        </span>
+        <ConfidenceBadge confidence={confidence} />
+      </div>
       <h3 className="mt-1.5 font-medium text-[var(--color-ink)]">{node.title}</h3>
       {node.description && <p className="mt-1 line-clamp-2 text-sm text-[var(--color-ink-muted)]">{node.description}</p>}
 
