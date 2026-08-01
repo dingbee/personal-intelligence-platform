@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useSearch } from '@/modules/search/hooks/useSearch'
 import { useConceptSearch } from '@/modules/search/hooks/useConceptSearch'
+import { hasAnyIndexableContent } from '@/modules/search/api/hasIndexableContent'
 import { SearchResultCard } from '@/modules/search/components/SearchResultCard'
 import { ConceptCard } from '@/modules/knowledge-intelligence/components/ConceptCard'
 import { Input } from '@/shared/components/ui/Input'
@@ -19,6 +20,26 @@ export function SearchPage() {
   const [queryText, setQueryText] = useState(() => searchParams.get('q') ?? '')
   const [hasSearched, setHasSearched] = useState(false)
   const autoRunRef = useRef(false)
+
+  // UX-13.11 Phase 3 — zero-result recovery: null while unknown/not
+  // applicable, otherwise whether the account has any indexable content at
+  // all. Only checked once a search has genuinely come back empty, so it
+  // never runs on a normal search.
+  const [hasAnyContent, setHasAnyContent] = useState<boolean | null>(null)
+  const isEmpty = hasSearched && !loading && !conceptsLoading && results.length === 0 && concepts.length === 0
+  useEffect(() => {
+    if (!isEmpty) {
+      setHasAnyContent(null)
+      return
+    }
+    let cancelled = false
+    void hasAnyIndexableContent().then((result) => {
+      if (!cancelled) setHasAnyContent(result)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [isEmpty])
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -86,18 +107,25 @@ export function SearchPage() {
           title="Search your knowledge base"
           description="Ask something like “what have I learned about customer experience?” — results come from your documents and chat history, ranked by meaning."
         />
-      ) : results.length === 0 ? (
-        <EmptyState
-          title="No results"
-          description="Nothing matched closely enough. Try rephrasing, or check that your documents have finished processing."
-        />
-      ) : (
+      ) : isEmpty ? (
+        hasAnyContent === false ? (
+          <EmptyState
+            title="Your library is empty"
+            description="Upload a document, write a note, or start a conversation — Search will find it once something's there."
+          />
+        ) : (
+          <EmptyState
+            title="No results"
+            description="Nothing matched closely enough. Try rephrasing, or check that your documents have finished processing."
+          />
+        )
+      ) : results.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {results.map((result) => (
             <SearchResultCard key={`${result.sourceType}-${result.sourceId}-${result.snippet.slice(0, 20)}`} result={result} />
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

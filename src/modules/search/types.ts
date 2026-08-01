@@ -19,6 +19,8 @@ export interface SearchResult {
 
 export interface SearchQuery {
   queryEmbedding: number[]
+  /** UX-13.11 Phase 3 — the raw query text, alongside its embedding, so a provider can run a lexical (ILIKE) fallback query next to its semantic one. */
+  queryText: string
   userId: string
   workspaceId: string | null
   matchCount: number

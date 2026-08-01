@@ -1,5 +1,6 @@
 import { OpenAIEmbeddingProvider } from '@/modules/ai/embeddings/OpenAIEmbeddingProvider'
 import { searchProviderRegistry } from '@/modules/search/registry'
+import { applyRecencyBonus } from '@/modules/search/ranking/crossProviderRelevance'
 import type { SearchResult } from '@/modules/search/types'
 
 const embeddingProvider = new OpenAIEmbeddingProvider()
@@ -31,6 +32,7 @@ export async function runUniversalSearch(params: {
       provider
         .search({
           queryEmbedding: queryEmbedding!,
+          queryText: trimmed,
           userId: params.userId,
           workspaceId: params.workspaceId,
           matchCount: params.matchCountPerSource ?? 10,
@@ -43,5 +45,12 @@ export async function runUniversalSearch(params: {
     ),
   )
 
-  return bySource.flat().sort((a, b) => b.similarity - a.similarity)
+  // Cross-provider ranking refinement (UX-13.11 Phase 3): recency is applied
+  // once, uniformly, here — after each provider's own source-specific
+  // scoring (e.g. conversations' support bonus) — so a fresh document and a
+  // fresh conversation get the same treatment instead of only conversations
+  // ever having had a recency signal.
+  const results = bySource.flat().map((result) => ({ ...result, similarity: applyRecencyBonus(result.similarity, result.updatedAt) }))
+
+  return results.sort((a, b) => b.similarity - a.similarity)
 }

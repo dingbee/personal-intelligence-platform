@@ -37,21 +37,19 @@ describe('computeRecencyBonus', () => {
 })
 
 describe('computeConversationScore', () => {
-  const now = new Date('2026-07-31T12:00:00Z')
-
-  it('equals raw similarity when there is one stale match', () => {
-    const score = computeConversationScore({ topSimilarity: 0.7, matchCount: 1, updatedAt: '2026-01-01T00:00:00Z', now })
+  it('equals raw similarity when there is only one match', () => {
+    const score = computeConversationScore({ topSimilarity: 0.7, matchCount: 1 })
     expect(score).toBeCloseTo(0.7)
   })
 
   it('rewards more supporting matches over fewer, at the same similarity', () => {
-    const fewer = computeConversationScore({ topSimilarity: 0.8, matchCount: 1, updatedAt: '2026-01-01T00:00:00Z', now })
-    const more = computeConversationScore({ topSimilarity: 0.8, matchCount: 5, updatedAt: '2026-01-01T00:00:00Z', now })
+    const fewer = computeConversationScore({ topSimilarity: 0.8, matchCount: 1 })
+    const more = computeConversationScore({ topSimilarity: 0.8, matchCount: 5 })
     expect(more).toBeGreaterThan(fewer)
   })
 
   it('never exceeds 1', () => {
-    const score = computeConversationScore({ topSimilarity: 0.99, matchCount: 50, updatedAt: '2026-07-31T11:00:00Z', now })
+    const score = computeConversationScore({ topSimilarity: 0.99, matchCount: 50 })
     expect(score).toBeLessThanOrEqual(1)
   })
 })
