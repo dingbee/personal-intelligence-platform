@@ -13,6 +13,8 @@ import { KnowledgePage } from '@/modules/knowledge/pages/KnowledgePage'
 import { KnowledgeGraphPage } from '@/modules/knowledge-graph/pages/KnowledgeGraphPage'
 import { KnowledgeExplorerPage } from '@/modules/knowledge-intelligence/pages/KnowledgeExplorerPage'
 import { KnowledgeNodeDetailPage } from '@/modules/knowledge-intelligence/pages/KnowledgeNodeDetailPage'
+import { KnowledgeCollectionsPage } from '@/modules/knowledge-intelligence/pages/KnowledgeCollectionsPage'
+import { KnowledgeCollectionDetailPage } from '@/modules/knowledge-intelligence/pages/KnowledgeCollectionDetailPage'
 import { SearchPage } from '@/modules/search/pages/SearchPage'
 import { ChatPage } from '@/modules/ai/chat/pages/ChatPage'
 import { SettingsPage } from '@/modules/settings/pages/SettingsPage'
@@ -68,6 +70,8 @@ export const router = createBrowserRouter([
       { path: 'knowledge/graph', element: <KnowledgeGraphPage /> },
       { path: 'knowledge/explorer', element: <KnowledgeExplorerPage /> },
       { path: 'knowledge/nodes/:nodeId', element: <KnowledgeNodeDetailPage /> },
+      { path: 'knowledge/collections', element: <KnowledgeCollectionsPage /> },
+      { path: 'knowledge/collections/:collectionId', element: <KnowledgeCollectionDetailPage /> },
       { path: 'search', element: <SearchPage /> },
       { path: 'chat', element: <ChatPage /> },
       { path: 'settings', element: <SettingsPage /> },

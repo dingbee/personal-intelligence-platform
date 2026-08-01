@@ -10,6 +10,7 @@ import { useExtractionMetadata } from '@/modules/processing/hooks/useExtractionM
 import { useDocumentChunkCount } from '@/modules/processing/hooks/useDocumentChunkCount'
 import { ProcessingStatusBadge } from '@/modules/processing/components/ProcessingStatusBadge'
 import { KnowledgeExtractionPanel } from '@/modules/knowledge-intelligence/components/KnowledgeExtractionPanel'
+import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import { DocumentTagEditor } from '@/modules/library/components/DocumentTagEditor'
 import { CollectionMoveSelect } from '@/modules/library/components/CollectionMoveSelect'
 import { SpreadsheetSummaryCard } from '@/modules/library/components/SpreadsheetSummaryCard'
@@ -194,6 +195,7 @@ export function DocumentDetailPage() {
               <Button variant="secondary">Chat about this document</Button>
             </Link>
           )}
+          <AddToCollectionButton itemType="document" itemId={document.id} />
           <Button
             variant="ghost"
             className="text-red-600 hover:text-red-700"

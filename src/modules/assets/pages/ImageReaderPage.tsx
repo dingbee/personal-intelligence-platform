@@ -6,6 +6,7 @@ import { useAssets } from '@/modules/assets/hooks/useAssets'
 import { useSignedAssetUrl } from '@/modules/assets/hooks/useSignedAssetUrl'
 import { createNote } from '@/modules/notes/api/notes'
 import { linkNoteToAsset } from '@/modules/notes/api/knowledgeLinks'
+import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { formatFileSize } from '@/modules/library/utils/fileTypes'
@@ -198,6 +199,7 @@ export function ImageReaderPage() {
                   <Button variant="secondary" loading={saveAsNote.isPending} onClick={() => saveAsNote.mutate()}>
                     Save as Notes
                   </Button>
+                  <AddToCollectionButton itemType="asset" itemId={asset.id} />
                   <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setConfirmingDelete(true)}>
                     Delete
                   </Button>

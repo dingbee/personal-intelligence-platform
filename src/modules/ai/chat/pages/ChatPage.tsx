@@ -13,6 +13,7 @@ import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
 import { SaveConversationDialog } from '@/modules/notes/components/SaveConversationDialog'
+import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
 import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
@@ -360,6 +361,7 @@ export function ChatPage() {
                 <Button variant="secondary" onClick={() => setSavingConversation(true)} disabled={!conversation || messages.length === 0}>
                   Save to Notes
                 </Button>
+                {conversation && <AddToCollectionButton itemType="conversation" itemId={conversation.id} />}
                 <ProviderSelect
                   value={conversation?.provider_id ?? effectiveNewProviderId}
                   onChange={handleProviderChange}

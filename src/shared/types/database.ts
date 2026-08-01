@@ -262,6 +262,23 @@ export type KnowledgeLink = {
   metadata: Record<string, unknown> | null
 }
 
+/**
+ * UX-13 roadmap Phase 4 — Knowledge Collections: identity/metadata only.
+ * Membership is not a column here — it's rows in the existing generic
+ * `knowledge_links` table (source_type='knowledge_collection',
+ * source_id=this id), the same polymorphic-link pattern
+ * linkNoteToHighlight/linkNoteToConversation/linkNoteToAsset already use.
+ */
+export type KnowledgeCollection = {
+  id: string
+  user_id: string
+  workspace_id: string | null
+  name: string
+  description: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type KnowledgeNodeType = 'concept' | 'entity'
 
 /**
@@ -570,6 +587,12 @@ export type Database = {
           source_id: string
         }
         Update: Partial<KnowledgeNodeSource>
+        Relationships: []
+      }
+      knowledge_collections: {
+        Row: KnowledgeCollection
+        Insert: Partial<KnowledgeCollection> & { user_id: string; name: string }
+        Update: Partial<KnowledgeCollection>
         Relationships: []
       }
       ai_memory: {

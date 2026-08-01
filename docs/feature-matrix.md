@@ -76,6 +76,7 @@ A living engineering inventory — not user documentation. First drafted as part
 | Knowledge Actions: Merge Notes | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ✅ |
 | Knowledge Actions: Generate Briefing (concept → grounded Note, linked back as evidence) | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ✅ |
 | Knowledge Actions: Export Knowledge Package (concept → Markdown download) | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ✅ |
+| Knowledge Collections (cross-type curated groupings, spans documents/notes/conversations/images/concepts) | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ❌ |
 | Node lifecycle (merge/rename/archive) | 🔲 | — | — | — | — |
 | Note → Task / Conversation → Project actions | 🔲 | — | — | — | — |
 | Explorer virtualization/pagination | 🔲 | — | — | — | — |
@@ -129,3 +130,5 @@ A living engineering inventory — not user documentation. First drafted as part
 - Screenshots are not yet part of the Manual — chapters document behavior first; visual capture is a follow-up pass.
 - 🔲 Backlog rows (node lifecycle, note→task/conversation→project, Explorer virtualization, contradiction detection, reading-coverage) remain the canonical UX-13 remainder, per the roadmap sequencing already agreed: Universal Search maturity → Knowledge Confidence → Knowledge Actions → Knowledge Collections → Natural Language Commands.
 - Knowledge Actions v1 deliberately shipped three actions that reuse existing infrastructure end-to-end (Notes CRUD, the capability/prompt-template pattern, knowledge_node_sources provenance) and deferred note→task/conversation→project, since those need new Task/Project schema entities — a real design decision, not something to invent unilaterally mid-phase.
+- Knowledge Collections v1 added exactly one new table (`knowledge_collections`, identity/metadata only) — membership reuses the existing generic `knowledge_links` polymorphic-edge table (`source_type='knowledge_collection'`) the same way linkNoteToHighlight/linkNoteToConversation/linkNoteToAsset already do, so no new join table or per-type schema was needed to span documents/notes/conversations/images/concepts in one collection.
+- Only Natural Language Commands remains from the originally agreed 5-phase UX-13 remainder sequence.

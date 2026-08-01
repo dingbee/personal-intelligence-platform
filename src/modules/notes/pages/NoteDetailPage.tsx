@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useNote } from '@/modules/notes/hooks/useNote'
 import { useNotes } from '@/modules/notes/hooks/useNotes'
 import { NoteTagEditor } from '@/modules/notes/components/NoteTagEditor'
+import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import { useDocuments } from '@/modules/library/hooks/useDocuments'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
@@ -125,6 +126,7 @@ export function NoteDetailPage() {
             >
               Summarize
             </Button>
+            <AddToCollectionButton itemType="note" itemId={note.id} />
           </div>
           <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setConfirmingDelete(true)}>
             Delete

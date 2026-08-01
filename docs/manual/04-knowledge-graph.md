@@ -17,12 +17,15 @@ This is where NOVA stops being a place you store things and starts being a syste
 - **Knowledge Confidence** — every concept now carries a computed confidence score (shown as a percentage badge on both its Concept Card and its drill-down page's Overview), answering "how sure are we?" rather than just listing sources
 - **Generate Briefing** — a Knowledge Actions v1 capability on a concept's drill-down page: an LLM synthesizes the concept's own evidence and relationships into a short briefing, which is saved as a real Note and linked back to the concept as new evidence — knowledge acting on itself, not just being viewed
 - **Export Knowledge Package** — a one-click Markdown export of a concept's full picture (description, confidence, related concepts, evidence by source type) as a downloadable file, entirely client-side with no AI call
+- **Knowledge Collections** — curated groupings that can hold any mix of documents, notes, conversations, images, and concepts in one named collection, unlike the Library's document-only, single-parent Collections (folders); "Add to collection" is available from every item's own page
 
 ## Navigation
 
 - **Knowledge → Explorer** (sidebar) — the main card grid and interactive graph
 - A document's **Detail page** has the "Analyze Document" control that triggers extraction for that document
 - Click any concept card (in the Explorer, or from a Universal Search Concept Card) to reach its dedicated drill-down page
+- **Knowledge → Collections →** (from the Knowledge dashboard's header) — the Collections list and, from there, each collection's own page
+- Every document, note, conversation, image, and concept's own page has an **"Add to collection"** button
 
 ## Real-World Examples
 
@@ -32,6 +35,7 @@ This is where NOVA stops being a place you store things and starts being a syste
 - A concept with a single, months-old document mention shows a low confidence percentage; a concept corroborated by fresh documents, notes, and conversations alike shows a high one — at a glance, before you dig into the evidence yourself.
 - Before a meeting about "Mtoni River Lodge," you click Generate Briefing on that concept's page — NOVA writes a few sentences summarizing what's known and how it relates to Revenue, saved as a note you can skim in seconds.
 - You want to share what NOVA knows about a concept with someone outside the platform — Export Knowledge Package gives you a clean Markdown file you can send or paste anywhere.
+- You're planning a trip: you create a "Mtoni Trip Planning" collection and add the relevant document, two notes, a conversation with NOVA, and the "Mtoni River Lodge" concept to it — one place to see everything related, even though it spans four different content types.
 
 ## Typical Workflows
 
@@ -39,6 +43,7 @@ This is where NOVA stops being a place you store things and starts being a syste
 2. **Explore by concept, not by file**: instead of remembering which document had something, open the Knowledge Explorer, search for the concept, and see every source that ever mentioned it.
 3. **Let evidence accumulate passively**: once a concept exists, just write notes and have conversations normally — the deterministic matcher keeps attaching new evidence to existing concepts without any extra action from you.
 4. **Act on a concept, not just view it**: from a concept's drill-down page, generate a briefing when you need a quick synthesis, or export the whole package when you need to take it outside NOVA.
+5. **Curate across types**: when several different documents/notes/conversations/images/concepts all relate to the same project or topic, create a Collection and add each one from its own page — then revisit the collection instead of hunting across separate sections of NOVA.
 
 ## Best Practices
 
@@ -47,6 +52,7 @@ This is where NOVA stops being a place you store things and starts being a syste
 - Use the drill-down page's Timeline to sanity-check a concept's evidence — if something looks wrong (evidence that shouldn't be there), it usually traces back to a coincidental text match worth being aware of.
 - Treat a low confidence score as a prompt to add corroborating evidence (a note, a related document), not as a verdict that the concept is wrong — confidence measures how well-attested something is in your own knowledge base, not whether it's true.
 - Generate a briefing after a concept has real evidence attached, not immediately after it's discovered — a briefing on a concept with one thin source will read as thin as the underlying evidence.
+- Use Collections for cross-type curation (a project, a trip, a topic spanning several kinds of content) and the Library's document Collections for simple document filing — reach for the one that matches what you're actually organizing.
 
 ## Common Mistakes
 
@@ -54,6 +60,8 @@ This is where NOVA stops being a place you store things and starts being a syste
 - Assuming a concept's "workspace" reflects everywhere it's used — a concept's `workspace_id` reflects only where it was *first* discovered; the concept itself is shared across all your workspaces by design, so the same "Marketing" concept in two different workspaces is one node, not two.
 - Deleting a source document and expecting its concepts to disappear too — document deletion doesn't cascade to the graph; the concept and its other evidence remain, only that one piece of evidence becomes an orphaned reference.
 - Expecting Generate Briefing to research beyond what's already in the graph — it's grounded only in the concept's existing evidence and related concepts, the same discipline as every other capability in NOVA; it won't tell you something the platform doesn't already know.
+- Confusing Knowledge Collections with the Library's document Collections (folders) — they're two different features with two different pages; a document can be in a Library folder and a Knowledge Collection at the same time, independently.
+- Deleting a Knowledge Collection expecting its contents to be deleted too — deleting a collection only removes the collection and its membership links; every document, note, conversation, image, and concept inside it is untouched.
 
 ## Related Features
 
@@ -69,6 +77,7 @@ This is where NOVA stops being a place you store things and starts being a syste
 - Knowledge Confidence is also **not** AI — it's a deterministic weighted formula (source count, source-type diversity, freshness, relationship count), computed from data the graph already has, with no model call involved
 - Generate Briefing is LLM-based, but tightly grounded: the prompt is built only from the concept's own description, related concepts, and evidence source labels — the model is instructed not to invent facts beyond what's given
 - Export Knowledge Package is **not** AI — it's deterministic Markdown formatting of the same evidence the drill-down page already displays, entirely in the browser
+- Knowledge Collections are **not** AI — creating one, adding items, and removing items are all direct, deterministic actions; NOVA doesn't suggest what belongs in a collection (yet)
 
 ## Limitations
 
@@ -83,4 +92,5 @@ This is where NOVA stops being a place you store things and starts being a syste
 - Node lifecycle operations (merge/rename/archive)
 - Explorer virtualization/pagination for graphs that outgrow the current unbounded fetch
 - Convert conversation → project, once a Project entity exists elsewhere in the platform to convert into
-- Knowledge Collections — curating a mix of concepts, documents, notes, and conversations into a single named workspace, more powerful than tags/folders
+- Natural language commands over the graph and collections alike (e.g. "summarize everything about Mtoni")
+- Collection-level actions (export a whole collection, generate a briefing spanning a collection) — v1 only supports these per-item

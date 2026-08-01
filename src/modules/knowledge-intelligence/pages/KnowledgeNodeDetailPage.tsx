@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { useKnowledgeNodeEvidence } from '@/modules/knowledge-intelligence/hooks/useKnowledgeNodeEvidence'
 import { useGenerateBriefing } from '@/modules/knowledge-intelligence/hooks/useGenerateBriefing'
+import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import type { EvidenceItem } from '@/modules/knowledge-intelligence/api/knowledgeNodeEvidence'
 import { buildKnowledgeExportMarkdown, knowledgeExportFilename } from '@/modules/knowledge-intelligence/api/knowledgeExportMarkdown'
 import { SourceReference } from '@/shared/components/knowledge/SourceReference'
@@ -89,6 +90,7 @@ export function KnowledgeNodeDetailPage() {
         >
           Export knowledge package
         </Button>
+        <AddToCollectionButton itemType="knowledge_node" itemId={node.id} />
         {generateBriefing.isSuccess && generateBriefing.data && (
           <Link to={`/notes/${generateBriefing.data.id}`} className="text-sm text-[var(--color-accent)] hover:underline">
             Briefing saved as a note →

@@ -15,12 +15,20 @@ export function KnowledgePage() {
         title="Knowledge"
         description="Everything you've accumulated across your notes, highlights, and AI-generated content."
         action={
-          <Link
-            to="/knowledge/graph"
-            className="shrink-0 rounded-control border border-[var(--color-border)] bg-[var(--surface-raised)] px-3 py-1.5 text-sm font-medium text-[var(--color-ink)] shadow-raised transition-colors hover:bg-[var(--surface-base)]"
-          >
-            View Graph →
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              to="/knowledge/collections"
+              className="rounded-control border border-[var(--color-border)] bg-[var(--surface-raised)] px-3 py-1.5 text-sm font-medium text-[var(--color-ink)] shadow-raised transition-colors hover:bg-[var(--surface-base)]"
+            >
+              Collections →
+            </Link>
+            <Link
+              to="/knowledge/graph"
+              className="rounded-control border border-[var(--color-border)] bg-[var(--surface-raised)] px-3 py-1.5 text-sm font-medium text-[var(--color-ink)] shadow-raised transition-colors hover:bg-[var(--surface-base)]"
+            >
+              View Graph →
+            </Link>
+          </div>
         }
       />
 
