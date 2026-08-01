@@ -84,9 +84,9 @@ A living engineering inventory — not user documentation. First drafted as part
 | Conversation search provider (grouped, scored — Phase 2A) | ✅ | main | ✅ | ✅ | ✅ |
 | Notes search provider (Phase 1) | ✅ | main | ✅ | ✅ | ❌ |
 | Graph Layer / Concept Card branch (Phase 2B) | ✅ | main | ✅ | ✅ | ❌ |
-| Cross-provider ranking refinement | 🔲 | — | — | — | — |
-| Hybrid semantic + lexical search | 🔲 | — | — | — | — |
-| Zero-result recovery | 🔲 | — | — | — | — |
+| Cross-provider ranking refinement (uniform recency bonus, all sources) | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ✅ |
+| Hybrid semantic + lexical search | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ✅ |
+| Zero-result recovery (empty library vs. no match) | ⚙️ | claude/pip-edge-function-deploy-9lzs8n | ❌ | ✅ | ❌ |
 
 ## Knowledge Capture
 
