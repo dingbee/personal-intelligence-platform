@@ -50,7 +50,7 @@ export function KnowledgeExplorerPage() {
   const [searchParams] = useSearchParams()
   const documentIdFilter = searchParams.get('documentId') ?? undefined
 
-  const { details, isLoading } = useKnowledgeNodeDetails(documentIdFilter)
+  const { details, isLoading, isError, refetch } = useKnowledgeNodeDetails(documentIdFilter)
   const insights = useKnowledgeInsights()
   const reconcile = useReconcileKnowledgeGraph()
   const graphState = useGraphInteractionState()
@@ -188,6 +188,16 @@ export function KnowledgeExplorerPage() {
         <div className="flex justify-center py-16">
           <Spinner />
         </div>
+      ) : isError ? (
+        <EmptyState
+          title="Couldn't load your knowledge"
+          description="Something went wrong fetching concepts and entities — this is a failed request, not an empty workspace."
+          action={
+            <Button variant="secondary" onClick={refetch}>
+              Retry
+            </Button>
+          }
+        />
       ) : filtered.length === 0 ? (
         <EmptyState
           title="No knowledge to explore yet"

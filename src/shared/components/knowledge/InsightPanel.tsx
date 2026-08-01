@@ -10,12 +10,22 @@ import { Spinner } from '@/shared/components/ui/Spinner'
  * the Explorer page. Phase UX-3.5: this is the "IntelligencePanel" role
  * from the design-system brief — upgraded to the raised-surface tokens
  * in place rather than adding a duplicate component under a new name.
+ *
+ * Reliability & Truth Audit — `isError`/`onRetry` are optional and
+ * backward-compatible (every existing caller that omits them renders
+ * exactly as before). Added because every current consumer only had an
+ * `isEmpty` fallback: a genuinely empty result and a failed fetch both
+ * rendered the same "nothing here" message, so a real fetch failure was
+ * silently indistinguishable from an empty workspace.
  */
 export function InsightPanel({
   title,
   description,
   actions,
   isLoading,
+  isError,
+  onRetry,
+  errorMessage = "Couldn't load this — that's a failed request, not an empty result.",
   isEmpty,
   emptyMessage,
   children,
@@ -24,6 +34,9 @@ export function InsightPanel({
   description?: string
   actions?: ReactNode
   isLoading: boolean
+  isError?: boolean
+  onRetry?: () => void
+  errorMessage?: string
   isEmpty: boolean
   emptyMessage: string
   children: ReactNode
@@ -40,6 +53,15 @@ export function InsightPanel({
       {isLoading ? (
         <div className="flex justify-center py-6">
           <Spinner size="sm" />
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-start gap-2">
+          <p className="text-sm text-red-600">{errorMessage}</p>
+          {onRetry && (
+            <button type="button" onClick={onRetry} className="text-xs font-medium text-[var(--color-accent)] hover:underline">
+              Retry
+            </button>
+          )}
         </div>
       ) : isEmpty ? (
         <p className="text-sm text-[var(--color-ink-muted)]">{emptyMessage}</p>

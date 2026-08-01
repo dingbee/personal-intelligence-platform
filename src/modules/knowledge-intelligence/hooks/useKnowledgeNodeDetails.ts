@@ -68,6 +68,21 @@ export function useKnowledgeNodeDetails(documentId?: string) {
     sourcesQuery.isLoading
   const isError =
     nodesQuery.isError || edgesQuery.isError || documentsQuery.isError || notesQuery.isError || conversationsQuery.isError || sourcesQuery.isError
+  // Reliability & Truth Audit — `isError` already existed but Explorer and
+  // the Dashboard insights panel both destructured only `isLoading`, so a
+  // failed fetch here fell through to `details.length === 0` and rendered
+  // as "no knowledge extracted yet" — indistinguishable from a genuinely
+  // empty workspace, the same silent-empty-state pattern already fixed for
+  // Collection membership. `refetch` re-runs every underlying query so a
+  // caller-rendered Retry button can recover without a full page reload.
+  const refetch = () => {
+    void nodesQuery.refetch()
+    void edgesQuery.refetch()
+    void documentsQuery.refetch()
+    void notesQuery.refetch()
+    void conversationsQuery.refetch()
+    void sourcesQuery.refetch()
+  }
 
   const details = useMemo<KnowledgeNodeDetail[]>(() => {
     const nodes = nodesQuery.data ?? []
@@ -84,24 +99,33 @@ export function useKnowledgeNodeDetails(documentId?: string) {
     for (const note of notes) titleByTypeAndId.set(`note:${note.id}`, note.title)
     for (const conversation of conversations) titleByTypeAndId.set(`conversation:${conversation.id}`, conversation.title)
 
-    // Confidence bookkeeping counts every source regardless of whether its
-    // title can still be resolved — unchanged from before this sprint's
-    // resolveSourceItems extraction, kept as its own pass since it isn't
-    // the duplicated "resolve a label" logic that helper unifies.
-    const sourcesByNodeIdForConfidence = new Map<string, { sourceCounts: Record<string, number>; mostRecentEvidenceAt: string | null }>()
-    for (const source of nodeSources) {
-      const confidenceEntry = sourcesByNodeIdForConfidence.get(source.nodeId) ?? { sourceCounts: {}, mostRecentEvidenceAt: null }
-      confidenceEntry.sourceCounts[source.sourceType] = (confidenceEntry.sourceCounts[source.sourceType] ?? 0) + 1
-      if (!confidenceEntry.mostRecentEvidenceAt || source.createdAt > confidenceEntry.mostRecentEvidenceAt) {
-        confidenceEntry.mostRecentEvidenceAt = source.createdAt
-      }
-      sourcesByNodeIdForConfidence.set(source.nodeId, confidenceEntry)
-    }
-
     const resolvedSources = resolveSourceItems(
-      nodeSources.map((source) => ({ type: source.sourceType, id: source.sourceId, nodeId: source.nodeId })),
+      nodeSources.map((source) => ({
+        type: source.sourceType,
+        id: source.sourceId,
+        nodeId: source.nodeId,
+        createdAt: source.createdAt,
+      })),
       (type, id) => titleByTypeAndId.get(`${type}:${id}`),
     )
+
+    // Reliability & Truth Audit — confidence bookkeeping now counts only
+    // resolved sources, matching getKnowledgeNodeEvidence's contract (a
+    // source whose document/note/conversation was since deleted doesn't
+    // inflate confidence there). Previously this counted every
+    // knowledge_node_sources row regardless of resolution, so the same
+    // node could show a different confidence percentage on Explorer/
+    // Dashboard than on its own Evidence/drill-down page.
+    const sourcesByNodeIdForConfidence = new Map<string, { sourceCounts: Record<string, number>; mostRecentEvidenceAt: string | null }>()
+    for (const resolved of resolvedSources) {
+      const confidenceEntry = sourcesByNodeIdForConfidence.get(resolved.nodeId) ?? { sourceCounts: {}, mostRecentEvidenceAt: null }
+      confidenceEntry.sourceCounts[resolved.type] = (confidenceEntry.sourceCounts[resolved.type] ?? 0) + 1
+      if (!confidenceEntry.mostRecentEvidenceAt || resolved.createdAt > confidenceEntry.mostRecentEvidenceAt) {
+        confidenceEntry.mostRecentEvidenceAt = resolved.createdAt
+      }
+      sourcesByNodeIdForConfidence.set(resolved.nodeId, confidenceEntry)
+    }
+
     const sourcesByNodeId = new Map<string, SourceReferenceItem[]>()
     for (const resolved of resolvedSources) {
       const list = sourcesByNodeId.get(resolved.nodeId) ?? []
@@ -142,5 +166,5 @@ export function useKnowledgeNodeDetails(documentId?: string) {
     })
   }, [nodesQuery.data, edgesQuery.data, documentsQuery.data, notesQuery.data, conversationsQuery.data, sourcesQuery.data])
 
-  return { details, isLoading, isError }
+  return { details, isLoading, isError, refetch }
 }

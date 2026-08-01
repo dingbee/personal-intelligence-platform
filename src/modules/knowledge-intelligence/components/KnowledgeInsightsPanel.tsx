@@ -9,7 +9,7 @@ const PREVIEW_LIMIT = 6
 
 /** The Knowledge Dashboard's AI-generated section — replaces the Phase 6B static placeholder now that extraction actually produces something to show. */
 export function KnowledgeInsightsPanel() {
-  const { details, isLoading } = useKnowledgeNodeDetails()
+  const { details, isLoading, isError, refetch } = useKnowledgeNodeDetails()
   const preview = details.slice(0, PREVIEW_LIMIT)
 
   return (
@@ -22,6 +22,9 @@ export function KnowledgeInsightsPanel() {
         </Link>
       }
       isLoading={isLoading}
+      isError={isError}
+      onRetry={refetch}
+      errorMessage="Couldn't load knowledge insights — that's a failed request, not an empty workspace."
       isEmpty={preview.length === 0}
       emptyMessage="No knowledge extracted yet — open a document and run Analyze Document to get started."
     >

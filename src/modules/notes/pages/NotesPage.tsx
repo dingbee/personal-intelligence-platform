@@ -49,7 +49,7 @@ export function NotesPage() {
               <Button variant="secondary" onClick={exitSelectionMode}>
                 Cancel
               </Button>
-              <Button disabled={selectedIds.size < 2} onClick={() => setConfirmingMerge(true)}>
+              <Button loading={mergeNotes.isPending} disabled={selectedIds.size < 2} onClick={() => setConfirmingMerge(true)}>
                 Merge
               </Button>
             </>
@@ -70,6 +70,14 @@ export function NotesPage() {
           )}
         </div>
       </div>
+
+      {mergeNotes.isError && (
+        <p className="text-sm text-red-600">
+          Couldn't merge those notes: {mergeNotes.error instanceof Error ? mergeNotes.error.message : 'Unknown error'}.
+          The merge runs in several steps — check your notes list before retrying, in case it partially completed
+          (e.g. a merged note was created but the originals weren't deleted yet).
+        </p>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-16">
