@@ -18,10 +18,8 @@ export interface RetrieveMemoryContextParams {
  * the signature to match retrieveContext/retrieveGraphContext's call
  * shape and leave room for an explicit filter later.
  *
- * Not called from buildSystemPrompt or AIService yet — this phase is the
- * retrieval provider only. Wiring it into the live chat pipeline (and
- * building the write side — what gets remembered, and when) is later,
- * out-of-scope work.
+ * Called from AIService.sendMessage on every chat turn, feeding
+ * buildSystemPrompt alongside retrieveContext/retrieveGraphContext.
  */
 export async function retrieveMemoryContext(params: RetrieveMemoryContextParams): Promise<string | null> {
   try {

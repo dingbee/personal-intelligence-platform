@@ -16,11 +16,8 @@ export interface FormatMemoriesOptions {
 
 /**
  * Renders stored memories into a prompt-ready text block, grouped by
- * type. Not called from buildSystemPrompt/AIService yet — Phase UX-5 is
- * the memory foundation only (CRUD + this formatter); a later phase
- * wires the read side in once the write side (what gets remembered, and
- * when) is designed, and RAG/prompt changes are explicitly in scope for
- * that phase, not this one.
+ * type. Called from retrieveMemoryContext, which AIService.sendMessage
+ * invokes on every chat turn — this is live in the system prompt.
  */
 export function formatMemoriesForPrompt(memories: AiMemory[], options: FormatMemoriesOptions = {}): string {
   const maxPerType = options.maxPerType ?? 20
