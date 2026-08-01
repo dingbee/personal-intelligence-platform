@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useNote } from '@/modules/notes/hooks/useNote'
 import { useNotes } from '@/modules/notes/hooks/useNotes'
@@ -11,8 +11,18 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { KnowledgeCard } from '@/shared/components/knowledge/KnowledgeCard'
-import { getArtifactKind } from '@/modules/ai/artifacts/artifactMetadata'
+import { getArtifactData, getArtifactKind } from '@/modules/ai/artifacts/artifactMetadata'
 import { ARTIFACT_KIND_DEFINITIONS } from '@/modules/ai/artifacts/artifactTypes'
+import type { SpreadsheetArtifactData } from '@/modules/ai/artifacts/spreadsheet/types'
+
+// UX-14.4 Phase 2 — lazy-loaded for the same reason PdfReaderView/
+// SpreadsheetReaderView already are (see ReaderPage.tsx): `xlsx` is a
+// genuinely large dependency, and a static import here would pull it into
+// every page's bundle even for the overwhelming majority of notes that
+// are never a spreadsheet artifact.
+const SpreadsheetArtifactPanel = lazy(() =>
+  import('@/modules/notes/components/SpreadsheetArtifactPanel').then((m) => ({ default: m.SpreadsheetArtifactPanel })),
+)
 
 export function NoteDetailPage() {
   const { noteId } = useParams<{ noteId: string }>()
@@ -62,6 +72,7 @@ export function NoteDetailPage() {
 
   const isDirty = title !== note.title || content !== note.content || documentId !== note.document_id
   const artifactKind = getArtifactKind(note)
+  const spreadsheetArtifactData = artifactKind === 'spreadsheet' ? getArtifactData<SpreadsheetArtifactData>(note) : null
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -75,6 +86,23 @@ export function NoteDetailPage() {
           compact-summary artifact rather than free-form prose. */}
       {artifactKind === 'knowledge_card' && (
         <KnowledgeCard title={note.title} typeLabel={ARTIFACT_KIND_DEFINITIONS.knowledge_card.label} description={note.content} />
+      )}
+
+      {/* UX-14.4 Phase 2 (Path A) — preview + download for a spreadsheet
+          artifact's structured payload, when Save As's markdown-table
+          parser produced one. A note tagged `spreadsheet` with no parsed
+          table (e.g. picked manually on prose) renders no panel here —
+          nothing to preview or export yet. */}
+      {spreadsheetArtifactData && (
+        <Suspense
+          fallback={
+            <div className="flex justify-center py-6">
+              <Spinner size="sm" />
+            </div>
+          }
+        >
+          <SpreadsheetArtifactPanel title={note.title} data={spreadsheetArtifactData} />
+        </Suspense>
       )}
 
       <div className="flex flex-col gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">

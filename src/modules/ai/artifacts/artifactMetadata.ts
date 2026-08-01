@@ -20,3 +20,22 @@ export function withArtifactKind(
 ): Record<string, unknown> {
   return { ...(metadata ?? {}), artifactKind: kind }
 }
+
+/**
+ * UX-14.4 Phase 2 — the structured-payload slot the discovery doc's §2
+ * designed for `spreadsheet`/`formula` kinds. Deliberately generic (not
+ * spreadsheet-typed) so a future `chart`/`template` payload reuses the same
+ * `generation_metadata.artifactData` slot instead of inventing a second one.
+ */
+export function getArtifactData<T = unknown>(note: Pick<Note, 'generation_metadata'>): T | null {
+  const raw = (note.generation_metadata as Record<string, unknown> | null)?.artifactData
+  return raw === undefined ? null : (raw as T)
+}
+
+/** Merges an `artifactData` payload into an existing (or absent) generation_metadata object, alongside whatever `artifactKind`/other fields are already there. */
+export function withArtifactData(
+  metadata: Record<string, unknown> | null | undefined,
+  data: unknown,
+): Record<string, unknown> {
+  return { ...(metadata ?? {}), artifactData: data }
+}

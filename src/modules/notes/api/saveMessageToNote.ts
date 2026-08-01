@@ -5,7 +5,7 @@ import { buildSavedMessageTitle } from '@/modules/notes/utils/savedMessageTitle'
 import { indexNote } from '@/modules/search/indexing/indexNote'
 import { linkKnownConceptsToSource } from '@/modules/knowledge-intelligence/api/linkKnownConcepts'
 import { detectArtifactKind } from '@/modules/ai/artifacts/detectArtifactKind'
-import { withArtifactKind } from '@/modules/ai/artifacts/artifactMetadata'
+import { buildArtifactGenerationMetadata } from '@/modules/ai/artifacts/buildArtifactGenerationMetadata'
 
 /**
  * AI Workspace Actions v1 — the "Save Knowledge Action" core: the one
@@ -33,15 +33,12 @@ export async function saveMessageToNote(params: {
     workspaceId,
     title: buildSavedMessageTitle(message, conversationTitle),
     content: message.content,
-    generationMetadata: withArtifactKind(
-      {
-        savedFrom: 'chat-message',
-        conversationId,
-        messageId: message.id,
-        messageCreatedAt: message.created_at,
-      },
-      detectArtifactKind(message.content),
-    ),
+    generationMetadata: buildArtifactGenerationMetadata(message.content, detectArtifactKind(message.content), {
+      savedFrom: 'chat-message',
+      conversationId,
+      messageId: message.id,
+      messageCreatedAt: message.created_at,
+    }),
   })
 
   await linkNoteToConversation({ userId, workspaceId, noteId: note.id, conversationId })
