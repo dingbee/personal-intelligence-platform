@@ -10,8 +10,11 @@ import type { KnowledgeLink } from '@/shared/types/database'
  *
  * knowledge_links does have a workspace_id column (nullable, unlike
  * highlights/chapter_summaries/flashcards which lack one entirely), so
- * we can filter by it directly when a workspace is selected. RLS
- * (user_id = auth.uid()) is still the primary scoping guard either way.
+ * we can filter by it directly when a workspace is selected. RLS is
+ * still the primary scoping guard either way — as of UX-14.5 Phase 4
+ * that's `auth.uid() = user_id OR has_workspace_role(workspace_id,
+ * 'viewer')`, not single-owner-only, so a shared workspace's links from
+ * every member surface here with no change needed to this query.
  */
 export async function listKnowledgeLinks(workspaceId: string | null, limit = 200): Promise<KnowledgeLink[]> {
   let query = supabase
