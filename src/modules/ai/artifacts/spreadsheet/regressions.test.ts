@@ -56,3 +56,24 @@ describe('regression: NoteDetailPage must not statically import a component that
     expect(source).toMatch(/lazy\(\s*\(\)\s*=>\s*import\(['"]@\/modules\/notes\/components\/SpreadsheetArtifactPanel['"]\)/)
   })
 })
+
+describe('regression: renderSpreadsheetArtifactMarkdown must not pull xlsx into the eager Workspace Action bundle', () => {
+  // UX-14.4.2 — generateSpreadsheetArtifactAction is registered eagerly
+  // from App.tsx (Workspace Actions dispatch synchronously from chat —
+  // there is no React.lazy() boundary the way a reader page has). The
+  // first working version of this milestone reused sheetToGrid.ts for
+  // rendering the chat preview, which imports `xlsx` for
+  // XLSX.utils.decode_cell — that pulled the ~330KB library into the main
+  // bundle (confirmed via a real `vite build`: main entry grew from
+  // ~978KB to ~1410KB and the separate xlsx-*.js chunk disappeared, caught
+  // by `npm run verify:bundle`). Fixed by `decodeCellAddress`
+  // (cellAddressing.ts), a dependency-free inverse of `columnLetter`.
+  // Source-inspection here, same reasoning as the check above: this runs
+  // on every `vitest run`, not only when someone remembers a full build.
+  const source = readFileSync(join(process.cwd(), 'src/modules/ai/artifacts/spreadsheet/renderSpreadsheetArtifactMarkdown.ts'), 'utf-8')
+
+  it('does not import xlsx, directly or via sheetToGrid', () => {
+    expect(source).not.toMatch(/from ['"]xlsx['"]/)
+    expect(source).not.toMatch(/from ['"].*\/sheetToGrid['"]/)
+  })
+})
