@@ -11,6 +11,7 @@ import { DocumentGrid } from '@/modules/library/components/DocumentGrid'
 import { TagFilterBar } from '@/modules/library/components/TagFilterBar'
 import { AssetUploadDropzone } from '@/modules/assets/components/AssetUploadDropzone'
 import { ImageGrid } from '@/modules/assets/components/ImageGrid'
+import { ImportAssetPackageDialog } from '@/modules/knowledge-exchange/components/ImportAssetPackageDialog'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -34,6 +35,7 @@ export function LibraryPage() {
   const [sort, setSort] = useState<DocumentSort>('newest')
   const [collectionsDrawerOpen, setCollectionsDrawerOpen] = useState(false)
   const [imageSearch, setImageSearch] = useState('')
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   const { data: collections = [], isLoading: collectionsLoading } = useCollections()
   const { data: tags = [] } = useTags()
@@ -159,8 +161,13 @@ export function LibraryPage() {
           </>
         ) : (
           <>
-            <div className="mb-6">
-              <AssetUploadDropzone />
+            <div className="mb-6 flex items-start gap-4">
+              <div className="flex-1">
+                <AssetUploadDropzone />
+              </div>
+              <Button variant="secondary" className="shrink-0" onClick={() => setImportDialogOpen(true)}>
+                Import
+              </Button>
             </div>
 
             <div className="mb-4">
@@ -190,6 +197,7 @@ export function LibraryPage() {
           </>
         )}
       </div>
+      <ImportAssetPackageDialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} />
     </div>
   )
 }

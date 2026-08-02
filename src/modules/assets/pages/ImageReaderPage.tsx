@@ -7,6 +7,9 @@ import { useSignedAssetUrl } from '@/modules/assets/hooks/useSignedAssetUrl'
 import { createNote } from '@/modules/notes/api/notes'
 import { linkNoteToAsset } from '@/modules/notes/api/knowledgeLinks'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
+import { exportAssetPackage, assetPackageFilename } from '@/modules/knowledge-exchange/assets/exportAssetPackage'
+import { fetchAssetOriginalAsBase64 } from '@/modules/knowledge-exchange/assets/assetFileTransfer'
+import { downloadTextFile } from '@/shared/utils/downloadTextFile'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { formatFileSize } from '@/modules/library/utils/fileTypes'
@@ -67,6 +70,18 @@ export function ImageReaderPage() {
       return note
     },
     onSuccess: (note) => navigate(`/notes/${note.id}`),
+  })
+
+  // UX-14.5.10.2 — the one place this package type does I/O before
+  // building its (otherwise pure/synchronous) package: fetch the
+  // original image's bytes via a signed URL, base64-encode them, then
+  // hand the already-fetched data to the pure exportAssetPackage.
+  const exportPackage = useMutation({
+    mutationFn: async () => {
+      const fileDataBase64 = await fetchAssetOriginalAsBase64(asset!)
+      return exportAssetPackage({ asset: asset!, fileDataBase64 })
+    },
+    onSuccess: (pkg) => downloadTextFile(assetPackageFilename(pkg.asset.title), JSON.stringify(pkg, null, 2), 'application/json'),
   })
 
   if (isLoading) {
@@ -219,6 +234,14 @@ export function ImageReaderPage() {
                     Save as Notes
                   </Button>
                   <AddToCollectionButton itemType="asset" itemId={asset.id} />
+                  <Button variant="secondary" loading={exportPackage.isPending} onClick={() => exportPackage.mutate()}>
+                    Export
+                  </Button>
+                  {exportPackage.isError && (
+                    <p className="text-sm text-red-600">
+                      {exportPackage.error instanceof Error ? exportPackage.error.message : 'Failed to export this image.'}
+                    </p>
+                  )}
                   {canDelete && (
                     <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setConfirmingDelete(true)}>
                       Delete
