@@ -39,7 +39,7 @@ export function useNote(noteId: string) {
     onSuccess: (note) => {
       invalidate()
       void indexNote(note, currentWorkspaceId)
-      void linkKnownConceptsToSource({ userId: note.user_id, sourceType: 'note', sourceId: note.id, text: `${note.title}\n\n${note.content}` })
+      void linkKnownConceptsToSource({ userId: user!.id, sourceType: 'note', sourceId: note.id, text: `${note.title}\n\n${note.content}` })
     },
   })
 
@@ -80,7 +80,7 @@ export function useNote(noteId: string) {
     onSuccess: (note) => {
       invalidate()
       void indexNote(note, currentWorkspaceId)
-      void linkKnownConceptsToSource({ userId: note.user_id, sourceType: 'note', sourceId: note.id, text: `${note.title}\n\n${note.content}` })
+      void linkKnownConceptsToSource({ userId: user!.id, sourceType: 'note', sourceId: note.id, text: `${note.title}\n\n${note.content}` })
     },
   })
 

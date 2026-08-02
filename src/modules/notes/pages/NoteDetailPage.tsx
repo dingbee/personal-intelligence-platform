@@ -1,8 +1,10 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '@/modules/auth/useAuth'
 import { useNote } from '@/modules/notes/hooks/useNote'
 import { useNotes } from '@/modules/notes/hooks/useNotes'
 import { useRelatedKnowledge } from '@/modules/notes/hooks/useRelatedKnowledge'
+import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
 import { NoteTagEditor } from '@/modules/notes/components/NoteTagEditor'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import { useDocuments } from '@/modules/library/hooks/useDocuments'
@@ -29,10 +31,12 @@ const SpreadsheetArtifactPanel = lazy(() =>
 export function NoteDetailPage() {
   const { noteId } = useParams<{ noteId: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { note, isLoading, isError, save, summarize } = useNote(noteId!)
   const { remove } = useNotes()
   const { data: documents = [] } = useDocuments({})
   const { data: relatedKnowledge = [] } = useRelatedKnowledge(noteId!)
+  const { data: workspaceRole } = useWorkspaceRole(note?.workspace_id ?? null)
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -74,6 +78,16 @@ export function NoteDetailPage() {
   }
 
   const isDirty = title !== note.title || content !== note.content || documentId !== note.document_id
+  // UX-14.5 Phase 2 — a shared note's editability follows the resolved
+  // workspace role, not just row ownership: the note's own creator always
+  // keeps full rights (matches pre-sharing behavior exactly), a workspace
+  // owner also gets full control (design doc §2/§4), an editor can save/
+  // summarize but not delete, and a viewer gets neither — mirroring the
+  // notes RLS policies (0029_note_sharing.sql) so the UI never offers a
+  // control the database would reject.
+  const isNoteOwner = note.user_id === user?.id
+  const canEdit = isNoteOwner || workspaceRole === 'editor' || workspaceRole === 'owner'
+  const canDelete = isNoteOwner || workspaceRole === 'owner'
   const artifactKind = getArtifactKind(note)
   const spreadsheetArtifactData = artifactKind === 'spreadsheet' ? getArtifactData<SpreadsheetArtifactData>(note) : null
   const creationMethod = getCreationMethod(note)
@@ -169,28 +183,38 @@ export function NoteDetailPage() {
             here to everywhere else it appears. */}
         {relatedKnowledge.length > 0 && <SourceReference sources={relatedKnowledge} label="Related knowledge:" />}
 
+        {!canEdit && (
+          <p className="text-xs text-[var(--color-ink-muted)]">You have view-only access to this note.</p>
+        )}
+
         <div className="flex items-center justify-between border-t border-[var(--color-border)] pt-4">
           <div className="flex items-center gap-2">
-            <Button
-              loading={save.isPending}
-              disabled={!isDirty}
-              onClick={() => save.mutate({ title, content, documentId })}
-            >
-              Save
-            </Button>
-            <Button
-              variant="secondary"
-              loading={summarize.isPending}
-              disabled={!content.trim()}
-              onClick={() => setConfirmingSummarize(true)}
-            >
-              Summarize
-            </Button>
+            {canEdit && (
+              <>
+                <Button
+                  loading={save.isPending}
+                  disabled={!isDirty}
+                  onClick={() => save.mutate({ title, content, documentId })}
+                >
+                  Save
+                </Button>
+                <Button
+                  variant="secondary"
+                  loading={summarize.isPending}
+                  disabled={!content.trim()}
+                  onClick={() => setConfirmingSummarize(true)}
+                >
+                  Summarize
+                </Button>
+              </>
+            )}
             <AddToCollectionButton itemType="note" itemId={note.id} />
           </div>
-          <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setConfirmingDelete(true)}>
-            Delete
-          </Button>
+          {canDelete && (
+            <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setConfirmingDelete(true)}>
+              Delete
+            </Button>
+          )}
         </div>
         {summarize.isError && (
           <p className="text-sm text-red-600">
