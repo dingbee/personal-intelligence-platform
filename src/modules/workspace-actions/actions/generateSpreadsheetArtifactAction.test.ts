@@ -61,6 +61,15 @@ describe('generateSpreadsheetArtifactAction', () => {
     expect(outcome.responseText).toContain('| Category | Amount |')
     expect(outcome.responseText).toContain('| Rent | 1200 |')
     expect(outcome.responseText).toContain('save this')
+
+    // UX-14.4.3 — artifactPreview is additive, never a substitute for
+    // responseText: both must describe the same generated table.
+    expect(outcome.artifactPreview).toEqual({
+      kind: 'spreadsheet',
+      title: 'Monthly Budget',
+      content: expect.stringContaining('| Category | Amount |'),
+    })
+    expect(outcome.artifactPreview?.content).toContain('| Rent | 1200 |')
   })
 
   it('renders a safe formula resolved to a real cell reference', async () => {
@@ -89,6 +98,7 @@ describe('generateSpreadsheetArtifactAction', () => {
     const outcome = await generateSpreadsheetArtifactAction.run({ request: 'nonsense' }, context())
     expect(outcome.responseText).toMatch(/wasn't able to generate/i)
     expect(outcome.responseText).not.toContain('|')
+    expect(outcome.artifactPreview).toBeUndefined()
   })
 
   it('rejects with the specific reasons when the specification fails structural validation', async () => {

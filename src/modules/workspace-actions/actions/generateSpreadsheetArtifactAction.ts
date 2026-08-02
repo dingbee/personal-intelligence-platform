@@ -81,8 +81,16 @@ export const generateSpreadsheetArtifactAction: WorkspaceAction<{ request: strin
     }
 
     const markdown = renderSpreadsheetArtifactMarkdown(compiled)
+    const title = spec.title || 'Spreadsheet'
     return {
-      responseText: `Here's ${spec.title || 'the spreadsheet'}:\n\n${markdown}\n\nThis hasn't been saved yet — say "save this" if you'd like to keep it.`,
+      responseText: `Here's ${title}:\n\n${markdown}\n\nThis hasn't been saved yet — say "save this" if you'd like to keep it.`,
+      // UX-14.4.3 — additive alongside responseText, never a replacement
+      // for it: the same markdown that's embedded in responseText (which
+      // the Save-to-Notes pipeline depends on staying intact) is also
+      // handed to the chat UI as structured content, so it can render a
+      // KnowledgeCard-based preview instead of the plain markdown table
+      // for this one message.
+      artifactPreview: { kind: 'spreadsheet', title, content: markdown },
     }
   },
 }

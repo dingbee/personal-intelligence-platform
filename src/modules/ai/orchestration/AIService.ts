@@ -24,6 +24,7 @@ import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
 import { resolveReferences } from '@/modules/intelligence/references/referenceResolver'
 import type { Reference } from '@/modules/intelligence/references/referenceTypes'
 import { runWorkspaceAction } from '@/modules/workspace-actions/registry'
+import type { ArtifactPreview } from '@/modules/workspace-actions/types'
 
 export interface SendMessageParams {
   conversationId: string
@@ -60,6 +61,8 @@ export interface SendMessageResult {
    * recomputing it a second time.
    */
   reasoningPlan: ReasoningPlan
+  /** UX-14.4.3 — carried through unchanged from a Workspace Action's outcome; null on the normal chat path. Ephemeral UI signal only, never persisted. */
+  artifactPreview: ArtifactPreview | null
 }
 
 /**
@@ -116,6 +119,10 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
           isContinuation: isContinuationMessage(text),
         },
       }),
+      // UX-14.4.3 — carried straight through from the action's outcome, no
+      // transformation: responseText (persisted above, unchanged) remains
+      // the source of truth for save/reload; this is purely additive.
+      artifactPreview: actionOutcome.artifactPreview ?? null,
     }
   }
 
@@ -215,5 +222,9 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
     references,
     model: result.model,
     reasoningPlan,
+    // UX-14.4.3 — the normal chat path never produces a structured
+    // artifact preview; only a Workspace Action outcome can (see the
+    // branch above).
+    artifactPreview: null,
   }
 }

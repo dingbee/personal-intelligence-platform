@@ -96,3 +96,42 @@ export async function linkNoteToMessage(params: {
   if (error) throw error
   return data
 }
+
+/**
+ * UX-14.4.3 — the minimum primitive for linking an artifact to a related
+ * memory, same polymorphic knowledge_links pattern as the four functions
+ * above (target_type='memory' needs no schema change — source_type/
+ * target_type are plain text columns with no CHECK constraint or enum,
+ * confirmed against every migration). Deliberately just the write
+ * primitive: no caller in this codebase invokes this yet. Automatic
+ * "which memories relate to this artifact" matching is intentionally not
+ * built here — `matchKnownConcepts` (the existing knowledge-linking
+ * algorithm) matches short concept *titles*, which doesn't transfer to
+ * full-sentence memory *content*, and inventing a new relevance heuristic
+ * (or plumbing individual memory ids through retrieveMemoryContext's
+ * string-only return type) is exactly the speculative-architecture /
+ * retrieval-redesign this milestone's constraints exclude. This is future
+ * work — see docs/ux-14.4.3-artifact-experience-layer-discovery.md §2 and
+ * the UX-14.4.3 implementation record.
+ */
+export async function linkNoteToMemory(params: {
+  userId: string
+  workspaceId: string | null
+  noteId: string
+  memoryId: string
+}): Promise<KnowledgeLink> {
+  const { data, error } = await supabase
+    .from('knowledge_links')
+    .insert({
+      user_id: params.userId,
+      workspace_id: params.workspaceId,
+      source_type: 'note',
+      source_id: params.noteId,
+      target_type: 'memory',
+      target_id: params.memoryId,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}

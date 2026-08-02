@@ -112,6 +112,7 @@ export function ReaderChatPanel({
     signals,
     memoryCandidates,
     dismissMemoryCandidate,
+    artifactPreview,
   } = useSendMessage(conversation?.provider_id ?? defaultProviderId, documentId)
   const { rememberCandidate } = useMemories()
   const saveMessage = useSaveMessageToNote({
@@ -247,6 +248,7 @@ export function ReaderChatPanel({
                   onSave={() => saveMessage.save(message)}
                   saved={saveMessage.isSaved(message.id)}
                   saving={saveMessage.isSaving(message.id)}
+                  artifactPreview={artifactPreview?.messageId === message.id ? artifactPreview : undefined}
                 />
               ))
             )}

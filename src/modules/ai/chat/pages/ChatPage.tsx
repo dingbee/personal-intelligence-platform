@@ -152,6 +152,7 @@ export function ChatPage() {
     reasoningPlan,
     memoryCandidates,
     dismissMemoryCandidate,
+    artifactPreview,
   } = useSendMessage(conversation?.provider_id ?? effectiveNewProviderId, documentId)
   const { rememberCandidate } = useMemories()
   // UX-6 Phase 7 status indicator — workspace name from the already-loaded
@@ -426,6 +427,7 @@ export function ChatPage() {
                       onSave={() => saveMessage.save(message)}
                       saved={saveMessage.isSaved(message.id)}
                       saving={saveMessage.isSaving(message.id)}
+                      artifactPreview={artifactPreview?.messageId === message.id ? artifactPreview : undefined}
                     />
                   ))
                 )}

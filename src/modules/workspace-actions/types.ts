@@ -1,4 +1,5 @@
 import type { Reference } from '@/modules/intelligence/references/referenceTypes'
+import type { ArtifactKind } from '@/modules/ai/artifacts/artifactTypes'
 
 export interface WorkspaceActionContext {
   userId: string
@@ -8,11 +9,40 @@ export interface WorkspaceActionContext {
   chain: string[]
 }
 
+/**
+ * UX-14.4.3 — an artifact-agnostic preview contract, not a spreadsheet-
+ * specific one: `content` is whatever renderable text the artifact kind
+ * produces today (markdown, for the one kind that populates this —
+ * `generateSpreadsheetArtifactAction`), `summary`/`metadata` are reserved
+ * for a future kind that needs more than a title + renderable body,
+ * without requiring another field to be added later. Purely a UI signal —
+ * nothing here is persisted; the note that eventually gets saved (if any)
+ * is built from `WorkspaceActionOutcome.responseText`, unchanged, via the
+ * existing Save-to-Notes pipeline.
+ */
+export interface ArtifactPreview {
+  id?: string
+  kind: ArtifactKind
+  title: string
+  summary?: string
+  content?: string
+  metadata?: Record<string, unknown>
+}
+
 export interface WorkspaceActionOutcome {
-  /** Shown back to the user as NOVA's chat reply. */
+  /**
+   * Shown back to the user as NOVA's chat reply, and — unchanged by this
+   * field's addition — exactly what gets persisted into `messages.content`
+   * and later re-parsed by the Save-to-Notes pipeline
+   * (`detectArtifactKind`/`parseMarkdownTableToArtifact`). Never derive
+   * `responseText` from `artifactPreview` or vice versa in a way that lets
+   * them drift — both must independently describe the same artifact.
+   */
   responseText: string
   /** Optional — lets an action surface a reference chip (e.g. the note it created) the same way a normal chat answer can. */
   references?: Reference[]
+  /** Optional — when present, the chat UI renders a structured card (KnowledgeCard-based) for this response instead of plain markdown. Ephemeral: never persisted, only available for the turn it was returned in. */
+  artifactPreview?: ArtifactPreview
 }
 
 /**

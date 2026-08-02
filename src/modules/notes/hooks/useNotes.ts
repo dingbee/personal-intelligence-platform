@@ -4,6 +4,7 @@ import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { indexNote } from '@/modules/search/indexing/indexNote'
 import { linkKnownConceptsToSource } from '@/modules/knowledge-intelligence/api/linkKnownConcepts'
+import { withCreationMethod } from '@/modules/ai/artifacts/artifactMetadata'
 
 export function useNotes(filters: Omit<NoteFilters, 'workspaceId'> = {}) {
   const { user } = useAuth()
@@ -26,7 +27,13 @@ export function useNotes(filters: Omit<NoteFilters, 'workspaceId'> = {}) {
       content?: string
       documentId?: string | null
       sourceChunkIds?: string[] | null
-    }) => createNote({ ...params, userId: user!.id, workspaceId: currentWorkspaceId }),
+    }) =>
+      createNote({
+        ...params,
+        userId: user!.id,
+        workspaceId: currentWorkspaceId,
+        generationMetadata: withCreationMethod(null, 'user_created'),
+      }),
     onSuccess: (note) => {
       invalidate()
       void indexNote(note, currentWorkspaceId)

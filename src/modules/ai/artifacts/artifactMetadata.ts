@@ -1,5 +1,5 @@
 import type { Note } from '@/shared/types/database'
-import { type ArtifactKind, isArtifactKind } from '@/modules/ai/artifacts/artifactTypes'
+import { type ArtifactCreationMethod, type ArtifactKind, isArtifactCreationMethod, isArtifactKind } from '@/modules/ai/artifacts/artifactTypes'
 
 /**
  * UX-14.4 Phase 1 — reads the `artifactKind` tag Save As / the note-creation
@@ -38,4 +38,25 @@ export function withArtifactData(
   data: unknown,
 ): Record<string, unknown> {
   return { ...(metadata ?? {}), artifactData: data }
+}
+
+/**
+ * UX-14.4.3 — same read/write pattern as `getArtifactKind`/`withArtifactKind`,
+ * for how the row came to exist rather than what shape its content is.
+ * Additive alongside any existing ad hoc provenance fields a caller already
+ * writes (e.g. `saveMessageToNote.ts`'s `savedFrom`) — never replaces them.
+ * `null` (not a default guess) when absent, since unlike `ArtifactKind`
+ * there's no single correct fallback creation method for a pre-existing note.
+ */
+export function getCreationMethod(note: Pick<Note, 'generation_metadata'>): ArtifactCreationMethod | null {
+  const raw = (note.generation_metadata as Record<string, unknown> | null)?.creationMethod
+  return isArtifactCreationMethod(raw) ? raw : null
+}
+
+/** Merges a `creationMethod` tag into an existing (or absent) generation_metadata object, without disturbing whatever else a caller already put there. */
+export function withCreationMethod(
+  metadata: Record<string, unknown> | null | undefined,
+  method: ArtifactCreationMethod,
+): Record<string, unknown> {
+  return { ...(metadata ?? {}), creationMethod: method }
 }

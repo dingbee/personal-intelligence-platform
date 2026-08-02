@@ -49,3 +49,31 @@ export const ARTIFACT_KIND_ORDER: ArtifactKind[] = [
 export function isArtifactKind(value: unknown): value is ArtifactKind {
   return typeof value === 'string' && value in ARTIFACT_KIND_DEFINITIONS
 }
+
+/**
+ * UX-14.4.3 — how a Note's underlying row came to exist, distinct from
+ * `ArtifactKind` (what shape the content is). `user_created` — the manual
+ * "New Note" form (`useNotes.ts`). `conversation_saved` — the per-message
+ * Save button or "save this" command (`saveMessageToNote.ts`), or the Save
+ * Conversation dialog (`SaveConversationDialog.tsx`) — this is the
+ * category a saved AI-generated artifact (e.g. a generated spreadsheet)
+ * falls into too, since saving is what actually creates the row; the kind
+ * of content the model produced is `ArtifactKind`'s job to record, not
+ * this field's. `ai_generated` — a note an AI capability creates directly
+ * (`generateBriefing.ts`). `derived` — built from other existing notes
+ * (`mergeNotes.ts`). `imported` — reserved for a future import path; no
+ * current call site sets it.
+ */
+export type ArtifactCreationMethod = 'user_created' | 'conversation_saved' | 'ai_generated' | 'imported' | 'derived'
+
+const ARTIFACT_CREATION_METHODS: ReadonlySet<ArtifactCreationMethod> = new Set([
+  'user_created',
+  'conversation_saved',
+  'ai_generated',
+  'imported',
+  'derived',
+])
+
+export function isArtifactCreationMethod(value: unknown): value is ArtifactCreationMethod {
+  return typeof value === 'string' && ARTIFACT_CREATION_METHODS.has(value as ArtifactCreationMethod)
+}

@@ -8,7 +8,7 @@ import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { indexNote } from '@/modules/search/indexing/indexNote'
 import { linkKnownConceptsToSource } from '@/modules/knowledge-intelligence/api/linkKnownConcepts'
-import { withArtifactKind } from '@/modules/ai/artifacts/artifactMetadata'
+import { withArtifactKind, withCreationMethod } from '@/modules/ai/artifacts/artifactMetadata'
 
 /**
  * Knowledge Actions v1 — Generate Briefing. Reuses the same capability
@@ -56,7 +56,7 @@ export async function generateBriefing(params: {
     workspaceId,
     title: `Briefing: ${evidence.node.title}`,
     content: result.content.trim(),
-    generationMetadata: withArtifactKind(null, 'briefing'),
+    generationMetadata: withCreationMethod(withArtifactKind(null, 'briefing'), 'ai_generated'),
   })
 
   await recordKnowledgeNodeSource({

@@ -19,6 +19,7 @@ import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { detectArtifactKind } from '@/modules/ai/artifacts/detectArtifactKind'
 import { buildArtifactGenerationMetadata } from '@/modules/ai/artifacts/buildArtifactGenerationMetadata'
+import { withCreationMethod } from '@/modules/ai/artifacts/artifactMetadata'
 import { ARTIFACT_KIND_DEFINITIONS, ARTIFACT_KIND_ORDER, type ArtifactKind } from '@/modules/ai/artifacts/artifactTypes'
 
 const SCOPE_OPTIONS: { value: ConversationSaveScope; label: string }[] = [
@@ -119,7 +120,7 @@ export function SaveConversationDialog({
         title: title.trim() || conversationTitle,
         content,
         sourceChunkIds: sourceChunkIds.length > 0 ? sourceChunkIds : null,
-        generationMetadata: buildArtifactGenerationMetadata(content, artifactKind),
+        generationMetadata: buildArtifactGenerationMetadata(content, artifactKind, withCreationMethod(null, 'conversation_saved')),
       })
       await Promise.all(tags.map((tagName) => addTagToNote({ noteId: note.id, tagName, userId: user!.id })))
       await linkNoteToConversation({ userId: user!.id, workspaceId: targetWorkspaceId, noteId: note.id, conversationId })

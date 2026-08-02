@@ -3,6 +3,7 @@ import { createNote, deleteNote } from '@/modules/notes/api/notes'
 import { addTagToNote, listTagsForNote } from '@/modules/notes/api/noteTags'
 import { buildMergedNoteContent, buildMergedNoteTitle } from '@/modules/notes/utils/mergeNotes'
 import { addItemToCollection, listCollectionsContainingItem } from '@/modules/knowledge-intelligence/api/knowledgeCollections'
+import { withCreationMethod } from '@/modules/ai/artifacts/artifactMetadata'
 
 /**
  * Knowledge Actions v1 — Merge Notes. Creates one new note carrying the
@@ -38,6 +39,7 @@ export async function mergeNotesIntoOne(params: {
     workspaceId,
     title: buildMergedNoteTitle(notes),
     content: buildMergedNoteContent(notes),
+    generationMetadata: withCreationMethod(null, 'derived'),
   })
 
   await Promise.all(tagNames.map((tagName) => addTagToNote({ noteId: merged.id, tagName, userId })))

@@ -14,6 +14,7 @@ import { PROVIDER_UNAVAILABLE_MESSAGE } from '@/modules/ai/providers/availabilit
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
 import { detectMemoryCandidates } from '@/modules/ai/memory/memoryDetection/detectMemoryCandidates'
 import type { MemoryCandidate } from '@/modules/ai/memory/memoryDetection/types'
+import type { ArtifactPreview } from '@/modules/workspace-actions/types'
 
 /**
  * Not a react-query mutation on purpose — streaming token-by-token updates
@@ -53,6 +54,12 @@ export function useSendMessage(providerId: string, documentId?: string) {
   // for user approval; never persisted until MemoryApprovalPanel's Remember
   // action calls useMemories().rememberCandidate.
   const [memoryCandidates, setMemoryCandidates] = useState<MemoryCandidate[]>([])
+  // UX-14.4.3 — the just-completed turn's structured artifact preview, if
+  // any, bundled with the message id it belongs to so the caller can match
+  // it to the right MessageBubble without a second piece of state. Reset
+  // per send, same as everything else above — this view is only available
+  // for the live turn, never reconstructed from persisted data.
+  const [artifactPreview, setArtifactPreview] = useState<(ArtifactPreview & { messageId: string }) | null>(null)
 
   async function send(
     conversationId: string,
@@ -67,6 +74,7 @@ export function useSendMessage(providerId: string, documentId?: string) {
     setModel(null)
     setReasoningPlan(null)
     setMemoryCandidates([])
+    setArtifactPreview(null)
 
     // An empty chain means nothing survived candidacy filtering at all
     // (no key configured anywhere, or everything's disabled) — ai-chat
@@ -102,6 +110,7 @@ export function useSendMessage(providerId: string, documentId?: string) {
       setModel(result.model)
       setReasoningPlan(result.reasoningPlan)
       setMemoryCandidates(detectMemoryCandidates(text, conversationId))
+      setArtifactPreview(result.artifactPreview ? { ...result.artifactPreview, messageId: result.message.id } : null)
       await queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
       await queryClient.invalidateQueries({ queryKey: ['conversations'] })
       return result.message
@@ -139,5 +148,6 @@ export function useSendMessage(providerId: string, documentId?: string) {
     reasoningPlan,
     memoryCandidates,
     dismissMemoryCandidate,
+    artifactPreview,
   }
 }
