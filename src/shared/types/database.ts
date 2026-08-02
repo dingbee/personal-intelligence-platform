@@ -37,6 +37,29 @@ export type Workspace = {
   updated_at: string
 }
 
+/** UX-14.5 Phase 1 — ordered lowest to highest; a role "meets" a minimum if its rank is >= that minimum's rank, mirroring the SQL has_workspace_role helper. */
+export type WorkspaceMemberRole = 'viewer' | 'editor' | 'owner'
+export type WorkspaceMemberStatus = 'active' | 'pending' | 'removed'
+
+/**
+ * UX-14.5 Phase 1 — Identity Foundation (`0028_workspace_members.sql`).
+ * The workspace's creator gets an explicit `owner` row auto-created by a
+ * database trigger for every workspace created from that migration
+ * forward; workspaces that predate it have zero rows here and resolve
+ * their owner implicitly via `Workspace.user_id` instead (see
+ * `resolveWorkspaceRole`) — this table is never backfilled for them.
+ */
+export type WorkspaceMember = {
+  id: string
+  workspace_id: string
+  user_id: string
+  role: WorkspaceMemberRole
+  status: WorkspaceMemberStatus
+  invited_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type Collection = {
   id: string
   user_id: string
@@ -406,6 +429,12 @@ export type Database = {
         Row: Workspace
         Insert: Partial<Workspace> & { user_id: string; name: string }
         Update: Partial<Workspace>
+        Relationships: []
+      }
+      workspace_members: {
+        Row: WorkspaceMember
+        Insert: Partial<WorkspaceMember> & { workspace_id: string; user_id: string; role: WorkspaceMemberRole }
+        Update: Partial<WorkspaceMember>
         Relationships: []
       }
       collections: {
