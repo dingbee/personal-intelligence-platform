@@ -22,10 +22,15 @@ interface ActivityItem {
  * queries: `members`/`lookup` come from useWorkspaceMemberDirectory
  * (already built this phase), `documentCount`/`noteCount`/`collectionCount`
  * come from useWorkspaceStats (the same hook WorkspaceCard's stat grid
- * uses), and `recentNotes`/`activeConversations` are the Hub's own
- * already-fetched lists — this just merges and re-sorts them into one
- * "recent activity" feed rather than issuing another round trip. Only
- * rendered when the workspace is actually shared (see call site).
+ * uses), and `recentNotes`/`activeConversations` come from the caller —
+ * this just merges and re-sorts them into one "recent activity" feed
+ * rather than issuing another round trip. Only rendered when the
+ * workspace is actually shared (see call site).
+ *
+ * UX-14.5.7 — its only remaining caller is WorkspaceCollaborationPage,
+ * which renders the full WorkspaceMemberRoster directly beneath this
+ * section, so the member row here is a compact summary (avatar stack +
+ * count), not a second, redundant "manage members" entry point.
  */
 export function CollaborationSection({
   members,
@@ -65,16 +70,11 @@ export function CollaborationSection({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <MemberAvatarStack members={members} />
-          <span className="text-sm text-[var(--color-ink-muted)]">
-            {members.length} member{members.length === 1 ? '' : 's'}
-          </span>
-        </div>
-        <Link to="/settings/workspaces" className="text-sm text-[var(--color-accent)] hover:underline">
-          Manage members →
-        </Link>
+      <div className="flex items-center gap-2">
+        <MemberAvatarStack members={members} />
+        <span className="text-sm text-[var(--color-ink-muted)]">
+          {members.length} member{members.length === 1 ? '' : 's'}
+        </span>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
