@@ -1,10 +1,16 @@
 import { supabase } from '@/shared/lib/supabase'
 import type {
+  WorkspaceInvitation,
   WorkspaceMember,
   WorkspaceMemberRole,
   WorkspaceMemberStatus,
   WorkspaceMemberWithProfile,
 } from '@/shared/types/database'
+
+/** UX-14.5.8 Phase 1 — the one normalization rule for every email this app ever compares: trim, then lower-case. Applied client-side here as the first line of defense; `invite_to_workspace` normalizes again server-side, since a client can't be trusted as the only place this happens. */
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
 
 /**
  * UX-14.5 Phase 1 — a direct write path for `workspace_members`. Not
@@ -38,26 +44,61 @@ export async function createWorkspaceMembership(params: {
   return data
 }
 
+export type InviteToWorkspaceResult =
+  | { outcome: 'member_invited'; membership_id: string }
+  | { outcome: 'invitation_created'; invitation_id: string }
+
 /**
- * UX-14.5 Phase 3 — the one write path for creating an invitation.
- * `profiles` RLS is intentionally self-only, so resolving `invitee
- * email -> user_id` can't happen in a plain client query; this calls
- * the `invite_to_workspace` security-definer RPC
- * (`0030_workspace_membership_management.sql`), which does that lookup
- * and the owner-authorization check server-side. Ownership can't be
- * granted through this path — `invitee_role` is typed to exclude
- * 'owner', matching the RPC's own guard.
+ * UX-14.5 Phase 3, extended UX-14.5.8 Phase 1 — the one write path for
+ * creating an invitation. `profiles` RLS is intentionally self-only, so
+ * resolving `invitee email -> user_id` can't happen in a plain client
+ * query; this calls the `invite_to_workspace` security-definer RPC
+ * (`0030_workspace_membership_management.sql`, redefined by
+ * `0032_workspace_invitations.sql`), which does that lookup and the
+ * owner-authorization check server-side. Ownership can't be granted
+ * through this path — `invitee_role` is typed to exclude 'owner',
+ * matching the RPC's own guard.
+ *
+ * As of 0032, an email with no matching account no longer fails — the
+ * RPC records a `workspace_invitations` row instead, resolved
+ * automatically the moment that person signs up (see
+ * `ux-14.5.8-workspace-invitations-discovery.md`). The two outcomes are
+ * indistinguishable to the caller in every way that matters (both are
+ * success), which is deliberate: it closes the discovery's live-confirmed
+ * account-enumeration finding as a side effect of the redesign, not a
+ * separate patch.
  */
 export async function inviteToWorkspace(params: {
   workspaceId: string
   email: string
   role: Exclude<WorkspaceMemberRole, 'owner'>
-}): Promise<WorkspaceMember> {
+}): Promise<InviteToWorkspaceResult> {
   const { data, error } = await supabase.rpc('invite_to_workspace', {
     target_workspace_id: params.workspaceId,
-    invitee_email: params.email,
+    invitee_email: normalizeEmail(params.email),
     invitee_role: params.role,
   })
+  if (error) throw error
+  return data as InviteToWorkspaceResult
+}
+
+/**
+ * UX-14.5.8 Phase 1 — a workspace's outstanding email-based invitations
+ * (`workspace_invitations`, distinct from `listMyPendingInvitations`
+ * below, which is the *invitee's* view across every workspace of the
+ * unrelated `workspace_members`-based pending-row flow for an already-
+ * known user). No RPC needed here, unlike `listWorkspaceMembers` — each
+ * row already carries the invitee's email directly, so there's no
+ * `profiles` cross-user join to bridge; a plain RLS-gated select is
+ * sufficient (see the table's own SELECT policy, viewer-or-above).
+ */
+export async function listWorkspaceInvitations(workspaceId: string): Promise<WorkspaceInvitation[]> {
+  const { data, error } = await supabase
+    .from('workspace_invitations')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
   if (error) throw error
   return data
 }

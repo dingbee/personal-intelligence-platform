@@ -23,7 +23,14 @@ export function useWorkspaceMembers(workspaceId: string) {
   const invite = useMutation({
     mutationFn: (params: { email: string; role: Exclude<WorkspaceMemberRole, 'owner'> }) =>
       inviteToWorkspace({ workspaceId, email: params.email, role: params.role }),
-    onSuccess: invalidate,
+    // UX-14.5.8 Phase 1 — a successful invite lands in one of two tables
+    // depending on the outcome (see inviteToWorkspace's doc-comment), and
+    // the caller doesn't know which ahead of time, so both query keys are
+    // invalidated rather than branching on `data.outcome` here.
+    onSuccess: () => {
+      invalidate()
+      queryClient.invalidateQueries({ queryKey: ['workspace-invitations', workspaceId] })
+    },
   })
 
   const changeRole = useMutation({

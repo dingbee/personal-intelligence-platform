@@ -76,6 +76,34 @@ export type WorkspaceMemberWithProfile = Omit<WorkspaceMember, 'id'> & {
   display_name: string | null
 }
 
+export type WorkspaceInvitationStatus = 'pending' | 'accepted' | 'cancelled'
+
+/**
+ * UX-14.5.8 Phase 1 — an invitation to an email address with no matching
+ * `profiles` row at invite time (`0032_workspace_invitations.sql`).
+ * Separate from `WorkspaceMember`'s own `status: 'pending'` rows, which
+ * are for a *known* user (`user_id` is `not null` there) — this table
+ * exists specifically because there is no `user_id` to write yet. `email`
+ * is always stored lower-cased. `handle_new_user` resolves a row into a
+ * real, active `WorkspaceMember` automatically the moment someone signs
+ * up with a matching email, then marks it `accepted` here — there is no
+ * separate accept/decline action for the invitee the way an existing
+ * user's `WorkspaceMember` pending row has.
+ */
+export type WorkspaceInvitation = {
+  id: string
+  workspace_id: string
+  email: string
+  role: Exclude<WorkspaceMemberRole, 'owner'>
+  status: WorkspaceInvitationStatus
+  invited_by: string | null
+  created_at: string
+  updated_at: string
+  expires_at: string
+  accepted_at: string | null
+  accepted_by: string | null
+}
+
 export type Collection = {
   id: string
   user_id: string
@@ -453,6 +481,12 @@ export type Database = {
         Update: Partial<WorkspaceMember>
         Relationships: []
       }
+      workspace_invitations: {
+        Row: WorkspaceInvitation
+        Insert: Partial<WorkspaceInvitation> & { workspace_id: string; email: string; role: Exclude<WorkspaceMemberRole, 'owner'> }
+        Update: Partial<WorkspaceInvitation>
+        Relationships: []
+      }
       collections: {
         Row: Collection
         Insert: Partial<Collection> & { user_id: string; name: string }
@@ -706,7 +740,13 @@ export type Database = {
           invitee_email: string
           invitee_role: WorkspaceMemberRole
         }
-        Returns: WorkspaceMember
+        /**
+         * UX-14.5.8 Phase 1 — no longer always a `WorkspaceMember` row: an
+         * unknown email has none to return (see `WorkspaceInvitation`), so
+         * this is a small outcome descriptor instead. `membership_id`/
+         * `invitation_id` are set on whichever branch actually ran.
+         */
+        Returns: { outcome: 'member_invited'; membership_id: string } | { outcome: 'invitation_created'; invitation_id: string }
       }
       respond_to_workspace_invitation: {
         Args: {
@@ -730,6 +770,7 @@ export type Database = {
       ai_request_status: AiRequestStatus
       ai_memory_type: AiMemoryType
       workspace_objective_status: WorkspaceObjectiveStatus
+      workspace_invitation_status: WorkspaceInvitationStatus
     }
   }
 }

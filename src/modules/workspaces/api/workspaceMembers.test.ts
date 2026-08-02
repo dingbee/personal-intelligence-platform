@@ -11,6 +11,20 @@ interface FakeMembershipRow {
   updated_at: string
 }
 
+interface FakeInvitationRow {
+  id: string
+  workspace_id: string
+  email: string
+  role: string
+  status: string
+  invited_by: string | null
+  created_at: string
+  updated_at: string
+  expires_at: string
+  accepted_at: string | null
+  accepted_by: string | null
+}
+
 const {
   insertMock,
   singleMock,
@@ -20,6 +34,10 @@ const {
   topSelectMock,
   topEqMock,
   orderMock,
+  invitationsSelectMock,
+  invitationsEqWorkspaceMock,
+  invitationsEqStatusMock,
+  invitationsOrderMock,
   rpcMock,
   fromMock,
 } = vi.hoisted(() => {
@@ -32,13 +50,27 @@ const {
   const updateEqMock = vi.fn(() => ({ select: updateSelectMock }))
   const updateMock = vi.fn(() => ({ eq: updateEqMock }))
 
+  // workspace_members' own select chain — used by listMyPendingInvitations.
   const orderMock = vi.fn<() => Promise<{ data: unknown[] | null; error: Error | null }>>()
   const topEqMock = vi.fn(() => ({ order: orderMock }))
   const topSelectMock = vi.fn(() => ({ eq: topEqMock }))
 
+  // workspace_invitations' own select chain — one extra .eq() (workspace_id,
+  // then status) versus workspace_members', so it needs its own mock shape
+  // rather than reusing topSelectMock.
+  const invitationsOrderMock = vi.fn<() => Promise<{ data: FakeInvitationRow[] | null; error: Error | null }>>()
+  const invitationsEqStatusMock = vi.fn(() => ({ order: invitationsOrderMock }))
+  const invitationsEqWorkspaceMock = vi.fn(() => ({ eq: invitationsEqStatusMock }))
+  const invitationsSelectMock = vi.fn(() => ({ eq: invitationsEqWorkspaceMock }))
+
   const rpcMock = vi.fn<() => Promise<{ data: unknown; error: Error | null }>>()
 
-  const fromMock = vi.fn(() => ({ insert: insertMock, update: updateMock, select: topSelectMock }))
+  const fromMock = vi.fn((table: string) => {
+    if (table === 'workspace_invitations') {
+      return { select: invitationsSelectMock }
+    }
+    return { insert: insertMock, update: updateMock, select: topSelectMock }
+  })
 
   return {
     insertMock,
@@ -49,6 +81,10 @@ const {
     topSelectMock,
     topEqMock,
     orderMock,
+    invitationsSelectMock,
+    invitationsEqWorkspaceMock,
+    invitationsEqStatusMock,
+    invitationsOrderMock,
     rpcMock,
     fromMock,
   }
@@ -60,6 +96,7 @@ import {
   createWorkspaceMembership,
   inviteToWorkspace,
   listMyPendingInvitations,
+  listWorkspaceInvitations,
   listWorkspaceMembers,
   removeWorkspaceMember,
   respondToWorkspaceInvitation,
@@ -76,6 +113,23 @@ function fakeRow(overrides: Partial<FakeMembershipRow>): FakeMembershipRow {
     invited_by: null,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  }
+}
+
+function fakeInvitationRow(overrides: Partial<FakeInvitationRow>): FakeInvitationRow {
+  return {
+    id: 'invitation-1',
+    workspace_id: 'workspace-1',
+    email: 'invitee@example.com',
+    role: 'editor',
+    status: 'pending',
+    invited_by: 'user-1',
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    expires_at: '2026-01-31T00:00:00.000Z',
+    accepted_at: null,
+    accepted_by: null,
     ...overrides,
   }
 }
@@ -150,8 +204,8 @@ describe('createWorkspaceMembership', () => {
 })
 
 describe('inviteToWorkspace', () => {
-  it('calls the invite_to_workspace RPC with the right arguments', async () => {
-    rpcMock.mockResolvedValueOnce({ data: fakeRow({ role: 'editor', status: 'pending' }), error: null })
+  it('calls the invite_to_workspace RPC with the right arguments for a known account', async () => {
+    rpcMock.mockResolvedValueOnce({ data: { outcome: 'member_invited', membership_id: 'member-1' }, error: null })
 
     const result = await inviteToWorkspace({ workspaceId: 'workspace-1', email: 'teammate@example.com', role: 'editor' })
 
@@ -160,7 +214,27 @@ describe('inviteToWorkspace', () => {
       invitee_email: 'teammate@example.com',
       invitee_role: 'editor',
     })
-    expect(result.status).toBe('pending')
+    expect(result).toEqual({ outcome: 'member_invited', membership_id: 'member-1' })
+  })
+
+  it('returns an invitation_created outcome for an email with no account yet', async () => {
+    rpcMock.mockResolvedValueOnce({ data: { outcome: 'invitation_created', invitation_id: 'invitation-1' }, error: null })
+
+    const result = await inviteToWorkspace({ workspaceId: 'workspace-1', email: 'unknown@example.com', role: 'viewer' })
+
+    expect(result).toEqual({ outcome: 'invitation_created', invitation_id: 'invitation-1' })
+  })
+
+  it('trims and lower-cases the email before calling the RPC', async () => {
+    rpcMock.mockResolvedValueOnce({ data: { outcome: 'invitation_created', invitation_id: 'invitation-2' }, error: null })
+
+    await inviteToWorkspace({ workspaceId: 'workspace-1', email: '  Teammate@Example.com  ', role: 'editor' })
+
+    expect(rpcMock).toHaveBeenCalledWith('invite_to_workspace', {
+      target_workspace_id: 'workspace-1',
+      invitee_email: 'teammate@example.com',
+      invitee_role: 'editor',
+    })
   })
 
   it('propagates the RPC error for a non-owner caller', async () => {
@@ -272,5 +346,29 @@ describe('listMyPendingInvitations', () => {
     expect(topEqMock).toHaveBeenCalledWith('status', 'pending')
     expect(result).toHaveLength(1)
     expect(result[0]!.workspace).toEqual({ name: 'Shared workspace' })
+  })
+})
+
+describe('listWorkspaceInvitations', () => {
+  it('lists a workspace\'s pending email-based invitations', async () => {
+    invitationsOrderMock.mockResolvedValueOnce({
+      data: [fakeInvitationRow({}), fakeInvitationRow({ id: 'invitation-2', email: 'second@example.com' })],
+      error: null,
+    })
+
+    const result = await listWorkspaceInvitations('workspace-1')
+
+    expect(fromMock).toHaveBeenCalledWith('workspace_invitations')
+    expect(invitationsSelectMock).toHaveBeenCalledWith('*')
+    expect(invitationsEqWorkspaceMock).toHaveBeenCalledWith('workspace_id', 'workspace-1')
+    expect(invitationsEqStatusMock).toHaveBeenCalledWith('status', 'pending')
+    expect(result).toHaveLength(2)
+    expect(result[1]!.email).toBe('second@example.com')
+  })
+
+  it('propagates an error', async () => {
+    invitationsOrderMock.mockResolvedValueOnce({ data: null, error: new Error('boom') })
+
+    await expect(listWorkspaceInvitations('workspace-1')).rejects.toThrow(/boom/)
   })
 })
