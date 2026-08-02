@@ -40,6 +40,7 @@ const {
   invitationsOrderMock,
   rpcMock,
   fromMock,
+  functionsInvokeMock,
 } = vi.hoisted(() => {
   const singleMock = vi.fn<() => Promise<{ data: FakeMembershipRow | null; error: Error | null }>>()
   const insertSelectMock = vi.fn(() => ({ single: singleMock }))
@@ -67,6 +68,7 @@ const {
   const invitationsSelectMock = vi.fn(() => ({ eq: invitationsEqWorkspaceMock }))
 
   const rpcMock = vi.fn<() => Promise<{ data: unknown; error: Error | null }>>()
+  const functionsInvokeMock = vi.fn<() => Promise<{ data: unknown; error: Error | null }>>()
 
   const fromMock = vi.fn((table: string) => {
     if (table === 'workspace_invitations') {
@@ -94,10 +96,13 @@ const {
     invitationsOrderMock,
     rpcMock,
     fromMock,
+    functionsInvokeMock,
   }
 })
 
-vi.mock('@/shared/lib/supabase', () => ({ supabase: { from: fromMock, rpc: rpcMock } }))
+vi.mock('@/shared/lib/supabase', () => ({
+  supabase: { from: fromMock, rpc: rpcMock, functions: { invoke: functionsInvokeMock } },
+}))
 
 import {
   cancelWorkspaceInvitation,
@@ -108,6 +113,8 @@ import {
   listWorkspaceMembers,
   removeWorkspaceMember,
   respondToWorkspaceInvitation,
+  sendInvitationEmailForResult,
+  sendWorkspaceInvitationEmail,
   updateWorkspaceMemberRole,
 } from '@/modules/workspaces/api/workspaceMembers'
 
@@ -397,5 +404,66 @@ describe('cancelWorkspaceInvitation', () => {
     updateSingleMock.mockResolvedValueOnce({ data: null, error: new Error('No rows returned') })
 
     await expect(cancelWorkspaceInvitation('invitation-1')).rejects.toThrow(/No rows returned/)
+  })
+})
+
+describe('sendWorkspaceInvitationEmail', () => {
+  it('invokes the edge function with the given params and returns no error on success', async () => {
+    functionsInvokeMock.mockResolvedValueOnce({ data: { sent: true }, error: null })
+
+    const result = await sendWorkspaceInvitationEmail({ workspaceId: 'workspace-1', kind: 'invitation', id: 'invitation-1' })
+
+    expect(functionsInvokeMock).toHaveBeenCalledWith('send-workspace-invitation', {
+      body: { workspaceId: 'workspace-1', kind: 'invitation', id: 'invitation-1' },
+    })
+    expect(result).toEqual({ error: null })
+  })
+
+  it('returns the error message rather than throwing when the provider rejects the send', async () => {
+    functionsInvokeMock.mockResolvedValueOnce({ data: null, error: new Error('Email provider error: 502 upstream failure') })
+
+    const result = await sendWorkspaceInvitationEmail({ workspaceId: 'workspace-1', kind: 'invitation', id: 'invitation-1' })
+
+    expect(result).toEqual({ error: 'Email provider error: 502 upstream failure' })
+  })
+
+  it('surfaces a 403 from a non-owner caller as an error, not a throw', async () => {
+    functionsInvokeMock.mockResolvedValueOnce({ data: null, error: new Error('Only a workspace owner can send invitation emails') })
+
+    const result = await sendWorkspaceInvitationEmail({ workspaceId: 'workspace-1', kind: 'membership', id: 'member-1' })
+
+    expect(result.error).toMatch(/Only a workspace owner/)
+  })
+})
+
+describe('sendInvitationEmailForResult', () => {
+  it('maps an invitation_created outcome to the invitation kind/id', async () => {
+    functionsInvokeMock.mockResolvedValueOnce({ data: { sent: true }, error: null })
+
+    const error = await sendInvitationEmailForResult('workspace-1', { outcome: 'invitation_created', invitation_id: 'invitation-9' })
+
+    expect(functionsInvokeMock).toHaveBeenCalledWith('send-workspace-invitation', {
+      body: { workspaceId: 'workspace-1', kind: 'invitation', id: 'invitation-9' },
+    })
+    expect(error).toBeNull()
+  })
+
+  it('maps a member_invited outcome to the membership kind/id', async () => {
+    functionsInvokeMock.mockResolvedValueOnce({ data: { sent: true }, error: null })
+
+    const error = await sendInvitationEmailForResult('workspace-1', { outcome: 'member_invited', membership_id: 'member-9' })
+
+    expect(functionsInvokeMock).toHaveBeenCalledWith('send-workspace-invitation', {
+      body: { workspaceId: 'workspace-1', kind: 'membership', id: 'member-9' },
+    })
+    expect(error).toBeNull()
+  })
+
+  it('returns the delivery error string for the caller to surface, without throwing', async () => {
+    functionsInvokeMock.mockResolvedValueOnce({ data: null, error: new Error('RESEND_API_KEY is not configured') })
+
+    const error = await sendInvitationEmailForResult('workspace-1', { outcome: 'invitation_created', invitation_id: 'invitation-9' })
+
+    expect(error).toBe('RESEND_API_KEY is not configured')
   })
 })

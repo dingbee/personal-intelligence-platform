@@ -36,14 +36,16 @@ const ASSIGNABLE_ROLES: Exclude<WorkspaceMemberRole, 'owner'>[] = ['editor', 'vi
  * account-enumeration side channel the discovery found as a direct
  * consequence of the redesign, not a separate fix.
  *
- * UX-14.5.8.2 — Cancel and Resend for a pending invitation. "Resend"
- * calls the exact same mutation the invite form uses, with the row's
- * own stored email/role — see `useWorkspaceInvitations`' doc-comment
- * for why that's an honest description of what it does before real
- * email delivery exists (UX-14.5.8.3, still deferred): it renews the
- * invitation's expiry and re-affirms who's inviting, it doesn't send
- * another email. Still no role-change-before-acceptance control —
- * genuinely out of scope for this pass, not an oversight.
+ * UX-14.5.8.2 — Cancel and Resend for a pending invitation.
+ *
+ * UX-14.5.8.3 — both the invite form and Resend now actually send an
+ * email (via the `send-workspace-invitation` edge function). Delivery is
+ * deliberately a second, non-corrupting step after invitation creation/
+ * renewal already succeeded — see `useWorkspaceMembers`/
+ * `useWorkspaceInvitations`' own doc-comments — so a delivery failure
+ * surfaces as a distinct dismissible warning (`emailWarning`) rather
+ * than `invite.isError`/a failed resend: the invitation is already
+ * correctly pending in the database either way, and can be resent.
  */
 export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) {
   const { user } = useAuth()
@@ -55,6 +57,7 @@ export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) 
   const [inviteRole, setInviteRole] = useState<Exclude<WorkspaceMemberRole, 'owner'>>('editor')
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [cancelingId, setCancelingId] = useState<string | null>(null)
+  const [emailWarning, setEmailWarning] = useState<string | null>(null)
 
   const isOwner = role === 'owner'
 
@@ -66,7 +69,16 @@ export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) 
           onSubmit={(e) => {
             e.preventDefault()
             if (!inviteEmail.trim()) return
-            invite.mutate({ email: inviteEmail.trim(), role: inviteRole }, { onSuccess: () => setInviteEmail('') })
+            setEmailWarning(null)
+            invite.mutate(
+              { email: inviteEmail.trim(), role: inviteRole },
+              {
+                onSuccess: ({ emailError }) => {
+                  setInviteEmail('')
+                  if (emailError) setEmailWarning(`Invitation created, but the email failed to send: ${emailError}`)
+                },
+              },
+            )
           }}
         >
           <div className="min-w-[14rem] flex-1">
@@ -98,6 +110,14 @@ export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) 
           {invite.isError && (
             <p className="w-full text-sm text-red-600">
               {invite.error instanceof Error ? invite.error.message : 'Failed to send invitation'}
+            </p>
+          )}
+          {emailWarning && (
+            <p className="w-full text-sm text-amber-600">
+              {emailWarning}{' '}
+              <button type="button" className="underline" onClick={() => setEmailWarning(null)}>
+                Dismiss
+              </button>
             </p>
           )}
         </form>
@@ -196,7 +216,17 @@ export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) 
                     <Button
                       variant="ghost"
                       loading={resending}
-                      onClick={() => resend.mutate({ email: invitation.email, role: invitation.role })}
+                      onClick={() => {
+                        setEmailWarning(null)
+                        resend.mutate(
+                          { email: invitation.email, role: invitation.role },
+                          {
+                            onSuccess: ({ emailError }) => {
+                              if (emailError) setEmailWarning(`Invitation renewed, but the email failed to send: ${emailError}`)
+                            },
+                          },
+                        )
+                      }}
                     >
                       Resend
                     </Button>

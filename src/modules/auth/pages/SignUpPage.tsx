@@ -1,13 +1,22 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/modules/auth/useAuth'
 import { AuthCard } from '@/modules/auth/components/AuthCard'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
 
+/**
+ * UX-14.5.8.3 — the invitation email's "Accept invitation" link for an
+ * unknown-email invitee (`workspace_invitations`) points here with
+ * `?email=` prefilled, since `handle_new_user`'s reconciliation
+ * (UX-14.5.8 Phase 1) matches on the exact email signed up with — a typo
+ * here would create an account the invitation can never resolve against.
+ * The field stays editable; this is a convenience prefill, not a lock.
+ */
 export function SignUpPage() {
   const { signUpWithPassword } = useAuth()
-  const [email, setEmail] = useState('')
+  const [searchParams] = useSearchParams()
+  const [email, setEmail] = useState(() => searchParams.get('email') ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)

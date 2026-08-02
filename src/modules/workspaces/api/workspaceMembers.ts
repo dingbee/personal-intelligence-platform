@@ -127,6 +127,43 @@ export async function cancelWorkspaceInvitation(invitationId: string): Promise<W
 }
 
 /**
+ * UX-14.5.8.3 — invokes the `send-workspace-invitation` edge function,
+ * this app's first service-role-key trust boundary (see that function's
+ * own header comment for the full security rationale). Deliberately takes
+ * only IDs, never workspace name/role/email: the function re-resolves
+ * everything itself from the database, so a compromised or stale client
+ * can't inject content into the email it sends. `supabase.functions.invoke`
+ * automatically forwards the caller's own session JWT as the Authorization
+ * header — never a service-role key, which only exists server-side.
+ *
+ * Returns `{ error }` rather than throwing so callers (the invite/resend
+ * mutations below) can treat "invitation created, email failed" as a
+ * distinct, non-corrupting outcome from "invitation creation itself
+ * failed" — see those mutations' own doc-comments.
+ */
+export async function sendWorkspaceInvitationEmail(params: {
+  workspaceId: string
+  kind: 'invitation' | 'membership'
+  id: string
+}): Promise<{ error: string | null }> {
+  const { error } = await supabase.functions.invoke('send-workspace-invitation', { body: params })
+  return { error: error ? error.message : null }
+}
+
+/** Maps `inviteToWorkspace`'s two possible outcomes onto `sendWorkspaceInvitationEmail`'s `kind`/`id` shape, so call sites don't need to know the edge function's request contract. */
+export async function sendInvitationEmailForResult(
+  workspaceId: string,
+  result: InviteToWorkspaceResult,
+): Promise<string | null> {
+  const { error } = await sendWorkspaceInvitationEmail(
+    result.outcome === 'invitation_created'
+      ? { workspaceId, kind: 'invitation', id: result.invitation_id }
+      : { workspaceId, kind: 'membership', id: result.membership_id },
+  )
+  return error
+}
+
+/**
  * UX-14.5 Phase 3 — an invitee accepting or declining their own
  * pending invitation, via the `respond_to_workspace_invitation`
  * security-definer RPC. Deliberately not a plain UPDATE/DELETE: the RPC
