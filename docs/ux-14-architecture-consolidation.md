@@ -382,6 +382,41 @@ No automatic saving at any point — the queue is populated, nothing is written 
 
 ---
 
+#### UX-14.4 Phase 3 — Spreadsheet Specification Compiler (completed)
+
+Not one of the original R1/R2/R3 findings — a new module in the Artifact Intelligence line opened by UX-14.4 (Phases 1/2, Path A) and its Path B discovery passes (`docs/ux-14.4-path-b-generation-discovery.md`, `docs/ux-14.4-spreadsheet-specification-discovery.md`, commit `0f8f26e`). Full technical record lives in that specification discovery doc, updated in this milestone with an implementation section; summarized here for the consolidated architecture picture.
+
+**Old data flow (Path A only).** `parseMarkdownTableToArtifact` was the only producer of `SpreadsheetArtifactData` — it converts markdown table text into cell-addressed data by direct textual parsing. No other entry point existed.
+
+**New data flow.** A second, parallel producer:
+
+```
+SpreadsheetSpecification (new, row/column-oriented, no addresses)
+  → validateSpreadsheetSpecification (new, structural + reference-integrity checks)
+  → compileSpreadsheetSpecification (new, pure, deterministic address assignment)
+  → SpreadsheetArtifactData (UNCHANGED type, gains one additive optional field: `columnFormats`)
+  → buildSpreadsheetWorkbook / exportSpreadsheetArtifact (COMPLETELY UNCHANGED)
+```
+
+`parseMarkdownTableToArtifact.ts` itself was not touched — both producers converge on the identical `SpreadsheetArtifactData` output type, proven not just asserted: a cross-verification test compiles the same logical table through both the markdown parser and the new specification compiler and asserts byte-equivalent output (`compileSpreadsheetSpecification.test.ts`).
+
+**Rationale.** `SpreadsheetArtifactData`'s cell-addressed shape (`{cell: 'B2', ...}`) is right for `buildSpreadsheetWorkbook` but wrong to ask any future producer — especially an eventual AI generator — to emit directly: manual per-cell address bookkeeping is exactly the class of error-prone task this codebase's deterministic-vs-LLM split exists to avoid. `SpreadsheetSpecification` removes that burden entirely (rows are index-aligned to columns, not addressed), and the compiler is the one place address arithmetic happens, verified against Path A's already-shipped implementation.
+
+**Files touched:** 5 new (`specificationTypes.ts`, `validateSpreadsheetSpecification.ts` + test, `compileSpreadsheetSpecification.ts` + test), 1 additive change (`types.ts` gains `SpreadsheetSheet.columnFormats?`, unread by `buildSpreadsheetWorkbook.ts`, which remains byte-for-byte unchanged).
+
+**Duplication, disclosed not silently fixed:** `columnLetter` (A1 column-letter computation) now exists in both `parseMarkdownTableToArtifact.ts` and `compileSpreadsheetSpecification.ts`. Extracting it into a shared `cellAddressing.ts` was the discovery doc's own flagged zero-risk refactor; not performed this milestone since its explicit scope was new files only, not touching Path A's parser — recorded under Zero-Risk Refactors below instead of done unprompted.
+
+**Verification.** `tsc -b`: clean. `vitest run`: 1031/1031 passing (up from 1003 — 28 new tests: validator fixture coverage for every reject reason, compiler coverage for addressing/ordering/formula-substitution/formatting/determinism, plus the cross-verification test against Path A). `lint`/`build`: clean. `npm run verify:bundle`: passes, main bundle hash identical to pre-milestone — expected, since nothing in the application UI imports these new files yet (no Workspace Action registration, no LLM integration, no Save As wiring — all explicitly out of scope). Browser: boot-smoke-tested, zero console/page errors.
+
+**Remaining Spreadsheet Artifact roadmap** (per the Path B discovery docs, not this milestone):
+1. Extract shared `cellAddressing.ts`, unifying Path A's and the compiler's `columnLetter` — flagged, not done.
+2. The `generate-spreadsheet-artifact` capability + Workspace Action registration (Path B's actual LLM integration) — this milestone's compiler is its prerequisite, not a replacement.
+3. Formula-content safety allowlist — needed once real formula generation exists, not before.
+4. Mapping `columnFormats`/column `type` hints to an actual Excel number format — currently inert by design.
+5. A committed browser-verification harness — the same disclosed gap carried since UX-14.2, now also covering this surface.
+
+---
+
 **R2 — Consolidate `suggestionEngine.ts` and `dashboardRecommendations.ts`.** ~~Deferred to UX-14 implementation~~ **Done (UX-14.1).** Merged into `src/modules/intelligence/recommendations/recommendationEngine.ts` — one exported `Recommendation` type, one `generateRecommendations({ scope: 'chat' | 'dashboard', ... })` function. Each scope's rule branches are unchanged from their original files (same conditions, same reason text, same command ids); characterization tests ported from both original test suites unchanged, plus two new tests asserting scope isolation (a dashboard-only signal has no effect under `scope: 'chat'` and vice versa). All four call sites updated (`orchestrator.ts`, `dashboardInteraction.ts`, `hub/hubData.ts`, plus the two rendering/summary consumers `RecommendedActionsSection.tsx` and `executiveSummary.ts`). Verified: tsc clean, 956/956 vitest (up from 954 — net of 15 ported tests removed, 17 added), lint clean, build clean.
 
 **R3 (optional, lower priority) — Reconcile `workspaceInsightEngine`/`dashboardInsights`.** Not required; flagged so a future phase doesn't extend both independently without noticing they're adjacent.
@@ -406,6 +441,7 @@ Not part of UX-14, not scoped here beyond naming:
 - Background/scheduled execution infrastructure spike (Blueprint §3, increment 2) — needed for true proactive intelligence, not needed for anything in this sprint or UX-14's first increment.
 - An explicit permission/confirmation model — needed before Agent Capabilities can be scoped at all (Roadmap, deferred).
 - Renaming to resolve the "profile" terminology collision (e.g., referring to the `ai_memory` convention as "Personalization Fields" in code comments/UI copy, reserving "Profile" for the `profiles` table) — a naming change, not a data migration; low priority, no functional impact.
+- Extract a shared `cellAddressing.ts` (`columnLetter`) used by both `parseMarkdownTableToArtifact.ts` and `compileSpreadsheetSpecification.ts` (UX-14.4 Phase 3) — pure function, zero behavior change, genuinely zero-risk; not done in Phase 3 since that milestone's scope was new files only.
 
 ---
 
