@@ -3,7 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useNote } from '@/modules/notes/hooks/useNote'
 import { useNotes } from '@/modules/notes/hooks/useNotes'
+import { useNoteTags } from '@/modules/notes/hooks/useNoteTags'
 import { useRelatedKnowledge } from '@/modules/notes/hooks/useRelatedKnowledge'
+import { exportNotePackage, notePackageFilename } from '@/modules/knowledge-exchange/notes/exportNotePackage'
+import { downloadTextFile } from '@/shared/utils/downloadTextFile'
 import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
 import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
 import { SharingBadge } from '@/shared/components/collaboration/SharingBadge'
@@ -37,6 +40,7 @@ export function NoteDetailPage() {
   const { user } = useAuth()
   const { note, isLoading, isError, save, summarize } = useNote(noteId!)
   const { remove } = useNotes()
+  const { tags: noteTags } = useNoteTags(noteId!)
   const { data: documents = [] } = useDocuments({})
   const { data: relatedKnowledge = [] } = useRelatedKnowledge(noteId!)
   const { data: workspaceRole } = useWorkspaceRole(note?.workspace_id ?? null)
@@ -220,6 +224,12 @@ export function NoteDetailPage() {
               </>
             )}
             <AddToCollectionButton itemType="note" itemId={note.id} />
+            <Button
+              variant="ghost"
+              onClick={() => downloadTextFile(notePackageFilename(note.title), JSON.stringify(exportNotePackage(note, noteTags), null, 2), 'application/json')}
+            >
+              Export
+            </Button>
           </div>
           {canDelete && (
             <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setConfirmingDelete(true)}>

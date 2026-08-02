@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useNotes } from '@/modules/notes/hooks/useNotes'
 import { useMergeNotes } from '@/modules/notes/hooks/useMergeNotes'
 import { NoteCard } from '@/modules/notes/components/NoteCard'
+import { ImportNotePackageDialog } from '@/modules/knowledge-exchange/components/ImportNotePackageDialog'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
@@ -16,6 +17,7 @@ export function NotesPage() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmingMerge, setConfirmingMerge] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   const exitSelectionMode = () => {
     setSelectionMode(false)
@@ -60,6 +62,9 @@ export function NotesPage() {
                   Merge notes
                 </Button>
               )}
+              <Button variant="secondary" onClick={() => setImportDialogOpen(true)}>
+                Import
+              </Button>
               <Button
                 loading={create.isPending}
                 onClick={() => create.mutate({ title: 'Untitled note' }, { onSuccess: (note) => navigate(`/notes/${note.id}`) })}
@@ -136,6 +141,8 @@ export function NotesPage() {
         }}
         onCancel={() => setConfirmingMerge(false)}
       />
+
+      <ImportNotePackageDialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} />
     </div>
   )
 }
