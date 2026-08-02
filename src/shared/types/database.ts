@@ -60,6 +60,22 @@ export type WorkspaceMember = {
   updated_at: string
 }
 
+/**
+ * UX-14.5 Phase 3 — the `list_workspace_members` RPC's row shape: a
+ * `WorkspaceMember` joined with the member's email/display name (the
+ * function bridges `profiles`' intentionally self-only RLS so the
+ * member-management UI can render who's who). `id` is null only for the
+ * synthesized implicit-owner row the function returns when a workspace
+ * predates the 0028 trigger and has no explicit `workspace_members` row
+ * for its creator — that row isn't a real membership row and can't be
+ * targeted by role-change/remove actions.
+ */
+export type WorkspaceMemberWithProfile = Omit<WorkspaceMember, 'id'> & {
+  id: string | null
+  email: string
+  display_name: string | null
+}
+
 export type Collection = {
   id: string
   user_id: string
@@ -683,6 +699,27 @@ export type Database = {
           filter_workspace_id?: string | null
         }
         Returns: { note_id: string; title: string; content: string; similarity: number }[]
+      }
+      invite_to_workspace: {
+        Args: {
+          target_workspace_id: string
+          invitee_email: string
+          invitee_role: WorkspaceMemberRole
+        }
+        Returns: WorkspaceMember
+      }
+      respond_to_workspace_invitation: {
+        Args: {
+          target_membership_id: string
+          accept: boolean
+        }
+        Returns: WorkspaceMember
+      }
+      list_workspace_members: {
+        Args: {
+          target_workspace_id: string
+        }
+        Returns: WorkspaceMemberWithProfile[]
       }
     }
     Enums: {

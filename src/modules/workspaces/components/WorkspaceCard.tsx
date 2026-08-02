@@ -4,6 +4,7 @@ import type { Workspace } from '@/shared/types/database'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { useWorkspaceManagement } from '@/modules/workspaces/hooks/useWorkspaceManagement'
 import { useWorkspaceStats } from '@/modules/workspaces/hooks/useWorkspaceStats'
+import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
 import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
@@ -26,11 +27,19 @@ export function WorkspaceCard({
   const { currentWorkspaceId, setCurrentWorkspaceId } = useWorkspace()
   const { rename, archive, restore, remove, move } = useWorkspaceManagement()
   const { data: stats, isLoading: statsLoading } = useWorkspaceStats(workspace.id)
+  const { data: role } = useWorkspaceRole(workspace.id)
   const [renaming, setRenaming] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const isCurrent = currentWorkspaceId === workspace.id
   const isArchived = Boolean(workspace.archived_at)
+  // UX-14.5 Phase 3 — Rename/Archive/Restore/Delete/Move all mutate
+  // workspaces.sort_order or the workspace row itself, both owner-only
+  // under RLS (0030_workspace_membership_management.sql) — gating them
+  // here means an editor/viewer never sees a control that would
+  // silently fail. Open/Set as default/Manage members stay available to
+  // every member, matching workspace_members' own viewer-can-see policy.
+  const canManage = role === 'owner'
 
   return (
     <div
@@ -77,7 +86,7 @@ export function WorkspaceCard({
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          {!isArchived && (
+          {!isArchived && canManage && (
             <div className="flex flex-col">
               <button
                 type="button"
@@ -113,15 +122,23 @@ export function WorkspaceCard({
             {!isArchived && !isCurrent && (
               <DropdownMenuItem onClick={() => setCurrentWorkspaceId(workspace.id)}>Set as default</DropdownMenuItem>
             )}
-            {!isArchived && <DropdownMenuItem onClick={() => setRenaming(true)}>Rename</DropdownMenuItem>}
-            {isArchived ? (
-              <DropdownMenuItem onClick={() => restore.mutate(workspace.id)}>Restore</DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onClick={() => archive.mutate(workspace.id)}>Archive</DropdownMenuItem>
+            {!isArchived && (
+              <DropdownMenuItem onClick={() => navigate(`/settings/workspaces/${workspace.id}/members`)}>
+                Manage members
+              </DropdownMenuItem>
             )}
-            <DropdownMenuItem danger onClick={() => setConfirmingDelete(true)}>
-              Delete
-            </DropdownMenuItem>
+            {!isArchived && canManage && <DropdownMenuItem onClick={() => setRenaming(true)}>Rename</DropdownMenuItem>}
+            {canManage &&
+              (isArchived ? (
+                <DropdownMenuItem onClick={() => restore.mutate(workspace.id)}>Restore</DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={() => archive.mutate(workspace.id)}>Archive</DropdownMenuItem>
+              ))}
+            {canManage && (
+              <DropdownMenuItem danger onClick={() => setConfirmingDelete(true)}>
+                Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenu>
         </div>
       </div>

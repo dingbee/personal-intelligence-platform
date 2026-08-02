@@ -19,6 +19,7 @@ import { SearchPage } from '@/modules/search/pages/SearchPage'
 import { ChatPage } from '@/modules/ai/chat/pages/ChatPage'
 import { SettingsPage } from '@/modules/settings/pages/SettingsPage'
 import { WorkspaceManagementPage } from '@/modules/workspaces/pages/WorkspaceManagementPage'
+import { WorkspaceMembersPage } from '@/modules/workspaces/pages/WorkspaceMembersPage'
 import { MemoryManagementPage } from '@/modules/ai/memory/pages/MemoryManagementPage'
 import { AiHealthPage } from '@/modules/ai/observability/pages/AiHealthPage'
 import { ProviderHealthDetailPage } from '@/modules/ai/observability/pages/ProviderHealthDetailPage'
@@ -76,6 +77,7 @@ export const router = createBrowserRouter([
       { path: 'chat', element: <ChatPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'settings/workspaces', element: <WorkspaceManagementPage /> },
+      { path: 'settings/workspaces/:workspaceId/members', element: <WorkspaceMembersPage /> },
       { path: 'settings/memory', element: <MemoryManagementPage /> },
       { path: 'settings/ai-health', element: <AiHealthPage /> },
       { path: 'settings/ai-health/provider/:providerId', element: <ProviderHealthDetailPage /> },

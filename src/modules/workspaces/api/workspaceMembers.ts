@@ -1,14 +1,20 @@
 import { supabase } from '@/shared/lib/supabase'
-import type { WorkspaceMember, WorkspaceMemberRole, WorkspaceMemberStatus } from '@/shared/types/database'
+import type {
+  WorkspaceMember,
+  WorkspaceMemberRole,
+  WorkspaceMemberStatus,
+  WorkspaceMemberWithProfile,
+} from '@/shared/types/database'
 
 /**
- * UX-14.5 Phase 1 — the one write path for `workspace_members`. Not yet
- * called from any UI: invitations/membership management is explicitly
- * out of scope for this phase, and every new workspace's `owner` row is
- * created automatically by `0028_workspace_members.sql`'s trigger, not
- * this function. This exists so the primitive is fully testable
- * end-to-end and ready for the editor/viewer rows a later phase's
- * invitation flow will create.
+ * UX-14.5 Phase 1 — a direct write path for `workspace_members`. Not
+ * called from the invitation UI (that goes through `inviteToWorkspace`,
+ * below, which resolves an email to a user_id via a security-definer
+ * RPC that a plain client-side insert can't do) — every new workspace's
+ * `owner` row is also created automatically by
+ * `0028_workspace_members.sql`'s trigger, not this function. Kept as the
+ * fully-tested primitive it always was; useful for any future write
+ * that already has a concrete user_id in hand.
  */
 export async function createWorkspaceMembership(params: {
   workspaceId: string
@@ -26,6 +32,118 @@ export async function createWorkspaceMembership(params: {
       status: params.status ?? 'active',
       invited_by: params.invitedBy ?? null,
     })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/**
+ * UX-14.5 Phase 3 — the one write path for creating an invitation.
+ * `profiles` RLS is intentionally self-only, so resolving `invitee
+ * email -> user_id` can't happen in a plain client query; this calls
+ * the `invite_to_workspace` security-definer RPC
+ * (`0030_workspace_membership_management.sql`), which does that lookup
+ * and the owner-authorization check server-side. Ownership can't be
+ * granted through this path — `invitee_role` is typed to exclude
+ * 'owner', matching the RPC's own guard.
+ */
+export async function inviteToWorkspace(params: {
+  workspaceId: string
+  email: string
+  role: Exclude<WorkspaceMemberRole, 'owner'>
+}): Promise<WorkspaceMember> {
+  const { data, error } = await supabase.rpc('invite_to_workspace', {
+    target_workspace_id: params.workspaceId,
+    invitee_email: params.email,
+    invitee_role: params.role,
+  })
+  if (error) throw error
+  return data
+}
+
+/**
+ * UX-14.5 Phase 3 — an invitee accepting or declining their own
+ * pending invitation, via the `respond_to_workspace_invitation`
+ * security-definer RPC. Deliberately not a plain UPDATE/DELETE: the RPC
+ * only ever touches `status` (accept) or removes the row (decline) for
+ * a row that's the caller's own and still pending, with no path to
+ * change `role` — see the migration's own comment for why that matters.
+ */
+export async function respondToWorkspaceInvitation(
+  membershipId: string,
+  accept: boolean,
+): Promise<WorkspaceMember> {
+  const { data, error } = await supabase.rpc('respond_to_workspace_invitation', {
+    target_membership_id: membershipId,
+    accept,
+  })
+  if (error) throw error
+  return data
+}
+
+/**
+ * UX-14.5 Phase 3 — the current user's own pending invitations across
+ * every workspace, for a "you've been invited" surface. Already
+ * self-scoped by `workspace_members`' own SELECT RLS (`user_id =
+ * auth.uid()` matches regardless of status), so this needs no RPC —
+ * the workspace name join works too, since a pending invitee can now
+ * see the workspace itself (the new pending-invite SELECT clause on
+ * `workspaces`, same migration).
+ */
+export async function listMyPendingInvitations(): Promise<(WorkspaceMember & { workspace: { name: string } | null })[]> {
+  const { data, error } = await supabase
+    .from('workspace_members')
+    .select('*, workspaces(name)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data as unknown as (WorkspaceMember & { workspaces: { name: string } | null })[]).map((row) => ({
+    ...row,
+    workspace: row.workspaces,
+  }))
+}
+
+/**
+ * UX-14.5 Phase 3 — the member-management page's read path. Calls the
+ * `list_workspace_members` RPC rather than a plain select, for the same
+ * reason `inviteToWorkspace` needs one: rendering "who's who" needs
+ * each member's email, and `profiles` RLS won't allow a normal
+ * cross-user join. The RPC also synthesizes the implicit owner row for
+ * a workspace with no explicit `workspace_members` row for its creator
+ * (every workspace older than the 0028 trigger), so backward
+ * compatibility holds — a single-user workspace's roster is never
+ * empty.
+ */
+export async function listWorkspaceMembers(workspaceId: string): Promise<WorkspaceMemberWithProfile[]> {
+  const { data, error } = await supabase.rpc('list_workspace_members', { target_workspace_id: workspaceId })
+  if (error) throw error
+  return data
+}
+
+/** UX-14.5 Phase 3 — role change, gated by the existing Phase 1 owner-only UPDATE policy; no new RLS needed. */
+export async function updateWorkspaceMemberRole(
+  membershipId: string,
+  role: Exclude<WorkspaceMemberRole, 'owner'>,
+): Promise<WorkspaceMember> {
+  const { data, error } = await supabase.from('workspace_members').update({ role }).eq('id', membershipId).select().single()
+  if (error) throw error
+  return data
+}
+
+/**
+ * UX-14.5 Phase 3 — removal is a soft status change, not a delete: the
+ * `removed` status already exists in Phase 1's enum specifically for
+ * this, and keeping the row preserves `invited_by`/`created_at` history
+ * and lets `inviteToWorkspace`'s upsert re-invite the same person later
+ * without hitting the (workspace_id, user_id) unique constraint. Gated
+ * by the existing Phase 1 owner-only UPDATE policy; no new RLS needed.
+ */
+export async function removeWorkspaceMember(membershipId: string): Promise<WorkspaceMember> {
+  const { data, error } = await supabase
+    .from('workspace_members')
+    .update({ status: 'removed' })
+    .eq('id', membershipId)
     .select()
     .single()
   if (error) throw error

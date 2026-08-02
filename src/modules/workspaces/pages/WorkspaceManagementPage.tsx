@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useWorkspaceManagement } from '@/modules/workspaces/hooks/useWorkspaceManagement'
+import { usePendingInvitations } from '@/modules/workspaces/hooks/usePendingInvitations'
 import { WorkspaceCard } from '@/modules/workspaces/components/WorkspaceCard'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
 import { Button } from '@/shared/components/ui/Button'
@@ -10,6 +11,7 @@ import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
 
 export function WorkspaceManagementPage() {
   const { data: workspaces = [], isLoading, create } = useWorkspaceManagement()
+  const { data: pendingInvitations = [], respond } = usePendingInvitations()
   const [creating, setCreating] = useState(false)
 
   const active = workspaces.filter((w) => !w.archived_at)
@@ -29,6 +31,38 @@ export function WorkspaceManagementPage() {
           />
         </div>
       </div>
+
+      {pendingInvitations.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <SectionHeader level="section" title="Pending invitations" />
+          {pendingInvitations.map((invitation) => (
+            <div
+              key={invitation.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-[var(--color-border)] bg-[var(--surface-raised)] p-4"
+            >
+              <p className="text-sm text-[var(--color-ink)]">
+                You've been invited to <span className="font-medium">{invitation.workspace?.name ?? 'a workspace'}</span> as{' '}
+                <span className="font-medium">{invitation.role}</span>.
+              </p>
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  loading={respond.isPending}
+                  onClick={() => respond.mutate({ membershipId: invitation.id, accept: true })}
+                >
+                  Accept
+                </Button>
+                <Button
+                  variant="secondary"
+                  loading={respond.isPending}
+                  onClick={() => respond.mutate({ membershipId: invitation.id, accept: false })}
+                >
+                  Decline
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {isLoading ? (
         <Spinner size="sm" />
