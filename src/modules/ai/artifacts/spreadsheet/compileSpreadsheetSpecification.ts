@@ -1,29 +1,8 @@
 import type { SpreadsheetSpecification, SpreadsheetSpecificationSheet } from '@/modules/ai/artifacts/spreadsheet/specificationTypes'
 import type { SpreadsheetArtifactData, SpreadsheetCell, SpreadsheetSheet } from '@/modules/ai/artifacts/spreadsheet/types'
+import { columnLetter } from '@/modules/ai/artifacts/spreadsheet/cellAddressing'
 
 const PLACEHOLDER_PATTERN = /\{\{([^{}]*)\}\}/g
-
-/**
- * A1-style column letters for 0-indexed column numbers: 0 -> A, 25 -> Z,
- * 26 -> AA. Intentionally duplicated from `parseMarkdownTableToArtifact.ts`
- * rather than extracted into a shared util in this milestone — this
- * milestone's scope is new files only (types, compiler, validator, tests,
- * docs), not touching Path A's already-shipped, already-verified parser.
- * The discovery doc itself flagged extracting a shared `cellAddressing.ts`
- * as a low-risk future consolidation; this is that flag acted on for the
- * new side only, with the duplication noted as a discovered opportunity
- * in this milestone's implementation report rather than performed
- * unprompted.
- */
-function columnLetter(index: number): string {
-  let n = index
-  let letters = ''
-  do {
-    letters = String.fromCharCode(65 + (n % 26)) + letters
-    n = Math.floor(n / 26) - 1
-  } while (n >= 0)
-  return letters
-}
 
 /** Strips an optional leading "=" (accepted as input syntax per this milestone's brief) so the result matches `SpreadsheetCell.formula`'s existing "no leading =" contract exactly — the same bare-text convention Path A's parser already writes. */
 function normalizeFormulaExpression(expression: string): string {

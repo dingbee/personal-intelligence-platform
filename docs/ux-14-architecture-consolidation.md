@@ -409,11 +409,25 @@ SpreadsheetSpecification (new, row/column-oriented, no addresses)
 **Verification.** `tsc -b`: clean. `vitest run`: 1031/1031 passing (up from 1003 — 28 new tests: validator fixture coverage for every reject reason, compiler coverage for addressing/ordering/formula-substitution/formatting/determinism, plus the cross-verification test against Path A). `lint`/`build`: clean. `npm run verify:bundle`: passes, main bundle hash identical to pre-milestone — expected, since nothing in the application UI imports these new files yet (no Workspace Action registration, no LLM integration, no Save As wiring — all explicitly out of scope). Browser: boot-smoke-tested, zero console/page errors.
 
 **Remaining Spreadsheet Artifact roadmap** (per the Path B discovery docs, not this milestone):
-1. Extract shared `cellAddressing.ts`, unifying Path A's and the compiler's `columnLetter` — flagged, not done.
+1. ~~Extract shared `cellAddressing.ts`, unifying Path A's and the compiler's `columnLetter`~~ **Done (UX-14.4.1).**
 2. The `generate-spreadsheet-artifact` capability + Workspace Action registration (Path B's actual LLM integration) — this milestone's compiler is its prerequisite, not a replacement.
-3. Formula-content safety allowlist — needed once real formula generation exists, not before.
+3. ~~Formula-content safety allowlist~~ **Foundation built (UX-14.4.1)**, not yet wired into the compile/validate pipeline — see that milestone's section below.
 4. Mapping `columnFormats`/column `type` hints to an actual Excel number format — currently inert by design.
 5. A committed browser-verification harness — the same disclosed gap carried since UX-14.2, now also covering this surface.
+
+---
+
+#### UX-14.4.1 — Intelligence Foundation Hardening (completed)
+
+Preparation for Path B, not Path B itself — no AI generation, no Workspace Action registration, no change to `compileSpreadsheetSpecification`'s or `validateSpreadsheetSpecification`'s public behavior. Two items, both flagged as future work in the Phase 3 record above, now closed out:
+
+1. **Shared `cellAddressing.ts`.** `columnLetter` (0-indexed column number → A1-style letters) was duplicated verbatim in `parseMarkdownTableToArtifact.ts` and `compileSpreadsheetSpecification.ts`. Extracted into `src/modules/ai/artifacts/spreadsheet/cellAddressing.ts`; both files now import the same implementation. Pure relocation — no logic changed, both call sites produce byte-identical output to before (proven by the full existing test suite, including the Path A/Phase 3 cross-verification test, passing unchanged).
+
+2. **Formula safety validation foundation.** `src/modules/ai/artifacts/spreadsheet/validateFormulaSafety.ts` — the formula-content allowlist the Path B architecture discovery named as the required mitigation for LLM-authored formula injection (`WEBSERVICE`, `HYPERLINK`, `IMPORTXML`, DDE-style `cmd|'/c ...'!A1` payloads). Two independent checks: a character allowlist (digits, letters, arithmetic/comparison operators, grouping, `$`, whitespace — nothing else), and an identifier classifier that requires every letter-run to be either a valid cell reference or a call to one of five allowed functions (`SUM`/`AVERAGE`/`MIN`/`MAX`/`COUNT`). Deliberately **not wired into any existing pipeline** — `compileSpreadsheetSpecification.ts`, `validateSpreadsheetSpecification.ts`, and `parseMarkdownTableToArtifact.ts` are all untouched by this addition and behave exactly as before. This is a standalone, fully-tested module ready for Path B's generation capability to call once it exists; wiring it in now, ahead of an actual AI producer, would be scope the user explicitly excluded from this milestone.
+
+**Files touched:** 2 new (`cellAddressing.ts` + test), 1 new (`validateFormulaSafety.ts` + test), 2 modified (`parseMarkdownTableToArtifact.ts`, `compileSpreadsheetSpecification.ts` — import swap only, no other change).
+
+**Verification.** `tsc -b`: clean. `vitest run`: 1047/1047 passing (up from 1031 — 16 new tests: 3 for `columnLetter`, 13 for `validateFormulaSafety` covering every violation code, the exact injection payloads named in the Path B discovery, case-insensitivity, and accumulation of multiple violations). `lint`/`build`: clean, main bundle and `xlsx` chunk hashes byte-identical to pre-milestone (expected — no new file is imported from any page yet). `npm run verify:bundle`: passes.
 
 ---
 
@@ -441,7 +455,7 @@ Not part of UX-14, not scoped here beyond naming:
 - Background/scheduled execution infrastructure spike (Blueprint §3, increment 2) — needed for true proactive intelligence, not needed for anything in this sprint or UX-14's first increment.
 - An explicit permission/confirmation model — needed before Agent Capabilities can be scoped at all (Roadmap, deferred).
 - Renaming to resolve the "profile" terminology collision (e.g., referring to the `ai_memory` convention as "Personalization Fields" in code comments/UI copy, reserving "Profile" for the `profiles` table) — a naming change, not a data migration; low priority, no functional impact.
-- Extract a shared `cellAddressing.ts` (`columnLetter`) used by both `parseMarkdownTableToArtifact.ts` and `compileSpreadsheetSpecification.ts` (UX-14.4 Phase 3) — pure function, zero behavior change, genuinely zero-risk; not done in Phase 3 since that milestone's scope was new files only.
+- ~~Extract a shared `cellAddressing.ts`...~~ **Done (UX-14.4.1).**
 
 ---
 
