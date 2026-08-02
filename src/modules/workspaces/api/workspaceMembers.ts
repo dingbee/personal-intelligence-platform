@@ -104,6 +104,29 @@ export async function listWorkspaceInvitations(workspaceId: string): Promise<Wor
 }
 
 /**
+ * UX-14.5.8.2 — an owner cancelling a pending email-based invitation.
+ * Plain client-side update, gated by the owner-only UPDATE policy
+ * `0033_workspace_invitation_management.sql` added — no RPC needed, the
+ * same shape as `updateWorkspaceMemberRole`/`removeWorkspaceMember`
+ * below, since there's no cross-user profile resolution involved (this
+ * table doesn't need one, unlike `invite_to_workspace`/
+ * `list_workspace_members`). "Resend" needs no dedicated function at
+ * all — it's just calling `inviteToWorkspace` again with the same
+ * email/role, which already refreshes this row in place via its own
+ * `on conflict` clause.
+ */
+export async function cancelWorkspaceInvitation(invitationId: string): Promise<WorkspaceInvitation> {
+  const { data, error } = await supabase
+    .from('workspace_invitations')
+    .update({ status: 'cancelled' })
+    .eq('id', invitationId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/**
  * UX-14.5 Phase 3 — an invitee accepting or declining their own
  * pending invitation, via the `respond_to_workspace_invitation`
  * security-definer RPC. Deliberately not a plain UPDATE/DELETE: the RPC

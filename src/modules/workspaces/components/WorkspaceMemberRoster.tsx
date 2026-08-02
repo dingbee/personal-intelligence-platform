@@ -30,22 +30,31 @@ const ASSIGNABLE_ROLES: Exclude<WorkspaceMemberRole, 'owner'>[] = ['editor', 'vi
  * UX-14.5.8 Phase 1 — also renders "Pending Invitations"
  * (`workspace_invitations`, an email with no account yet — distinct from
  * the "Pending" `StatusBadge` below on an *active* row's roster entry,
- * which is a known user who hasn't accepted). Read-only this phase: no
- * cancel/resend/role-change-before-acceptance (UX-14.5.8.2). The invite
- * form itself no longer distinguishes "known" from "unknown" email in
- * any way the owner can observe — both succeed identically, which closes
- * the account-enumeration side channel the discovery found as a direct
+ * which is a known user who hasn't accepted). The invite form itself no
+ * longer distinguishes "known" from "unknown" email in any way the
+ * owner can observe — both succeed identically, which closes the
+ * account-enumeration side channel the discovery found as a direct
  * consequence of the redesign, not a separate fix.
+ *
+ * UX-14.5.8.2 — Cancel and Resend for a pending invitation. "Resend"
+ * calls the exact same mutation the invite form uses, with the row's
+ * own stored email/role — see `useWorkspaceInvitations`' doc-comment
+ * for why that's an honest description of what it does before real
+ * email delivery exists (UX-14.5.8.3, still deferred): it renews the
+ * invitation's expiry and re-affirms who's inviting, it doesn't send
+ * another email. Still no role-change-before-acceptance control —
+ * genuinely out of scope for this pass, not an oversight.
  */
 export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) {
   const { user } = useAuth()
   const { data: role } = useWorkspaceRole(workspaceId)
   const { data: members = [], isLoading, invite, changeRole, remove } = useWorkspaceMembers(workspaceId)
-  const { data: invitations = [], isLoading: invitationsLoading } = useWorkspaceInvitations(workspaceId)
+  const { data: invitations = [], isLoading: invitationsLoading, cancel, resend } = useWorkspaceInvitations(workspaceId)
 
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<Exclude<WorkspaceMemberRole, 'owner'>>('editor')
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [cancelingId, setCancelingId] = useState<string | null>(null)
 
   const isOwner = role === 'owner'
 
@@ -166,20 +175,42 @@ export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) 
           {invitationsLoading ? (
             <Spinner size="sm" />
           ) : (
-            invitations.map((invitation) => (
-              <div
-                key={invitation.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-dashed border-[var(--color-border)] bg-[var(--surface-inset)] p-4"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-[var(--color-ink)]">📧 {invitation.email}</p>
-                  <p className="truncate text-xs text-[var(--color-ink-muted)]">
-                    Invited {formatRelativeTime(invitation.created_at)}
-                  </p>
+            invitations.map((invitation) => {
+              const resending = resend.isPending && resend.variables?.email === invitation.email
+              return (
+                <div
+                  key={invitation.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-dashed border-[var(--color-border)] bg-[var(--surface-inset)] p-4"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-[var(--color-ink)]">📧 {invitation.email}</p>
+                    <p className="truncate text-xs text-[var(--color-ink-muted)]">
+                      Invited {formatRelativeTime(invitation.created_at)}
+                      {invitation.updated_at !== invitation.created_at && (
+                        <> · Renewed {formatRelativeTime(invitation.updated_at)}</>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <StatusBadge label={invitation.role} variant="neutral" />
+                    <Button
+                      variant="ghost"
+                      loading={resending}
+                      onClick={() => resend.mutate({ email: invitation.email, role: invitation.role })}
+                    >
+                      Resend
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => setCancelingId(invitation.id)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
-                <StatusBadge label={invitation.role} variant="neutral" />
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       )}
@@ -194,6 +225,18 @@ export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) 
           setRemovingId(null)
         }}
         onCancel={() => setRemovingId(null)}
+      />
+
+      <ConfirmDialog
+        open={cancelingId !== null}
+        title="Cancel this invitation?"
+        description="They won't gain access to this workspace if they sign up later. You can invite them again at any time."
+        confirmLabel="Cancel invitation"
+        onConfirm={() => {
+          if (cancelingId) cancel.mutate(cancelingId)
+          setCancelingId(null)
+        }}
+        onCancel={() => setCancelingId(null)}
       />
     </div>
   )

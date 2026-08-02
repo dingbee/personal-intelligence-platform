@@ -45,7 +45,10 @@ const {
   const insertSelectMock = vi.fn(() => ({ single: singleMock }))
   const insertMock = vi.fn(() => ({ select: insertSelectMock }))
 
-  const updateSingleMock = vi.fn<() => Promise<{ data: FakeMembershipRow | null; error: Error | null }>>()
+  // Shared by workspace_members' updateWorkspaceMemberRole/removeWorkspaceMember
+  // and workspace_invitations' cancelWorkspaceInvitation — same call shape,
+  // different row types, so the mock accepts either.
+  const updateSingleMock = vi.fn<() => Promise<{ data: FakeMembershipRow | FakeInvitationRow | null; error: Error | null }>>()
   const updateSelectMock = vi.fn(() => ({ single: updateSingleMock }))
   const updateEqMock = vi.fn(() => ({ select: updateSelectMock }))
   const updateMock = vi.fn(() => ({ eq: updateEqMock }))
@@ -67,7 +70,11 @@ const {
 
   const fromMock = vi.fn((table: string) => {
     if (table === 'workspace_invitations') {
-      return { select: invitationsSelectMock }
+      // cancelWorkspaceInvitation's .update().eq().select().single() shape
+      // is identical to updateWorkspaceMemberRole's, so it reuses the same
+      // updateMock/updateEqMock/updateSingleMock triple — the mock doesn't
+      // care which table it's called for, only the call shape.
+      return { select: invitationsSelectMock, update: updateMock }
     }
     return { insert: insertMock, update: updateMock, select: topSelectMock }
   })
@@ -93,6 +100,7 @@ const {
 vi.mock('@/shared/lib/supabase', () => ({ supabase: { from: fromMock, rpc: rpcMock } }))
 
 import {
+  cancelWorkspaceInvitation,
   createWorkspaceMembership,
   inviteToWorkspace,
   listMyPendingInvitations,
@@ -370,5 +378,24 @@ describe('listWorkspaceInvitations', () => {
     invitationsOrderMock.mockResolvedValueOnce({ data: null, error: new Error('boom') })
 
     await expect(listWorkspaceInvitations('workspace-1')).rejects.toThrow(/boom/)
+  })
+})
+
+describe('cancelWorkspaceInvitation', () => {
+  it('sets status to cancelled', async () => {
+    updateSingleMock.mockResolvedValueOnce({ data: fakeInvitationRow({ status: 'cancelled' }), error: null })
+
+    const result = await cancelWorkspaceInvitation('invitation-1')
+
+    expect(fromMock).toHaveBeenCalledWith('workspace_invitations')
+    expect(updateMock).toHaveBeenCalledWith({ status: 'cancelled' })
+    expect(updateEqMock).toHaveBeenCalledWith('id', 'invitation-1')
+    expect(result.status).toBe('cancelled')
+  })
+
+  it('propagates an error for a non-owner caller (RLS denies the update)', async () => {
+    updateSingleMock.mockResolvedValueOnce({ data: null, error: new Error('No rows returned') })
+
+    await expect(cancelWorkspaceInvitation('invitation-1')).rejects.toThrow(/No rows returned/)
   })
 })
