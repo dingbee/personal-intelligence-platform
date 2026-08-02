@@ -5,7 +5,9 @@ import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { useWorkspaceManagement } from '@/modules/workspaces/hooks/useWorkspaceManagement'
 import { useWorkspaceStats } from '@/modules/workspaces/hooks/useWorkspaceStats'
 import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
+import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
+import { MemberAvatarStack } from '@/shared/components/collaboration/MemberAvatarStack'
 import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
@@ -28,6 +30,7 @@ export function WorkspaceCard({
   const { rename, archive, restore, remove, move } = useWorkspaceManagement()
   const { data: stats, isLoading: statsLoading } = useWorkspaceStats(workspace.id)
   const { data: role } = useWorkspaceRole(workspace.id)
+  const { members } = useWorkspaceMemberDirectory(workspace.id)
   const [renaming, setRenaming] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
@@ -77,6 +80,9 @@ export function WorkspaceCard({
                 <StatusBadge label="Archived" variant="neutral" />
               </span>
             )}
+            <span className="shrink-0">
+              <MemberAvatarStack members={members} />
+            </span>
           </div>
           <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
             Created {formatRelativeTime(workspace.created_at)}

@@ -10,11 +10,15 @@ import { AddToCollectionButton } from '@/modules/knowledge-intelligence/componen
 import { useAuth } from '@/modules/auth/useAuth'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { formatFileSize } from '@/modules/library/utils/fileTypes'
+import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
+import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
 import { Button } from '@/shared/components/ui/Button'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
+import { SharingBadge } from '@/shared/components/collaboration/SharingBadge'
+import { OwnershipLine } from '@/shared/components/collaboration/OwnershipLine'
 
 type SidePanelTab = 'chat' | 'details'
 const TABS: { id: SidePanelTab; label: string }[] = [
@@ -48,6 +52,8 @@ export function ImageReaderPage() {
   const { rename, remove } = useAssets()
   const { createConversationWithQuery } = useCommandActions()
   const { data: imageUrl, isLoading: imageLoading } = useSignedAssetUrl(asset?.optimized_path)
+  const { data: role } = useWorkspaceRole(asset?.workspace_id ?? null)
+  const { isShared, lookup } = useWorkspaceMemberDirectory(asset?.workspace_id ?? null)
 
   const [activePanel, setActivePanel] = useState<SidePanelTab | null>('chat')
   const [zoom, setZoom] = useState(1)
@@ -79,14 +85,21 @@ export function ImageReaderPage() {
     )
   }
 
+  // UX-14.5 Phase 5 — mirrors ImageCard's gating exactly; assets use
+  // owner_id, not user_id.
+  const isAssetOwner = asset.owner_id === user?.id
+  const canEdit = isAssetOwner || role === 'editor' || role === 'owner'
+  const canDelete = isAssetOwner || role === 'owner'
+
   return (
     <div className="flex h-screen flex-col">
       <header className="flex h-14 shrink-0 items-center gap-4 border-b border-[var(--color-border)] px-4">
         <Link to="/library" className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
           ← Library
         </Link>
-        <h1 className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-ink)]" title={asset.title}>
-          {asset.title}
+        <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-sm font-medium text-[var(--color-ink)]" title={asset.title}>
+          <span className="truncate">{asset.title}</span>
+          {isShared && <SharingBadge isShared />}
         </h1>
         <div className="ml-auto flex shrink-0 items-center gap-3 text-xs text-[var(--color-ink-muted)]">
           <div className="hidden items-center gap-1.5 md:flex">
@@ -167,12 +180,18 @@ export function ImageReaderPage() {
                       }}
                       onCancel={() => setRenaming(false)}
                     />
-                  ) : (
+                  ) : canEdit ? (
                     <button type="button" onClick={() => setRenaming(true)} className="text-left text-sm text-[var(--color-ink)] hover:text-[var(--color-accent)]">
                       {asset.title} <span className="text-xs text-[var(--color-ink-muted)]">(rename)</span>
                     </button>
+                  ) : (
+                    <span className="text-sm text-[var(--color-ink)]">{asset.title}</span>
                   )}
                 </div>
+
+                {isShared && (
+                  <OwnershipLine ownerId={asset.owner_id} currentUserId={user?.id} owner={lookup(asset.owner_id)} isShared={isShared} />
+                )}
 
                 <dl className="flex flex-col gap-2 text-sm">
                   <div className="flex justify-between">
@@ -200,9 +219,11 @@ export function ImageReaderPage() {
                     Save as Notes
                   </Button>
                   <AddToCollectionButton itemType="asset" itemId={asset.id} />
-                  <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setConfirmingDelete(true)}>
-                    Delete
-                  </Button>
+                  {canDelete && (
+                    <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setConfirmingDelete(true)}>
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </div>
             )}

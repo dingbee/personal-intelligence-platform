@@ -15,6 +15,10 @@ import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownM
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { DocumentTagEditor } from '@/modules/library/components/DocumentTagEditor'
 import { CollectionMoveSelect } from '@/modules/library/components/CollectionMoveSelect'
+import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
+import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
+import { SharingBadge } from '@/shared/components/collaboration/SharingBadge'
+import { OwnershipLine } from '@/shared/components/collaboration/OwnershipLine'
 
 export function DocumentCard({
   document,
@@ -27,10 +31,21 @@ export function DocumentCard({
   const { user } = useAuth()
   const { rename, remove } = useDocumentMutations()
   const reprocess = useReprocessDocument()
+  const { data: role } = useWorkspaceRole(document.workspace_id)
+  const { isShared, lookup } = useWorkspaceMemberDirectory(document.workspace_id)
   const [renaming, setRenaming] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const readerMode = resolveReaderMode(document.file_type)
   const isReady = document.status === 'ready'
+  // UX-14.5 Phase 5 — mirrors NoteDetailPage's exact gating so this card
+  // never offers a control RLS (0031_shared_knowledge_objects.sql) would
+  // reject: the document's own uploader always keeps full rights; a
+  // workspace editor can rename/reprocess but not delete; a workspace
+  // owner gets everything, matching the delete-requires-owner split
+  // every shareable object uses.
+  const isDocumentOwner = document.user_id === user?.id
+  const canEdit = isDocumentOwner || role === 'editor' || role === 'owner'
+  const canDelete = isDocumentOwner || role === 'owner'
 
   // UX-13.8.1 — "Save as Notes" from the Library: creates an empty note
   // already linked to this document (documentId, same field
@@ -49,8 +64,11 @@ export function DocumentCard({
     <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <span className="inline-block rounded bg-[var(--color-canvas)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-ink-muted)]">
-            {fileTypeLabel(document.file_type)}
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block rounded bg-[var(--color-canvas)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-ink-muted)]">
+              {fileTypeLabel(document.file_type)}
+            </span>
+            {isShared && <SharingBadge isShared />}
           </span>
           {renaming ? (
             <div className="mt-1">
@@ -68,9 +86,20 @@ export function DocumentCard({
               {document.title}
             </h3>
           )}
-          <p className="mt-0.5 flex items-center gap-1 text-xs text-[var(--color-ink-muted)]">
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-[var(--color-ink-muted)]">
             {formatFileSize(document.file_size)} ·{' '}
             <ProcessingStatusBadge documentId={document.id} documentStatus={document.status} />
+            {isShared && (
+              <>
+                {' · '}
+                <OwnershipLine
+                  ownerId={document.user_id}
+                  currentUserId={user?.id}
+                  owner={lookup(document.user_id)}
+                  isShared={isShared}
+                />
+              </>
+            )}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -134,13 +163,17 @@ export function DocumentCard({
                 {saveAsNote.isPending ? 'Saving…' : 'Save as Notes'}
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem onClick={() => setRenaming(true)}>Rename</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => reprocess.mutate(document.id)}>
-              {document.status === 'error' ? 'Retry processing' : 'Reprocess'}
-            </DropdownMenuItem>
-            <DropdownMenuItem danger onClick={() => setConfirmingDelete(true)}>
-              Delete
-            </DropdownMenuItem>
+            {canEdit && <DropdownMenuItem onClick={() => setRenaming(true)}>Rename</DropdownMenuItem>}
+            {canEdit && (
+              <DropdownMenuItem onClick={() => reprocess.mutate(document.id)}>
+                {document.status === 'error' ? 'Retry processing' : 'Reprocess'}
+              </DropdownMenuItem>
+            )}
+            {canDelete && (
+              <DropdownMenuItem danger onClick={() => setConfirmingDelete(true)}>
+                Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenu>
         </div>
       </div>

@@ -24,6 +24,11 @@ import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
+import { useAuth } from '@/modules/auth/useAuth'
+import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
+import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
+import { SharingBadge } from '@/shared/components/collaboration/SharingBadge'
+import { OwnershipLine } from '@/shared/components/collaboration/OwnershipLine'
 import { NovaStatusIndicator } from '@/modules/intelligence/components/NovaStatusIndicator'
 import { NovaInsightDrawer } from '@/modules/intelligence/components/NovaInsightDrawer'
 import { computeExplainSummary } from '@/modules/intelligence/explain/computeExplainSummary'
@@ -134,6 +139,21 @@ export function ChatPage() {
   }, [deepLinkMessageId, messagesLoading, messages])
   // Looks in both lists — opening an archived conversation to read (or restore) it works the same as opening an active one.
   const conversation = conversations.find((c) => c.id === selectedId) ?? archivedConversations.find((c) => c.id === selectedId)
+  const { user } = useAuth()
+  const { data: workspaceRole } = useWorkspaceRole(conversation?.workspace_id ?? null)
+  const { isShared, lookup } = useWorkspaceMemberDirectory(conversation?.workspace_id ?? null)
+  // UX-14.5 Phase 5 — mirrors ConversationRow's gating exactly: the
+  // conversation's own creator always keeps full rights, a workspace
+  // editor can rename/switch provider but not delete, an owner gets
+  // everything. Delete/Archive/Duplicate are already gated per-row in
+  // ConversationList/MobileConversationDrawer — this only covers the
+  // header controls that live outside that list.
+  const isConversationOwner = conversation?.user_id === user?.id
+  const canEditConversation = isConversationOwner || workspaceRole === 'editor' || workspaceRole === 'owner'
+  // "Last edited by" — the only object type in this phase with genuine
+  // per-turn attribution (messages.user_id), rather than a fabricated
+  // updated_by column no table actually has.
+  const lastEditor = messages.length > 0 ? lookup(messages[messages.length - 1]!.user_id) : null
   // Reading conversation.provider_id fresh here (rather than snapshotting it
   // into a ref) is what makes a provider switch take effect on the very
   // next send: this hook re-runs every render, so once the mutation below
@@ -366,10 +386,19 @@ export function ChatPage() {
         ) : (
           <>
             <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] px-6 py-3">
-              <ConversationTitleEditor
-                title={conversation?.title ?? ''}
-                onRename={(title) => rename.mutate({ id: conversation!.id, title })}
-              />
+              <div className="flex min-w-0 items-center gap-2">
+                {canEditConversation ? (
+                  <ConversationTitleEditor
+                    title={conversation?.title ?? ''}
+                    onRename={(title) => rename.mutate({ id: conversation!.id, title })}
+                  />
+                ) : (
+                  <span className="min-w-0 max-w-full truncate text-sm font-medium text-[var(--color-ink)]">
+                    {conversation?.title}
+                  </span>
+                )}
+                {isShared && <SharingBadge isShared />}
+              </div>
               <div className="flex shrink-0 items-center gap-2">
                 {updateProvider.isPending && <Spinner size="sm" />}
                 <Button variant="secondary" onClick={() => setSavingConversation(true)} disabled={!conversation || messages.length === 0}>
@@ -379,10 +408,23 @@ export function ChatPage() {
                 <ProviderSelect
                   value={conversation?.provider_id ?? effectiveNewProviderId}
                   onChange={handleProviderChange}
-                  disabled={updateProvider.isPending}
+                  disabled={updateProvider.isPending || !canEditConversation}
                 />
               </div>
             </div>
+            {isShared && conversation && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--color-border)] px-6 py-2 text-xs text-[var(--color-ink-muted)]">
+                <OwnershipLine
+                  ownerId={conversation.user_id}
+                  currentUserId={user?.id}
+                  owner={lookup(conversation.user_id)}
+                  isShared={isShared}
+                />
+                {lastEditor && (
+                  <span>Last edited by {lastEditor.user_id === user?.id ? 'you' : (lastEditor.display_name ?? lastEditor.email)}</span>
+                )}
+              </div>
+            )}
             {conversation && (
               <SaveConversationDialog
                 open={savingConversation}

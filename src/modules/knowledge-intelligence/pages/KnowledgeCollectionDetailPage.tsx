@@ -3,12 +3,17 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useKnowledgeCollection } from '@/modules/knowledge-intelligence/hooks/useKnowledgeCollection'
 import type { EvidenceItem } from '@/modules/knowledge-intelligence/api/knowledgeNodeEvidence'
 import type { CollectionItemType } from '@/modules/knowledge-intelligence/api/knowledgeCollections'
+import { useAuth } from '@/modules/auth/useAuth'
+import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
+import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
 import { SourceReference } from '@/shared/components/knowledge/SourceReference'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Button } from '@/shared/components/ui/Button'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
+import { SharingBadge } from '@/shared/components/collaboration/SharingBadge'
+import { OwnershipLine } from '@/shared/components/collaboration/OwnershipLine'
 
 const TYPE_LABEL: Record<string, string> = {
   document: 'Documents',
@@ -23,6 +28,9 @@ export function KnowledgeCollectionDetailPage() {
   const navigate = useNavigate()
   const { collection, isLoading, isError, items, itemsLoading, itemsError, refetchItems, remove, removeItem } =
     useKnowledgeCollection(collectionId!)
+  const { user } = useAuth()
+  const { data: role } = useWorkspaceRole(collection?.workspace_id ?? null)
+  const { isShared, lookup } = useWorkspaceMemberDirectory(collection?.workspace_id ?? null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   if (isLoading) {
@@ -54,6 +62,14 @@ export function KnowledgeCollectionDetailPage() {
     itemsByType.set(item.type, list)
   }
 
+  // UX-14.5 Phase 5 — mirrors the four-command RLS split
+  // (0031_shared_knowledge_objects.sql): the collection's own creator
+  // always keeps full rights, an editor can add/remove items but not
+  // delete the collection itself, an owner gets everything.
+  const isCollectionOwner = collection.user_id === user?.id
+  const canEdit = isCollectionOwner || role === 'editor' || role === 'owner'
+  const canDelete = isCollectionOwner || role === 'owner'
+
   return (
     <div className="flex flex-col gap-6">
       <Link to="/knowledge/collections" className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
@@ -62,14 +78,30 @@ export function KnowledgeCollectionDetailPage() {
 
       <SectionHeader
         level="page"
-        title={collection.name}
+        title={
+          <span className="inline-flex items-center gap-2">
+            {collection.name}
+            {isShared && <SharingBadge isShared />}
+          </span>
+        }
         description={collection.description ?? undefined}
         action={
-          <Button variant="secondary" onClick={() => setConfirmingDelete(true)}>
-            Delete collection
-          </Button>
+          canDelete && (
+            <Button variant="secondary" onClick={() => setConfirmingDelete(true)}>
+              Delete collection
+            </Button>
+          )
         }
       />
+
+      {isShared && (
+        <OwnershipLine
+          ownerId={collection.user_id}
+          currentUserId={user?.id}
+          owner={lookup(collection.user_id)}
+          isShared={isShared}
+        />
+      )}
 
       {itemsLoading ? (
         <div className="flex justify-center py-8">
@@ -97,7 +129,11 @@ export function KnowledgeCollectionDetailPage() {
             <SourceReference
               sources={list}
               label=""
-              onRemove={(item) => removeItem.mutate({ itemType: item.type as CollectionItemType, itemId: item.id })}
+              onRemove={
+                canEdit
+                  ? (item) => removeItem.mutate({ itemType: item.type as CollectionItemType, itemId: item.id })
+                  : undefined
+              }
             />
           </div>
         ))

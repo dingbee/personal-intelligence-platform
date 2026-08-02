@@ -3,6 +3,11 @@ import type { NoteWithDocument } from '@/modules/notes/api/notes'
 import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
 import { ArtifactKindBadge } from '@/modules/notes/components/ArtifactKindBadge'
 import { getArtifactKind } from '@/modules/ai/artifacts/artifactMetadata'
+import { useAuth } from '@/modules/auth/useAuth'
+import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
+import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
+import { SharingBadge } from '@/shared/components/collaboration/SharingBadge'
+import { OwnershipLine } from '@/shared/components/collaboration/OwnershipLine'
 
 function previewText(content: string): string {
   const trimmed = content.trim()
@@ -27,6 +32,12 @@ export function NoteCard({
   selected?: boolean
   onToggleSelect?: () => void
 }) {
+  const { user } = useAuth()
+  const { data: role } = useWorkspaceRole(note.workspace_id)
+  const { isShared, lookup } = useWorkspaceMemberDirectory(note.workspace_id)
+  const isNoteOwner = note.user_id === user?.id
+  const canDelete = isNoteOwner || role === 'owner'
+
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
       <div className="flex items-start justify-between gap-2">
@@ -47,6 +58,11 @@ export function NoteCard({
             <span className="shrink-0">
               <ArtifactKindBadge kind={getArtifactKind(note)} />
             </span>
+            {isShared && (
+              <span className="shrink-0">
+                <SharingBadge isShared />
+              </span>
+            )}
           </div>
         </Link>
         {!selectable && (
@@ -58,9 +74,11 @@ export function NoteCard({
             >
               Edit
             </Link>
-            <DropdownMenuItem danger onClick={onDelete}>
-              Delete
-            </DropdownMenuItem>
+            {canDelete && (
+              <DropdownMenuItem danger onClick={onDelete}>
+                Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenu>
         )}
       </div>
@@ -75,6 +93,9 @@ export function NoteCard({
         )}
         <span>Created {formatDate(note.created_at)}</span>
         {note.updated_at !== note.created_at && <span>Updated {formatDate(note.updated_at)}</span>}
+        {isShared && (
+          <OwnershipLine ownerId={note.user_id} currentUserId={user?.id} owner={lookup(note.user_id)} isShared={isShared} />
+        )}
       </div>
     </div>
   )

@@ -5,6 +5,9 @@ import { useNote } from '@/modules/notes/hooks/useNote'
 import { useNotes } from '@/modules/notes/hooks/useNotes'
 import { useRelatedKnowledge } from '@/modules/notes/hooks/useRelatedKnowledge'
 import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
+import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
+import { SharingBadge } from '@/shared/components/collaboration/SharingBadge'
+import { OwnershipLine } from '@/shared/components/collaboration/OwnershipLine'
 import { NoteTagEditor } from '@/modules/notes/components/NoteTagEditor'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import { useDocuments } from '@/modules/library/hooks/useDocuments'
@@ -37,6 +40,7 @@ export function NoteDetailPage() {
   const { data: documents = [] } = useDocuments({})
   const { data: relatedKnowledge = [] } = useRelatedKnowledge(noteId!)
   const { data: workspaceRole } = useWorkspaceRole(note?.workspace_id ?? null)
+  const { isShared, lookup } = useWorkspaceMemberDirectory(note?.workspace_id ?? null)
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -98,13 +102,20 @@ export function NoteDetailPage() {
         <Link to="/notes" className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
           ← Back to Notes
         </Link>
-        {/* UX-14.4.4 — creationMethod has been written into generation_metadata
-            since UX-14.4.3, but nothing displayed it until now: a real
-            write/read gap, not a cosmetic addition. */}
-        {creationMethod && (
-          <span className="text-xs text-[var(--color-ink-muted)]">{ARTIFACT_CREATION_METHOD_LABELS[creationMethod]}</span>
-        )}
+        <div className="flex items-center gap-2">
+          {isShared && <SharingBadge isShared />}
+          {/* UX-14.4.4 — creationMethod has been written into generation_metadata
+              since UX-14.4.3, but nothing displayed it until now: a real
+              write/read gap, not a cosmetic addition. */}
+          {creationMethod && (
+            <span className="text-xs text-[var(--color-ink-muted)]">{ARTIFACT_CREATION_METHOD_LABELS[creationMethod]}</span>
+          )}
+        </div>
       </div>
+
+      {isShared && (
+        <OwnershipLine ownerId={note.user_id} currentUserId={user?.id} owner={lookup(note.user_id)} isShared={isShared} />
+      )}
 
       {/* UX-14.4 Phase 1 — Knowledge Card activation: the Phase 7B rendering
           primitives already exist, this is the first note-facing surface

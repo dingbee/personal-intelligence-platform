@@ -12,7 +12,7 @@ export function SectionHeader({
   action,
   level = 'section',
 }: {
-  title: string
+  title: ReactNode
   description?: string
   action?: ReactNode
   /** 'page' renders an <h1> at page-title scale; 'section' renders an <h2> at section-title scale. */

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@/modules/auth/useAuth'
 import { useDocument } from '@/modules/library/hooks/useDocument'
 import { useCollections } from '@/modules/library/hooks/useCollections'
 import { useDocumentMutations } from '@/modules/library/hooks/useDocumentMutations'
@@ -8,6 +9,8 @@ import { useProcessingJob } from '@/modules/processing/hooks/useProcessingJob'
 import { useReprocessDocument } from '@/modules/processing/hooks/useReprocessDocument'
 import { useExtractionMetadata } from '@/modules/processing/hooks/useExtractionMetadata'
 import { useDocumentChunkCount } from '@/modules/processing/hooks/useDocumentChunkCount'
+import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
+import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
 import { ProcessingStatusBadge } from '@/modules/processing/components/ProcessingStatusBadge'
 import { KnowledgeExtractionPanel } from '@/modules/knowledge-intelligence/components/KnowledgeExtractionPanel'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
@@ -22,6 +25,8 @@ import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Button } from '@/shared/components/ui/Button'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
+import { SharingBadge } from '@/shared/components/collaboration/SharingBadge'
+import { OwnershipLine } from '@/shared/components/collaboration/OwnershipLine'
 
 export function DocumentDetailPage() {
   const { documentId } = useParams<{ documentId: string }>()
@@ -30,6 +35,7 @@ export function DocumentDetailPage() {
   const detailKey = ['document-detail', documentId]
   const invalidateDetail = () => queryClient.invalidateQueries({ queryKey: detailKey })
 
+  const { user } = useAuth()
   const { data: document, isLoading, isError } = useDocument(documentId!)
   const { data: collections = [] } = useCollections()
   const { data: job } = useProcessingJob(documentId!)
@@ -37,6 +43,8 @@ export function DocumentDetailPage() {
   const { data: chunkCount } = useDocumentChunkCount(documentId!)
   const { rename, remove } = useDocumentMutations()
   const reprocess = useReprocessDocument()
+  const { data: role } = useWorkspaceRole(document?.workspace_id ?? null)
+  const { isShared, lookup } = useWorkspaceMemberDirectory(document?.workspace_id ?? null)
 
   const [renaming, setRenaming] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -65,6 +73,11 @@ export function DocumentDetailPage() {
 
   const readerMode = resolveReaderMode(document.file_type)
   const spreadsheetAnalysis = readerMode === 'spreadsheet' ? getSpreadsheetAnalysis(metadata) : null
+  // UX-14.5 Phase 5 — mirrors DocumentCard's gating exactly, since this
+  // page previously offered every control unconditionally.
+  const isDocumentOwner = document.user_id === user?.id
+  const canEdit = isDocumentOwner || role === 'editor' || role === 'owner'
+  const canDelete = isDocumentOwner || role === 'owner'
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -74,8 +87,11 @@ export function DocumentDetailPage() {
 
       <div className="mt-4 flex flex-col gap-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
         <div>
-          <span className="inline-block rounded bg-[var(--color-canvas)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-ink-muted)]">
-            {fileTypeLabel(document.file_type)}
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block rounded bg-[var(--color-canvas)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-ink-muted)]">
+              {fileTypeLabel(document.file_type)}
+            </span>
+            {isShared && <SharingBadge isShared />}
           </span>
           {renaming ? (
             <div className="mt-1">
@@ -91,23 +107,38 @@ export function DocumentDetailPage() {
           ) : (
             <h1 className="mt-1 flex items-center gap-2 text-xl font-semibold text-[var(--color-ink)]">
               {document.title}
-              <button
-                type="button"
-                onClick={() => setRenaming(true)}
-                className="text-xs font-normal text-[var(--color-ink-muted)] hover:text-[var(--color-accent)]"
-              >
-                Rename
-              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setRenaming(true)}
+                  className="text-xs font-normal text-[var(--color-ink-muted)] hover:text-[var(--color-accent)]"
+                >
+                  Rename
+                </button>
+              )}
             </h1>
           )}
-          <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{formatFileSize(document.file_size)}</p>
+          <p className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-[var(--color-ink-muted)]">
+            {formatFileSize(document.file_size)}
+            {isShared && (
+              <>
+                {' · '}
+                <OwnershipLine
+                  ownerId={document.user_id}
+                  currentUserId={user?.id}
+                  owner={lookup(document.user_id)}
+                  isShared={isShared}
+                />
+              </>
+            )}
+          </p>
         </div>
 
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-muted)]">Status</h2>
           <div className="mt-1.5 flex items-center gap-3">
             <ProcessingStatusBadge documentId={document.id} documentStatus={document.status} />
-            {job?.status === 'failed' && (
+            {job?.status === 'failed' && canEdit && (
               <Button
                 variant="secondary"
                 onClick={() => reprocess.mutate(document.id)}
@@ -196,13 +227,15 @@ export function DocumentDetailPage() {
             </Link>
           )}
           <AddToCollectionButton itemType="document" itemId={document.id} />
-          <Button
-            variant="ghost"
-            className="text-red-600 hover:text-red-700"
-            onClick={() => setConfirmingDelete(true)}
-          >
-            Delete
-          </Button>
+          {canDelete && (
+            <Button
+              variant="ghost"
+              className="text-red-600 hover:text-red-700"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              Delete
+            </Button>
+          )}
         </div>
       </div>
 

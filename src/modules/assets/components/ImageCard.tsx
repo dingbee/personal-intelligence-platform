@@ -13,6 +13,10 @@ import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
 import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { Spinner } from '@/shared/components/ui/Spinner'
+import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
+import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
+import { SharingBadge } from '@/shared/components/collaboration/SharingBadge'
+import { OwnershipLine } from '@/shared/components/collaboration/OwnershipLine'
 
 /**
  * UX-13.9 — the image equivalent of DocumentCard, same shape: a thumbnail
@@ -29,8 +33,14 @@ export function ImageCard({ asset, onOpenLightbox }: { asset: Asset; onOpenLight
   const { rename, remove } = useAssets()
   const { createConversationWithQuery } = useCommandActions()
   const { data: thumbnailUrl, isLoading: thumbnailLoading } = useSignedAssetUrl(asset.thumbnail_path)
+  const { data: role } = useWorkspaceRole(asset.workspace_id)
+  const { isShared, lookup } = useWorkspaceMemberDirectory(asset.workspace_id)
   const [renaming, setRenaming] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  // UX-14.5 Phase 5 — mirrors DocumentCard's gating; assets use owner_id, not user_id.
+  const isAssetOwner = asset.owner_id === user?.id
+  const canEdit = isAssetOwner || role === 'editor' || role === 'owner'
+  const canDelete = isAssetOwner || role === 'owner'
 
   // UX-13.9 — "Save as Notes" from the Library, image version of
   // DocumentCard's own saveAsNote: an empty note linked to this asset via
@@ -65,8 +75,11 @@ export function ImageCard({ asset, onOpenLightbox }: { asset: Asset; onOpenLight
 
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <span className="inline-block rounded bg-[var(--color-canvas)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-ink-muted)]">
-            IMAGE
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block rounded bg-[var(--color-canvas)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-ink-muted)]">
+              IMAGE
+            </span>
+            {isShared && <SharingBadge isShared />}
           </span>
           {renaming ? (
             <div className="mt-1">
@@ -84,8 +97,19 @@ export function ImageCard({ asset, onOpenLightbox }: { asset: Asset; onOpenLight
               {asset.title}
             </h3>
           )}
-          <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-[var(--color-ink-muted)]">
             {asset.width}×{asset.height} · {formatFileSize(asset.size_bytes)}
+            {isShared && (
+              <>
+                {' · '}
+                <OwnershipLine
+                  ownerId={asset.owner_id}
+                  currentUserId={user?.id}
+                  owner={lookup(asset.owner_id)}
+                  isShared={isShared}
+                />
+              </>
+            )}
           </p>
         </div>
 
@@ -112,10 +136,12 @@ export function ImageCard({ asset, onOpenLightbox }: { asset: Asset; onOpenLight
             <DropdownMenuItem onClick={() => saveAsNote.mutate()}>
               {saveAsNote.isPending ? 'Saving…' : 'Save as Notes'}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setRenaming(true)}>Rename</DropdownMenuItem>
-            <DropdownMenuItem danger onClick={() => setConfirmingDelete(true)}>
-              Delete
-            </DropdownMenuItem>
+            {canEdit && <DropdownMenuItem onClick={() => setRenaming(true)}>Rename</DropdownMenuItem>}
+            {canDelete && (
+              <DropdownMenuItem danger onClick={() => setConfirmingDelete(true)}>
+                Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenu>
         </div>
       </div>

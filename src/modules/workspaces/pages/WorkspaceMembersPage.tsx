@@ -11,6 +11,7 @@ import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
+import { MemberAvatar } from '@/shared/components/collaboration/MemberAvatar'
 import { formatRelativeTime } from '@/shared/utils/formatRelativeTime'
 import type { WorkspaceMemberRole } from '@/shared/types/database'
 
@@ -116,14 +117,17 @@ export function WorkspaceMembersPage() {
                 key={member.id ?? member.user_id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-[var(--color-border)] bg-[var(--surface-raised)] p-4"
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-[var(--color-ink)]">
-                    {member.display_name || member.email}
-                    {isSelf && <span className="ml-1.5 text-xs text-[var(--color-ink-muted)]">(you)</span>}
-                  </p>
-                  <p className="truncate text-xs text-[var(--color-ink-muted)]">
-                    {member.email} · Joined {formatRelativeTime(member.created_at)}
-                  </p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <MemberAvatar displayName={member.display_name} email={member.email} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-[var(--color-ink)]">
+                      {member.display_name || member.email}
+                      {isSelf && <span className="ml-1.5 text-xs text-[var(--color-ink-muted)]">(you)</span>}
+                    </p>
+                    <p className="truncate text-xs text-[var(--color-ink-muted)]">
+                      {member.email} · Joined {formatRelativeTime(member.created_at)}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {member.status === 'pending' && <StatusBadge label="Pending" variant="warning" />}

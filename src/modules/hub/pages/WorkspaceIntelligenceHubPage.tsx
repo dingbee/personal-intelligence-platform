@@ -10,8 +10,11 @@ import { WorkspaceGapsSection } from '@/modules/hub/components/WorkspaceGapsSect
 import { WorkspaceObjectivesSection } from '@/modules/hub/components/WorkspaceObjectivesSection'
 import { RecentNotesSection } from '@/modules/hub/components/RecentNotesSection'
 import { ActiveConversationsSection } from '@/modules/hub/components/ActiveConversationsSection'
+import { CollaborationSection } from '@/modules/hub/components/CollaborationSection'
 import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
+import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
+import { useWorkspaceStats } from '@/modules/workspaces/hooks/useWorkspaceStats'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { StatCard } from '@/shared/components/ui/surface/StatCard'
@@ -39,6 +42,8 @@ export function WorkspaceIntelligenceHubPage() {
   const { data, isLoading, summary, workspaceName } = useWorkspaceHub()
   const commandContext = useCommandContext()
   const commandActions = useCommandActions()
+  const { members, isShared, lookup } = useWorkspaceMemberDirectory(currentWorkspaceId)
+  const { data: stats } = useWorkspaceStats(currentWorkspaceId)
 
   return (
     <div className="flex flex-col gap-8">
@@ -71,6 +76,21 @@ export function WorkspaceIntelligenceHubPage() {
             <StatCard label="Reading Progress" value={`${data.readDocumentCount} / ${data.totalReadyDocumentCount}`} />
             <StatCard label="Document Relationships" value={data.documentRelationshipCount} />
           </div>
+
+          {isShared && stats && (
+            <section className="flex flex-col gap-3">
+              <SectionHeader level="section" title="Collaboration" description={`Who has access to ${workspaceName} and what's shared.`} />
+              <CollaborationSection
+                members={members}
+                lookup={lookup}
+                documentCount={stats.documents}
+                noteCount={stats.notes}
+                collectionCount={stats.collections}
+                recentNotes={data.recentNotes}
+                activeConversations={data.activeConversations}
+              />
+            </section>
+          )}
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <section className="flex flex-col gap-3">

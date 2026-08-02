@@ -5,6 +5,10 @@ import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownM
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
 import { groupConversationsByRecency } from '@/modules/ai/chat/groupConversationsByRecency'
+import { useAuth } from '@/modules/auth/useAuth'
+import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
+import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
+import { SharingBadge } from '@/shared/components/collaboration/SharingBadge'
 
 export interface ConversationListProps {
   conversations: Conversation[]
@@ -25,6 +29,126 @@ export interface ConversationListProps {
   /** UX-13.5 Phase 9 — searches title + message content across active conversations; `conversations` is already whatever the caller decided to show (search results, active, or archived), this prop only drives the input itself. */
   searchQuery: string
   onSearchQueryChange: (query: string) => void
+}
+
+interface ConversationRowProps {
+  conversation: Conversation
+  selectedId: string | null
+  onSelect: (id: string) => void
+  onRename: (id: string, title: string) => void
+  onArchive: (id: string) => void
+  onDuplicate: (id: string) => void
+  onTogglePin: (id: string, isPinned: boolean) => void
+  onToggleFavorite: (id: string, favorite: boolean) => void
+  onRestore: (id: string) => void
+  mode: 'active' | 'archived'
+  renamingId: string | null
+  setRenamingId: (id: string | null) => void
+  setConfirmDeleteId: (id: string | null) => void
+}
+
+/**
+ * UX-14.5 Phase 5 — split out of what used to be a plain `renderRow`
+ * function so `useWorkspaceRole` can be called legitimately (hooks can't
+ * run inside a function invoked from `.map()`, only inside a real
+ * component). Gating mirrors NoteCard/DocumentCard/ImageCard exactly.
+ */
+function ConversationRow({
+  conversation,
+  selectedId,
+  onSelect,
+  onRename,
+  onArchive,
+  onDuplicate,
+  onTogglePin,
+  onToggleFavorite,
+  onRestore,
+  mode,
+  renamingId,
+  setRenamingId,
+  setConfirmDeleteId,
+}: ConversationRowProps) {
+  const { user } = useAuth()
+  const { data: role } = useWorkspaceRole(conversation.workspace_id)
+  const { isShared } = useWorkspaceMemberDirectory(conversation.workspace_id)
+  const isConversationOwner = conversation.user_id === user?.id
+  const canEdit = isConversationOwner || role === 'editor' || role === 'owner'
+  const canDelete = isConversationOwner || role === 'owner'
+
+  return (
+    <div
+      className={`group flex items-center gap-1 rounded-lg pr-1 text-sm ${
+        conversation.id === selectedId
+          ? 'bg-[var(--color-canvas)] text-[var(--color-ink)]'
+          : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]'
+      }`}
+    >
+      {renamingId === conversation.id ? (
+        <div className="flex-1 px-2 py-1">
+          <InlineTextForm
+            initialValue={conversation.title}
+            onSubmit={(title) => {
+              setRenamingId(null)
+              if (title !== conversation.title) onRename(conversation.id, title)
+            }}
+            onCancel={() => setRenamingId(null)}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => onSelect(conversation.id)}
+          className="flex min-w-0 flex-1 items-center gap-1 px-3 py-2 text-left"
+        >
+          {conversation.is_pinned && (
+            <span aria-label="Pinned" className="shrink-0 text-xs">
+              📌
+            </span>
+          )}
+          {conversation.favorite && (
+            <span aria-label="Favorite" className="shrink-0 text-xs text-amber-500">
+              ★
+            </span>
+          )}
+          <span className="min-w-0 truncate">{conversation.title}</span>
+          {isShared && (
+            <span className="shrink-0">
+              <SharingBadge isShared />
+            </span>
+          )}
+        </button>
+      )}
+      <DropdownMenu trigger={<span aria-label="Conversation actions">⋯</span>}>
+        {mode === 'active' ? (
+          <>
+            {canEdit && <DropdownMenuItem onClick={() => setRenamingId(conversation.id)}>Rename</DropdownMenuItem>}
+            <DropdownMenuItem onClick={() => onTogglePin(conversation.id, !conversation.is_pinned)}>
+              {conversation.is_pinned ? 'Unpin' : 'Pin'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onToggleFavorite(conversation.id, !conversation.favorite)}>
+              {conversation.favorite ? 'Remove favorite' : 'Add to favorites'}
+            </DropdownMenuItem>
+            {canEdit && <DropdownMenuItem onClick={() => onDuplicate(conversation.id)}>Duplicate</DropdownMenuItem>}
+            {canEdit && <DropdownMenuItem onClick={() => onArchive(conversation.id)}>Archive</DropdownMenuItem>}
+            {canDelete && (
+              <DropdownMenuItem danger onClick={() => setConfirmDeleteId(conversation.id)}>
+                Delete
+              </DropdownMenuItem>
+            )}
+          </>
+        ) : (
+          <>
+            {canEdit && <DropdownMenuItem onClick={() => onRestore(conversation.id)}>Restore</DropdownMenuItem>}
+            {canDelete && (
+              <DropdownMenuItem danger onClick={() => setConfirmDeleteId(conversation.id)}>
+                Delete permanently
+              </DropdownMenuItem>
+            )}
+          </>
+        )}
+      </DropdownMenu>
+    </div>
+  )
 }
 
 /**
@@ -53,75 +177,6 @@ export function ConversationListContent({
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const searching = searchQuery.trim().length > 0
-
-  function renderRow(conversation: Conversation) {
-    return (
-      <div
-        key={conversation.id}
-        className={`group flex items-center gap-1 rounded-lg pr-1 text-sm ${
-          conversation.id === selectedId
-            ? 'bg-[var(--color-canvas)] text-[var(--color-ink)]'
-            : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]'
-        }`}
-      >
-        {renamingId === conversation.id ? (
-          <div className="flex-1 px-2 py-1">
-            <InlineTextForm
-              initialValue={conversation.title}
-              onSubmit={(title) => {
-                setRenamingId(null)
-                if (title !== conversation.title) onRename(conversation.id, title)
-              }}
-              onCancel={() => setRenamingId(null)}
-            />
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => onSelect(conversation.id)}
-            className="flex min-w-0 flex-1 items-center gap-1 px-3 py-2 text-left"
-          >
-            {conversation.is_pinned && (
-              <span aria-label="Pinned" className="shrink-0 text-xs">
-                📌
-              </span>
-            )}
-            {conversation.favorite && (
-              <span aria-label="Favorite" className="shrink-0 text-xs text-amber-500">
-                ★
-              </span>
-            )}
-            <span className="min-w-0 truncate">{conversation.title}</span>
-          </button>
-        )}
-        <DropdownMenu trigger={<span aria-label="Conversation actions">⋯</span>}>
-          {mode === 'active' ? (
-            <>
-              <DropdownMenuItem onClick={() => setRenamingId(conversation.id)}>Rename</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onTogglePin(conversation.id, !conversation.is_pinned)}>
-                {conversation.is_pinned ? 'Unpin' : 'Pin'}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onToggleFavorite(conversation.id, !conversation.favorite)}>
-                {conversation.favorite ? 'Remove favorite' : 'Add to favorites'}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDuplicate(conversation.id)}>Duplicate</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onArchive(conversation.id)}>Archive</DropdownMenuItem>
-              <DropdownMenuItem danger onClick={() => setConfirmDeleteId(conversation.id)}>
-                Delete
-              </DropdownMenuItem>
-            </>
-          ) : (
-            <>
-              <DropdownMenuItem onClick={() => onRestore(conversation.id)}>Restore</DropdownMenuItem>
-              <DropdownMenuItem danger onClick={() => setConfirmDeleteId(conversation.id)}>
-                Delete permanently
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenu>
-      </div>
-    )
-  }
 
   return (
     <>
@@ -162,10 +217,44 @@ export function ConversationListContent({
           ? groupConversationsByRecency(conversations).map((group) => (
               <div key={group.label} className="mb-1">
                 <p className="px-3 pb-1 pt-2 text-xs font-medium text-[var(--color-ink-muted)]">{group.label}</p>
-                {group.conversations.map((conversation) => renderRow(conversation))}
+                {group.conversations.map((conversation) => (
+                  <ConversationRow
+                    key={conversation.id}
+                    conversation={conversation}
+                    selectedId={selectedId}
+                    onSelect={onSelect}
+                    onRename={onRename}
+                    onArchive={onArchive}
+                    onDuplicate={onDuplicate}
+                    onTogglePin={onTogglePin}
+                    onToggleFavorite={onToggleFavorite}
+                    onRestore={onRestore}
+                    mode={mode}
+                    renamingId={renamingId}
+                    setRenamingId={setRenamingId}
+                    setConfirmDeleteId={setConfirmDeleteId}
+                  />
+                ))}
               </div>
             ))
-          : conversations.map((conversation) => renderRow(conversation))}
+          : conversations.map((conversation) => (
+              <ConversationRow
+                key={conversation.id}
+                conversation={conversation}
+                selectedId={selectedId}
+                onSelect={onSelect}
+                onRename={onRename}
+                onArchive={onArchive}
+                onDuplicate={onDuplicate}
+                onTogglePin={onTogglePin}
+                onToggleFavorite={onToggleFavorite}
+                onRestore={onRestore}
+                mode={mode}
+                renamingId={renamingId}
+                setRenamingId={setRenamingId}
+                setConfirmDeleteId={setConfirmDeleteId}
+              />
+            ))}
       </div>
       <ConfirmDialog
         open={confirmDeleteId !== null}
