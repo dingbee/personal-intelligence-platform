@@ -4,6 +4,7 @@ import { useGenerateBriefing } from '@/modules/knowledge-intelligence/hooks/useG
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import type { EvidenceItem } from '@/modules/knowledge-intelligence/api/knowledgeNodeEvidence'
 import { buildKnowledgeExportMarkdown, knowledgeExportFilename } from '@/modules/knowledge-intelligence/api/knowledgeExportMarkdown'
+import { exportKnowledgeNodePackage, knowledgeNodePackageFilename } from '@/modules/knowledge-exchange/knowledge-nodes/exportKnowledgeNodePackage'
 import { SourceReference } from '@/shared/components/knowledge/SourceReference'
 import { ConfidenceBadge } from '@/shared/components/knowledge/ConfidenceBadge'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
@@ -89,6 +90,23 @@ export function KnowledgeNodeDetailPage() {
           onClick={() => downloadTextFile(knowledgeExportFilename(node.title), buildKnowledgeExportMarkdown(evidence))}
         >
           Export knowledge package
+        </Button>
+        {/* UX-14.5.10.1 — distinct from the markdown export above: this is a
+            versioned, machine-readable JSON package the Knowledge Exchange
+            Import flow can read back in, following the exact Notes
+            export/import pattern (UX-14.5.9). The markdown export stays
+            read-only prose; this one round-trips. */}
+        <Button
+          variant="secondary"
+          onClick={() =>
+            downloadTextFile(
+              knowledgeNodePackageFilename(node.title),
+              JSON.stringify(exportKnowledgeNodePackage(node), null, 2),
+              'application/json',
+            )
+          }
+        >
+          Export
         </Button>
         <AddToCollectionButton itemType="knowledge_node" itemId={node.id} />
         {generateBriefing.isSuccess && generateBriefing.data && (

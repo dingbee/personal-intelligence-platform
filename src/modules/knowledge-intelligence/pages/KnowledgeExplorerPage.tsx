@@ -8,6 +8,7 @@ import {
   useKnowledgeEdges,
 } from '@/modules/knowledge-intelligence/hooks/useKnowledgeIntelligence'
 import { useKnowledgeNodeDetails } from '@/modules/knowledge-intelligence/hooks/useKnowledgeNodeDetails'
+import { ImportKnowledgeNodePackageDialog } from '@/modules/knowledge-exchange/components/ImportKnowledgeNodePackageDialog'
 import { useGraphInteractionState } from '@/modules/knowledge/hooks/useGraphInteractionState'
 import { GraphIntelligencePanel } from '@/modules/knowledge/components/GraphIntelligencePanel'
 import { InteractiveConceptGraph } from '@/modules/knowledge/components/InteractiveConceptGraph'
@@ -62,6 +63,7 @@ export function KnowledgeExplorerPage() {
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [clusterFilter, setClusterFilter] = useState<{ label: string; nodeIds: string[] } | null>(null)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -98,9 +100,16 @@ export function KnowledgeExplorerPage() {
       <InsightPanel
         title="Knowledge Intelligence"
         actions={
-          <Button variant="secondary" loading={reconcile.isPending} onClick={() => reconcile.mutate()}>
-            {reconcile.isPending ? 'Finding connections…' : 'Reconcile AI Knowledge Graph'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" loading={reconcile.isPending} onClick={() => reconcile.mutate()}>
+              {reconcile.isPending ? 'Finding connections…' : 'Reconcile AI Knowledge Graph'}
+            </Button>
+            {/* UX-14.5.10.1 — Knowledge Node import entry point, the same
+                page-level-action placement NotesPage's Import button uses. */}
+            <Button variant="secondary" onClick={() => setImportDialogOpen(true)}>
+              Import
+            </Button>
+          </div>
         }
         isLoading={insights.isLoading}
         isEmpty={!insights.data || (insights.data.conceptCount === 0 && insights.data.entityCount === 0)}
@@ -241,6 +250,8 @@ export function KnowledgeExplorerPage() {
           })}
         </div>
       )}
+
+      <ImportKnowledgeNodePackageDialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} />
     </div>
   )
 }
