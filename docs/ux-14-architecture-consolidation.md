@@ -473,6 +473,26 @@ Exactly the three items approved from the discovery — a structured artifact pr
 
 ---
 
+#### UX-14.4.4 — Artifact Intelligence Polish (completed)
+
+Discovery-first, per instruction. Traced the actual `WorkspaceActionOutcome -> AIService -> useSendMessage -> MessageBubble -> ArtifactPreviewCard` flow against the real code (not assumption) and found one genuine regression plus two write/read asymmetries — all three closed here, nothing else added.
+
+**Finding 1 — a real regression, not a gap.** `MessageBubble` renders `ArtifactPreviewCard` *instead of* `message.content` when `artifactPreview` is set (UX-14.4.3). But `message.content`/`responseText` is where the natural-language framing lived — `"...This hasn't been saved yet — say 'save this'..."` — and the card never rendered that text. Since UX-14.4.3 shipped, every generated-spreadsheet preview has silently lost its "not saved yet" signal; only the still-functional Save button below hinted at it. **Fix:** `ArtifactPreviewCard.tsx` now renders an explicit `StatusBadge variant="warning"` reading "Preview — not saved" plus a short explanatory line, restoring the signal as a real UI element instead of prose a card was swallowing.
+
+**Finding 2 — creationMethod written, never read.** UX-14.4.3 wired `creationMethod` into `generation_metadata` at every `createNote` call site; grepping every UI surface found zero readers. **Fix:** `ARTIFACT_CREATION_METHOD_LABELS` (`artifactTypes.ts`, mirrors `ARTIFACT_KIND_DEFINITIONS`'s label convention exactly) + a small provenance line on `NoteDetailPage.tsx` next to the "Back to Notes" link, reading `getCreationMethod(note)` (UX-14.4.3, unchanged).
+
+**Finding 3 — related knowledge computed, never surfaced on the artifact itself.** `linkKnownConceptsToSource` has written `knowledge_node_sources` rows for every saved note since Phase 2B, but every existing query reads that table node→sources, never source→nodes. **Fix:** `getRelatedKnowledgeForNote(noteId)` (new function in `knowledgeNodeEvidence.ts`, the exact reverse of `getKnowledgeNodeEvidence`'s existing query — same table, same `fetchTitlesByIds` helper, no new pattern) + `useRelatedKnowledge.ts` (new hook, standard `useQuery` wrapper) + a `SourceReference` chip row on `NoteDetailPage.tsx` (the existing Phase 7B "provenance chips" primitive, unmodified — a related concept now looks identical here to everywhere else it appears).
+
+**Not built, and why:** fabricated confidence (still correctly absent — no real signal exists to show); automatic memory matching (same finding as UX-14.4.3 — no algorithm transfers to memory content without new architecture); an "Improve this artifact" capability (new AI generation, explicitly out of scope for a polish milestone per this and the prior milestone's own discipline); chart/report/template generation; `columnFormats` → Excel number format mapping.
+
+**Files touched:** 1 modified (`ArtifactPreviewCard.tsx` — unsaved-state badge), 1 modified (`artifactTypes.ts` — `ARTIFACT_CREATION_METHOD_LABELS`), 1 modified (`knowledgeNodeEvidence.ts` — `getRelatedKnowledgeForNote`, + new test file), 1 new (`useRelatedKnowledge.ts`), 1 modified (`NoteDetailPage.tsx` — provenance line + related-knowledge section).
+
+**Not tested by design, same convention as UX-14.4.3:** `ArtifactPreviewCard.tsx`/`NoteDetailPage.tsx` UI changes have no render tests (`@testing-library/react` still isn't a dependency anywhere in this codebase). `ARTIFACT_CREATION_METHOD_LABELS` has no dedicated test either — it's a `Record<ArtifactCreationMethod, string>`, so TypeScript itself enforces every enum member has an entry at compile time, same as `ARTIFACT_KIND_DEFINITIONS` was never separately tested for completeness.
+
+**Verification.** `tsc -b`: clean. `vitest run`: 1095/1095 passing (up from 1093 — 2 new tests for `getRelatedKnowledgeForNote`). `lint`/`build`: clean. `npm run verify:bundle`: passes (main entry 967KB, `xlsx` split out).
+
+---
+
 **R2 — Consolidate `suggestionEngine.ts` and `dashboardRecommendations.ts`.** ~~Deferred to UX-14 implementation~~ **Done (UX-14.1).** Merged into `src/modules/intelligence/recommendations/recommendationEngine.ts` — one exported `Recommendation` type, one `generateRecommendations({ scope: 'chat' | 'dashboard', ... })` function. Each scope's rule branches are unchanged from their original files (same conditions, same reason text, same command ids); characterization tests ported from both original test suites unchanged, plus two new tests asserting scope isolation (a dashboard-only signal has no effect under `scope: 'chat'` and vice versa). All four call sites updated (`orchestrator.ts`, `dashboardInteraction.ts`, `hub/hubData.ts`, plus the two rendering/summary consumers `RecommendedActionsSection.tsx` and `executiveSummary.ts`). Verified: tsc clean, 956/956 vitest (up from 954 — net of 15 ported tests removed, 17 added), lint clean, build clean.
 
 **R3 (optional, lower priority) — Reconcile `workspaceInsightEngine`/`dashboardInsights`.** Not required; flagged so a future phase doesn't extend both independently without noticing they're adjacent.

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useNote } from '@/modules/notes/hooks/useNote'
 import { useNotes } from '@/modules/notes/hooks/useNotes'
+import { useRelatedKnowledge } from '@/modules/notes/hooks/useRelatedKnowledge'
 import { NoteTagEditor } from '@/modules/notes/components/NoteTagEditor'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import { useDocuments } from '@/modules/library/hooks/useDocuments'
@@ -11,8 +12,9 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { KnowledgeCard } from '@/shared/components/knowledge/KnowledgeCard'
-import { getArtifactData, getArtifactKind } from '@/modules/ai/artifacts/artifactMetadata'
-import { ARTIFACT_KIND_DEFINITIONS } from '@/modules/ai/artifacts/artifactTypes'
+import { SourceReference } from '@/shared/components/knowledge/SourceReference'
+import { getArtifactData, getArtifactKind, getCreationMethod } from '@/modules/ai/artifacts/artifactMetadata'
+import { ARTIFACT_CREATION_METHOD_LABELS, ARTIFACT_KIND_DEFINITIONS } from '@/modules/ai/artifacts/artifactTypes'
 import type { SpreadsheetArtifactData } from '@/modules/ai/artifacts/spreadsheet/types'
 
 // UX-14.4 Phase 2 — lazy-loaded for the same reason PdfReaderView/
@@ -30,6 +32,7 @@ export function NoteDetailPage() {
   const { note, isLoading, isError, save, summarize } = useNote(noteId!)
   const { remove } = useNotes()
   const { data: documents = [] } = useDocuments({})
+  const { data: relatedKnowledge = [] } = useRelatedKnowledge(noteId!)
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -73,12 +76,21 @@ export function NoteDetailPage() {
   const isDirty = title !== note.title || content !== note.content || documentId !== note.document_id
   const artifactKind = getArtifactKind(note)
   const spreadsheetArtifactData = artifactKind === 'spreadsheet' ? getArtifactData<SpreadsheetArtifactData>(note) : null
+  const creationMethod = getCreationMethod(note)
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <Link to="/notes" className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
-        ← Back to Notes
-      </Link>
+      <div className="flex items-center justify-between gap-2">
+        <Link to="/notes" className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
+          ← Back to Notes
+        </Link>
+        {/* UX-14.4.4 — creationMethod has been written into generation_metadata
+            since UX-14.4.3, but nothing displayed it until now: a real
+            write/read gap, not a cosmetic addition. */}
+        {creationMethod && (
+          <span className="text-xs text-[var(--color-ink-muted)]">{ARTIFACT_CREATION_METHOD_LABELS[creationMethod]}</span>
+        )}
+      </div>
 
       {/* UX-14.4 Phase 1 — Knowledge Card activation: the Phase 7B rendering
           primitives already exist, this is the first note-facing surface
@@ -148,6 +160,14 @@ export function NoteDetailPage() {
             {documents.find((document) => document.id === note.document_id)?.title ?? 'a document'}.
           </p>
         )}
+
+        {/* UX-14.4.4 — linkKnownConceptsToSource has recorded this
+            relationship for every saved note since Phase 2B; this is the
+            first surface that reads it back. Reuses SourceReference
+            unchanged (the same "provenance chips" primitive Evidence/
+            Collections already use), so a related concept looks identical
+            here to everywhere else it appears. */}
+        {relatedKnowledge.length > 0 && <SourceReference sources={relatedKnowledge} label="Related knowledge:" />}
 
         <div className="flex items-center justify-between border-t border-[var(--color-border)] pt-4">
           <div className="flex items-center gap-2">

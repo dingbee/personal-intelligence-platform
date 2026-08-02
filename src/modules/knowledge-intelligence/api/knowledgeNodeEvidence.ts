@@ -108,3 +108,28 @@ export async function getKnowledgeNodeEvidence(nodeId: string): Promise<Knowledg
 
   return { node: nodeResult.data, countsBySourceType, evidence, relatedNodes, confidence }
 }
+
+/**
+ * UX-14.4.4 — the reverse of `getKnowledgeNodeEvidence`'s node->sources
+ * lookup: given a note, which knowledge nodes already cite it as evidence?
+ * `linkKnownConceptsToSource` has written this relationship (via
+ * `knowledge_node_sources`) for every saved note since Phase 2B — this is
+ * the first function that reads it back in that direction. Reuses the
+ * exact same table, no new query pattern; returns `SourceReferenceItem[]`
+ * so callers can hand the result straight to the existing `SourceReference`
+ * chip component, same as every other provenance surface already does.
+ */
+export async function getRelatedKnowledgeForNote(noteId: string): Promise<SourceReferenceItem[]> {
+  const { data: sources, error } = await supabase
+    .from('knowledge_node_sources')
+    .select('node_id')
+    .eq('source_type', 'note')
+    .eq('source_id', noteId)
+  if (error) throw error
+
+  const nodeIds = Array.from(new Set(sources.map((s) => s.node_id)))
+  if (nodeIds.length === 0) return []
+
+  const nodes = await fetchTitlesByIds('knowledge_nodes', nodeIds)
+  return nodes.map((node) => ({ type: 'knowledge_node', id: node.id, label: node.title }))
+}
