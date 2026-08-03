@@ -12,6 +12,7 @@ import { TagFilterBar } from '@/modules/library/components/TagFilterBar'
 import { AssetUploadDropzone } from '@/modules/assets/components/AssetUploadDropzone'
 import { ImageGrid } from '@/modules/assets/components/ImageGrid'
 import { ImportAssetPackageDialog } from '@/modules/knowledge-exchange/components/ImportAssetPackageDialog'
+import { ImportDocumentPackageDialog } from '@/modules/knowledge-exchange/components/ImportDocumentPackageDialog'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -35,7 +36,8 @@ export function LibraryPage() {
   const [sort, setSort] = useState<DocumentSort>('newest')
   const [collectionsDrawerOpen, setCollectionsDrawerOpen] = useState(false)
   const [imageSearch, setImageSearch] = useState('')
-  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [importAssetDialogOpen, setImportAssetDialogOpen] = useState(false)
+  const [importDocumentDialogOpen, setImportDocumentDialogOpen] = useState(false)
 
   const { data: collections = [], isLoading: collectionsLoading } = useCollections()
   const { data: tags = [] } = useTags()
@@ -107,8 +109,13 @@ export function LibraryPage() {
 
         {activeTab === 'documents' ? (
           <>
-            <div className="mb-6">
-              <UploadDropzone collectionId={collectionId ?? null} />
+            <div className="mb-6 flex items-start gap-4">
+              <div className="flex-1">
+                <UploadDropzone collectionId={collectionId ?? null} />
+              </div>
+              <Button variant="secondary" className="shrink-0" onClick={() => setImportDocumentDialogOpen(true)}>
+                Import
+              </Button>
             </div>
 
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -165,7 +172,7 @@ export function LibraryPage() {
               <div className="flex-1">
                 <AssetUploadDropzone />
               </div>
-              <Button variant="secondary" className="shrink-0" onClick={() => setImportDialogOpen(true)}>
+              <Button variant="secondary" className="shrink-0" onClick={() => setImportAssetDialogOpen(true)}>
                 Import
               </Button>
             </div>
@@ -197,7 +204,8 @@ export function LibraryPage() {
           </>
         )}
       </div>
-      <ImportAssetPackageDialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} />
+      <ImportAssetPackageDialog open={importAssetDialogOpen} onClose={() => setImportAssetDialogOpen(false)} />
+      <ImportDocumentPackageDialog open={importDocumentDialogOpen} onClose={() => setImportDocumentDialogOpen(false)} />
     </div>
   )
 }

@@ -9,8 +9,13 @@ import type { DocumentPackageManifest } from '@/modules/knowledge-exchange/docum
  * here (that's `buildDocumentPackageZip` in `documentPackageArchive.ts`) —
  * this exporter keeps the exact same pure/synchronous contract every
  * other package type's exporter has.
+ *
+ * `tags` only needs `name` — accepts both a full `Tag[]` and the
+ * narrower `{id, name}[]` shape `getDocumentWithTags`/`useDocument`
+ * already return (`DocumentWithTags.tags`), so `DocumentDetailPage` can
+ * pass its already-loaded `document.tags` straight through.
  */
-export function exportDocumentPackage(source: { document: DocumentRow; tags: Tag[] }): DocumentPackageManifest {
+export function exportDocumentPackage(source: { document: DocumentRow; tags: Pick<Tag, 'name'>[] }): DocumentPackageManifest {
   const { document, tags } = source
   return {
     version: CURRENT_PACKAGE_VERSION,
@@ -27,7 +32,7 @@ export function exportDocumentPackage(source: { document: DocumentRow; tags: Tag
   }
 }
 
-export const documentPackageExporter: PackageExporter<{ document: DocumentRow; tags: Tag[] }, DocumentPackageManifest> = {
+export const documentPackageExporter: PackageExporter<{ document: DocumentRow; tags: Pick<Tag, 'name'>[] }, DocumentPackageManifest> = {
   export: exportDocumentPackage,
 }
 
