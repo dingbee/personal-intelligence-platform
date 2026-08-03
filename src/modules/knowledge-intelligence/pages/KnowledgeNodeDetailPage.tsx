@@ -1,3 +1,4 @@
+import { useMutation } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { useKnowledgeNodeEvidence } from '@/modules/knowledge-intelligence/hooks/useKnowledgeNodeEvidence'
 import { useGenerateBriefing } from '@/modules/knowledge-intelligence/hooks/useGenerateBriefing'
@@ -5,6 +6,8 @@ import { AddToCollectionButton } from '@/modules/knowledge-intelligence/componen
 import type { EvidenceItem } from '@/modules/knowledge-intelligence/api/knowledgeNodeEvidence'
 import { buildKnowledgeExportMarkdown, knowledgeExportFilename } from '@/modules/knowledge-intelligence/api/knowledgeExportMarkdown'
 import { exportKnowledgeNodePackage, knowledgeNodePackageFilename } from '@/modules/knowledge-exchange/knowledge-nodes/exportKnowledgeNodePackage'
+import { exportKnowledgeLinkPackage, knowledgeLinkPackageFilename } from '@/modules/knowledge-exchange/knowledge-links/exportKnowledgeLinkPackage'
+import { fetchKnowledgeLinkForExport } from '@/modules/knowledge-exchange/knowledge-links/knowledgeLinkFetch'
 import { SourceReference } from '@/shared/components/knowledge/SourceReference'
 import { ConfidenceBadge } from '@/shared/components/knowledge/ConfidenceBadge'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
@@ -30,6 +33,27 @@ export function KnowledgeNodeDetailPage() {
   const { nodeId } = useParams<{ nodeId: string }>()
   const { data: evidence, isLoading, isError } = useKnowledgeNodeEvidence(nodeId!)
   const generateBriefing = useGenerateBriefing(nodeId!)
+
+  // UX-14.5.10.4 — the one place this package type does I/O before
+  // building its (otherwise pure/synchronous) package: fetch the
+  // knowledge_links row between these two nodes plus the related node's
+  // full data, then build the package. `evidence!.node` is safe here —
+  // this mutation is only ever invoked from a click inside the
+  // "related concepts" list below, which only renders once `evidence`
+  // has already loaded.
+  const exportLink = useMutation({
+    mutationFn: async (relatedNodeId: string) => {
+      const { link, sourceNode, targetNode } = await fetchKnowledgeLinkForExport({ currentNode: evidence!.node, relatedNodeId })
+      return exportKnowledgeLinkPackage({ link, sourceNode, targetNode })
+    },
+    onSuccess: (pkg) => {
+      downloadTextFile(
+        knowledgeLinkPackageFilename(pkg.link.source.title, pkg.link.target.title),
+        JSON.stringify(pkg, null, 2),
+        'application/json',
+      )
+    },
+  })
 
   if (isLoading) {
     return (
@@ -135,6 +159,11 @@ export function KnowledgeNodeDetailPage() {
       {relatedNodes.length > 0 && (
         <div className="flex flex-col gap-3">
           <SectionHeader title="Related concepts" />
+          {exportLink.isError && (
+            <p className="text-sm text-red-600">
+              {exportLink.error instanceof Error ? exportLink.error.message : 'Failed to export this relationship.'}
+            </p>
+          )}
           <ul className="flex flex-col gap-1.5">
             {relatedNodes.map((related) => (
               <li key={related.nodeId} className="flex items-center justify-between gap-2 text-sm">
@@ -144,7 +173,17 @@ export function KnowledgeNodeDetailPage() {
                 >
                   {related.relationshipType.replace(/_/g, ' ')} → {related.title}
                 </Link>
-                <ConfidenceBadge confidence={related.confidence} />
+                <span className="flex shrink-0 items-center gap-2">
+                  <ConfidenceBadge confidence={related.confidence} />
+                  <button
+                    type="button"
+                    disabled={exportLink.isPending}
+                    onClick={() => exportLink.mutate(related.nodeId)}
+                    className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] disabled:opacity-50"
+                  >
+                    Export
+                  </button>
+                </span>
               </li>
             ))}
           </ul>
