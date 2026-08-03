@@ -15,6 +15,10 @@ import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
 import { SaveConversationDialog } from '@/modules/notes/components/SaveConversationDialog'
 import { useSaveMessageToNote } from '@/modules/notes/hooks/useSaveMessageToNote'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
+import { exportConversationPackage } from '@/modules/knowledge-exchange/conversations/exportConversationPackage'
+import { buildConversationExportContent } from '@/modules/export/content/conversationExportContent'
+import { KnowledgeExportDialog } from '@/modules/export/components/KnowledgeExportDialog'
+import { exportFilename } from '@/modules/export/types'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
 import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
@@ -100,6 +104,7 @@ export function ChatPage() {
   const effectiveNewProviderId = newProviderId ?? defaultProviderId
   const [conversationDrawerOpen, setConversationDrawerOpen] = useState(false)
   const [savingConversation, setSavingConversation] = useState(false)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!selectedId && conversations.length > 0) setSelectedId(conversations[0]!.id)
@@ -405,6 +410,13 @@ export function ChatPage() {
                   Save to Notes
                 </Button>
                 {conversation && <AddToCollectionButton itemType="conversation" itemId={conversation.id} />}
+                {/* UX-14.5.12 — the unified Save As / Download experience
+                    (UX-14.5.11), extended to conversations: NOVA Package
+                    (this conversation's existing, unmodified
+                    `exportConversationPackage`), PDF, Markdown, or Word. */}
+                <Button variant="ghost" onClick={() => setExportDialogOpen(true)} disabled={!conversation || messages.length === 0}>
+                  Save As…
+                </Button>
                 <ProviderSelect
                   value={conversation?.provider_id ?? effectiveNewProviderId}
                   onChange={handleProviderChange}
@@ -433,6 +445,21 @@ export function ChatPage() {
                 conversationTitle={conversation.title}
                 workspaceId={conversation.workspace_id}
                 messages={messages}
+              />
+            )}
+            {conversation && (
+              <KnowledgeExportDialog
+                open={exportDialogOpen}
+                onClose={() => setExportDialogOpen(false)}
+                objectLabel="conversation"
+                request={{
+                  content: buildConversationExportContent(conversation, messages),
+                  titleForFilename: conversation.title,
+                  buildNovaPackage: async () => ({
+                    filename: exportFilename(conversation.title, 'nova'),
+                    blob: new Blob([JSON.stringify(exportConversationPackage({ conversation, messages }), null, 2)], { type: 'application/json' }),
+                  }),
+                }}
               />
             )}
             <div className="hidden px-6 pt-3 sm:block">

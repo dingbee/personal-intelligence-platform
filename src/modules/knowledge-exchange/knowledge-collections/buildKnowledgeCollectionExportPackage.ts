@@ -1,16 +1,18 @@
 import type { KnowledgeLink, KnowledgeNode } from '@/shared/types/database'
 import { getKnowledgeCollection, type CollectionItemType } from '@/modules/knowledge-intelligence/api/knowledgeCollections'
-import { fetchTitlesByIds } from '@/modules/knowledge-intelligence/api/sourceResolution'
 import { getNote } from '@/modules/notes/api/notes'
 import { listTagsForNote } from '@/modules/notes/api/noteTags'
 import { getAsset } from '@/modules/assets/api/assets'
 import { getDocumentWithTags } from '@/modules/library/api/documents'
+import { getConversation } from '@/modules/ai/chat/api/conversations'
+import { listMessages } from '@/modules/ai/chat/api/messages'
 import { exportKnowledgeNodePackage } from '@/modules/knowledge-exchange/knowledge-nodes/exportKnowledgeNodePackage'
 import { exportNotePackage } from '@/modules/knowledge-exchange/notes/exportNotePackage'
 import { exportAssetPackage } from '@/modules/knowledge-exchange/assets/exportAssetPackage'
 import { fetchAssetOriginalAsBase64 } from '@/modules/knowledge-exchange/assets/assetFileTransfer'
 import { exportDocumentPackage } from '@/modules/knowledge-exchange/documents/exportDocumentPackage'
 import { buildDocumentPackageZip, fetchDocumentOriginalFile } from '@/modules/knowledge-exchange/documents/documentPackageArchive'
+import { exportConversationPackage } from '@/modules/knowledge-exchange/conversations/exportConversationPackage'
 import { exportKnowledgeLinkPackage } from '@/modules/knowledge-exchange/knowledge-links/exportKnowledgeLinkPackage'
 import type { KnowledgeLinkPackage } from '@/modules/knowledge-exchange/knowledge-links/knowledgeLinkPackageTypes'
 import {
@@ -107,18 +109,14 @@ export async function buildKnowledgeCollectionExportPackage(
     })
   }
 
-  const conversationIds = idsByType.get('conversation') ?? []
-  if (conversationIds.length > 0) {
-    const titledConversations = await fetchTitlesByIds('conversations', conversationIds)
-    const titleById = new Map(titledConversations.map((row) => [row.id, row.title]))
-    for (const id of conversationIds) {
-      members.push({
-        memberType: 'conversation',
-        originalAddedAt: addedAtByMember.get(membershipKey('conversation', id))!,
-        unsupported: true,
-        title: titleById.get(id) ?? 'Untitled conversation',
-      })
-    }
+  for (const id of idsByType.get('conversation') ?? []) {
+    const conversation = await getConversation(id)
+    const messages = await listMessages(id)
+    members.push({
+      memberType: 'conversation',
+      originalAddedAt: addedAtByMember.get(membershipKey('conversation', id))!,
+      payload: exportConversationPackage({ conversation, messages }),
+    })
   }
 
   const relationshipLinks: KnowledgeLink[] = await fetchRelationshipsAmongNodes(nodeIds)

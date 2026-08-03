@@ -11,6 +11,7 @@ const {
   importNotePackageMock,
   importAssetPackageMock,
   importDocumentPackageMock,
+  importConversationPackageMock,
   importKnowledgeLinkPackageMock,
 } = vi.hoisted(() => ({
   createKnowledgeCollectionMock: vi.fn(),
@@ -19,6 +20,7 @@ const {
   importNotePackageMock: vi.fn(),
   importAssetPackageMock: vi.fn(),
   importDocumentPackageMock: vi.fn(),
+  importConversationPackageMock: vi.fn(),
   importKnowledgeLinkPackageMock: vi.fn(),
 }))
 
@@ -32,6 +34,9 @@ vi.mock('@/modules/knowledge-exchange/knowledge-nodes/importKnowledgeNodePackage
 vi.mock('@/modules/knowledge-exchange/notes/importNotePackage', () => ({ importNotePackage: importNotePackageMock }))
 vi.mock('@/modules/knowledge-exchange/assets/importAssetPackage', () => ({ importAssetPackage: importAssetPackageMock }))
 vi.mock('@/modules/knowledge-exchange/documents/importDocumentPackage', () => ({ importDocumentPackage: importDocumentPackageMock }))
+vi.mock('@/modules/knowledge-exchange/conversations/importConversationPackage', () => ({
+  importConversationPackage: importConversationPackageMock,
+}))
 vi.mock('@/modules/knowledge-exchange/knowledge-links/importKnowledgeLinkPackage', () => ({
   importKnowledgeLinkPackage: importKnowledgeLinkPackageMock,
 }))
@@ -92,7 +97,21 @@ function documentMember(title: string, archiveEntry: string): CollectionMemberEn
 }
 
 function conversationMember(title: string): CollectionMemberEntry {
-  return { memberType: 'conversation', originalAddedAt: '2026-01-01T00:00:00.000Z', unsupported: true, title }
+  return {
+    memberType: 'conversation',
+    originalAddedAt: '2026-01-01T00:00:00.000Z',
+    payload: {
+      version: CURRENT_PACKAGE_VERSION,
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      sourceVersion: PACKAGE_SOURCE_VERSION,
+      conversation: {
+        title,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        messages: [{ role: 'user', content: 'Hello', createdAt: '2026-01-01T00:00:01.000Z' }],
+      },
+    },
+  }
 }
 
 function fakePackage(members: CollectionMemberEntry[], relationships: ValidatedCollectionPackage['manifest']['collection']['relationships'] = []): ValidatedCollectionPackage {
@@ -162,11 +181,28 @@ describe('importKnowledgeCollectionPackage', () => {
     expect(addItemToCollectionMock).toHaveBeenCalledWith(expect.objectContaining({ itemType: 'document', itemId: 'doc-1' }))
   })
 
-  it('a conversation member is always skipped, never attempted', async () => {
+  it('imports a conversation member through its own unmodified importer and adds it as a membership link', async () => {
+    importConversationPackageMock.mockResolvedValueOnce({ id: 'conversation-1', title: 'Old chat' })
     const result = await importKnowledgeCollectionPackage(fakePackage([conversationMember('Old chat')]), context)
 
-    expect(result.members).toEqual([{ memberType: 'conversation', title: 'Old chat', outcome: 'skipped' }])
-    expect(addItemToCollectionMock).not.toHaveBeenCalled()
+    expect(result.members).toEqual([{ memberType: 'conversation', title: 'Old chat', outcome: 'imported' }])
+    expect(addItemToCollectionMock).toHaveBeenCalledWith({ userId: 'importer-1', workspaceId: 'importer-workspace', collectionId: 'new-collection', itemType: 'conversation', itemId: 'conversation-1' })
+  })
+
+  it('a failing conversation member is reported failed without blocking the rest of the import', async () => {
+    importKnowledgeNodePackageMock.mockResolvedValueOnce({ node: { id: 'node-1', title: 'Photosynthesis' }, created: true })
+    importConversationPackageMock.mockRejectedValueOnce(new Error('database unavailable'))
+
+    const result = await importKnowledgeCollectionPackage(
+      fakePackage([nodeMember('Photosynthesis'), conversationMember('Old chat')]),
+      context,
+    )
+
+    expect(result.members).toEqual([
+      { memberType: 'knowledge_node', title: 'Photosynthesis', outcome: 'imported', matched: false },
+      { memberType: 'conversation', title: 'Old chat', outcome: 'failed', error: 'database unavailable' },
+    ])
+    expect(addItemToCollectionMock).not.toHaveBeenCalledWith(expect.objectContaining({ itemType: 'conversation' }))
   })
 
   it('partial success: one member failing never aborts the rest, and no membership link is added for it', async () => {

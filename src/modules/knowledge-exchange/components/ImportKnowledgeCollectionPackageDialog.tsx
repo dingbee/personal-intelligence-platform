@@ -47,13 +47,13 @@ function groupOutcomesByType(outcomes: CollectionMemberImportOutcome[]): [Collec
  * async-zip shape `ImportDocumentPackageDialog` already established.
  *
  * The validation summary shows every member grouped by type (mirroring
- * `KnowledgeCollectionDetailPage`'s own type-grouped display), flagging
- * conversation members as "not yet supported" *before* import even
- * starts — never a surprise discovered afterward. The success screen
- * reports each member's real outcome (imported/skipped/failed) grouped
+ * `KnowledgeCollectionDetailPage`'s own type-grouped display). The success
+ * screen reports each member's real outcome (imported/failed) grouped
  * the same way, plus every relationship's own outcome, so a partial
  * import is always a clear, explicit report — never a silently-absorbed
- * failure.
+ * failure. Conversation members import through their own unmodified
+ * `importConversationPackage` (UX-14.5.12), same as every other member
+ * type — there is no longer an unsupported/skipped category.
  */
 export function ImportKnowledgeCollectionPackageDialog({ open, onClose }: ImportKnowledgeCollectionPackageDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -133,7 +133,7 @@ export function ImportKnowledgeCollectionPackageDialog({ open, onClose }: Import
                             ? 'imported as new'
                             : 'imported'
                         : outcome.outcome === 'skipped'
-                          ? 'skipped (conversations aren\'t yet supported for exchange)'
+                          ? 'skipped'
                           : `failed — ${outcome.error}`}
                     </li>
                   ))}
@@ -203,7 +203,6 @@ export function ImportKnowledgeCollectionPackageDialog({ open, onClose }: Import
                 {groupMembersByType(parsedPackage.manifest.collection.members).map(([type, count]) => (
                   <li key={type}>
                     {count} {MEMBER_TYPE_LABEL[type]}
-                    {type === 'conversation' && ' — not yet supported, will be skipped'}
                   </li>
                 ))}
               </ul>

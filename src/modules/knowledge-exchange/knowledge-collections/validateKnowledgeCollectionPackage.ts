@@ -8,6 +8,7 @@ import { validateNotePackage } from '@/modules/knowledge-exchange/notes/validate
 import { validateAssetPackage } from '@/modules/knowledge-exchange/assets/validateAssetPackage'
 import { validateDocumentPackageManifestShape, parseDocumentPackageZip, type ValidatedDocumentPackage } from '@/modules/knowledge-exchange/documents/validateDocumentPackage'
 import { validateKnowledgeLinkPackage } from '@/modules/knowledge-exchange/knowledge-links/validateKnowledgeLinkPackage'
+import { validateConversationPackage } from '@/modules/knowledge-exchange/conversations/validateConversationPackage'
 
 const KNOWN_MEMBER_TYPES: readonly CollectionMemberType[] = ['knowledge_node', 'note', 'asset', 'document', 'conversation']
 
@@ -60,9 +61,10 @@ function isKnownMemberType(value: unknown): value is CollectionMemberType {
  * machinery the discovery's §8 muses about for a hypothetical future
  * package would be exactly the "speculative architecture" this
  * engagement's constraints forbid for a member type nobody can produce
- * with this app build. `conversation`'s stub shape has no existing package
- * type to reuse (§2.5 — no Conversation Exchange exists), so it gets a
- * small, self-contained shape check here instead.
+ * with this app build. `conversation` (UX-14.5.12) now dispatches to
+ * `validateConversationPackage`, the same as every other real member
+ * type — Conversation Exchange existing means there's no longer a stub
+ * shape to special-case here.
  */
 function validateMemberEntry(input: unknown, index: number): { valid: true; entry: CollectionMemberEntry } | { valid: false; issues: PackageValidationIssue[] } {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
@@ -101,13 +103,9 @@ function validateMemberEntry(input: unknown, index: number): { valid: true; entr
     return { valid: true, entry: { memberType: 'document', originalAddedAt: raw.originalAddedAt, payload: result.manifest, archiveEntry: raw.archiveEntry } }
   }
   // raw.memberType === 'conversation'
-  if (raw.unsupported !== true) {
-    return { valid: false, issues: [issue('invalid_schema', `Member #${index + 1} (conversation) must be marked "unsupported".`)] }
-  }
-  if (typeof raw.title !== 'string') {
-    return { valid: false, issues: [issue('missing_field', `Member #${index + 1} (conversation) is missing a "title".`)] }
-  }
-  return { valid: true, entry: { memberType: 'conversation', originalAddedAt: raw.originalAddedAt, unsupported: true, title: raw.title } }
+  const result = validateConversationPackage(raw.payload)
+  if (!result.valid) return { valid: false, issues: result.issues }
+  return { valid: true, entry: { memberType: 'conversation', originalAddedAt: raw.originalAddedAt, payload: result.package } }
 }
 
 function validateManifestShape(

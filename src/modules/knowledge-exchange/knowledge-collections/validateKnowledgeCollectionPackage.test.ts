@@ -39,6 +39,24 @@ function fakeManifest(overrides: Partial<CollectionPackageManifest['collection']
   }
 }
 
+function fakeConversationMember() {
+  return {
+    memberType: 'conversation' as const,
+    originalAddedAt: '2026-01-01T00:00:00.000Z',
+    payload: {
+      version: CURRENT_PACKAGE_VERSION,
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      sourceVersion: PACKAGE_SOURCE_VERSION,
+      conversation: {
+        title: 'A chat about photosynthesis',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        messages: [{ role: 'user' as const, content: 'What is photosynthesis?', createdAt: '2026-01-01T00:00:01.000Z' }],
+      },
+    },
+  }
+}
+
 function fakeDocumentManifest(): DocumentPackageManifest {
   return {
     version: CURRENT_PACKAGE_VERSION,
@@ -157,14 +175,24 @@ describe('parseKnowledgeCollectionPackageZip', () => {
     expect(result.valid).toBe(false)
   })
 
-  it('accepts a conversation member as an unsupported stub, never rejecting the whole package for it', async () => {
-    const manifest = fakeManifest({
-      members: [{ memberType: 'conversation', originalAddedAt: '2026-01-01T00:00:00.000Z', unsupported: true, title: 'Old chat' }],
-    })
+  it('accepts a conversation member with a well-formed conversation package payload', async () => {
+    const manifest = fakeManifest({ members: [fakeConversationMember()] })
     const blob = await buildCollectionPackageZip(manifest, [])
     const result = await parseKnowledgeCollectionPackageZip(blob)
 
     expect(result.valid).toBe(true)
+    if (!result.valid) return
+    expect(result.package.manifest.collection.members[0]).toEqual(fakeConversationMember())
+  })
+
+  it('rejects a conversation member whose payload has no messages', async () => {
+    const badMember = fakeConversationMember()
+    badMember.payload.conversation.messages = []
+    const manifest = fakeManifest({ members: [badMember] })
+    const blob = await buildCollectionPackageZip(manifest, [])
+    const result = await parseKnowledgeCollectionPackageZip(blob)
+
+    expect(result.valid).toBe(false)
   })
 
   it('rejects an unsupported package version', async () => {

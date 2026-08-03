@@ -3,6 +3,7 @@ import type { NotePackage } from '@/modules/knowledge-exchange/notes/notePackage
 import type { AssetPackage } from '@/modules/knowledge-exchange/assets/assetPackageTypes'
 import type { DocumentPackageManifest } from '@/modules/knowledge-exchange/documents/documentPackageTypes'
 import type { KnowledgeLinkPackage } from '@/modules/knowledge-exchange/knowledge-links/knowledgeLinkPackageTypes'
+import type { ConversationPackage } from '@/modules/knowledge-exchange/conversations/conversationPackageTypes'
 
 /**
  * UX-14.5.10.6 — the one, versioned shape a Knowledge Collection export/
@@ -22,10 +23,14 @@ import type { KnowledgeLinkPackage } from '@/modules/knowledge-exchange/knowledg
  * entry only carries the JSON manifest half; `archiveEntry` names the
  * nested zip entry (`document-members/<n>.zip`, see
  * `collectionPackageArchive.ts`) that carries that member's own original
- * file bytes, unmodified. `conversation` carries no payload at all — see
- * the discovery's §2.5: no Conversation Exchange package exists, so a
- * conversation member travels as an honest, explicitly `unsupported: true`
- * stub (title only), never fabricated and never silently dropped.
+ * file bytes, unmodified.
+ *
+ * `conversation` (UX-14.5.12) embeds a real, unmodified
+ * `ConversationPackage` verbatim, the same "no per-type export/import
+ * logic, only orchestration" discipline every other member type already
+ * follows — Conversation Exchange having since been built closed the gap
+ * that previously forced this case to be an honest `unsupported: true`
+ * stub.
  *
  * `originalAddedAt` is the membership link's own `created_at`, preserved
  * as inert display metadata only — never used to reconstruct any real
@@ -36,7 +41,7 @@ export type CollectionMemberEntry =
   | { memberType: 'note'; originalAddedAt: string; payload: NotePackage }
   | { memberType: 'asset'; originalAddedAt: string; payload: AssetPackage }
   | { memberType: 'document'; originalAddedAt: string; payload: DocumentPackageManifest; archiveEntry: string }
-  | { memberType: 'conversation'; originalAddedAt: string; unsupported: true; title: string }
+  | { memberType: 'conversation'; originalAddedAt: string; payload: ConversationPackage }
 
 export type CollectionMemberType = CollectionMemberEntry['memberType']
 

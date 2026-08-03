@@ -31,7 +31,21 @@ function fakeNodeMember(overrides: Partial<Extract<CollectionMemberEntry, { memb
 }
 
 function fakeConversationMember(): CollectionMemberEntry {
-  return { memberType: 'conversation', originalAddedAt: '2026-01-02T00:00:00.000Z', unsupported: true, title: 'A chat about photosynthesis' }
+  return {
+    memberType: 'conversation',
+    originalAddedAt: '2026-01-02T00:00:00.000Z',
+    payload: {
+      version: CURRENT_PACKAGE_VERSION,
+      exportedAt: '2026-01-02T00:00:00.000Z',
+      sourceVersion: PACKAGE_SOURCE_VERSION,
+      conversation: {
+        title: 'A chat about photosynthesis',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        messages: [{ role: 'user', content: 'What is photosynthesis?', createdAt: '2026-01-02T00:00:01.000Z' }],
+      },
+    },
+  }
 }
 
 function fakeRelationship(): KnowledgeLinkPackage {
@@ -72,15 +86,16 @@ describe('exportKnowledgeCollectionPackage', () => {
     expect(pkg.collection.description).toBeNull()
   })
 
-  it('never embeds real content for a conversation member — only its title, marked unsupported', () => {
+  it('embeds a real conversation member payload verbatim', () => {
+    const conversationMember = fakeConversationMember()
     const pkg = exportKnowledgeCollectionPackage({
       collection: { name: 'Mixed bag', description: null },
-      members: [fakeConversationMember()],
+      members: [conversationMember],
       relationships: [],
     })
     const member = pkg.collection.members[0]!
     expect(member.memberType).toBe('conversation')
-    expect(member).toEqual({ memberType: 'conversation', originalAddedAt: '2026-01-02T00:00:00.000Z', unsupported: true, title: 'A chat about photosynthesis' })
+    expect(member).toEqual(conversationMember)
   })
 
   it('the knowledgeCollectionPackageExporter object delegates to the same function', () => {

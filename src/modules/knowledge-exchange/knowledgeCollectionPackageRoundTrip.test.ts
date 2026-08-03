@@ -1,17 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { KnowledgeNode } from '@/shared/types/database'
+import type { Conversation, KnowledgeNode, Message } from '@/shared/types/database'
 
 /**
- * UX-14.5.10.6 integration tests: export a collection (a knowledge_node
- * member, a document member with a real nested archive, and a
- * conversation stub, plus a relationship between concepts), build the
- * real `.zip` container, simulate the file round trip, validate it, and
- * import it into a different account — proving the full chain: export ->
- * transfer -> import -> membership restored -> duplicates reused ->
- * partial failures reported. Per-type importers are mocked (each has its
- * own dedicated test file already); this file's job is proving the whole
- * Collection-specific pipeline (types/archive/export/validate/import)
- * fits together end to end, the same role
+ * UX-14.5.10.6 / UX-14.5.12 integration tests: export a collection (a
+ * knowledge_node member, a document member with a real nested archive,
+ * and a conversation member, plus a relationship between concepts),
+ * build the real `.zip` container, simulate the file round trip,
+ * validate it, and import it into a different account — proving the
+ * full chain: export -> transfer -> import -> membership restored ->
+ * duplicates reused -> partial failures reported. Per-type importers are
+ * mocked (each has its own dedicated test file already); this file's job
+ * is proving the whole Collection-specific pipeline
+ * (types/archive/export/validate/import) fits together end to end, the
+ * same role
  * `documentPackageRoundTrip.test.ts`/`knowledgeLinkPackageRoundTrip.test.ts`
  * already play for their own package types.
  */
@@ -22,6 +23,7 @@ const {
   addItemToCollectionMock,
   importKnowledgeNodePackageMock,
   importDocumentPackageMock,
+  importConversationPackageMock,
   importKnowledgeLinkPackageMock,
 } = vi.hoisted(() => ({
   downloadDocumentFileMock: vi.fn(),
@@ -29,6 +31,7 @@ const {
   addItemToCollectionMock: vi.fn(),
   importKnowledgeNodePackageMock: vi.fn(),
   importDocumentPackageMock: vi.fn(),
+  importConversationPackageMock: vi.fn(),
   importKnowledgeLinkPackageMock: vi.fn(),
 }))
 
@@ -43,6 +46,9 @@ vi.mock('@/modules/knowledge-exchange/knowledge-nodes/importKnowledgeNodePackage
 vi.mock('@/modules/knowledge-exchange/documents/importDocumentPackage', () => ({
   importDocumentPackage: importDocumentPackageMock,
 }))
+vi.mock('@/modules/knowledge-exchange/conversations/importConversationPackage', () => ({
+  importConversationPackage: importConversationPackageMock,
+}))
 vi.mock('@/modules/knowledge-exchange/knowledge-links/importKnowledgeLinkPackage', () => ({
   importKnowledgeLinkPackage: importKnowledgeLinkPackageMock,
 }))
@@ -50,6 +56,7 @@ vi.mock('@/modules/knowledge-exchange/knowledge-links/importKnowledgeLinkPackage
 import { exportKnowledgeNodePackage } from '@/modules/knowledge-exchange/knowledge-nodes/exportKnowledgeNodePackage'
 import { exportDocumentPackage } from '@/modules/knowledge-exchange/documents/exportDocumentPackage'
 import { buildDocumentPackageZip, fetchDocumentOriginalFile } from '@/modules/knowledge-exchange/documents/documentPackageArchive'
+import { exportConversationPackage } from '@/modules/knowledge-exchange/conversations/exportConversationPackage'
 import { exportKnowledgeLinkPackage } from '@/modules/knowledge-exchange/knowledge-links/exportKnowledgeLinkPackage'
 import { exportKnowledgeCollectionPackage } from '@/modules/knowledge-exchange/knowledge-collections/exportKnowledgeCollectionPackage'
 import { buildCollectionPackageZip, documentMemberArchiveEntry } from '@/modules/knowledge-exchange/knowledge-collections/collectionPackageArchive'
@@ -118,11 +125,45 @@ async function buildSourcePackage() {
     archiveEntry: documentMemberArchiveEntry(0),
   }
 
+  const sourceConversation: Conversation = {
+    id: 'source-conversation-1',
+    user_id: 'exporter-1',
+    workspace_id: 'exporter-workspace',
+    document_id: null,
+    title: 'A chat about plants',
+    provider_id: 'openai',
+    archived_at: null,
+    is_pinned: false,
+    favorite: false,
+    color: null,
+    icon: null,
+    created_at: '2026-01-04T00:00:00.000Z',
+    updated_at: '2026-01-04T00:01:00.000Z',
+  }
+  const sourceMessages: Message[] = [
+    {
+      id: 'source-message-1',
+      conversation_id: 'source-conversation-1',
+      user_id: 'exporter-1',
+      role: 'user',
+      content: 'What should I plant near the river?',
+      context_chunk_ids: [],
+      created_at: '2026-01-04T00:00:00.000Z',
+    },
+    {
+      id: 'source-message-2',
+      conversation_id: 'source-conversation-1',
+      user_id: 'exporter-1',
+      role: 'assistant',
+      content: 'Reeds and papyrus do well in riverside conditions.',
+      context_chunk_ids: [],
+      created_at: '2026-01-04T00:01:00.000Z',
+    },
+  ]
   const conversationMember: CollectionMemberEntry = {
     memberType: 'conversation',
     originalAddedAt: '2026-01-04T00:00:00.000Z',
-    unsupported: true,
-    title: 'A chat about plants',
+    payload: exportConversationPackage({ conversation: sourceConversation, messages: sourceMessages }),
   }
 
   const relationship = exportKnowledgeLinkPackage({
@@ -189,7 +230,7 @@ describe('Knowledge Collection export -> transfer -> import round trip', () => {
     expect(serialized).not.toContain('source-doc-1')
   })
 
-  it('imports every member, restores membership only for successfully-resolved members, skips the conversation stub, and replays the relationship', async () => {
+  it('imports every member, restores membership for every successfully-resolved member including the conversation, and replays the relationship', async () => {
     const { zipBlob } = await buildSourcePackage()
     const parsed = await parseKnowledgeCollectionPackageZip(new Blob([await zipBlob.arrayBuffer()]))
     expect(parsed.valid).toBe(true)
@@ -197,6 +238,7 @@ describe('Knowledge Collection export -> transfer -> import round trip', () => {
 
     importKnowledgeNodePackageMock.mockResolvedValueOnce({ node: { id: 'imported-node-1', title: 'Photosynthesis' }, created: true })
     importDocumentPackageMock.mockResolvedValueOnce({ id: 'imported-doc-1', title: 'Field Notes' })
+    importConversationPackageMock.mockResolvedValueOnce({ id: 'imported-conversation-1', title: 'A chat about plants' })
     importKnowledgeLinkPackageMock.mockResolvedValueOnce(undefined)
 
     const result = await importKnowledgeCollectionPackage(parsed.package, context)
@@ -211,12 +253,12 @@ describe('Knowledge Collection export -> transfer -> import round trip', () => {
     expect(result.members).toEqual([
       { memberType: 'knowledge_node', title: 'Photosynthesis', outcome: 'imported', matched: false },
       { memberType: 'document', title: 'Field Notes', outcome: 'imported' },
-      { memberType: 'conversation', title: 'A chat about plants', outcome: 'skipped' },
+      { memberType: 'conversation', title: 'A chat about plants', outcome: 'imported' },
     ])
-    expect(addItemToCollectionMock).toHaveBeenCalledTimes(2)
+    expect(addItemToCollectionMock).toHaveBeenCalledTimes(3)
     expect(addItemToCollectionMock).toHaveBeenCalledWith({ userId: 'importer-1', workspaceId: 'importer-workspace', collectionId: 'new-collection', itemType: 'knowledge_node', itemId: 'imported-node-1' })
     expect(addItemToCollectionMock).toHaveBeenCalledWith({ userId: 'importer-1', workspaceId: 'importer-workspace', collectionId: 'new-collection', itemType: 'document', itemId: 'imported-doc-1' })
-    expect(addItemToCollectionMock).not.toHaveBeenCalledWith(expect.objectContaining({ itemType: 'conversation' }))
+    expect(addItemToCollectionMock).toHaveBeenCalledWith({ userId: 'importer-1', workspaceId: 'importer-workspace', collectionId: 'new-collection', itemType: 'conversation', itemId: 'imported-conversation-1' })
 
     expect(result.relationships).toEqual([{ relationshipType: 'requires', sourceTitle: 'Photosynthesis', targetTitle: 'Chlorophyll', outcome: 'imported' }])
   })
@@ -229,6 +271,7 @@ describe('Knowledge Collection export -> transfer -> import round trip', () => {
 
     importKnowledgeNodePackageMock.mockResolvedValueOnce({ node: { id: 'existing-node-1', title: 'Photosynthesis' }, created: false })
     importDocumentPackageMock.mockResolvedValueOnce({ id: 'imported-doc-2', title: 'Field Notes' })
+    importConversationPackageMock.mockResolvedValueOnce({ id: 'imported-conversation-2', title: 'A chat about plants' })
     importKnowledgeLinkPackageMock.mockResolvedValueOnce(undefined)
 
     const result = await importKnowledgeCollectionPackage(parsed.package, context)
@@ -246,6 +289,7 @@ describe('Knowledge Collection export -> transfer -> import round trip', () => {
 
     importKnowledgeNodePackageMock.mockResolvedValueOnce({ node: { id: 'imported-node-1', title: 'Photosynthesis' }, created: true })
     importDocumentPackageMock.mockRejectedValueOnce(new Error('storage upload failed'))
+    importConversationPackageMock.mockResolvedValueOnce({ id: 'imported-conversation-1', title: 'A chat about plants' })
     importKnowledgeLinkPackageMock.mockResolvedValueOnce(undefined)
 
     const result = await importKnowledgeCollectionPackage(parsed.package, context)
@@ -254,9 +298,9 @@ describe('Knowledge Collection export -> transfer -> import round trip', () => {
     expect(result.members).toEqual([
       { memberType: 'knowledge_node', title: 'Photosynthesis', outcome: 'imported', matched: false },
       { memberType: 'document', title: 'Field Notes', outcome: 'failed', error: 'storage upload failed' },
-      { memberType: 'conversation', title: 'A chat about plants', outcome: 'skipped' },
+      { memberType: 'conversation', title: 'A chat about plants', outcome: 'imported' },
     ])
-    expect(addItemToCollectionMock).toHaveBeenCalledTimes(1)
+    expect(addItemToCollectionMock).toHaveBeenCalledTimes(2)
     expect(addItemToCollectionMock).not.toHaveBeenCalledWith(expect.objectContaining({ itemType: 'document' }))
     // The relationship still replays — it only depends on the knowledge_node member, which succeeded.
     expect(result.relationships[0]).toMatchObject({ outcome: 'imported' })

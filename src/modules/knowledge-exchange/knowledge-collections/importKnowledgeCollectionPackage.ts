@@ -3,6 +3,7 @@ import { importKnowledgeNodePackage } from '@/modules/knowledge-exchange/knowled
 import { importNotePackage } from '@/modules/knowledge-exchange/notes/importNotePackage'
 import { importAssetPackage } from '@/modules/knowledge-exchange/assets/importAssetPackage'
 import { importDocumentPackage } from '@/modules/knowledge-exchange/documents/importDocumentPackage'
+import { importConversationPackage } from '@/modules/knowledge-exchange/conversations/importConversationPackage'
 import { importKnowledgeLinkPackage } from '@/modules/knowledge-exchange/knowledge-links/importKnowledgeLinkPackage'
 import type { PackageImportContext, PackageImporter } from '@/modules/knowledge-exchange/packages/PackageImporter'
 import type { ValidatedCollectionPackage } from '@/modules/knowledge-exchange/knowledge-collections/validateKnowledgeCollectionPackage'
@@ -44,7 +45,7 @@ function memberTitle(member: CollectionMemberEntry): string {
     case 'document':
       return member.payload.document.title
     case 'conversation':
-      return member.title
+      return member.payload.conversation.title
   }
 }
 
@@ -61,12 +62,11 @@ function errorMessage(error: unknown): string {
  *    choice, exactly like every other package type's `PackageImportContext`.
  * 2. Every member resolves independently, each through that type's own
  *    existing, unmodified importer (`importKnowledgeNodePackage`/
- *    `importNotePackage`/`importAssetPackage`/`importDocumentPackage`) — a
- *    `conversation` member is never attempted, always reported `skipped`
- *    (§2.5: no Conversation Exchange package exists to import from). On
- *    success, a `knowledge_links` membership row is added
- *    (`addItemToCollection`, unmodified) pointing the new collection at the
- *    fresh (or reused, for knowledge nodes) member id.
+ *    `importNotePackage`/`importAssetPackage`/`importDocumentPackage`/
+ *    `importConversationPackage`, UX-14.5.12). On success, a
+ *    `knowledge_links` membership row is added (`addItemToCollection`,
+ *    unmodified) pointing the new collection at the fresh (or reused, for
+ *    knowledge nodes) member id.
  * 3. **A single member's failure never aborts the whole import** — caught
  *    per member, recorded, and the loop continues. This is the discovery's
  *    §3.4 partial-success policy, deliberately different from Knowledge
@@ -102,11 +102,6 @@ export async function importKnowledgeCollectionPackage(
   for (const member of manifest.collection.members) {
     const title = memberTitle(member)
 
-    if (member.memberType === 'conversation') {
-      members.push({ memberType: 'conversation', title, outcome: 'skipped' })
-      continue
-    }
-
     try {
       if (member.memberType === 'knowledge_node') {
         const { node, created } = await importKnowledgeNodePackage(member.payload, context)
@@ -120,12 +115,16 @@ export async function importKnowledgeCollectionPackage(
         const asset = await importAssetPackage(member.payload, context)
         await addItemToCollection({ userId: context.userId, workspaceId: context.workspaceId, collectionId: collection.id, itemType: 'asset', itemId: asset.id })
         members.push({ memberType: 'asset', title, outcome: 'imported' })
-      } else {
+      } else if (member.memberType === 'document') {
         const validatedDocument = documentMembers.get(member.archiveEntry)
         if (!validatedDocument) throw new Error('This document member is missing its archive content.')
         const document = await importDocumentPackage(validatedDocument, context)
         await addItemToCollection({ userId: context.userId, workspaceId: context.workspaceId, collectionId: collection.id, itemType: 'document', itemId: document.id })
         members.push({ memberType: 'document', title, outcome: 'imported' })
+      } else {
+        const conversation = await importConversationPackage(member.payload, context)
+        await addItemToCollection({ userId: context.userId, workspaceId: context.workspaceId, collectionId: collection.id, itemType: 'conversation', itemId: conversation.id })
+        members.push({ memberType: 'conversation', title, outcome: 'imported' })
       }
     } catch (error) {
       members.push({ memberType: member.memberType, title, outcome: 'failed', error: errorMessage(error) })
