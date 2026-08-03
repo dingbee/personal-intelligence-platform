@@ -30,13 +30,26 @@ function ZoneLabel({ children }: { children: string }) {
   return <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-muted)]">{children}</p>
 }
 
-/** Renders a zone's dynamically-computed intelligence items via the same shared RecentActivityList every other Hub list already uses — no new list-rendering component. */
+/**
+ * Renders a zone's dynamically-computed intelligence items via the same
+ * shared RecentActivityList every other Hub list already uses — no new
+ * list-rendering component. UX-15.4 Phase 5 — each item's `actionLabel`
+ * (e.g. "Resume Conversation," "Open Collection") is shown via
+ * RecentActivityList's existing `trailing` slot, so a recommendation
+ * states what clicking it does instead of only being an unlabeled link.
+ */
 function IntelligenceZoneItems({ items, zone }: { items: IntelligenceItem[]; zone: IntelligenceZone }) {
   const zoneItems = items.filter((item) => item.zone === zone)
   if (zoneItems.length === 0) return null
   return (
     <RecentActivityList
-      items={zoneItems.map((item) => ({ key: item.id, href: item.href, title: item.title, updatedAt: item.timestamp }))}
+      items={zoneItems.map((item) => ({
+        key: item.id,
+        href: item.href,
+        title: item.title,
+        updatedAt: item.timestamp,
+        trailing: <span className="text-[var(--color-accent)]">{item.actionLabel} →</span>,
+      }))}
       emptyTitle=""
       emptyDescription=""
     />

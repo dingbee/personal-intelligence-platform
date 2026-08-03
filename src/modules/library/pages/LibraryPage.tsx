@@ -13,9 +13,13 @@ import { AssetUploadDropzone } from '@/modules/assets/components/AssetUploadDrop
 import { ImageGrid } from '@/modules/assets/components/ImageGrid'
 import { ImportAssetPackageDialog } from '@/modules/knowledge-exchange/components/ImportAssetPackageDialog'
 import { ImportDocumentPackageDialog } from '@/modules/knowledge-exchange/components/ImportDocumentPackageDialog'
+import { useDocumentMutations } from '@/modules/library/hooks/useDocumentMutations'
+import { useMultiSelect } from '@/shared/hooks/useMultiSelect'
+import { BulkAddToCollectionControl } from '@/modules/actions/components/BulkAddToCollectionControl'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
+import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 
 const SORT_OPTIONS: { value: DocumentSort; label: string }[] = [
   { value: 'newest', label: 'Newest first' },
@@ -47,6 +51,15 @@ export function LibraryPage() {
     isError,
     error,
   } = useDocuments({ collectionId, tagId, search: search || undefined, sort })
+
+  // UX-15.4 Phase 4 — multi-select bulk actions for the Documents tab,
+  // reusing the exact same remove mutation DocumentCard's own single-item
+  // Delete already calls, just in a loop (no batch endpoint).
+  const { remove: removeDocument } = useDocumentMutations()
+  const multiSelect = useMultiSelect()
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const selectedDocuments = documents.filter((d) => multiSelect.selectedIds.has(d.id))
 
   // UX-13.9 — workspace-scoped by useAssets itself (currentWorkspaceId
   // from context), the same scoping that makes this tab the "workspace
@@ -113,9 +126,35 @@ export function LibraryPage() {
               <div className="flex-1">
                 <UploadDropzone collectionId={collectionId ?? null} />
               </div>
-              <Button variant="secondary" className="shrink-0" onClick={() => setImportDocumentDialogOpen(true)}>
-                Import
-              </Button>
+              {multiSelect.active ? (
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <span className="text-sm text-[var(--color-ink-muted)]">{multiSelect.selectedIds.size} selected</span>
+                  <Button variant="secondary" onClick={multiSelect.disable}>
+                    Cancel
+                  </Button>
+                  {/* UX-15.4 Phase 4 — reuses addItemToCollection/deleteDocument in a loop, no batch endpoints. */}
+                  <BulkAddToCollectionControl itemType="document" itemIds={[...multiSelect.selectedIds]} onDone={multiSelect.disable} />
+                  <Button
+                    variant="secondary"
+                    loading={bulkDeleting}
+                    disabled={multiSelect.selectedIds.size === 0}
+                    onClick={() => setConfirmingBulkDelete(true)}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex shrink-0 gap-2">
+                  {documents.length > 0 && (
+                    <Button variant="secondary" onClick={multiSelect.enable}>
+                      Select
+                    </Button>
+                  )}
+                  <Button variant="secondary" onClick={() => setImportDocumentDialogOpen(true)}>
+                    Import
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -162,7 +201,13 @@ export function LibraryPage() {
                 <p className="mb-3 text-xs text-[var(--color-ink-muted)]">
                   {documents.length} {documents.length === 1 ? 'document' : 'documents'}
                 </p>
-                <DocumentGrid documents={documents} collections={collections} />
+                <DocumentGrid
+                  documents={documents}
+                  collections={collections}
+                  selectable={multiSelect.active}
+                  selectedIds={multiSelect.selectedIds}
+                  onToggleSelect={multiSelect.toggle}
+                />
               </>
             )}
           </>
@@ -206,6 +251,21 @@ export function LibraryPage() {
       </div>
       <ImportAssetPackageDialog open={importAssetDialogOpen} onClose={() => setImportAssetDialogOpen(false)} />
       <ImportDocumentPackageDialog open={importDocumentDialogOpen} onClose={() => setImportDocumentDialogOpen(false)} />
+
+      <ConfirmDialog
+        open={confirmingBulkDelete}
+        title={`Delete ${multiSelect.selectedIds.size} documents?`}
+        description="This permanently removes these files from your library. This can't be undone."
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          setConfirmingBulkDelete(false)
+          setBulkDeleting(true)
+          await Promise.all(selectedDocuments.map((d) => removeDocument.mutateAsync({ id: d.id, filePath: d.file_path })))
+          setBulkDeleting(false)
+          multiSelect.disable()
+        }}
+        onCancel={() => setConfirmingBulkDelete(false)}
+      />
     </div>
   )
 }

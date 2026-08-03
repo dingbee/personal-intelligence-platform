@@ -135,7 +135,7 @@ describe('computeWorkspaceIntelligence', () => {
       documents: [makeDocument({ status: 'processing' }), makeDocument({ id: 'doc-2', status: 'ready' })],
     })
     expect(items).toHaveLength(1)
-    expect(items[0]).toMatchObject({ zone: 'attention', id: 'attention-documents-processing' })
+    expect(items[0]).toMatchObject({ zone: 'attention', id: 'attention-documents-processing', actionLabel: 'Open Library' })
     expect(items[0]!.description).toContain('Still uploading')
   })
 
@@ -172,7 +172,7 @@ describe('computeWorkspaceIntelligence', () => {
       ...emptyInput,
       activeConversations: [makeConversation({ id: 'stale', is_pinned: true, updated_at: '2025-05-01T00:00:00Z' })],
     })
-    expect(items.some((i) => i.id === 'attention-followup-stale')).toBe(true)
+    expect(items).toEqual([expect.objectContaining({ id: 'attention-followup-stale', actionLabel: 'Resume Conversation' })])
   })
 
   it('does not flag a recently-updated pinned conversation', () => {
@@ -201,7 +201,7 @@ describe('computeWorkspaceIntelligence', () => {
         makeEdge({ source_type: 'knowledge_collection', source_id: 'growing', created_at: '2025-06-12T00:00:00Z' }),
       ],
     })
-    expect(items.some((i) => i.id === 'organize-collection-growth-growing')).toBe(true)
+    expect(items).toEqual([expect.objectContaining({ id: 'organize-collection-growth-growing', actionLabel: 'Open Collection' })])
   })
 
   it('does not flag a collection below the rapid-growth threshold', () => {

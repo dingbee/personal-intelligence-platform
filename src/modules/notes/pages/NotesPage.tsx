@@ -3,6 +3,9 @@ import { useNotes } from '@/modules/notes/hooks/useNotes'
 import { useMergeNotes } from '@/modules/notes/hooks/useMergeNotes'
 import { NoteCard } from '@/modules/notes/components/NoteCard'
 import { ImportNotePackageDialog } from '@/modules/knowledge-exchange/components/ImportNotePackageDialog'
+import { useMultiSelect } from '@/shared/hooks/useMultiSelect'
+import { BulkAddToCollectionControl } from '@/modules/actions/components/BulkAddToCollectionControl'
+import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
@@ -13,27 +16,15 @@ export function NotesPage() {
   const navigate = useNavigate()
   const { data: notes = [], isLoading, isError, error, create, remove } = useNotes()
   const mergeNotes = useMergeNotes()
+  const { createConversationWithQuery } = useCommandActions()
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
-  const [selectionMode, setSelectionMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const multiSelect = useMultiSelect()
   const [confirmingMerge, setConfirmingMerge] = useState(false)
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
 
-  const exitSelectionMode = () => {
-    setSelectionMode(false)
-    setSelectedIds(new Set())
-  }
-
-  const toggleSelected = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  const selectedNotes = notes.filter((note) => selectedIds.has(note.id))
+  const selectedNotes = notes.filter((note) => multiSelect.selectedIds.has(note.id))
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,22 +35,48 @@ export function NotesPage() {
             Rich notes that stay searchable alongside your documents.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {selectionMode ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {multiSelect.active ? (
             <>
-              <span className="text-sm text-[var(--color-ink-muted)]">{selectedIds.size} selected</span>
-              <Button variant="secondary" onClick={exitSelectionMode}>
+              <span className="text-sm text-[var(--color-ink-muted)]">{multiSelect.selectedIds.size} selected</span>
+              <Button variant="secondary" onClick={multiSelect.disable}>
                 Cancel
               </Button>
-              <Button loading={mergeNotes.isPending} disabled={selectedIds.size < 2} onClick={() => setConfirmingMerge(true)}>
+              {/* UX-15.4 Phase 4 — multi-select actions, all reusing existing single-item APIs in a loop, no batch endpoints. */}
+              <BulkAddToCollectionControl itemType="note" itemIds={[...multiSelect.selectedIds]} onDone={multiSelect.disable} />
+              <Button
+                variant="secondary"
+                disabled={selectedNotes.length === 0}
+                onClick={() =>
+                  void createConversationWithQuery(
+                    `I'd like to discuss these notes: ${selectedNotes.map((n) => `"${n.title || 'Untitled note'}"`).join(', ')}.`,
+                  )
+                }
+              >
+                Ask NOVA
+              </Button>
+              <Button
+                variant="secondary"
+                loading={mergeNotes.isPending}
+                disabled={multiSelect.selectedIds.size < 2}
+                onClick={() => setConfirmingMerge(true)}
+              >
                 Merge
+              </Button>
+              <Button
+                variant="secondary"
+                loading={bulkDeleting}
+                disabled={multiSelect.selectedIds.size === 0}
+                onClick={() => setConfirmingBulkDelete(true)}
+              >
+                Delete
               </Button>
             </>
           ) : (
             <>
               {notes.length > 1 && (
-                <Button variant="secondary" onClick={() => setSelectionMode(true)}>
-                  Merge notes
+                <Button variant="secondary" onClick={multiSelect.enable}>
+                  Select
                 </Button>
               )}
               <Button variant="secondary" onClick={() => setImportDialogOpen(true)}>
@@ -105,9 +122,9 @@ export function NotesPage() {
               key={note.id}
               note={note}
               onDelete={() => setConfirmingDeleteId(note.id)}
-              selectable={selectionMode}
-              selected={selectedIds.has(note.id)}
-              onToggleSelect={() => toggleSelected(note.id)}
+              selectable={multiSelect.active}
+              selected={multiSelect.selectedIds.has(note.id)}
+              onToggleSelect={() => multiSelect.toggle(note.id)}
             />
           ))}
         </div>
@@ -127,19 +144,34 @@ export function NotesPage() {
 
       <ConfirmDialog
         open={confirmingMerge}
-        title={`Merge ${selectedIds.size} notes into one?`}
+        title={`Merge ${multiSelect.selectedIds.size} notes into one?`}
         description="The selected notes' content and tags will be combined into a new note, and the originals will be deleted. This can't be undone."
         confirmLabel="Merge"
         onConfirm={() => {
           setConfirmingMerge(false)
           mergeNotes.mutate(selectedNotes, {
             onSuccess: (merged) => {
-              exitSelectionMode()
+              multiSelect.disable()
               navigate(`/notes/${merged.id}`)
             },
           })
         }}
         onCancel={() => setConfirmingMerge(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmingBulkDelete}
+        title={`Delete ${multiSelect.selectedIds.size} notes?`}
+        description="This can't be undone."
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          setConfirmingBulkDelete(false)
+          setBulkDeleting(true)
+          await Promise.all([...multiSelect.selectedIds].map((id) => remove.mutateAsync(id)))
+          setBulkDeleting(false)
+          multiSelect.disable()
+        }}
+        onCancel={() => setConfirmingBulkDelete(false)}
       />
 
       <ImportNotePackageDialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} />

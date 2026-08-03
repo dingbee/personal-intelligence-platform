@@ -10,7 +10,7 @@ import { useAuth } from '@/modules/auth/useAuth'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { formatFileSize } from '@/modules/library/utils/fileTypes'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
-import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
+import { ActionMenu, type ResolvedAction } from '@/shared/components/actions/ActionMenu'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
@@ -54,6 +54,18 @@ export function ImageCard({ asset, onOpenLightbox }: { asset: Asset; onOpenLight
     },
     onSuccess: (note) => navigate(`/notes/${note.id}`),
   })
+
+  const actions: ResolvedAction[] = [
+    { id: 'open', label: 'View', href: `/library/assets/${asset.id}` },
+    {
+      id: 'askNova',
+      label: 'Ask NOVA',
+      onSelect: () => void createConversationWithQuery(`I just uploaded an image called "${asset.title}".`),
+    },
+    { label: saveAsNote.isPending ? 'Saving…' : 'Save as Notes', onSelect: () => saveAsNote.mutate() },
+    ...(canEdit ? [{ id: 'rename' as const, label: 'Rename', onSelect: () => setRenaming(true) }] : []),
+    ...(canDelete ? [{ id: 'delete' as const, label: 'Delete', onSelect: () => setConfirmingDelete(true) }] : []),
+  ]
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
@@ -120,29 +132,7 @@ export function ImageCard({ asset, onOpenLightbox }: { asset: Asset; onOpenLight
           >
             View
           </Link>
-          <DropdownMenu trigger={<span aria-hidden>⋯</span>}>
-            <Link
-              to={`/library/assets/${asset.id}`}
-              role="menuitem"
-              className="block w-full px-3 py-2 text-left text-sm text-[var(--color-ink)] hover:bg-[var(--color-canvas)]"
-            >
-              View
-            </Link>
-            <DropdownMenuItem
-              onClick={() => void createConversationWithQuery(`I just uploaded an image called "${asset.title}".`)}
-            >
-              Ask NOVA
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => saveAsNote.mutate()}>
-              {saveAsNote.isPending ? 'Saving…' : 'Save as Notes'}
-            </DropdownMenuItem>
-            {canEdit && <DropdownMenuItem onClick={() => setRenaming(true)}>Rename</DropdownMenuItem>}
-            {canDelete && (
-              <DropdownMenuItem danger onClick={() => setConfirmingDelete(true)}>
-                Delete
-              </DropdownMenuItem>
-            )}
-          </DropdownMenu>
+          <ActionMenu actions={actions} />
         </div>
       </div>
 

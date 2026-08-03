@@ -11,7 +11,7 @@ import { resolveReaderMode } from '@/modules/reader/resolveReaderMode'
 import { createNote } from '@/modules/notes/api/notes'
 import { useAuth } from '@/modules/auth/useAuth'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
-import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
+import { ActionMenu, type ResolvedAction } from '@/shared/components/actions/ActionMenu'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { DocumentTagEditor } from '@/modules/library/components/DocumentTagEditor'
 import { CollectionMoveSelect } from '@/modules/library/components/CollectionMoveSelect'
@@ -23,9 +23,16 @@ import { OwnershipLine } from '@/shared/components/collaboration/OwnershipLine'
 export function DocumentCard({
   document,
   collections,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
 }: {
   document: DocumentWithTags
   collections: Collection[]
+  /** UX-15.4 Phase 4 — multi-select mode, same shape as NoteCard's. */
+  selectable?: boolean
+  selected?: boolean
+  onToggleSelect?: () => void
 }) {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -60,9 +67,31 @@ export function DocumentCard({
     onSuccess: (note) => navigate(`/notes/${note.id}`),
   })
 
+  const actions: ResolvedAction[] = [
+    { label: 'View details', href: `/library/${document.id}` },
+    ...(isReady && readerMode ? [{ label: 'Read Document', href: `/library/${document.id}/read` }] : []),
+    ...(isReady ? [{ label: 'Chat with NOVA', href: `/chat?documentId=${document.id}` }] : []),
+    ...(isReady && readerMode ? [{ label: 'Summarize', href: `/library/${document.id}/read?panel=summary` }] : []),
+    ...(isReady ? [{ label: saveAsNote.isPending ? 'Saving…' : 'Save as Notes', onSelect: () => saveAsNote.mutate() }] : []),
+    ...(canEdit ? [{ id: 'rename' as const, label: 'Rename', onSelect: () => setRenaming(true) }] : []),
+    ...(canEdit
+      ? [{ label: document.status === 'error' ? 'Retry processing' : 'Reprocess', onSelect: () => reprocess.mutate(document.id) }]
+      : []),
+    ...(canDelete ? [{ id: 'delete' as const, label: 'Delete', onSelect: () => setConfirmingDelete(true) }] : []),
+  ]
+
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
       <div className="flex items-start justify-between gap-2">
+        {selectable && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            aria-label={`Select ${document.title}`}
+            className="mt-1 size-4 shrink-0 accent-[var(--color-accent)]"
+          />
+        )}
         <div className="min-w-0 flex-1">
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block rounded bg-[var(--color-canvas)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-ink-muted)]">
@@ -102,89 +131,43 @@ export function DocumentCard({
             )}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {/* UX-13.8.1 — Read and Chat promoted to one-click, always-visible
-              actions instead of being hidden inside the ⋯ menu: a user
-              should never need Search to get back into their own document.
-              Read is format-aware (resolveReaderMode), not EPUB-only. */}
-          {isReady && readerMode && (
-            <Link
-              to={`/library/${document.id}/read`}
-              className="rounded-md bg-[var(--color-canvas)] px-2 py-1 text-xs font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-            >
-              Read
-            </Link>
-          )}
-          {isReady && (
-            <Link
-              to={`/chat?documentId=${document.id}`}
-              className="rounded-md bg-[var(--color-canvas)] px-2 py-1 text-xs font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-            >
-              Chat
-            </Link>
-          )}
-          <DropdownMenu trigger={<span aria-hidden>⋯</span>}>
-            <Link
-              to={`/library/${document.id}`}
-              role="menuitem"
-              className="block w-full px-3 py-2 text-left text-sm text-[var(--color-ink)] hover:bg-[var(--color-canvas)]"
-            >
-              View details
-            </Link>
+        {!selectable && (
+          <div className="flex shrink-0 items-center gap-1.5">
+            {/* UX-13.8.1 — Read and Chat promoted to one-click, always-visible
+                actions instead of being hidden inside the ⋯ menu: a user
+                should never need Search to get back into their own document.
+                Read is format-aware (resolveReaderMode), not EPUB-only. */}
             {isReady && readerMode && (
               <Link
                 to={`/library/${document.id}/read`}
-                role="menuitem"
-                className="block w-full px-3 py-2 text-left text-sm text-[var(--color-ink)] hover:bg-[var(--color-canvas)]"
+                className="rounded-md bg-[var(--color-canvas)] px-2 py-1 text-xs font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
               >
-                Read Document
+                Read
               </Link>
             )}
             {isReady && (
               <Link
                 to={`/chat?documentId=${document.id}`}
-                role="menuitem"
-                className="block w-full px-3 py-2 text-left text-sm text-[var(--color-ink)] hover:bg-[var(--color-canvas)]"
+                className="rounded-md bg-[var(--color-canvas)] px-2 py-1 text-xs font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
               >
-                Chat with NOVA
+                Chat
               </Link>
             )}
-            {isReady && readerMode && (
-              <Link
-                to={`/library/${document.id}/read?panel=summary`}
-                role="menuitem"
-                className="block w-full px-3 py-2 text-left text-sm text-[var(--color-ink)] hover:bg-[var(--color-canvas)]"
-              >
-                Summarize
-              </Link>
-            )}
-            {isReady && (
-              <DropdownMenuItem onClick={() => saveAsNote.mutate()}>
-                {saveAsNote.isPending ? 'Saving…' : 'Save as Notes'}
-              </DropdownMenuItem>
-            )}
-            {canEdit && <DropdownMenuItem onClick={() => setRenaming(true)}>Rename</DropdownMenuItem>}
-            {canEdit && (
-              <DropdownMenuItem onClick={() => reprocess.mutate(document.id)}>
-                {document.status === 'error' ? 'Retry processing' : 'Reprocess'}
-              </DropdownMenuItem>
-            )}
-            {canDelete && (
-              <DropdownMenuItem danger onClick={() => setConfirmingDelete(true)}>
-                Delete
-              </DropdownMenuItem>
-            )}
-          </DropdownMenu>
-        </div>
+            <ActionMenu actions={actions} />
+          </div>
+        )}
       </div>
 
-      <DocumentTagEditor documentId={document.id} tags={document.tags} />
-
-      <CollectionMoveSelect
-        documentId={document.id}
-        collectionId={document.collection_id}
-        collections={collections}
-      />
+      {!selectable && (
+        <>
+          <DocumentTagEditor documentId={document.id} tags={document.tags} />
+          <CollectionMoveSelect
+            documentId={document.id}
+            collectionId={document.collection_id}
+            collections={collections}
+          />
+        </>
+      )}
 
       <ConfirmDialog
         open={confirmingDelete}

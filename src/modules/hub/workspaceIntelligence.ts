@@ -13,6 +13,8 @@ export interface IntelligenceItem {
   href: string
   /** ISO timestamp — drives both display (formatRelativeTime) and cross-item sort order. */
   timestamp: string
+  /** UX-15.4 Phase 5 — the specific action `href` performs (e.g. "Resume Conversation," "Open Collection") so the item exposes what clicking it does, not just that it links somewhere. */
+  actionLabel: string
 }
 
 export interface ComputeWorkspaceIntelligenceInput {
@@ -69,6 +71,7 @@ export function computeWorkspaceIntelligence(input: ComputeWorkspaceIntelligence
       description: hasFailure ? 'One or more documents failed processing.' : 'Still uploading or processing.',
       href: '/library',
       timestamp: unprocessedDocuments[0]!.created_at,
+      actionLabel: 'Open Library',
     })
   }
 
@@ -92,6 +95,7 @@ export function computeWorkspaceIntelligence(input: ComputeWorkspaceIntelligence
         .join(', '),
       href: '/knowledge/graph',
       timestamp: unlinkedNodes[0]!.updated_at,
+      actionLabel: 'View Graph',
     })
   }
 
@@ -105,6 +109,7 @@ export function computeWorkspaceIntelligence(input: ComputeWorkspaceIntelligence
       description: "Pinned, but you haven't returned to it in a while.",
       href: `/chat?conversationId=${conversation.id}`,
       timestamp: conversation.updated_at,
+      actionLabel: 'Resume Conversation',
     })
   }
 
@@ -126,6 +131,7 @@ export function computeWorkspaceIntelligence(input: ComputeWorkspaceIntelligence
       description: `${count} new item${count === 1 ? '' : 's'} added in the last two weeks.`,
       href: '/knowledge',
       timestamp: collection.updated_at,
+      actionLabel: 'Open Collection',
     })
   }
 
@@ -149,6 +155,7 @@ export function computeWorkspaceIntelligence(input: ComputeWorkspaceIntelligence
       description: `Linked from ${count} other item${count === 1 ? '' : 's'} — worth adding to a collection.`,
       href: `/notes/${noteId}`,
       timestamp: note.updated_at,
+      actionLabel: 'Open Note',
     })
   }
 
@@ -174,6 +181,7 @@ export function computeWorkspaceIntelligence(input: ComputeWorkspaceIntelligence
       description: `A teammate's ${shared.kind}, updated recently.`,
       href: shared.href,
       timestamp: shared.updatedAt,
+      actionLabel: shared.kind === 'note' ? 'Open Note' : 'Resume Conversation',
     })
   }
 
@@ -187,6 +195,7 @@ export function computeWorkspaceIntelligence(input: ComputeWorkspaceIntelligence
       description: 'Recently brought in from another account or workspace.',
       href: `/notes/${note.id}`,
       timestamp: importedAt,
+      actionLabel: 'Open Note',
     })
   }
   for (const node of input.knowledgeNodes) {
@@ -199,6 +208,7 @@ export function computeWorkspaceIntelligence(input: ComputeWorkspaceIntelligence
       description: 'Recently brought in from another account or workspace.',
       href: '/knowledge/explorer',
       timestamp: importedAt,
+      actionLabel: 'View Concept',
     })
   }
 

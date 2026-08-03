@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { NoteWithDocument } from '@/modules/notes/api/notes'
-import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
+import { ActionMenu, type ResolvedAction } from '@/shared/components/actions/ActionMenu'
 import { ArtifactKindBadge } from '@/modules/notes/components/ArtifactKindBadge'
 import { getArtifactKind } from '@/modules/ai/artifacts/artifactMetadata'
 import { useAuth } from '@/modules/auth/useAuth'
@@ -38,6 +38,11 @@ export function NoteCard({
   const isNoteOwner = note.user_id === user?.id
   const canDelete = isNoteOwner || role === 'owner'
 
+  const actions: ResolvedAction[] = [
+    { id: 'open', label: 'Edit', href: `/notes/${note.id}` },
+    ...(canDelete ? [{ id: 'delete' as const, label: 'Delete', onSelect: onDelete }] : []),
+  ]
+
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
       <div className="flex items-start justify-between gap-2">
@@ -65,22 +70,7 @@ export function NoteCard({
             )}
           </div>
         </Link>
-        {!selectable && (
-          <DropdownMenu trigger={<span aria-hidden>⋯</span>}>
-            <Link
-              to={`/notes/${note.id}`}
-              role="menuitem"
-              className="block w-full px-3 py-2 text-left text-sm text-[var(--color-ink)] hover:bg-[var(--color-canvas)]"
-            >
-              Edit
-            </Link>
-            {canDelete && (
-              <DropdownMenuItem danger onClick={onDelete}>
-                Delete
-              </DropdownMenuItem>
-            )}
-          </DropdownMenu>
-        )}
+        {!selectable && <ActionMenu actions={actions} />}
       </div>
 
       {note.content && <p className="text-sm text-[var(--color-ink-muted)]">{previewText(note.content)}</p>}

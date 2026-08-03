@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Conversation } from '@/shared/types/database'
 import { Button } from '@/shared/components/ui/Button'
-import { DropdownMenu, DropdownMenuItem } from '@/shared/components/ui/DropdownMenu'
+import { ActionMenu, type ResolvedAction } from '@/shared/components/actions/ActionMenu'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { InlineTextForm } from '@/shared/components/ui/InlineTextForm'
 import { groupConversationsByRecency } from '@/modules/ai/chat/groupConversationsByRecency'
@@ -75,6 +75,28 @@ function ConversationRow({
   const canEdit = isConversationOwner || role === 'editor' || role === 'owner'
   const canDelete = isConversationOwner || role === 'owner'
 
+  const activeActions: ResolvedAction[] = [
+    ...(canEdit ? [{ id: 'rename' as const, label: 'Rename', onSelect: () => setRenamingId(conversation.id) }] : []),
+    {
+      id: 'pin',
+      label: conversation.is_pinned ? 'Unpin' : 'Pin',
+      onSelect: () => onTogglePin(conversation.id, !conversation.is_pinned),
+    },
+    {
+      id: 'favorite',
+      label: conversation.favorite ? 'Remove favorite' : 'Add to favorites',
+      onSelect: () => onToggleFavorite(conversation.id, !conversation.favorite),
+    },
+    ...(canEdit ? [{ id: 'duplicate' as const, label: 'Duplicate', onSelect: () => onDuplicate(conversation.id) }] : []),
+    ...(canEdit ? [{ id: 'archive' as const, label: 'Archive', onSelect: () => onArchive(conversation.id) }] : []),
+    ...(canDelete ? [{ id: 'delete' as const, label: 'Delete', onSelect: () => setConfirmDeleteId(conversation.id) }] : []),
+  ]
+
+  const archivedActions: ResolvedAction[] = [
+    ...(canEdit ? [{ id: 'archive' as const, label: 'Restore', onSelect: () => onRestore(conversation.id) }] : []),
+    ...(canDelete ? [{ id: 'delete' as const, label: 'Delete permanently', onSelect: () => setConfirmDeleteId(conversation.id) }] : []),
+  ]
+
   return (
     <div
       className={`group flex items-center gap-1 rounded-lg pr-1 text-sm ${
@@ -118,35 +140,10 @@ function ConversationRow({
           )}
         </button>
       )}
-      <DropdownMenu trigger={<span aria-label="Conversation actions">⋯</span>}>
-        {mode === 'active' ? (
-          <>
-            {canEdit && <DropdownMenuItem onClick={() => setRenamingId(conversation.id)}>Rename</DropdownMenuItem>}
-            <DropdownMenuItem onClick={() => onTogglePin(conversation.id, !conversation.is_pinned)}>
-              {conversation.is_pinned ? 'Unpin' : 'Pin'}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onToggleFavorite(conversation.id, !conversation.favorite)}>
-              {conversation.favorite ? 'Remove favorite' : 'Add to favorites'}
-            </DropdownMenuItem>
-            {canEdit && <DropdownMenuItem onClick={() => onDuplicate(conversation.id)}>Duplicate</DropdownMenuItem>}
-            {canEdit && <DropdownMenuItem onClick={() => onArchive(conversation.id)}>Archive</DropdownMenuItem>}
-            {canDelete && (
-              <DropdownMenuItem danger onClick={() => setConfirmDeleteId(conversation.id)}>
-                Delete
-              </DropdownMenuItem>
-            )}
-          </>
-        ) : (
-          <>
-            {canEdit && <DropdownMenuItem onClick={() => onRestore(conversation.id)}>Restore</DropdownMenuItem>}
-            {canDelete && (
-              <DropdownMenuItem danger onClick={() => setConfirmDeleteId(conversation.id)}>
-                Delete permanently
-              </DropdownMenuItem>
-            )}
-          </>
-        )}
-      </DropdownMenu>
+      <ActionMenu
+        actions={mode === 'active' ? activeActions : archivedActions}
+        trigger={<span aria-label="Conversation actions">⋯</span>}
+      />
     </div>
   )
 }
