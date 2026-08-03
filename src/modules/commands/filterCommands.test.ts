@@ -87,7 +87,7 @@ describe('filterCommands', () => {
     const withBook = filterCommands({
       commands: [continueReading],
       query: '',
-      context: makeContext({ inProgressDocument: { id: 'doc-1', title: 'Atomic Habits' } }),
+      context: makeContext({ inProgressDocument: { id: 'doc-1', title: 'Atomic Habits', updatedAt: '2024-01-01T00:00:00Z' } }),
     })
     expect(withBook.map((c) => c.id)).toEqual(['continue-reading'])
   })

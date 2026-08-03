@@ -48,7 +48,7 @@ describe('deriveActionChips', () => {
   })
 
   it('includes "Continue reading" (first) when something is in progress', () => {
-    const chips = deriveActionChips(baseContext({ inProgressDocument: { id: 'doc-1', title: 'Deep Work' } }))
+    const chips = deriveActionChips(baseContext({ inProgressDocument: { id: 'doc-1', title: 'Deep Work', updatedAt: '2024-01-01T00:00:00Z' } }))
     expect(chips[0]?.id).toBe('reader-continue')
   })
 })

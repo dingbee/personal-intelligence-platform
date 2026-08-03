@@ -2,11 +2,15 @@ import { NavLink } from 'react-router-dom'
 import { appConfig } from '@/app/appConfig'
 import { WorkspaceSwitcher } from '@/modules/workspaces/components/WorkspaceSwitcher'
 
+// UX-15.2 — Dashboard and Evolution dropped from top-level nav: their
+// content folds into Hub's "Explore Deeper" zone as contextual links
+// (see WorkspaceIntelligenceHubPage.tsx), closing the "four overlapping
+// overview entries" finding from the phase's discovery doc (finding #5).
+// Both routes still exist and are still reachable, just not as
+// equally-weighted flat nav items competing with Hub.
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard' },
   { to: '/hub', label: 'Hub' },
   { to: '/collaboration', label: 'Collaboration' },
-  { to: '/evolution', label: 'Evolution' },
   { to: '/library', label: 'Library' },
   { to: '/knowledge', label: 'Knowledge' },
   { to: '/knowledge/export', label: 'Export Center' },

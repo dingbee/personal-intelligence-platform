@@ -1,12 +1,10 @@
-import { Link } from 'react-router-dom'
 import type { NoteWithDocument } from '@/modules/notes/api/notes'
 import type { Conversation } from '@/shared/types/database'
 import type { DirectoryMember } from '@/shared/components/collaboration/MemberAvatarStack'
 import { MemberAvatarStack } from '@/shared/components/collaboration/MemberAvatarStack'
 import { MemberAvatar } from '@/shared/components/collaboration/MemberAvatar'
 import { StatCard } from '@/shared/components/ui/surface/StatCard'
-import { EmptyState } from '@/shared/components/ui/EmptyState'
-import { formatRelativeTime } from '@/shared/utils/formatRelativeTime'
+import { RecentActivityList } from '@/modules/hub/components/RecentActivityList'
 
 interface ActivityItem {
   key: string
@@ -31,6 +29,10 @@ interface ActivityItem {
  * which renders the full WorkspaceMemberRoster directly beneath this
  * section, so the member row here is a compact summary (avatar stack +
  * count), not a second, redundant "manage members" entry point.
+ *
+ * UX-15.2 — the merge/sort/slice(0,6) data-shaping above stays here (it's
+ * specific to this component), but row rendering is delegated to the
+ * shared RecentActivityList (see its own doc-comment).
  */
 export function CollaborationSection({
   members,
@@ -85,26 +87,20 @@ export function CollaborationSection({
 
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-muted)]">Recent activity</p>
-        {activity.length === 0 ? (
-          <EmptyState title="No activity yet" description="Notes and conversations from this workspace will show up here." />
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {activity.map((item) => {
-              const owner = lookup(item.ownerId)
-              return (
-                <li key={item.key} className="flex items-center justify-between gap-4 text-sm">
-                  <Link to={item.href} className="min-w-0 truncate text-[var(--color-ink)] hover:text-[var(--color-accent)]">
-                    {item.title}
-                  </Link>
-                  <span className="flex shrink-0 items-center gap-2 text-xs text-[var(--color-ink-muted)]">
-                    {owner && <MemberAvatar displayName={owner.display_name} email={owner.email} size="sm" />}
-                    {formatRelativeTime(item.updatedAt)}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-        )}
+        <RecentActivityList
+          items={activity.map((item) => {
+            const owner = lookup(item.ownerId)
+            return {
+              key: item.key,
+              href: item.href,
+              title: item.title,
+              updatedAt: item.updatedAt,
+              trailing: owner ? <MemberAvatar displayName={owner.display_name} email={owner.email} size="sm" /> : null,
+            }
+          })}
+          emptyTitle="No activity yet"
+          emptyDescription="Notes and conversations from this workspace will show up here."
+        />
       </div>
     </div>
   )

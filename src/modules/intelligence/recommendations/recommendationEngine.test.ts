@@ -124,7 +124,7 @@ describe('generateRecommendations — dashboard scope', () => {
 
   it('suggests continuing reading when a document is in progress', () => {
     const recommendations = generateRecommendations(
-      baseDashboardInput({ commandContext: dashboardContext({ inProgressDocument: { id: 'doc-1', title: 'Deep Work' } }) }),
+      baseDashboardInput({ commandContext: dashboardContext({ inProgressDocument: { id: 'doc-1', title: 'Deep Work', updatedAt: '2024-01-01T00:00:00Z' } }) }),
     )
     expect(recommendations.some((r) => r.category === 'continue' && r.command.title.includes('Deep Work'))).toBe(true)
   })
@@ -181,7 +181,7 @@ describe('generateRecommendations — dashboard scope', () => {
   it('produces at least one recommendation in every category when all conditions are met', () => {
     const recommendations = generateRecommendations({
       scope: 'dashboard',
-      commandContext: dashboardContext({ inProgressDocument: { id: 'doc-1', title: 'Deep Work' } }),
+      commandContext: dashboardContext({ inProgressDocument: { id: 'doc-1', title: 'Deep Work', updatedAt: '2024-01-01T00:00:00Z' } }),
       hasGraphContext: true,
       hasMemoryToReview: true,
       informationOrganizationScore: 10,

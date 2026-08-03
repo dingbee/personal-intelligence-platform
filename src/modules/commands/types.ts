@@ -1,3 +1,5 @@
+import type { InProgressDocument } from '@/modules/reader/api/readingProgress'
+
 export type CommandCategory = 'navigation' | 'workspace' | 'ai' | 'search' | 'notes' | 'reader' | 'settings' | 'memory' | 'capture'
 
 /** What a command's isAvailable/execute can read about "here and now" — resolved once per render by useCommandContext. */
@@ -7,7 +9,8 @@ export interface CommandContext {
   workspaceName: string | null
   pathname: string
   documentId: string | null
-  inProgressDocument: { id: string; title: string } | null
+  /** UX-15.2 — widened to the full InProgressDocument (adds updatedAt) so Hub's ContinueWorkingCard can show "last read …" without a second query. */
+  inProgressDocument: InProgressDocument | null
 }
 
 /** The pre-wired callbacks a command's execute calls into — the one place React hooks/mutations actually live (useCommandActions), so command definitions themselves stay plain data. */

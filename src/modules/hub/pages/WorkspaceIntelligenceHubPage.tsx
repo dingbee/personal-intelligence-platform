@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { useWorkspaceHub } from '@/modules/hub/hooks/useWorkspaceHub'
+import { useGreeting } from '@/modules/greeting/hooks/useGreeting'
 import { MaturityBadge } from '@/modules/evolution/components/MaturityBadge'
 import { ConceptEvolutionSection } from '@/modules/evolution/components/ConceptEvolutionSection'
 import { EvolutionTimelineSection } from '@/modules/evolution/components/EvolutionTimelineSection'
@@ -10,6 +11,7 @@ import { WorkspaceGapsSection } from '@/modules/hub/components/WorkspaceGapsSect
 import { WorkspaceObjectivesSection } from '@/modules/hub/components/WorkspaceObjectivesSection'
 import { RecentNotesSection } from '@/modules/hub/components/RecentNotesSection'
 import { ActiveConversationsSection } from '@/modules/hub/components/ActiveConversationsSection'
+import { ContinueWorkingCard } from '@/modules/hub/components/ContinueWorkingCard'
 import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
@@ -19,6 +21,11 @@ import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { StatCard } from '@/shared/components/ui/surface/StatCard'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Spinner } from '@/shared/components/ui/Spinner'
+
+/** A zone eyebrow — the small uppercase label that gives the page's stack of sections a sense of grouping instead of one undifferentiated list. */
+function ZoneLabel({ children }: { children: string }) {
+  return <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-muted)]">{children}</p>
+}
 
 /**
  * UX-13.7 — the Workspace Intelligence Hub: one per-workspace command
@@ -35,17 +42,29 @@ import { Spinner } from '@/shared/components/ui/Spinner'
  * work" gap the original pass left out, and HomeRedirect now makes this
  * page the app's homepage once a workspace is selected ("Workspace →
  * Hub" instead of "Workspace → Documents") — see src/app/HomeRedirect.tsx.
+ *
+ * UX-15.2 — Personal Intelligence Workspace: the same sections above,
+ * regrouped into zones answering "what am I working on / what changed /
+ * what deserves attention / what should I continue / what should I learn
+ * / what should I organize" (see the phase's discovery doc, finding #4)
+ * instead of one flat 12-section stack. The header now uses the same
+ * personalized useGreeting() as ExecutiveDashboardPage (finding #7) so
+ * the two pages stop disagreeing on voice. Dashboard's and Evolution's
+ * own distinct content (intelligence scores, growth analytics, journey,
+ * forecast) isn't duplicated here — "Explore Deeper" links out to them
+ * instead (finding #1, §5 of the discovery doc).
  */
 export function WorkspaceIntelligenceHubPage() {
   const { currentWorkspaceId } = useWorkspace()
   const { data, isLoading, summary, workspaceName } = useWorkspaceHub()
+  const greeting = useGreeting()
   const commandContext = useCommandContext()
   const commandActions = useCommandActions()
   const { members, isShared } = useWorkspaceMemberDirectory(currentWorkspaceId)
 
   return (
     <div className="flex flex-col gap-8">
-      <SectionHeader level="page" title="Workspace Intelligence Hub" description="Your command center for this workspace." />
+      <SectionHeader level="page" title={greeting.headline} description={greeting.subtext} />
 
       {!currentWorkspaceId ? (
         <EmptyState
@@ -75,97 +94,136 @@ export function WorkspaceIntelligenceHubPage() {
             <StatCard label="Document Relationships" value={data.documentRelationshipCount} />
           </div>
 
-          {/* UX-14.5.7 — a lightweight teaser only: the full member roster,
-              shared-intelligence stats, and recent activity moved to their
-              own dedicated destination (/collaboration) so this section
-              never grows past "who's here, go there for more." */}
-          <section className="flex flex-col gap-2">
-            <SectionHeader
-              level="section"
-              title="Collaboration"
-              description={
-                isShared
-                  ? `${members.length} member${members.length === 1 ? '' : 's'} in ${workspaceName}.`
-                  : `${workspaceName} is personal — invite people to start sharing.`
-              }
-              action={
-                <Link to="/collaboration" className="text-sm text-[var(--color-accent)] hover:underline">
-                  Open Collaboration →
-                </Link>
-              }
-            />
-            {isShared && <MemberAvatarStack members={members} />}
+          {/* What am I working on? / What should I continue? */}
+          <section className="flex flex-col gap-3">
+            <ZoneLabel>Continue Working</ZoneLabel>
+            <ContinueWorkingCard inProgressDocument={commandContext.inProgressDocument} />
           </section>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <section className="flex flex-col gap-3">
+          {/* What deserves attention? */}
+          <section className="flex flex-col gap-6">
+            <ZoneLabel>Needs Your Attention</ZoneLabel>
+
+            <div className="flex flex-col gap-3">
+              <SectionHeader level="section" title="Knowledge Gaps" description="What's missing or being neglected." />
+              <WorkspaceGapsSection gaps={data.gaps} />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <SectionHeader level="section" title="Suggested Next Actions" />
+              <RecommendedActionsSection recommendations={data.recommendations} commandContext={commandContext} commandActions={commandActions} />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <SectionHeader level="section" title="AI Insights" />
+              <SignalList signals={data.signals} />
+            </div>
+          </section>
+
+          {/* What changed recently? */}
+          <section className="flex flex-col gap-6">
+            <ZoneLabel>Recent Activity</ZoneLabel>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="flex flex-col gap-3">
+                <SectionHeader
+                  level="section"
+                  title="Recent Notes"
+                  action={
+                    <Link to="/notes" className="text-sm text-[var(--color-accent)] hover:underline">
+                      All notes →
+                    </Link>
+                  }
+                />
+                <RecentNotesSection notes={data.recentNotes} />
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <SectionHeader
+                  level="section"
+                  title="Active Conversations"
+                  action={
+                    <Link to="/chat" className="text-sm text-[var(--color-accent)] hover:underline">
+                      All conversations →
+                    </Link>
+                  }
+                />
+                <ActiveConversationsSection conversations={data.activeConversations} />
+              </div>
+            </div>
+          </section>
+
+          {/* What should I organize? */}
+          <section className="flex flex-col gap-6">
+            <ZoneLabel>Organize</ZoneLabel>
+
+            {/* UX-14.5.7 — a lightweight teaser only: the full member roster,
+                shared-intelligence stats, and recent activity live at their
+                own dedicated destination (/collaboration) so this section
+                never grows past "who's here, go there for more." */}
+            <div className="flex flex-col gap-2">
               <SectionHeader
                 level="section"
-                title="Recent Notes"
+                title="Collaboration"
+                description={
+                  isShared
+                    ? `${members.length} member${members.length === 1 ? '' : 's'} in ${workspaceName}.`
+                    : `${workspaceName} is personal — invite people to start sharing.`
+                }
                 action={
-                  <Link to="/notes" className="text-sm text-[var(--color-accent)] hover:underline">
-                    All notes →
+                  <Link to="/collaboration" className="text-sm text-[var(--color-accent)] hover:underline">
+                    Open Collaboration →
                   </Link>
                 }
               />
-              <RecentNotesSection notes={data.recentNotes} />
-            </section>
+              {isShared && <MemberAvatarStack members={members} />}
+            </div>
 
-            <section className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3">
+              <SectionHeader level="section" title="Workspace Objectives" description={`What ${workspaceName} is trying to accomplish.`} />
+              <WorkspaceObjectivesSection workspaceId={currentWorkspaceId} />
+            </div>
+
+            <div className="flex flex-col gap-3">
               <SectionHeader
                 level="section"
-                title="Active Conversations"
+                title="Document Relationships"
+                description={`${data.documentRelationshipCount} connection${data.documentRelationshipCount === 1 ? '' : 's'} across this workspace's knowledge graph.`}
                 action={
-                  <Link to="/chat" className="text-sm text-[var(--color-accent)] hover:underline">
-                    All conversations →
+                  <Link to="/knowledge/graph" className="text-sm text-[var(--color-accent)] hover:underline">
+                    View graph →
                   </Link>
                 }
               />
-              <ActiveConversationsSection conversations={data.activeConversations} />
-            </section>
-          </div>
-
-          <section className="flex flex-col gap-3">
-            <SectionHeader level="section" title="Active Concepts" description="Concepts that are new or actively growing." />
-            <ConceptEvolutionSection concepts={data.activeConcepts} />
+            </div>
           </section>
 
-          <section className="flex flex-col gap-3">
-            <SectionHeader level="section" title="Knowledge Gaps" description="What's missing or being neglected." />
-            <WorkspaceGapsSection gaps={data.gaps} />
-          </section>
+          {/* What should I learn? */}
+          <section className="flex flex-col gap-6">
+            <ZoneLabel>Explore Deeper</ZoneLabel>
 
-          <section className="flex flex-col gap-3">
-            <SectionHeader
-              level="section"
-              title="Document Relationships"
-              description={`${data.documentRelationshipCount} connection${data.documentRelationshipCount === 1 ? '' : 's'} across this workspace's knowledge graph.`}
-              action={
-                <Link to="/knowledge/graph" className="text-sm text-[var(--color-accent)] hover:underline">
-                  View graph →
+            <div className="flex flex-col gap-3">
+              <SectionHeader level="section" title="Active Concepts" description="Concepts that are new or actively growing." />
+              <ConceptEvolutionSection concepts={data.activeConcepts} />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <SectionHeader level="section" title="Recent Evolution" />
+              <EvolutionTimelineSection events={data.report.timeline} />
+            </div>
+
+            <SurfaceCard className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-[var(--color-ink)]">
+                Want intelligence scores, growth analytics, and a longer-range forecast for {workspaceName}?
+              </p>
+              <div className="flex shrink-0 gap-4 text-sm">
+                <Link to="/dashboard" className="text-[var(--color-accent)] hover:underline">
+                  Open Dashboard →
                 </Link>
-              }
-            />
-          </section>
-
-          <section className="flex flex-col gap-3">
-            <SectionHeader level="section" title="AI Insights" />
-            <SignalList signals={data.signals} />
-          </section>
-
-          <section className="flex flex-col gap-3">
-            <SectionHeader level="section" title="Recent Evolution" />
-            <EvolutionTimelineSection events={data.report.timeline} />
-          </section>
-
-          <section className="flex flex-col gap-3">
-            <SectionHeader level="section" title="Suggested Next Actions" />
-            <RecommendedActionsSection recommendations={data.recommendations} commandContext={commandContext} commandActions={commandActions} />
-          </section>
-
-          <section className="flex flex-col gap-3">
-            <SectionHeader level="section" title="Workspace Objectives" description={`What ${workspaceName} is trying to accomplish.`} />
-            <WorkspaceObjectivesSection workspaceId={currentWorkspaceId} />
+                <Link to="/evolution" className="text-[var(--color-accent)] hover:underline">
+                  Open Evolution →
+                </Link>
+              </div>
+            </SurfaceCard>
           </section>
         </>
       )}
