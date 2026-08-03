@@ -12,6 +12,9 @@ import { WorkspaceObjectivesSection } from '@/modules/hub/components/WorkspaceOb
 import { RecentNotesSection } from '@/modules/hub/components/RecentNotesSection'
 import { ActiveConversationsSection } from '@/modules/hub/components/ActiveConversationsSection'
 import { ContinueWorkingCard } from '@/modules/hub/components/ContinueWorkingCard'
+import { RecentActivityList } from '@/modules/hub/components/RecentActivityList'
+import { WorkspaceHealthPanel } from '@/modules/hub/components/WorkspaceHealthPanel'
+import type { IntelligenceItem, IntelligenceZone } from '@/modules/hub/workspaceIntelligence'
 import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
@@ -25,6 +28,19 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 /** A zone eyebrow — the small uppercase label that gives the page's stack of sections a sense of grouping instead of one undifferentiated list. */
 function ZoneLabel({ children }: { children: string }) {
   return <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-muted)]">{children}</p>
+}
+
+/** Renders a zone's dynamically-computed intelligence items via the same shared RecentActivityList every other Hub list already uses — no new list-rendering component. */
+function IntelligenceZoneItems({ items, zone }: { items: IntelligenceItem[]; zone: IntelligenceZone }) {
+  const zoneItems = items.filter((item) => item.zone === zone)
+  if (zoneItems.length === 0) return null
+  return (
+    <RecentActivityList
+      items={zoneItems.map((item) => ({ key: item.id, href: item.href, title: item.title, updatedAt: item.timestamp }))}
+      emptyTitle=""
+      emptyDescription=""
+    />
+  )
 }
 
 /**
@@ -43,16 +59,21 @@ function ZoneLabel({ children }: { children: string }) {
  * page the app's homepage once a workspace is selected ("Workspace →
  * Hub" instead of "Workspace → Documents") — see src/app/HomeRedirect.tsx.
  *
- * UX-15.2 — Personal Intelligence Workspace: the same sections above,
- * regrouped into zones answering "what am I working on / what changed /
- * what deserves attention / what should I continue / what should I learn
- * / what should I organize" (see the phase's discovery doc, finding #4)
- * instead of one flat 12-section stack. The header now uses the same
- * personalized useGreeting() as ExecutiveDashboardPage (finding #7) so
- * the two pages stop disagreeing on voice. Dashboard's and Evolution's
- * own distinct content (intelligence scores, growth analytics, journey,
- * forecast) isn't duplicated here — "Explore Deeper" links out to them
- * instead (finding #1, §5 of the discovery doc).
+ * UX-15.2 — regrouped into zones instead of one flat 12-section stack;
+ * header uses the same personalized useGreeting() as ExecutiveDashboardPage.
+ *
+ * UX-15.3 — Intelligence Workspace & Proactive Assistant: the zones are
+ * renamed to the task's own vocabulary (Continue Working / Requires
+ * Attention / Recently Active / Suggested Organization / Shared With You
+ * / Recently Learned) and each now also renders `data.intelligenceItems`
+ * filtered to that zone — proactively-surfaced signals
+ * (computeWorkspaceIntelligence, hub/workspaceIntelligence.ts) alongside
+ * the zone's existing static content, rather than replacing it. A new
+ * Workspace Health strip (computeWorkspaceHealth) sits with the top
+ * stat row. "Explore Deeper" (UX-15.2's Dashboard/Evolution links) is
+ * kept as an additional zone beyond the task's six — removing it would
+ * undo UX-15.2's own nav consolidation, which this phase isn't asked to
+ * touch.
  */
 export function WorkspaceIntelligenceHubPage() {
   const { currentWorkspaceId } = useWorkspace()
@@ -94,6 +115,11 @@ export function WorkspaceIntelligenceHubPage() {
             <StatCard label="Document Relationships" value={data.documentRelationshipCount} />
           </div>
 
+          <section className="flex flex-col gap-3">
+            <ZoneLabel>Workspace Health</ZoneLabel>
+            <WorkspaceHealthPanel indicators={data.health} />
+          </section>
+
           {/* What am I working on? / What should I continue? */}
           <section className="flex flex-col gap-3">
             <ZoneLabel>Continue Working</ZoneLabel>
@@ -102,7 +128,9 @@ export function WorkspaceIntelligenceHubPage() {
 
           {/* What deserves attention? */}
           <section className="flex flex-col gap-6">
-            <ZoneLabel>Needs Your Attention</ZoneLabel>
+            <ZoneLabel>Requires Attention</ZoneLabel>
+
+            <IntelligenceZoneItems items={data.intelligenceItems} zone="attention" />
 
             <div className="flex flex-col gap-3">
               <SectionHeader level="section" title="Knowledge Gaps" description="What's missing or being neglected." />
@@ -122,7 +150,7 @@ export function WorkspaceIntelligenceHubPage() {
 
           {/* What changed recently? */}
           <section className="flex flex-col gap-6">
-            <ZoneLabel>Recent Activity</ZoneLabel>
+            <ZoneLabel>Recently Active</ZoneLabel>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div className="flex flex-col gap-3">
                 <SectionHeader
@@ -154,7 +182,32 @@ export function WorkspaceIntelligenceHubPage() {
 
           {/* What should I organize? */}
           <section className="flex flex-col gap-6">
-            <ZoneLabel>Organize</ZoneLabel>
+            <ZoneLabel>Suggested Organization</ZoneLabel>
+
+            <IntelligenceZoneItems items={data.intelligenceItems} zone="organize" />
+
+            <div className="flex flex-col gap-3">
+              <SectionHeader level="section" title="Workspace Objectives" description={`What ${workspaceName} is trying to accomplish.`} />
+              <WorkspaceObjectivesSection workspaceId={currentWorkspaceId} />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <SectionHeader
+                level="section"
+                title="Document Relationships"
+                description={`${data.documentRelationshipCount} connection${data.documentRelationshipCount === 1 ? '' : 's'} across this workspace's knowledge graph.`}
+                action={
+                  <Link to="/knowledge/graph" className="text-sm text-[var(--color-accent)] hover:underline">
+                    View graph →
+                  </Link>
+                }
+              />
+            </div>
+          </section>
+
+          {/* Who else is working here? */}
+          <section className="flex flex-col gap-6">
+            <ZoneLabel>Shared With You</ZoneLabel>
 
             {/* UX-14.5.7 — a lightweight teaser only: the full member roster,
                 shared-intelligence stats, and recent activity live at their
@@ -178,28 +231,19 @@ export function WorkspaceIntelligenceHubPage() {
               {isShared && <MemberAvatarStack members={members} />}
             </div>
 
-            <div className="flex flex-col gap-3">
-              <SectionHeader level="section" title="Workspace Objectives" description={`What ${workspaceName} is trying to accomplish.`} />
-              <WorkspaceObjectivesSection workspaceId={currentWorkspaceId} />
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <SectionHeader
-                level="section"
-                title="Document Relationships"
-                description={`${data.documentRelationshipCount} connection${data.documentRelationshipCount === 1 ? '' : 's'} across this workspace's knowledge graph.`}
-                action={
-                  <Link to="/knowledge/graph" className="text-sm text-[var(--color-accent)] hover:underline">
-                    View graph →
-                  </Link>
-                }
-              />
-            </div>
+            {isShared &&
+              (data.intelligenceItems.some((item) => item.zone === 'shared') ? (
+                <IntelligenceZoneItems items={data.intelligenceItems} zone="shared" />
+              ) : (
+                <EmptyState title="Nothing shared recently" description="A teammate's recent note or conversation will show up here." />
+              ))}
           </section>
 
           {/* What should I learn? */}
           <section className="flex flex-col gap-6">
-            <ZoneLabel>Explore Deeper</ZoneLabel>
+            <ZoneLabel>Recently Learned</ZoneLabel>
+
+            <IntelligenceZoneItems items={data.intelligenceItems} zone="learned" />
 
             <div className="flex flex-col gap-3">
               <SectionHeader level="section" title="Active Concepts" description="Concepts that are new or actively growing." />
@@ -210,7 +254,10 @@ export function WorkspaceIntelligenceHubPage() {
               <SectionHeader level="section" title="Recent Evolution" />
               <EvolutionTimelineSection events={data.report.timeline} />
             </div>
+          </section>
 
+          <section className="flex flex-col gap-6">
+            <ZoneLabel>Explore Deeper</ZoneLabel>
             <SurfaceCard className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-[var(--color-ink)]">
                 Want intelligence scores, growth analytics, and a longer-range forecast for {workspaceName}?

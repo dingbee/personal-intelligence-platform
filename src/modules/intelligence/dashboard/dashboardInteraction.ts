@@ -13,7 +13,7 @@ import { listAiRequestsSince } from '@/modules/ai/observability/api/aiRequests'
 import { computeConceptClusters } from '@/modules/knowledge/intelligence/conceptClusters'
 import { detectGraphSignals } from '@/modules/knowledge/intelligence/graphSignals'
 import { detectAttentionItems, findContradictoryMemoryPairs } from '@/modules/intelligence/orchestrator/attentionEngine'
-import { hasUnreviewedMemory } from '@/modules/intelligence/orchestrator/signalEngine'
+import { hasMemoryNeedingReview } from '@/modules/intelligence/orchestrator/signalEngine'
 import { computeKnowledgeGrowth, computeIntelligenceScore, type GrowthMetric, type IntelligenceScore } from '@/modules/intelligence/dashboard/dashboardMetrics'
 import { generateExecutiveInsights, type ExecutiveInsight } from '@/modules/intelligence/dashboard/dashboardInsights'
 import { buildAttentionCenter } from '@/modules/intelligence/dashboard/dashboardSignals'
@@ -179,7 +179,7 @@ export async function buildDashboardState(params: BuildDashboardStateParams): Pr
     scope: 'dashboard',
     commandContext: params.commandContext,
     hasGraphContext: concepts.length > 0,
-    hasMemoryToReview: contradictoryMemoryPairCount > 0 || hasUnreviewedMemory(memories),
+    hasMemoryToReview: hasMemoryNeedingReview(memories),
     informationOrganizationScore: organizationScore,
   })
 

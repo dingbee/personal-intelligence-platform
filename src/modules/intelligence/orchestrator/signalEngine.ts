@@ -38,6 +38,17 @@ export function hasUnreviewedMemory(memories: AiMemory[]): boolean {
 }
 
 /**
+ * UX-15.3 Phase 4 — the exact `hasMemoryToReview` condition
+ * `dashboardInteraction.ts` and `hubData.ts` had each independently
+ * written out in full (`findContradictoryMemoryPairs(memories).length >
+ * 0 || hasUnreviewedMemory(memories)`); both now call this instead of
+ * carrying their own copy of the same boolean expression.
+ */
+export function hasMemoryNeedingReview(memories: AiMemory[]): boolean {
+  return findContradictoryMemoryPairs(memories).length > 0 || hasUnreviewedMemory(memories)
+}
+
+/**
  * UX-8 Phase 7 — new signal types only (contradictory_memory,
  * reading_opportunity, unreviewed_memory, inactive_workspace,
  * large_context, conversation_drift). The five UX-6 types

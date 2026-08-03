@@ -9,6 +9,7 @@ import { buildExportRequestForObject, type ExportableObjectType } from '@/module
 import { generateExport } from '@/modules/export/exportService'
 import { EXPORT_FORMAT_OPTIONS, type ExportFormat } from '@/modules/export/types'
 import { downloadBinaryFile } from '@/shared/utils/downloadBinaryFile'
+import { SuggestedForYou } from '@/modules/intelligence/recommendations/components/SuggestedForYou'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -142,6 +143,8 @@ export function ExportCenterPage() {
         title="Export Center"
         description="Export one or more of your notes, conversations, concepts, documents, images, or collections from a single place."
       />
+
+      <SuggestedForYou />
 
       <div role="tablist" aria-label="Object type" className="flex flex-wrap gap-2 border-b border-[var(--color-border)] pb-2">
         {TABS.map((tab) => (

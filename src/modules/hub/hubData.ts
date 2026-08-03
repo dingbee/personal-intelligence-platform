@@ -8,11 +8,15 @@ import { computeKnowledgeGaps, type KnowledgeGap } from '@/modules/evolution/kno
 import { listKnowledgeNodeSourcesForNodes } from '@/modules/knowledge-intelligence/api/knowledgeNodes'
 import { computeConceptClusters } from '@/modules/knowledge/intelligence/conceptClusters'
 import { detectGraphSignals } from '@/modules/knowledge/intelligence/graphSignals'
-import { findContradictoryMemoryPairs } from '@/modules/intelligence/orchestrator/attentionEngine'
-import { hasUnreviewedMemory } from '@/modules/intelligence/orchestrator/signalEngine'
+import { hasMemoryNeedingReview } from '@/modules/intelligence/orchestrator/signalEngine'
 import { generateRecommendations, type Recommendation } from '@/modules/intelligence/recommendations/recommendationEngine'
 import { listNotes, type NoteWithDocument } from '@/modules/notes/api/notes'
+import { listTaggedNoteIds } from '@/modules/notes/api/noteTags'
 import { listConversations } from '@/modules/ai/chat/api/conversations'
+import { listDocuments } from '@/modules/library/api/documents'
+import { listKnowledgeCollections } from '@/modules/knowledge-intelligence/api/knowledgeCollections'
+import { computeWorkspaceIntelligence, type IntelligenceItem } from '@/modules/hub/workspaceIntelligence'
+import { computeWorkspaceHealth, type WorkspaceHealthIndicator } from '@/modules/hub/workspaceHealth'
 
 const RECENT_LIST_LIMIT = 5
 
@@ -27,6 +31,8 @@ export interface WorkspaceHubState {
   totalReadyDocumentCount: number
   recentNotes: NoteWithDocument[]
   activeConversations: Conversation[]
+  intelligenceItems: IntelligenceItem[]
+  health: WorkspaceHealthIndicator[]
 }
 
 /**
@@ -42,18 +48,25 @@ export interface WorkspaceHubState {
  * (no id/title, just enough for timeline/activity math) and can't back a
  * "recent notes" or "active conversations" list on their own.
  *
- * One known simplification: generateRecommendations's dashboard-scope
- * informationOrganizationScore is passed as 100 (never triggers the
- * "organize your library" recommendation) rather than recomputed here — that
- * score needs full per-document tag/collection data the evolution snapshot
- * doesn't fetch, and the recommendation it gates already lives on
- * /dashboard, so duplicating that fetch here isn't worth it.
+ * UX-15.3 — notes is now an unlimited fetch (recentNotes slices it down for
+ * display, same as activeConversations already did) and documents/
+ * collections are now fetched too, all three reused by
+ * computeWorkspaceIntelligence/computeWorkspaceHealth (Phase 2/5) alongside
+ * the already-fetched snapshot.edges (every knowledge_links row for this
+ * workspace, not just node-to-node ones — collection membership and note
+ * references live in the same polymorphic table). This also finally closes
+ * the "known simplification" the previous version of this comment
+ * documented: informationOrganizationScore is now the real, computed score
+ * (documents are fetched here now anyway for Phase 2's signals) instead of
+ * a hardcoded 100.
  */
 export async function buildWorkspaceHubState(workspaceId: string, commandContext: CommandContext): Promise<WorkspaceHubState> {
-  const [snapshot, recentNotes, conversations] = await Promise.all([
+  const [snapshot, allNotes, conversations, documents, collections] = await Promise.all([
     getWorkspaceEvolutionSnapshot(workspaceId),
-    listNotes({ workspaceId, limit: RECENT_LIST_LIMIT }),
+    listNotes({ workspaceId }),
     listConversations({ workspaceId }),
+    listDocuments({ workspaceId }),
+    listKnowledgeCollections({ workspaceId }),
   ])
   const report = buildWorkspaceEvolutionReport(snapshot)
 
@@ -62,16 +75,43 @@ export async function buildWorkspaceHubState(workspaceId: string, commandContext
   const signals = detectGraphSignals({ nodes: snapshot.concepts, edges: snapshot.edges, clusters, nodeSources })
   const gaps = computeKnowledgeGaps({ health: report.health, signals })
 
+  const organizedDocumentCount = documents.filter((d) => d.collection_id !== null || d.tags.length > 0).length
+  const informationOrganizationScore = documents.length === 0 ? 100 : Math.round((organizedDocumentCount / documents.length) * 100)
+
   const recommendations = generateRecommendations({
     scope: 'dashboard',
     commandContext,
     hasGraphContext: snapshot.concepts.length > 0,
-    hasMemoryToReview: findContradictoryMemoryPairs(snapshot.memories).length > 0 || hasUnreviewedMemory(snapshot.memories),
-    informationOrganizationScore: 100,
+    hasMemoryToReview: hasMemoryNeedingReview(snapshot.memories),
+    informationOrganizationScore,
   })
 
   const activeConcepts = report.concepts.filter((c) => c.status === 'emerging' || c.status === 'growing')
   const readyDocuments = snapshot.documents.filter((d) => d.status === 'ready')
+  const activeConversations = conversations.slice(0, RECENT_LIST_LIMIT)
+
+  const taggedNoteIds = await listTaggedNoteIds(allNotes.map((n) => n.id))
+
+  const intelligenceItems = computeWorkspaceIntelligence({
+    documents,
+    notes: allNotes,
+    knowledgeNodes: snapshot.concepts,
+    edges: snapshot.edges,
+    collections,
+    activeConversations,
+    currentUserId: commandContext.userId,
+  })
+
+  const health = computeWorkspaceHealth({
+    documents,
+    notes: allNotes,
+    taggedNoteIds,
+    knowledgeNodes: snapshot.concepts,
+    edges: snapshot.edges,
+    collections,
+    readDocumentCount: readyDocuments.filter((d) => d.hasReadingProgress).length,
+    totalReadyDocumentCount: readyDocuments.length,
+  })
 
   return {
     report,
@@ -82,7 +122,9 @@ export async function buildWorkspaceHubState(workspaceId: string, commandContext
     documentRelationshipCount: snapshot.edges.length,
     readDocumentCount: readyDocuments.filter((d) => d.hasReadingProgress).length,
     totalReadyDocumentCount: readyDocuments.length,
-    recentNotes,
-    activeConversations: conversations.slice(0, RECENT_LIST_LIMIT),
+    recentNotes: allNotes.slice(0, RECENT_LIST_LIMIT),
+    activeConversations,
+    intelligenceItems,
+    health,
   }
 }

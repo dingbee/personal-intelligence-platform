@@ -8,6 +8,7 @@ import { buildWorkspaceSwitchCommands } from '@/modules/commands/commands/worksp
 import { buildContinueReadingCommand } from '@/modules/commands/commands/readerCommands'
 import { buildAskNovaQueryCommand } from '@/modules/commands/commands/aiCommands'
 import { buildSearchQueryCommand } from '@/modules/commands/commands/searchCommands'
+import { useWorkspaceRecommendations } from '@/modules/intelligence/recommendations/hooks/useWorkspaceRecommendations'
 import type { Command } from '@/modules/commands/types'
 
 /**
@@ -35,6 +36,7 @@ export function NovaCommandBar({
   const context = useCommandContext()
   const actions = useCommandActions({ onOpenQuickCapture })
   const { workspaces } = useWorkspace()
+  const recommendations = useWorkspaceRecommendations()
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -56,13 +58,25 @@ export function NovaCommandBar({
       ...buildWorkspaceSwitchCommands(workspaces, context),
       ...([buildContinueReadingCommand(context)].filter(Boolean) as Command[]),
     ]
+    // UX-15.3 Phase 4 — "Suggested for you" recommendations join the same
+    // pool as ordinary commands (deduped by id, since e.g. the
+    // continue-reading recommendation and buildContinueReadingCommand
+    // above can be the exact same command). No separate UI section: the
+    // palette already has one list, ranked by filterCommands the same
+    // way every other entry is.
+    const poolIds = new Set(pool.map((command) => command.id))
+    for (const recommendation of recommendations) {
+      if (poolIds.has(recommendation.command.id)) continue
+      pool.push(recommendation.command)
+      poolIds.add(recommendation.command.id)
+    }
     const filtered = filterCommands({ commands: pool, query, context })
     if (!trimmed) return filtered
     // The two "smart" actions always trail the list when there's a typed
     // query — they're always a valid match for whatever was typed, so
     // ranking them against the static pool would be meaningless.
     return [...filtered, buildAskNovaQueryCommand(trimmed), buildSearchQueryCommand(trimmed)]
-  }, [query, workspaces, context])
+  }, [query, workspaces, context, recommendations])
 
   useEffect(() => {
     setSelectedIndex(0)

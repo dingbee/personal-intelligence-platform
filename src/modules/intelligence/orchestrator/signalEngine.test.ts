@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectOrchestratorSignals } from '@/modules/intelligence/orchestrator/signalEngine'
+import { detectOrchestratorSignals, hasMemoryNeedingReview } from '@/modules/intelligence/orchestrator/signalEngine'
 import type { AiMemory } from '@/shared/types/database'
 
 function makeMemory(overrides: Partial<AiMemory> & { id: string }): AiMemory {
@@ -113,5 +113,24 @@ describe('detectOrchestratorSignals', () => {
       userQuery: 'More detail on marketing please',
     })
     expect(signals.some((s) => s.type === 'conversation_drift')).toBe(false)
+  })
+})
+
+describe('hasMemoryNeedingReview', () => {
+  it('is false when there is nothing to review', () => {
+    expect(hasMemoryNeedingReview([])).toBe(false)
+  })
+
+  it('is true for an unreviewed conversation-sourced memory', () => {
+    const memory = makeMemory({ id: 'm1', source: 'conversation', created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z' })
+    expect(hasMemoryNeedingReview([memory])).toBe(true)
+  })
+
+  it('is true for a contradictory pair even with no unreviewed memory', () => {
+    const memories: AiMemory[] = [
+      makeMemory({ id: 'm1', content: 'User prefers dark mode interfaces.', updated_at: '2026-01-02T00:00:00.000Z' }),
+      makeMemory({ id: 'm2', content: 'User dislikes dark mode interfaces.', updated_at: '2026-01-02T00:00:00.000Z' }),
+    ]
+    expect(hasMemoryNeedingReview(memories)).toBe(true)
   })
 })

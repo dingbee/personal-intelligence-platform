@@ -29,6 +29,7 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
 import { StatCard } from '@/shared/components/ui/surface/StatCard'
+import { SuggestedForYou } from '@/modules/intelligence/recommendations/components/SuggestedForYou'
 
 type TypeFilter = 'all' | KnowledgeNodeType
 
@@ -102,6 +103,8 @@ export function KnowledgeExplorerPage() {
         title="Knowledge Explorer"
         description="Every concept and entity your AI has extracted, how it connects, and where it came from."
       />
+
+      <SuggestedForYou />
 
       <InsightPanel
         title="Knowledge Intelligence"

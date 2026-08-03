@@ -20,3 +20,11 @@ export async function listTagsForNote(noteId: string): Promise<Tag[]> {
   if (error) throw error
   return (data as unknown as { tags: Tag }[]).map((row) => row.tags)
 }
+
+/** UX-15.3 — bulk variant of listTagsForNote for a "how many of these notes are tagged" count (Workspace Health's untagged-notes indicator), mirroring listKnowledgeNodeSourcesForNodes's own bulk-lookup-for-a-list-of-ids pattern. Returns just the set of tagged note ids — callers don't need which tags. */
+export async function listTaggedNoteIds(noteIds: string[]): Promise<Set<string>> {
+  if (noteIds.length === 0) return new Set()
+  const { data, error } = await supabase.from('note_tags').select('note_id').in('note_id', noteIds)
+  if (error) throw error
+  return new Set(data.map((row) => row.note_id as string))
+}
