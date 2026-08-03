@@ -10,6 +10,7 @@ import {
 import { useKnowledgeNodeDetails } from '@/modules/knowledge-intelligence/hooks/useKnowledgeNodeDetails'
 import { ImportKnowledgeNodePackageDialog } from '@/modules/knowledge-exchange/components/ImportKnowledgeNodePackageDialog'
 import { ImportKnowledgeLinkPackageDialog } from '@/modules/knowledge-exchange/components/ImportKnowledgeLinkPackageDialog'
+import { ImportKnowledgeCollectionPackageDialog } from '@/modules/knowledge-exchange/components/ImportKnowledgeCollectionPackageDialog'
 import { useGraphInteractionState } from '@/modules/knowledge/hooks/useGraphInteractionState'
 import { GraphIntelligencePanel } from '@/modules/knowledge/components/GraphIntelligencePanel'
 import { InteractiveConceptGraph } from '@/modules/knowledge/components/InteractiveConceptGraph'
@@ -66,6 +67,7 @@ export function KnowledgeExplorerPage() {
   const [clusterFilter, setClusterFilter] = useState<{ label: string; nodeIds: string[] } | null>(null)
   const [importNodeDialogOpen, setImportNodeDialogOpen] = useState(false)
   const [importLinkDialogOpen, setImportLinkDialogOpen] = useState(false)
+  const [importCollectionDialogOpen, setImportCollectionDialogOpen] = useState(false)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -114,6 +116,10 @@ export function KnowledgeExplorerPage() {
             {/* UX-14.5.10.4 — Knowledge Link import, same page-level placement. */}
             <Button variant="secondary" onClick={() => setImportLinkDialogOpen(true)}>
               Import Link
+            </Button>
+            {/* UX-14.5.10.6 — Knowledge Collection import, the final Knowledge Exchange package type, same page-level placement. */}
+            <Button variant="secondary" onClick={() => setImportCollectionDialogOpen(true)}>
+              Import Collection
             </Button>
           </div>
         }
@@ -259,6 +265,7 @@ export function KnowledgeExplorerPage() {
 
       <ImportKnowledgeNodePackageDialog open={importNodeDialogOpen} onClose={() => setImportNodeDialogOpen(false)} />
       <ImportKnowledgeLinkPackageDialog open={importLinkDialogOpen} onClose={() => setImportLinkDialogOpen(false)} />
+      <ImportKnowledgeCollectionPackageDialog open={importCollectionDialogOpen} onClose={() => setImportCollectionDialogOpen(false)} />
     </div>
   )
 }

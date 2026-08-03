@@ -51,7 +51,17 @@ function readDeclaredUncompressedSize(entry: JSZip.JSZipObject): number | null {
   return typeof internal?.uncompressedSize === 'number' ? internal.uncompressedSize : null
 }
 
-function validateManifestShape(
+/**
+ * Exported (not just used internally by `parseDocumentPackageZip` below) so
+ * Collection Exchange (UX-14.5.10.6) can validate a `document` member's
+ * JSON manifest half against this exact same shape check without
+ * duplicating it — a Collection package embeds a Document member's
+ * manifest directly as JSON and its archive bytes as a separate nested
+ * zip entry (see `collectionPackageArchive.ts`), so it needs this
+ * manifest-shape check on its own, independent of the full
+ * zip-loading/CRC pipeline below.
+ */
+export function validateDocumentPackageManifestShape(
   input: unknown,
 ): { valid: true; manifest: DocumentPackageManifest } | { valid: false; issues: PackageValidationIssue[] } {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
@@ -204,7 +214,7 @@ export async function parseDocumentPackageZip(zipInput: Blob): Promise<DocumentP
     return { valid: false, issues: [issue('malformed_json', "This package's manifest isn't valid JSON.")] }
   }
 
-  const manifestResult = validateManifestShape(manifestJson)
+  const manifestResult = validateDocumentPackageManifestShape(manifestJson)
   if (!manifestResult.valid) return manifestResult
 
   return { valid: true, package: { manifest: manifestResult.manifest, zip: verifiedZip } }
