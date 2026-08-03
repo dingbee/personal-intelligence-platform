@@ -29,6 +29,7 @@ import { ImageReaderPage } from '@/modules/assets/pages/ImageReaderPage'
 import { ExecutiveDashboardPage } from '@/modules/intelligence/dashboard/pages/ExecutiveDashboardPage'
 import { WorkspaceEvolutionPage } from '@/modules/evolution/pages/WorkspaceEvolutionPage'
 import { WorkspaceIntelligenceHubPage } from '@/modules/hub/pages/WorkspaceIntelligenceHubPage'
+import { ExportCenterPage } from '@/modules/export/pages/ExportCenterPage'
 import { HomeRedirect } from '@/app/HomeRedirect'
 
 export const router = createBrowserRouter([
@@ -75,6 +76,7 @@ export const router = createBrowserRouter([
       { path: 'knowledge/nodes/:nodeId', element: <KnowledgeNodeDetailPage /> },
       { path: 'knowledge/collections', element: <KnowledgeCollectionsPage /> },
       { path: 'knowledge/collections/:collectionId', element: <KnowledgeCollectionDetailPage /> },
+      { path: 'knowledge/export', element: <ExportCenterPage /> },
       { path: 'search', element: <SearchPage /> },
       { path: 'chat', element: <ChatPage /> },
       { path: 'settings', element: <SettingsPage /> },

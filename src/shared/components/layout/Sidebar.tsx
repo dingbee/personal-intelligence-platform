@@ -9,6 +9,7 @@ const navItems = [
   { to: '/evolution', label: 'Evolution' },
   { to: '/library', label: 'Library' },
   { to: '/knowledge', label: 'Knowledge' },
+  { to: '/knowledge/export', label: 'Export Center' },
   { to: '/notes', label: 'Notes' },
   { to: '/search', label: 'Search' },
   { to: '/chat', label: 'Chat' },

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { useImportKnowledgeNodePackage } from '@/modules/knowledge-exchange/hooks/useImportKnowledgeNodePackage'
@@ -7,6 +7,7 @@ import type { KnowledgeNodePackage } from '@/modules/knowledge-exchange/knowledg
 import type { ImportKnowledgeNodePackageResult } from '@/modules/knowledge-exchange/knowledge-nodes/importKnowledgeNodePackage'
 import type { PackageValidationIssue } from '@/modules/knowledge-exchange/packages/PackageValidator'
 import { Button } from '@/shared/components/ui/Button'
+import { Dialog } from '@/shared/components/ui/Dialog'
 
 export interface ImportKnowledgeNodePackageDialogProps {
   open: boolean
@@ -24,7 +25,6 @@ export interface ImportKnowledgeNodePackageDialogProps {
  * user-visible outcome worth naming, not silently identical to a create.
  */
 export function ImportKnowledgeNodePackageDialog({ open, onClose }: ImportKnowledgeNodePackageDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const { workspaces, currentWorkspaceId } = useWorkspace()
   const importPackage = useImportKnowledgeNodePackage()
 
@@ -33,13 +33,6 @@ export function ImportKnowledgeNodePackageDialog({ open, onClose }: ImportKnowle
   const [issues, setIssues] = useState<PackageValidationIssue[]>([])
   const [targetWorkspaceId, setTargetWorkspaceId] = useState<string | null>(currentWorkspaceId)
   const [importResult, setImportResult] = useState<ImportKnowledgeNodePackageResult | null>(null)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
-  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -74,12 +67,7 @@ export function ImportKnowledgeNodePackageDialog({ open, onClose }: ImportKnowle
   }
 
   return (
-    <dialog
-      ref={dialogRef}
-      onCancel={onClose}
-      onClose={onClose}
-      className="w-full max-w-lg rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] p-6 shadow-floating backdrop:bg-black/30"
-    >
+    <Dialog open={open} onClose={onClose}>
       {importResult ? (
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">
@@ -184,6 +172,6 @@ export function ImportKnowledgeNodePackageDialog({ open, onClose }: ImportKnowle
           </div>
         </div>
       )}
-    </dialog>
+    </Dialog>
   )
 }

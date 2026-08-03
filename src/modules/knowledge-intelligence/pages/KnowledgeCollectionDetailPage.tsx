@@ -18,6 +18,7 @@ import { Button } from '@/shared/components/ui/Button'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { SharingBadge } from '@/shared/components/collaboration/SharingBadge'
 import { OwnershipLine } from '@/shared/components/collaboration/OwnershipLine'
+import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 
 const TYPE_LABEL: Record<string, string> = {
   document: 'Documents',
@@ -35,6 +36,7 @@ export function KnowledgeCollectionDetailPage() {
   const { user } = useAuth()
   const { data: role } = useWorkspaceRole(collection?.workspace_id ?? null)
   const { isShared, lookup } = useWorkspaceMemberDirectory(collection?.workspace_id ?? null)
+  const { createConversationWithQuery } = useCommandActions()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
 
@@ -99,6 +101,16 @@ export function KnowledgeCollectionDetailPage() {
                 Markdown, or Word. */}
             <Button variant="secondary" onClick={() => setExportDialogOpen(true)}>
               Save As…
+            </Button>
+            {/* UX-15.1 — converges "Ask AI" onto the one mechanism/label
+                every other object type's own entry point uses
+                (`createConversationWithQuery`, same as Assets/Notes/
+                Knowledge Nodes). */}
+            <Button
+              variant="secondary"
+              onClick={() => void createConversationWithQuery(`I'd like to talk about a collection called "${collection.name}".`)}
+            >
+              Ask NOVA about this collection
             </Button>
             {canDelete && (
               <Button variant="secondary" onClick={() => setConfirmingDelete(true)}>

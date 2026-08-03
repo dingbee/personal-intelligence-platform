@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { useImportNotePackage } from '@/modules/knowledge-exchange/hooks/useImportNotePackage'
@@ -6,6 +6,7 @@ import { parseNotePackage } from '@/modules/knowledge-exchange/notes/validateNot
 import type { NotePackage } from '@/modules/knowledge-exchange/notes/notePackageTypes'
 import type { PackageValidationIssue } from '@/modules/knowledge-exchange/packages/PackageValidator'
 import { Button } from '@/shared/components/ui/Button'
+import { Dialog } from '@/shared/components/ui/Dialog'
 
 export interface ImportNotePackageDialogProps {
   open: boolean
@@ -21,7 +22,6 @@ export interface ImportNotePackageDialogProps {
  * file is the more honest MVP than adding a second input mode.
  */
 export function ImportNotePackageDialog({ open, onClose }: ImportNotePackageDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const { workspaces, currentWorkspaceId } = useWorkspace()
   const importPackage = useImportNotePackage()
 
@@ -30,13 +30,6 @@ export function ImportNotePackageDialog({ open, onClose }: ImportNotePackageDial
   const [issues, setIssues] = useState<PackageValidationIssue[]>([])
   const [targetWorkspaceId, setTargetWorkspaceId] = useState<string | null>(currentWorkspaceId)
   const [importedNoteId, setImportedNoteId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
-  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -71,12 +64,7 @@ export function ImportNotePackageDialog({ open, onClose }: ImportNotePackageDial
   }
 
   return (
-    <dialog
-      ref={dialogRef}
-      onCancel={onClose}
-      onClose={onClose}
-      className="w-full max-w-lg rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] p-6 shadow-floating backdrop:bg-black/30"
-    >
+    <Dialog open={open} onClose={onClose}>
       {importedNoteId ? (
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">Note imported</h2>
@@ -170,6 +158,6 @@ export function ImportNotePackageDialog({ open, onClose }: ImportNotePackageDial
           </div>
         </div>
       )}
-    </dialog>
+    </Dialog>
   )
 }

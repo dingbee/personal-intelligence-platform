@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { useImportDocumentPackage } from '@/modules/knowledge-exchange/hooks/useImportDocumentPackage'
@@ -8,6 +8,7 @@ import type { PackageValidationIssue } from '@/modules/knowledge-exchange/packag
 import { fileTypeLabel, formatFileSize } from '@/modules/library/utils/fileTypes'
 import { ProcessingStatusBadge } from '@/modules/processing/components/ProcessingStatusBadge'
 import { Button } from '@/shared/components/ui/Button'
+import { Dialog } from '@/shared/components/ui/Dialog'
 
 export interface ImportDocumentPackageDialogProps {
   open: boolean
@@ -39,7 +40,6 @@ export interface ImportDocumentPackageDialogProps {
  * finishes regenerating its chunks/embeddings/extraction metadata.
  */
 export function ImportDocumentPackageDialog({ open, onClose }: ImportDocumentPackageDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const { workspaces, currentWorkspaceId } = useWorkspace()
   const importPackage = useImportDocumentPackage()
 
@@ -48,13 +48,6 @@ export function ImportDocumentPackageDialog({ open, onClose }: ImportDocumentPac
   const [issues, setIssues] = useState<PackageValidationIssue[]>([])
   const [targetWorkspaceId, setTargetWorkspaceId] = useState<string | null>(currentWorkspaceId)
   const [importedDocumentId, setImportedDocumentId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
-  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -88,12 +81,7 @@ export function ImportDocumentPackageDialog({ open, onClose }: ImportDocumentPac
   }
 
   return (
-    <dialog
-      ref={dialogRef}
-      onCancel={onClose}
-      onClose={onClose}
-      className="w-full max-w-lg rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] p-6 shadow-floating backdrop:bg-black/30"
-    >
+    <Dialog open={open} onClose={onClose}>
       {importedDocumentId ? (
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">Document imported</h2>
@@ -196,6 +184,6 @@ export function ImportDocumentPackageDialog({ open, onClose }: ImportDocumentPac
           </div>
         </div>
       )}
-    </dialog>
+    </Dialog>
   )
 }

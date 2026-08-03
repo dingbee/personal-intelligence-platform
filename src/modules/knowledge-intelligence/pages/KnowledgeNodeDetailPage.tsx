@@ -21,6 +21,7 @@ import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Button } from '@/shared/components/ui/Button'
 import { formatRelativeTime } from '@/shared/utils/formatRelativeTime'
 import { downloadTextFile } from '@/shared/utils/downloadTextFile'
+import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 
 const SOURCE_TYPE_LABEL: Record<string, string> = { document: 'Documents', note: 'Notes', conversation: 'Conversations' }
 
@@ -37,6 +38,7 @@ export function KnowledgeNodeDetailPage() {
   const { nodeId } = useParams<{ nodeId: string }>()
   const { data: evidence, isLoading, isError } = useKnowledgeNodeEvidence(nodeId!)
   const generateBriefing = useGenerateBriefing(nodeId!)
+  const { createConversationWithQuery } = useCommandActions()
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
 
   // UX-14.5.10.4 — the one place this package type does I/O before
@@ -114,22 +116,30 @@ export function KnowledgeNodeDetailPage() {
         <Button variant="secondary" loading={generateBriefing.isPending} onClick={() => generateBriefing.mutate()}>
           Generate briefing
         </Button>
+        {/* UX-15.1 — renamed from "Export knowledge package" to
+            distinguish it from "Save As…" below: this is the older,
+            separately-shipped Knowledge Actions v1 briefing (always
+            markdown, always this exact evidence structure), not a
+            format choice. Kept functionally unchanged. */}
         <Button
           variant="secondary"
           onClick={() => downloadTextFile(knowledgeExportFilename(node.title), buildKnowledgeExportMarkdown(evidence))}
         >
-          Export knowledge package
+          Export Briefing (Markdown)
         </Button>
-        {/* UX-14.5.11 — replaces the previous single-format NOVA-package-only
-            "Export" button with the unified Save As / Download experience:
-            NOVA Package (this node's existing, unmodified
-            `exportKnowledgeNodePackage`), PDF, Markdown, or Word. The
-            "Export knowledge package" markdown button above is a distinct,
-            separately-shipped Knowledge Actions v1 feature, kept unchanged. */}
+        {/* UX-14.5.11 — the unified Save As / Download experience: NOVA
+            Package (this node's existing, unmodified
+            `exportKnowledgeNodePackage`), PDF, Markdown, or Word. */}
         <Button variant="secondary" onClick={() => setExportDialogOpen(true)}>
           Save As…
         </Button>
         <AddToCollectionButton itemType="knowledge_node" itemId={node.id} />
+        {/* UX-15.1 — converges "Ask AI" onto the one mechanism/label
+            every other object type's own entry point uses
+            (`createConversationWithQuery`, same as Assets/Notes). */}
+        <Button variant="ghost" onClick={() => void createConversationWithQuery(`I'd like to talk about a concept called "${node.title}".`)}>
+          Ask NOVA about this concept
+        </Button>
         {generateBriefing.isSuccess && generateBriefing.data && (
           <Link to={`/notes/${generateBriefing.data.id}`} className="text-sm text-[var(--color-accent)] hover:underline">
             Briefing saved as a note →
@@ -178,7 +188,10 @@ export function KnowledgeNodeDetailPage() {
                     onClick={() => exportLink.mutate(related.nodeId)}
                     className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] disabled:opacity-50"
                   >
-                    Export
+                    {/* UX-15.1 — distinguishes this single-relationship
+                        Knowledge Link package download from the node's own
+                        "Save As…"/"Export Briefing" actions above. */}
+                    Export relationship
                   </button>
                 </span>
               </li>

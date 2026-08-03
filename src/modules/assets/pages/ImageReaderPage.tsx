@@ -7,9 +7,11 @@ import { useSignedAssetUrl } from '@/modules/assets/hooks/useSignedAssetUrl'
 import { createNote } from '@/modules/notes/api/notes'
 import { linkNoteToAsset } from '@/modules/notes/api/knowledgeLinks'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
-import { exportAssetPackage, assetPackageFilename } from '@/modules/knowledge-exchange/assets/exportAssetPackage'
+import { exportAssetPackage } from '@/modules/knowledge-exchange/assets/exportAssetPackage'
 import { fetchAssetOriginalAsBase64 } from '@/modules/knowledge-exchange/assets/assetFileTransfer'
-import { downloadTextFile } from '@/shared/utils/downloadTextFile'
+import { buildAssetExportContent } from '@/modules/export/content/assetExportContent'
+import { KnowledgeExportDialog } from '@/modules/export/components/KnowledgeExportDialog'
+import { exportFilename } from '@/modules/export/types'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { formatFileSize } from '@/modules/library/utils/fileTypes'
@@ -62,6 +64,7 @@ export function ImageReaderPage() {
   const [zoom, setZoom] = useState(1)
   const [renaming, setRenaming] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
 
   const saveAsNote = useMutation({
     mutationFn: async () => {
@@ -70,18 +73,6 @@ export function ImageReaderPage() {
       return note
     },
     onSuccess: (note) => navigate(`/notes/${note.id}`),
-  })
-
-  // UX-14.5.10.2 — the one place this package type does I/O before
-  // building its (otherwise pure/synchronous) package: fetch the
-  // original image's bytes via a signed URL, base64-encode them, then
-  // hand the already-fetched data to the pure exportAssetPackage.
-  const exportPackage = useMutation({
-    mutationFn: async () => {
-      const fileDataBase64 = await fetchAssetOriginalAsBase64(asset!)
-      return exportAssetPackage({ asset: asset!, fileDataBase64 })
-    },
-    onSuccess: (pkg) => downloadTextFile(assetPackageFilename(pkg.asset.title), JSON.stringify(pkg, null, 2), 'application/json'),
   })
 
   if (isLoading) {
@@ -234,14 +225,15 @@ export function ImageReaderPage() {
                     Save as Notes
                   </Button>
                   <AddToCollectionButton itemType="asset" itemId={asset.id} />
-                  <Button variant="secondary" loading={exportPackage.isPending} onClick={() => exportPackage.mutate()}>
-                    Export
+                  {/* UX-15.1 — replaces the previous single-format, `.json`-
+                      only Export button with the same unified Save As /
+                      Download experience every other object type already
+                      uses (UX-14.5.11/UX-14.5.12): NOVA Package (this
+                      image's existing, unmodified `exportAssetPackage`),
+                      PDF, Markdown, or Word. */}
+                  <Button variant="ghost" onClick={() => setExportDialogOpen(true)}>
+                    Save As…
                   </Button>
-                  {exportPackage.isError && (
-                    <p className="text-sm text-red-600">
-                      {exportPackage.error instanceof Error ? exportPackage.error.message : 'Failed to export this image.'}
-                    </p>
-                  )}
                   {canDelete && (
                     <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setConfirmingDelete(true)}>
                       Delete
@@ -264,6 +256,24 @@ export function ImageReaderPage() {
           setConfirmingDelete(false)
         }}
         onCancel={() => setConfirmingDelete(false)}
+      />
+
+      <KnowledgeExportDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        objectLabel="image"
+        request={{
+          content: buildAssetExportContent(asset),
+          titleForFilename: asset.title,
+          buildNovaPackage: async () => {
+            const fileDataBase64 = await fetchAssetOriginalAsBase64(asset)
+            const pkg = exportAssetPackage({ asset, fileDataBase64 })
+            return {
+              filename: exportFilename(asset.title, 'nova'),
+              blob: new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' }),
+            }
+          },
+        }}
       />
     </div>
   )

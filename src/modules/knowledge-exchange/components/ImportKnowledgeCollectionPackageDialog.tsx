@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { useImportKnowledgeCollectionPackage } from '@/modules/knowledge-exchange/hooks/useImportKnowledgeCollectionPackage'
@@ -8,6 +8,7 @@ import type { CollectionMemberEntry, CollectionMemberType } from '@/modules/know
 import type { ImportKnowledgeCollectionPackageResult, CollectionMemberImportOutcome } from '@/modules/knowledge-exchange/knowledge-collections/importKnowledgeCollectionPackage'
 import type { PackageValidationIssue } from '@/modules/knowledge-exchange/packages/PackageValidator'
 import { Button } from '@/shared/components/ui/Button'
+import { Dialog } from '@/shared/components/ui/Dialog'
 
 export interface ImportKnowledgeCollectionPackageDialogProps {
   open: boolean
@@ -56,7 +57,6 @@ function groupOutcomesByType(outcomes: CollectionMemberImportOutcome[]): [Collec
  * type — there is no longer an unsupported/skipped category.
  */
 export function ImportKnowledgeCollectionPackageDialog({ open, onClose }: ImportKnowledgeCollectionPackageDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const { workspaces, currentWorkspaceId } = useWorkspace()
   const importPackage = useImportKnowledgeCollectionPackage()
 
@@ -65,13 +65,6 @@ export function ImportKnowledgeCollectionPackageDialog({ open, onClose }: Import
   const [issues, setIssues] = useState<PackageValidationIssue[]>([])
   const [targetWorkspaceId, setTargetWorkspaceId] = useState<string | null>(currentWorkspaceId)
   const [importResult, setImportResult] = useState<ImportKnowledgeCollectionPackageResult | null>(null)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
-  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -105,12 +98,7 @@ export function ImportKnowledgeCollectionPackageDialog({ open, onClose }: Import
   }
 
   return (
-    <dialog
-      ref={dialogRef}
-      onCancel={onClose}
-      onClose={onClose}
-      className="w-full max-w-lg rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] p-6 shadow-floating backdrop:bg-black/30"
-    >
+    <Dialog open={open} onClose={onClose}>
       {importResult ? (
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">"{importResult.collection.name}" imported</h2>
@@ -257,6 +245,6 @@ export function ImportKnowledgeCollectionPackageDialog({ open, onClose }: Import
           </div>
         </div>
       )}
-    </dialog>
+    </Dialog>
   )
 }

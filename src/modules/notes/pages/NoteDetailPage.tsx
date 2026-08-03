@@ -16,6 +16,7 @@ import { OwnershipLine } from '@/shared/components/collaboration/OwnershipLine'
 import { NoteTagEditor } from '@/modules/notes/components/NoteTagEditor'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import { useDocuments } from '@/modules/library/hooks/useDocuments'
+import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -45,6 +46,7 @@ export function NoteDetailPage() {
   const { tags: noteTags } = useNoteTags(noteId!)
   const { data: documents = [] } = useDocuments({})
   const { data: relatedKnowledge = [] } = useRelatedKnowledge(noteId!)
+  const { createConversationWithQuery } = useCommandActions()
   const { data: workspaceRole } = useWorkspaceRole(note?.workspace_id ?? null)
   const { isShared, lookup } = useWorkspaceMemberDirectory(note?.workspace_id ?? null)
 
@@ -233,6 +235,12 @@ export function NoteDetailPage() {
                 `exportNotePackage`), PDF, Markdown, or Word. */}
             <Button variant="ghost" onClick={() => setExportDialogOpen(true)}>
               Save As…
+            </Button>
+            {/* UX-15.1 — converges "Ask AI" onto the one mechanism/label
+                every other object type's own entry point uses
+                (`createConversationWithQuery`, same as Assets). */}
+            <Button variant="ghost" onClick={() => void createConversationWithQuery(`I'd like to talk about a note called "${note.title}".`)}>
+              Ask NOVA about this note
             </Button>
           </div>
           {canDelete && (

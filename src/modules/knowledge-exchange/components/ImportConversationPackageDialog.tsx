@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { useImportConversationPackage } from '@/modules/knowledge-exchange/hooks/useImportConversationPackage'
@@ -6,6 +6,7 @@ import { parseConversationPackage } from '@/modules/knowledge-exchange/conversat
 import type { ConversationPackage } from '@/modules/knowledge-exchange/conversations/conversationPackageTypes'
 import type { PackageValidationIssue } from '@/modules/knowledge-exchange/packages/PackageValidator'
 import { Button } from '@/shared/components/ui/Button'
+import { Dialog } from '@/shared/components/ui/Dialog'
 
 export interface ImportConversationPackageDialogProps {
   open: boolean
@@ -22,7 +23,6 @@ export interface ImportConversationPackageDialogProps {
  * carry the original owner's identity (§7 of the discovery).
  */
 export function ImportConversationPackageDialog({ open, onClose }: ImportConversationPackageDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const { workspaces, currentWorkspaceId } = useWorkspace()
   const importPackage = useImportConversationPackage()
 
@@ -31,13 +31,6 @@ export function ImportConversationPackageDialog({ open, onClose }: ImportConvers
   const [issues, setIssues] = useState<PackageValidationIssue[]>([])
   const [targetWorkspaceId, setTargetWorkspaceId] = useState<string | null>(currentWorkspaceId)
   const [importedConversationId, setImportedConversationId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
-  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -72,12 +65,7 @@ export function ImportConversationPackageDialog({ open, onClose }: ImportConvers
   }
 
   return (
-    <dialog
-      ref={dialogRef}
-      onCancel={onClose}
-      onClose={onClose}
-      className="w-full max-w-lg rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] p-6 shadow-floating backdrop:bg-black/30"
-    >
+    <Dialog open={open} onClose={onClose}>
       {importedConversationId ? (
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">Conversation imported</h2>
@@ -172,6 +160,6 @@ export function ImportConversationPackageDialog({ open, onClose }: ImportConvers
           </div>
         </div>
       )}
-    </dialog>
+    </Dialog>
   )
 }

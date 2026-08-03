@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useDocument } from '@/modules/library/hooks/useDocument'
 import { useCollections } from '@/modules/library/hooks/useCollections'
@@ -18,9 +18,11 @@ import { DocumentTagEditor } from '@/modules/library/components/DocumentTagEdito
 import { CollectionMoveSelect } from '@/modules/library/components/CollectionMoveSelect'
 import { SpreadsheetSummaryCard } from '@/modules/library/components/SpreadsheetSummaryCard'
 import { fileTypeLabel, formatFileSize } from '@/modules/library/utils/fileTypes'
-import { exportDocumentPackage, documentPackageFilename } from '@/modules/knowledge-exchange/documents/exportDocumentPackage'
+import { exportDocumentPackage } from '@/modules/knowledge-exchange/documents/exportDocumentPackage'
 import { buildDocumentPackageZip, fetchDocumentOriginalFile } from '@/modules/knowledge-exchange/documents/documentPackageArchive'
-import { downloadBinaryFile } from '@/shared/utils/downloadBinaryFile'
+import { buildDocumentExportContent } from '@/modules/export/content/documentExportContent'
+import { KnowledgeExportDialog } from '@/modules/export/components/KnowledgeExportDialog'
+import { exportFilename } from '@/modules/export/types'
 import { resolveReaderMode } from '@/modules/reader/resolveReaderMode'
 import { getSpreadsheetAnalysis } from '@/modules/processing/api/extractionMetadata'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -51,21 +53,7 @@ export function DocumentDetailPage() {
 
   const [renaming, setRenaming] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-
-  // UX-14.5.10.3.2 — the one place this package type does I/O before
-  // building its (otherwise pure/synchronous) manifest: fetch the
-  // original file, then build the zip archive around it.
-  const exportPackage = useMutation({
-    mutationFn: async () => {
-      const originalFile = await fetchDocumentOriginalFile(document!)
-      const manifest = exportDocumentPackage({ document: document!, tags: document!.tags })
-      const zipBlob = await buildDocumentPackageZip(manifest, originalFile)
-      return { manifest, zipBlob }
-    },
-    onSuccess: async ({ manifest, zipBlob }) => {
-      downloadBinaryFile(documentPackageFilename(manifest.document.title), await zipBlob.arrayBuffer(), 'application/zip')
-    },
-  })
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
 
   if (isLoading) {
     return (
@@ -245,14 +233,14 @@ export function DocumentDetailPage() {
             </Link>
           )}
           <AddToCollectionButton itemType="document" itemId={document.id} />
-          <Button variant="secondary" loading={exportPackage.isPending} onClick={() => exportPackage.mutate()}>
-            Export
+          {/* UX-15.1 — replaces the previous single-format, `.zip`-only
+              Export button with the same unified Save As / Download
+              experience every other object type already uses (UX-14.5.11/
+              UX-14.5.12): NOVA Package (this document's existing,
+              unmodified `exportDocumentPackage`), PDF, Markdown, or Word. */}
+          <Button variant="ghost" onClick={() => setExportDialogOpen(true)}>
+            Save As…
           </Button>
-          {exportPackage.isError && (
-            <p className="text-sm text-red-600">
-              {exportPackage.error instanceof Error ? exportPackage.error.message : 'Failed to export this document.'}
-            </p>
-          )}
           {canDelete && (
             <Button
               variant="ghost"
@@ -278,6 +266,22 @@ export function DocumentDetailPage() {
           setConfirmingDelete(false)
         }}
         onCancel={() => setConfirmingDelete(false)}
+      />
+
+      <KnowledgeExportDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        objectLabel="document"
+        request={{
+          content: buildDocumentExportContent(document, metadata ?? null),
+          titleForFilename: document.title,
+          buildNovaPackage: async () => {
+            const originalFile = await fetchDocumentOriginalFile(document)
+            const manifest = exportDocumentPackage({ document, tags: document.tags })
+            const zipBlob = await buildDocumentPackageZip(manifest, originalFile)
+            return { filename: exportFilename(document.title, 'nova'), blob: zipBlob }
+          },
+        }}
       />
     </div>
   )

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { EXPORT_FORMAT_OPTIONS } from '@/modules/export/types'
 import type { ExportFormat } from '@/modules/export/types'
 import type { ExportRequest } from '@/modules/export/exportService'
 import { useExportDownload } from '@/modules/export/hooks/useExportDownload'
 import { Button } from '@/shared/components/ui/Button'
+import { Dialog } from '@/shared/components/ui/Dialog'
 
 export interface KnowledgeExportDialogProps {
   open: boolean
@@ -26,16 +27,8 @@ export interface KnowledgeExportDialogProps {
  * the same way a native OS "Save As" dialog closes once the file is saved.
  */
 export function KnowledgeExportDialog({ open, onClose, objectLabel, request }: KnowledgeExportDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const [format, setFormat] = useState<ExportFormat>('nova')
   const download = useExportDownload()
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
-  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -45,12 +38,7 @@ export function KnowledgeExportDialog({ open, onClose, objectLabel, request }: K
   }, [open])
 
   return (
-    <dialog
-      ref={dialogRef}
-      onCancel={onClose}
-      onClose={onClose}
-      className="w-full max-w-lg rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] p-6 shadow-floating backdrop:bg-black/30"
-    >
+    <Dialog open={open} onClose={onClose}>
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-[var(--color-ink)]">Download {objectLabel}</h2>
         <p className="text-sm text-[var(--color-ink-muted)]">Choose how you'd like to save this {objectLabel}.</p>
@@ -91,6 +79,6 @@ export function KnowledgeExportDialog({ open, onClose, objectLabel, request }: K
           </Button>
         </div>
       </div>
-    </dialog>
+    </Dialog>
   )
 }

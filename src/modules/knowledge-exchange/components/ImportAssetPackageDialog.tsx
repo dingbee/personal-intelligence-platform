@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { useImportAssetPackage } from '@/modules/knowledge-exchange/hooks/useImportAssetPackage'
@@ -6,6 +6,7 @@ import { parseAssetPackage } from '@/modules/knowledge-exchange/assets/validateA
 import type { AssetPackage } from '@/modules/knowledge-exchange/assets/assetPackageTypes'
 import type { PackageValidationIssue } from '@/modules/knowledge-exchange/packages/PackageValidator'
 import { Button } from '@/shared/components/ui/Button'
+import { Dialog } from '@/shared/components/ui/Dialog'
 
 export interface ImportAssetPackageDialogProps {
   open: boolean
@@ -23,7 +24,6 @@ export interface ImportAssetPackageDialogProps {
  * Nodes).
  */
 export function ImportAssetPackageDialog({ open, onClose }: ImportAssetPackageDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const { workspaces, currentWorkspaceId } = useWorkspace()
   const importPackage = useImportAssetPackage()
 
@@ -32,13 +32,6 @@ export function ImportAssetPackageDialog({ open, onClose }: ImportAssetPackageDi
   const [issues, setIssues] = useState<PackageValidationIssue[]>([])
   const [targetWorkspaceId, setTargetWorkspaceId] = useState<string | null>(currentWorkspaceId)
   const [importedAssetId, setImportedAssetId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
-  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -73,12 +66,7 @@ export function ImportAssetPackageDialog({ open, onClose }: ImportAssetPackageDi
   }
 
   return (
-    <dialog
-      ref={dialogRef}
-      onCancel={onClose}
-      onClose={onClose}
-      className="w-full max-w-lg rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] p-6 shadow-floating backdrop:bg-black/30"
-    >
+    <Dialog open={open} onClose={onClose}>
       {importedAssetId ? (
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">Image imported</h2>
@@ -172,6 +160,6 @@ export function ImportAssetPackageDialog({ open, onClose }: ImportAssetPackageDi
           </div>
         </div>
       )}
-    </dialog>
+    </Dialog>
   )
 }
