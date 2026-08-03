@@ -106,16 +106,16 @@ export function ImportKnowledgeNodePackageDialog({ open, onClose }: ImportKnowle
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">Import a knowledge node package</h2>
           <p className="text-sm text-[var(--color-ink-muted)]">
-            Choose a <code>.json</code> file exported from a concept or entity's Export button. It becomes a brand-new
-            node in your account, or is matched to one you already have with the same title — it never overwrites an
-            existing node's content.
+            Choose a <code>.nova</code> (or older <code>.json</code>) file exported from a concept or entity's Save As
+            dialog. It becomes a brand-new node in your account, or is matched to one you already have with the same
+            title — it never overwrites an existing node's content.
           </p>
 
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-[var(--color-ink)]">Package file</span>
             <input
               type="file"
-              accept="application/json,.json"
+              accept="application/json,.json,.nova"
               onChange={(event) => void handleFileChange(event)}
               className="rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] px-2.5 py-1.5 text-sm text-[var(--color-ink)] shadow-inset outline-none"
             />

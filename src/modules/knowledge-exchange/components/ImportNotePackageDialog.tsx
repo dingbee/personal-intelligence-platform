@@ -94,15 +94,15 @@ export function ImportNotePackageDialog({ open, onClose }: ImportNotePackageDial
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">Import a note package</h2>
           <p className="text-sm text-[var(--color-ink-muted)]">
-            Choose a <code>.json</code> file exported from a note's Export button. It becomes a brand-new note in your
-            account — it never overwrites anything you already have.
+            Choose a <code>.nova</code> (or older <code>.json</code>) file exported from a note's Save As dialog. It
+            becomes a brand-new note in your account — it never overwrites anything you already have.
           </p>
 
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-[var(--color-ink)]">Package file</span>
             <input
               type="file"
-              accept="application/json,.json"
+              accept="application/json,.json,.nova"
               onChange={(event) => void handleFileChange(event)}
               className="rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] px-2.5 py-1.5 text-sm text-[var(--color-ink)] shadow-inset outline-none"
             />

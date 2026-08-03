@@ -1,13 +1,17 @@
 import { useMutation } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useKnowledgeNodeEvidence } from '@/modules/knowledge-intelligence/hooks/useKnowledgeNodeEvidence'
 import { useGenerateBriefing } from '@/modules/knowledge-intelligence/hooks/useGenerateBriefing'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import type { EvidenceItem } from '@/modules/knowledge-intelligence/api/knowledgeNodeEvidence'
 import { buildKnowledgeExportMarkdown, knowledgeExportFilename } from '@/modules/knowledge-intelligence/api/knowledgeExportMarkdown'
-import { exportKnowledgeNodePackage, knowledgeNodePackageFilename } from '@/modules/knowledge-exchange/knowledge-nodes/exportKnowledgeNodePackage'
+import { exportKnowledgeNodePackage } from '@/modules/knowledge-exchange/knowledge-nodes/exportKnowledgeNodePackage'
 import { exportKnowledgeLinkPackage, knowledgeLinkPackageFilename } from '@/modules/knowledge-exchange/knowledge-links/exportKnowledgeLinkPackage'
 import { fetchKnowledgeLinkForExport } from '@/modules/knowledge-exchange/knowledge-links/knowledgeLinkFetch'
+import { buildKnowledgeNodeExportContent } from '@/modules/export/content/knowledgeNodeExportContent'
+import { KnowledgeExportDialog } from '@/modules/export/components/KnowledgeExportDialog'
+import { exportFilename } from '@/modules/export/types'
 import { SourceReference } from '@/shared/components/knowledge/SourceReference'
 import { ConfidenceBadge } from '@/shared/components/knowledge/ConfidenceBadge'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
@@ -33,6 +37,7 @@ export function KnowledgeNodeDetailPage() {
   const { nodeId } = useParams<{ nodeId: string }>()
   const { data: evidence, isLoading, isError } = useKnowledgeNodeEvidence(nodeId!)
   const generateBriefing = useGenerateBriefing(nodeId!)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
 
   // UX-14.5.10.4 — the one place this package type does I/O before
   // building its (otherwise pure/synchronous) package: fetch the
@@ -115,22 +120,14 @@ export function KnowledgeNodeDetailPage() {
         >
           Export knowledge package
         </Button>
-        {/* UX-14.5.10.1 — distinct from the markdown export above: this is a
-            versioned, machine-readable JSON package the Knowledge Exchange
-            Import flow can read back in, following the exact Notes
-            export/import pattern (UX-14.5.9). The markdown export stays
-            read-only prose; this one round-trips. */}
-        <Button
-          variant="secondary"
-          onClick={() =>
-            downloadTextFile(
-              knowledgeNodePackageFilename(node.title),
-              JSON.stringify(exportKnowledgeNodePackage(node), null, 2),
-              'application/json',
-            )
-          }
-        >
-          Export
+        {/* UX-14.5.11 — replaces the previous single-format NOVA-package-only
+            "Export" button with the unified Save As / Download experience:
+            NOVA Package (this node's existing, unmodified
+            `exportKnowledgeNodePackage`), PDF, Markdown, or Word. The
+            "Export knowledge package" markdown button above is a distinct,
+            separately-shipped Knowledge Actions v1 feature, kept unchanged. */}
+        <Button variant="secondary" onClick={() => setExportDialogOpen(true)}>
+          Save As…
         </Button>
         <AddToCollectionButton itemType="knowledge_node" itemId={node.id} />
         {generateBriefing.isSuccess && generateBriefing.data && (
@@ -216,6 +213,20 @@ export function KnowledgeNodeDetailPage() {
           description="This concept hasn't been linked to any documents, notes, or conversations yet."
         />
       )}
+
+      <KnowledgeExportDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        objectLabel="concept"
+        request={{
+          content: buildKnowledgeNodeExportContent(evidence),
+          titleForFilename: node.title,
+          buildNovaPackage: async () => ({
+            filename: exportFilename(node.title, 'nova'),
+            blob: new Blob([JSON.stringify(exportKnowledgeNodePackage(node), null, 2)], { type: 'application/json' }),
+          }),
+        }}
+      />
     </div>
   )
 }

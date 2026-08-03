@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
 import { useKnowledgeCollection } from '@/modules/knowledge-intelligence/hooks/useKnowledgeCollection'
 import type { EvidenceItem } from '@/modules/knowledge-intelligence/api/knowledgeNodeEvidence'
 import type { CollectionItemType } from '@/modules/knowledge-intelligence/api/knowledgeCollections'
@@ -8,8 +7,9 @@ import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
 import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
 import { buildKnowledgeCollectionExportPackage } from '@/modules/knowledge-exchange/knowledge-collections/buildKnowledgeCollectionExportPackage'
-import { knowledgeCollectionPackageFilename } from '@/modules/knowledge-exchange/knowledge-collections/exportKnowledgeCollectionPackage'
-import { downloadBinaryFile } from '@/shared/utils/downloadBinaryFile'
+import { buildCollectionExportContent } from '@/modules/export/content/collectionExportContent'
+import { KnowledgeExportDialog } from '@/modules/export/components/KnowledgeExportDialog'
+import { exportFilename } from '@/modules/export/types'
 import { SourceReference } from '@/shared/components/knowledge/SourceReference'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -36,18 +36,7 @@ export function KnowledgeCollectionDetailPage() {
   const { data: role } = useWorkspaceRole(collection?.workspace_id ?? null)
   const { isShared, lookup } = useWorkspaceMemberDirectory(collection?.workspace_id ?? null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-
-  // UX-14.5.10.6 — the one place this package type does I/O before
-  // building its (otherwise pure/synchronous) manifest: fetch every
-  // member's own full data (dispatching each to that type's own existing
-  // exporter) and assemble the zip, mirroring how the Document/Asset
-  // Export buttons already do their own async fetch-then-build work.
-  const exportPackage = useMutation({
-    mutationFn: () => buildKnowledgeCollectionExportPackage(collectionId!),
-    onSuccess: async ({ manifest, zipBlob }) => {
-      downloadBinaryFile(knowledgeCollectionPackageFilename(manifest.collection.name), await zipBlob.arrayBuffer(), 'application/zip')
-    },
-  })
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
 
   if (isLoading) {
     return (
@@ -103,11 +92,13 @@ export function KnowledgeCollectionDetailPage() {
         description={collection.description ?? undefined}
         action={
           <div className="flex items-center gap-2">
-            {/* UX-14.5.10.6 — the final Knowledge Exchange package type: a
-                collection travels as a single .zip embedding every one of
-                its members' own already-existing package formats. */}
-            <Button variant="secondary" loading={exportPackage.isPending} onClick={() => exportPackage.mutate()}>
-              Export collection
+            {/* UX-14.5.11 — replaces the previous NOVA-package-only "Export
+                collection" button with the unified Save As / Download
+                experience: NOVA Package (this collection's existing,
+                unmodified `buildKnowledgeCollectionExportPackage`), PDF,
+                Markdown, or Word. */}
+            <Button variant="secondary" onClick={() => setExportDialogOpen(true)}>
+              Save As…
             </Button>
             {canDelete && (
               <Button variant="secondary" onClick={() => setConfirmingDelete(true)}>
@@ -117,12 +108,6 @@ export function KnowledgeCollectionDetailPage() {
           </div>
         }
       />
-
-      {exportPackage.isError && (
-        <p className="text-sm text-red-600">
-          {exportPackage.error instanceof Error ? exportPackage.error.message : 'Failed to export this collection.'}
-        </p>
-      )}
 
       {isShared && (
         <OwnershipLine
@@ -179,6 +164,20 @@ export function KnowledgeCollectionDetailPage() {
           remove.mutate(undefined, { onSuccess: () => navigate('/knowledge/collections') })
         }}
         onCancel={() => setConfirmingDelete(false)}
+      />
+
+      <KnowledgeExportDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        objectLabel="collection"
+        request={{
+          content: buildCollectionExportContent(collection, items),
+          titleForFilename: collection.name,
+          buildNovaPackage: async () => {
+            const { manifest, zipBlob } = await buildKnowledgeCollectionExportPackage(collectionId!)
+            return { filename: exportFilename(manifest.collection.name, 'nova'), blob: zipBlob }
+          },
+        }}
       />
     </div>
   )

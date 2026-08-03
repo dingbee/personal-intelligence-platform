@@ -5,8 +5,10 @@ import { useNote } from '@/modules/notes/hooks/useNote'
 import { useNotes } from '@/modules/notes/hooks/useNotes'
 import { useNoteTags } from '@/modules/notes/hooks/useNoteTags'
 import { useRelatedKnowledge } from '@/modules/notes/hooks/useRelatedKnowledge'
-import { exportNotePackage, notePackageFilename } from '@/modules/knowledge-exchange/notes/exportNotePackage'
-import { downloadTextFile } from '@/shared/utils/downloadTextFile'
+import { exportNotePackage } from '@/modules/knowledge-exchange/notes/exportNotePackage'
+import { buildNoteExportContent } from '@/modules/export/content/noteExportContent'
+import { KnowledgeExportDialog } from '@/modules/export/components/KnowledgeExportDialog'
+import { exportFilename } from '@/modules/export/types'
 import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
 import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
 import { SharingBadge } from '@/shared/components/collaboration/SharingBadge'
@@ -51,6 +53,7 @@ export function NoteDetailPage() {
   const [documentId, setDocumentId] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [confirmingSummarize, setConfirmingSummarize] = useState(false)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
 
   // Sync local editing state whenever the loaded note changes (initial load,
   // or after Summarize overwrites content) — not on every keystroke, since
@@ -224,11 +227,12 @@ export function NoteDetailPage() {
               </>
             )}
             <AddToCollectionButton itemType="note" itemId={note.id} />
-            <Button
-              variant="ghost"
-              onClick={() => downloadTextFile(notePackageFilename(note.title), JSON.stringify(exportNotePackage(note, noteTags), null, 2), 'application/json')}
-            >
-              Export
+            {/* UX-14.5.11 — replaces the previous single-format "Export"
+                button with the unified Save As / Download experience:
+                NOVA Package (this note's existing, unmodified
+                `exportNotePackage`), PDF, Markdown, or Word. */}
+            <Button variant="ghost" onClick={() => setExportDialogOpen(true)}>
+              Save As…
             </Button>
           </div>
           {canDelete && (
@@ -266,6 +270,20 @@ export function NoteDetailPage() {
           setConfirmingDelete(false)
         }}
         onCancel={() => setConfirmingDelete(false)}
+      />
+
+      <KnowledgeExportDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        objectLabel="note"
+        request={{
+          content: buildNoteExportContent(note, noteTags),
+          titleForFilename: note.title,
+          buildNovaPackage: async () => ({
+            filename: exportFilename(note.title, 'nova'),
+            blob: new Blob([JSON.stringify(exportNotePackage(note, noteTags), null, 2)], { type: 'application/json' }),
+          }),
+        }}
       />
     </div>
   )

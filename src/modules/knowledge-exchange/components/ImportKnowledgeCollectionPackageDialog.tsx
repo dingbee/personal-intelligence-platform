@@ -167,16 +167,16 @@ export function ImportKnowledgeCollectionPackageDialog({ open, onClose }: Import
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">Import a collection package</h2>
           <p className="text-sm text-[var(--color-ink-muted)]">
-            Choose a <code>.zip</code> file exported from a collection's Export button. It becomes a brand-new
-            collection in your account — each member is imported independently, so one member failing never blocks
-            the rest.
+            Choose a <code>.nova</code> (or older <code>.zip</code>) file exported from a collection's Save As
+            dialog. It becomes a brand-new collection in your account — each member is imported independently, so one
+            member failing never blocks the rest.
           </p>
 
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-[var(--color-ink)]">Package file</span>
             <input
               type="file"
-              accept="application/zip,.zip"
+              accept="application/zip,.zip,.nova"
               onChange={(event) => void handleFileChange(event)}
               className="rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] px-2.5 py-1.5 text-sm text-[var(--color-ink)] shadow-inset outline-none"
             />
