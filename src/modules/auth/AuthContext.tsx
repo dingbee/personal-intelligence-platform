@@ -26,14 +26,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       user: session?.user ?? null,
       loading,
-      async signInWithPassword(email, password) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        return { error: error?.message ?? null }
-      },
       async signUpWithPassword(email, password) {
-        const { error } = await supabase.auth.signUp({ email, password })
-        return { error: error?.message ?? null }
-      },
+  const { data: invited, error: inviteError } = await supabase.rpc(
+    'is_beta_invited',
+    {
+      check_email: email,
+    },
+  )
+
+  if (inviteError) {
+    return { error: inviteError.message }
+  }
+
+  if (!invited) {
+    return { error: 'This email is not approved for beta access.' }
+  }
+
+  const { error } = await supabase.auth.signUp({ email, password })
+
+  return { error: error?.message ?? null }
+},
       async signInWithMagicLink(email) {
         const { error } = await supabase.auth.signInWithOtp({
           email,
