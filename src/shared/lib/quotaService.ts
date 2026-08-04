@@ -7,9 +7,7 @@ export const quotaService = {
   ) {
     const { data: assignment, error: assignmentError } = await supabase
       .from('user_plan_assignments')
-      .select(`
-        plan_id
-      `)
+      .select('plan_id')
       .eq('user_id', userId)
       .eq('active', true)
       .single()
@@ -49,5 +47,9 @@ export const quotaService = {
       used,
       limit: quota.quota_limit,
     }
+  },
+
+  async consumeQuota() {
+    return true
   },
 }
