@@ -31,6 +31,7 @@ import { WorkspaceEvolutionPage } from '@/modules/evolution/pages/WorkspaceEvolu
 import { WorkspaceIntelligenceHubPage } from '@/modules/hub/pages/WorkspaceIntelligenceHubPage'
 import { ExportCenterPage } from '@/modules/export/pages/ExportCenterPage'
 import { HomeRedirect } from '@/app/HomeRedirect'
+import { BetaInvitesPage } from '@/modules/admin/pages/BetaInvitesPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -85,6 +86,7 @@ export const router = createBrowserRouter([
       { path: 'settings/memory', element: <MemoryManagementPage /> },
       { path: 'settings/ai-health', element: <AiHealthPage /> },
       { path: 'settings/ai-health/provider/:providerId', element: <ProviderHealthDetailPage /> },
+      { path: 'admin/beta', element: <BetaInvitesPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
