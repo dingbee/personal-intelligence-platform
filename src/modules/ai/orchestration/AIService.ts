@@ -98,7 +98,8 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
     })
     void indexMessage(assistantMessage, workspaceId)
     await touchConversation(conversationId)
-
+    
+await quotaService.consumeQuota(userId, 'ai_messages')
     return {
       message: assistantMessage,
       suggestions: [],
