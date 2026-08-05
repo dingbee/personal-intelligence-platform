@@ -14,8 +14,3 @@ export interface AuthContextValue {
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined)
-
-signInWithPassword(
-  email: string,
-  password: string
-): Promise<{ error: string | null }>
