@@ -178,14 +178,7 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
     },
   })
   system = `${system}\n\n${buildNovaContextPrompt(novaContext, text)}`
-const quota = await quotaService.checkQuota(userId, 'ai_messages')
 
-if (!quota.allowed) {
-  throw new Error(
-    quota.reason ??
-      `You have reached your AI message limit for your current plan.`,
-  )
-}
   const quota = await quotaService.checkQuota(userId, 'ai_messages')
 
 if (!quota.allowed) {
