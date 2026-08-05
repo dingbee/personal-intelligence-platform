@@ -46,6 +46,14 @@ console.log('Beta check:', invited, inviteError)
 
   return { error: error?.message ?? null }
 },
+      async signInWithPassword(email, password) {
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
+
+  return { error: error?.message ?? null }
+},
       async signInWithMagicLink(email) {
         const { error } = await supabase.auth.signInWithOtp({
           email,
