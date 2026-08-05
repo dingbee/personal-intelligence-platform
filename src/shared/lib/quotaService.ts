@@ -49,7 +49,41 @@ export const quotaService = {
     }
   },
 
-  async consumeQuota() {
-    return true
-  },
-}
+  async consumeQuota(
+  userId: string,
+  quotaKey: string,
+) {
+  const { data: existing, error } = await supabase
+    .from('quota_usage')
+    .select('id, usage_count')
+    .eq('user_id', userId)
+    .eq('quota_key', quotaKey)
+    .single()
+
+  if (error && error.code !== 'PGRST116') {
+    throw error
+  }
+
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from('quota_usage')
+      .update({
+        usage_count: existing.usage_count + 1,
+      })
+      .eq('id', existing.id)
+
+    if (updateError) throw updateError
+  } else {
+    const { error: insertError } = await supabase
+      .from('quota_usage')
+      .insert({
+        user_id: userId,
+        quota_key: quotaKey,
+        usage_count: 1,
+      })
+
+    if (insertError) throw insertError
+  }
+
+  return true
+},
