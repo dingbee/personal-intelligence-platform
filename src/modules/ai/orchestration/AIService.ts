@@ -25,6 +25,7 @@ import { resolveReferences } from '@/modules/intelligence/references/referenceRe
 import type { Reference } from '@/modules/intelligence/references/referenceTypes'
 import { runWorkspaceAction } from '@/modules/workspace-actions/registry'
 import type { ArtifactPreview } from '@/modules/workspace-actions/types'
+import { quotaService } from '@/shared/lib/quotaService'
 
 export interface SendMessageParams {
   conversationId: string
@@ -185,6 +186,13 @@ if (!quota.allowed) {
       `You have reached your AI message limit for your current plan.`,
   )
 }
+  const quota = await quotaService.checkQuota(userId, 'ai_messages')
+
+if (!quota.allowed) {
+  throw new Error(
+    quota.reason ?? 'AI quota limit reached',
+  )
+}
   const { result } = await runWithFallback(providerChain, (candidateId) =>
     streamChatCompletion({
       provider: getChatProvider(candidateId),
@@ -209,6 +217,8 @@ if (!quota.allowed) {
   void linkKnownConceptsToSource({ userId, sourceType: 'conversation', sourceId: conversationId, text: result.content })
 
   await touchConversation(conversationId)
+  
+  await quotaService.consumeQuota(userId, 'ai_messages')
 
   // UX-7 Phase 2 — resolveReferences never throws (see its own try/catch-
   // free but purely-additive design: no matches means [] immediately);
