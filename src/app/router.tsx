@@ -33,6 +33,9 @@ import { WorkspaceIntelligenceHubPage } from '@/modules/hub/pages/WorkspaceIntel
 import { ExportCenterPage } from '@/modules/export/pages/ExportCenterPage'
 import { HomeRedirect } from '@/app/HomeRedirect'
 import { AdminDashboardPage } from '@/modules/admin/pages/AdminDashboardPage'
+import { AdminUsersPage } from '@/modules/admin/pages/AdminUsersPage'
+import { AdminPlansPage } from '@/modules/admin/pages/AdminPlansPage'
+import { AdminAiGovernancePage } from '@/modules/admin/pages/AdminAiGovernancePage'
 import { RequireAdmin } from '@/modules/admin/RequireAdmin'
 
 export const router = createBrowserRouter([
@@ -108,6 +111,30 @@ export const router = createBrowserRouter([
         element: (
           <RequireAdmin>
             <AdminDashboardPage />
+          </RequireAdmin>
+        ),
+      },
+      {
+        path: 'admin/users',
+        element: (
+          <RequireAdmin>
+            <AdminUsersPage />
+          </RequireAdmin>
+        ),
+      },
+      {
+        path: 'admin/plans',
+        element: (
+          <RequireAdmin>
+            <AdminPlansPage />
+          </RequireAdmin>
+        ),
+      },
+      {
+        path: 'admin/ai',
+        element: (
+          <RequireAdmin>
+            <AdminAiGovernancePage />
           </RequireAdmin>
         ),
       },

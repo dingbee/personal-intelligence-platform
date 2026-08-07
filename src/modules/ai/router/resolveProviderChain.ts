@@ -1,6 +1,11 @@
 import type { AIProviderDescriptor } from '@/modules/core/providers/types'
 import { isProviderAvailable, type ProviderAvailability, type ProviderOverrides } from '@/modules/ai/providers/availability'
 
+export interface PlatformProviderRouting {
+  enabled: boolean
+  priority: number
+}
+
 export interface ResolveProviderChainParams {
   /** The account's stored default, or a conversation's explicit provider_id — whichever the caller already resolved. Wins outright if it's still an eligible candidate. */
   preferredProviderId: string
@@ -9,6 +14,19 @@ export interface ResolveProviderChainParams {
   overrides?: ProviderOverrides
   /** providerId -> health score (0-100), from the existing calculateProviderHealthScore — used only to order the *remaining* candidates, never to exclude the preferred one. Omit to leave remaining candidates in registry order. */
   healthScores?: Record<string, number>
+  /**
+   * Founder Command Center — platform-wide governance
+   * (0036_founder_command_center.sql), keyed by provider id. Unlike a
+   * per-user override, `enabled: false` here is absolute: it removes a
+   * provider from the eligible set entirely, even if it's the caller's
+   * own preferred/default provider — a founder disabling a provider
+   * platform-wide must actually stop it from being used. `priority`
+   * (higher first) orders the non-preferred remainder ahead of
+   * `healthScores`, which only breaks ties. Omit entirely to leave
+   * existing behavior (health-score-only ordering, no platform
+   * exclusion) completely unchanged — purely additive.
+   */
+  platformSettings?: Record<string, PlatformProviderRouting>
 }
 
 /**
@@ -25,17 +43,24 @@ export interface ResolveProviderChainParams {
  * sole candidacy gate — no parallel eligibility check.
  */
 export function resolveProviderChain(params: ResolveProviderChainParams): string[] {
-  const { preferredProviderId, chatProviders, availability, overrides, healthScores } = params
+  const { preferredProviderId, chatProviders, availability, overrides, healthScores, platformSettings } = params
 
   const eligibleIds = chatProviders
     .filter((provider) => provider.kind === 'chat' && provider.status === 'available')
     .filter((provider) => isProviderAvailable(provider.id, availability, overrides))
+    .filter((provider) => platformSettings?.[provider.id]?.enabled !== false)
     .map((provider) => provider.id)
 
   if (eligibleIds.length === 0) return []
 
   const rest = eligibleIds.filter((id) => id !== preferredProviderId)
-  const orderedRest = healthScores ? [...rest].sort((a, b) => (healthScores[b] ?? 0) - (healthScores[a] ?? 0)) : rest
+  const orderedRest =
+    healthScores || platformSettings
+      ? [...rest].sort((a, b) => {
+          const priorityDiff = (platformSettings?.[b]?.priority ?? 0) - (platformSettings?.[a]?.priority ?? 0)
+          return priorityDiff !== 0 ? priorityDiff : (healthScores?.[b] ?? 0) - (healthScores?.[a] ?? 0)
+        })
+      : rest
 
   return eligibleIds.includes(preferredProviderId) ? [preferredProviderId, ...orderedRest] : orderedRest
 }

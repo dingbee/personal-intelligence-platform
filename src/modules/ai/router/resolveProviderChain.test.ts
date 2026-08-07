@@ -81,4 +81,36 @@ describe('resolveProviderChain', () => {
     const chain = resolveProviderChain({ preferredProviderId: 'google', chatProviders, availability: allAvailable })
     expect(chain).toEqual(['google', 'anthropic', 'openai'])
   })
+
+  it('platformSettings enabled:false removes a provider entirely, even when it is the preferred one', () => {
+    const chain = resolveProviderChain({
+      preferredProviderId: 'openai',
+      chatProviders,
+      availability: allAvailable,
+      platformSettings: { openai: { enabled: false, priority: 0 } },
+    })
+    expect(chain).not.toContain('openai')
+    expect(chain).toEqual(['anthropic', 'google'])
+  })
+
+  it('platformSettings priority orders the remainder ahead of health score', () => {
+    const chain = resolveProviderChain({
+      preferredProviderId: 'openai',
+      chatProviders,
+      availability: allAvailable,
+      healthScores: { anthropic: 99, google: 10 },
+      platformSettings: { anthropic: { enabled: true, priority: 0 }, google: { enabled: true, priority: 10 } },
+    })
+    expect(chain).toEqual(['openai', 'google', 'anthropic'])
+  })
+
+  it('omitting platformSettings entirely leaves existing health-score-only ordering unchanged', () => {
+    const chain = resolveProviderChain({
+      preferredProviderId: 'openai',
+      chatProviders,
+      availability: { anthropic: true, openai: false, google: true },
+      healthScores: { anthropic: 40, google: 90 },
+    })
+    expect(chain).toEqual(['google', 'anthropic'])
+  })
 })

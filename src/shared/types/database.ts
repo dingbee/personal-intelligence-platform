@@ -467,6 +467,15 @@ export type PlatformAdmin = {
   granted_by: string | null
 }
 
+/** Founder Command Center (0036_founder_command_center.sql). Platform-wide provider governance — genuinely new; `provider_overrides` is per-user only. RLS: authenticated-read-all (so `resolveProviderChain` can factor it in client-side); zero client write policies, write only via `admin_set_platform_provider_setting`. `enabled: false` can only REMOVE a provider from the eligible set — never overrides the existing key-presence/`isProviderAvailable` check. */
+export type PlatformProviderSetting = {
+  provider_id: string
+  enabled: boolean
+  priority: number
+  updated_by: string | null
+  updated_at: string
+}
+
 export type BetaInviteStatus = 'invited' | 'accepted'
 
 /**
@@ -813,6 +822,12 @@ export type Database = {
         Update: Partial<PlatformAdmin>
         Relationships: []
       }
+      platform_provider_settings: {
+        Row: PlatformProviderSetting
+        Insert: Partial<PlatformProviderSetting> & { provider_id: string }
+        Update: Partial<PlatformProviderSetting>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -896,6 +911,7 @@ export type Database = {
           quota_used: number | null
           quota_limit: number | null
           beta_status: string | null
+          is_disabled: boolean
         }[]
       }
       admin_list_beta_invites: {
@@ -922,6 +938,34 @@ export type Database = {
       admin_revoke_beta_invite: {
         Args: { p_invite_id: string }
         Returns: boolean
+      }
+      admin_change_user_plan: {
+        Args: { p_user_id: string; p_plan_id: string }
+        Returns: void
+      }
+      admin_reset_user_quota: {
+        Args: { p_user_id: string; p_quota_key: string }
+        Returns: void
+      }
+      admin_set_user_disabled: {
+        Args: { p_user_id: string; p_disabled: boolean }
+        Returns: void
+      }
+      admin_set_platform_provider_setting: {
+        Args: { p_provider_id: string; p_enabled: boolean; p_priority: number }
+        Returns: void
+      }
+      admin_ai_usage_summary: {
+        Args: { p_since?: string }
+        Returns: { provider: string; request_count: number; error_count: number; avg_latency_ms: number }[]
+      }
+      admin_platform_counts: {
+        Args: Record<string, never>
+        Returns: { documents: number; conversations: number; notes: number; knowledge_collections: number }[]
+      }
+      admin_update_plan_quota: {
+        Args: { p_plan_id: string; p_quota_key: string; p_quota_limit: number }
+        Returns: void
       }
     }
     Enums: {

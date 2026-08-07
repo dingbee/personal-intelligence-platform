@@ -1,29 +1,19 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/shared/lib/supabase'
-import { useAdminBetaInvites, useAdminCreateBetaInvite, useAdminRevokeBetaInvite, useAdminUsers } from '@/modules/admin/hooks/useAdminData'
-import { useProviderIntelligence } from '@/modules/ai/providers/useProviderIntelligence'
-import { ProviderStatusCard } from '@/modules/settings/components/ProviderStatusCard'
-import { useRecentAiRequests } from '@/modules/ai/observability/hooks/useRecentAiRequests'
+import { Link } from 'react-router-dom'
+import {
+  useAdminAiUsageSummary,
+  useAdminBetaInvites,
+  useAdminCreateBetaInvite,
+  useAdminPlatformCounts,
+  useAdminRevokeBetaInvite,
+  useAdminUsers,
+} from '@/modules/admin/hooks/useAdminData'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
-
-function usePlansAndQuotas() {
-  return useQuery({
-    queryKey: ['admin-plans-quotas'],
-    queryFn: async () => {
-      const [{ data: plans }, { data: quotas }] = await Promise.all([
-        supabase.from('plans').select('id, code, name, description, active').order('created_at'),
-        supabase.from('plan_quotas').select('plan_id, quota_key, quota_limit, quota_period'),
-      ])
-      return { plans: plans ?? [], quotas: quotas ?? [] }
-    },
-  })
-}
 
 function SectionHeading({ children }: { children: string }) {
   return <h2 className="text-lg font-semibold text-[var(--color-ink)]">{children}</h2>
@@ -39,35 +29,39 @@ function StatTile({ label, value }: { label: string; value: number | string }) {
 }
 
 /**
- * Beta / Admin / AI Governance Foundation — one page, sectioned rather
- * than six separate routes (the brief's own "Founder Admin Dashboard...
- * Initial sections" list is a content grouping, not a routing
- * requirement). Every number here comes from a real query — no invented
- * uptime/health metrics the system has no way to actually compute.
+ * Founder Command Center — Overview. Every AI/Knowledge number here comes
+ * from admin_ai_usage_summary/admin_platform_counts (platform-wide,
+ * bridging RLS the same way admin_list_users already does), not a direct
+ * client read of ai_requests/documents/etc — those tables are own-row-only
+ * RLS, so a direct read would silently show only the founder's own data.
+ * That was a real defect in the prior single-page dashboard; fixed here.
+ * Deep management (per-user actions, plan quota edits, provider
+ * governance) lives on the three dedicated /admin/* pages linked below —
+ * this page is read-only status plus the one lightweight, frequent action
+ * (creating a beta invite).
  */
 export function AdminDashboardPage() {
   const { data: users = [], isLoading: usersLoading } = useAdminUsers()
   const { data: invites = [], isLoading: invitesLoading } = useAdminBetaInvites()
   const createInvite = useAdminCreateBetaInvite()
   const revokeInvite = useAdminRevokeBetaInvite()
-  const { providers } = useProviderIntelligence()
-  const { data: recentRequests = [] } = useRecentAiRequests(50)
-  const { data: plansAndQuotas } = usePlansAndQuotas()
+  const { data: aiUsage = [] } = useAdminAiUsageSummary()
+  const { data: counts } = useAdminPlatformCounts()
 
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteName, setInviteName] = useState('')
   const [inviteOrg, setInviteOrg] = useState('')
-  const [invitePlanId, setInvitePlanId] = useState('')
   const [inviteFeedback, setInviteFeedback] = useState<string | null>(null)
   const [confirmingRevokeId, setConfirmingRevokeId] = useState<string | null>(null)
 
-  const betaPlanCounts = users.reduce<Record<string, number>>((acc, u) => {
+  const planCounts = users.reduce<Record<string, number>>((acc, u) => {
     const key = u.plan_code ?? 'none'
     acc[key] = (acc[key] ?? 0) + 1
     return acc
   }, {})
   const pendingInvites = invites.filter((i) => i.status === 'invited')
-  const recentErrors = recentRequests.filter((r) => r.status === 'error')
+  const totalAiRequests = aiUsage.reduce((sum, row) => sum + Number(row.request_count), 0)
+  const totalAiErrors = aiUsage.reduce((sum, row) => sum + Number(row.error_count), 0)
 
   async function handleCreateInvite(event: React.FormEvent) {
     event.preventDefault()
@@ -76,7 +70,7 @@ export function AdminDashboardPage() {
       email: inviteEmail,
       fullName: inviteName || null,
       organization: inviteOrg || null,
-      planId: invitePlanId || null,
+      planId: null,
     })
     if (result.outcome === 'duplicate') {
       setInviteFeedback(`${inviteEmail} already has an invite on file.`)
@@ -85,29 +79,64 @@ export function AdminDashboardPage() {
       setInviteEmail('')
       setInviteName('')
       setInviteOrg('')
-      setInvitePlanId('')
     }
   }
 
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold text-[var(--color-ink)]">Founder Admin Dashboard</h1>
+        <h1 className="text-2xl font-semibold text-[var(--color-ink)]">Founder Command Center</h1>
         <p className="mt-1 text-sm text-[var(--color-ink-muted)]">Operational control — visible only to platform admins.</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Link to="/admin/users" className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-ink)] hover:bg-[var(--surface-inset)]">
+          Users →
+        </Link>
+        <Link to="/admin/plans" className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-ink)] hover:bg-[var(--surface-inset)]">
+          Plans & Quotas →
+        </Link>
+        <Link to="/admin/ai" className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-ink)] hover:bg-[var(--surface-inset)]">
+          AI Governance →
+        </Link>
       </div>
 
       {/* Overview */}
       <SurfaceCard className="flex flex-col gap-4">
         <SectionHeading>Overview</SectionHeading>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatTile label="Total users" value={users.length} />
-          <StatTile label="Beta plan" value={betaPlanCounts.beta ?? 0} />
-          <StatTile label="Pro plan" value={betaPlanCounts.pro ?? 0} />
-          <StatTile label="Enterprise plan" value={betaPlanCounts.enterprise ?? 0} />
-          <StatTile label="Pending invites" value={pendingInvites.length} />
-          <StatTile label="AI requests (recent)" value={recentRequests.length} />
-          <StatTile label="Recent AI errors" value={recentErrors.length} />
-          <StatTile label="Configured providers" value={providers.filter((p) => p.keyAvailable).length} />
+        <div>
+          <p className="mb-2 text-xs font-medium text-[var(--color-ink-muted)]">Users</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatTile label="Total users" value={users.length} />
+            <StatTile label="Beta plan" value={planCounts.beta ?? 0} />
+            <StatTile label="Pro plan" value={planCounts.pro ?? 0} />
+            <StatTile label="Enterprise plan" value={planCounts.enterprise ?? 0} />
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-xs font-medium text-[var(--color-ink-muted)]">AI (last 7 days, platform-wide)</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <StatTile label="AI requests" value={totalAiRequests} />
+            <StatTile label="AI errors" value={totalAiErrors} />
+            <StatTile label="Providers active" value={aiUsage.length} />
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-xs font-medium text-[var(--color-ink-muted)]">Knowledge (platform-wide)</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatTile label="Documents" value={counts?.documents ?? '—'} />
+            <StatTile label="Conversations" value={counts?.conversations ?? '—'} />
+            <StatTile label="Notes" value={counts?.notes ?? '—'} />
+            <StatTile label="Collections" value={counts?.knowledge_collections ?? '—'} />
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-xs font-medium text-[var(--color-ink-muted)]">System</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <StatTile label="Pending beta invites" value={pendingInvites.length} />
+            <StatTile label="Database reachable" value={!usersLoading ? 'Yes' : 'Checking…'} />
+            <StatTile label="Auth session" value="Active" />
+          </div>
         </div>
       </SurfaceCard>
 
@@ -125,26 +154,12 @@ export function AdminDashboardPage() {
           <div className="w-44">
             <Input label="Organization" value={inviteOrg} onChange={(e) => setInviteOrg(e.target.value)} />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[var(--color-ink)]">Plan (optional)</label>
-            <select
-              value={invitePlanId}
-              onChange={(e) => setInvitePlanId(e.target.value)}
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
-            >
-              <option value="">Default (beta)</option>
-              {plansAndQuotas?.plans.map((plan) => (
-                <option key={plan.id} value={plan.id}>
-                  {plan.name}
-                </option>
-              ))}
-            </select>
-          </div>
           <Button type="submit" loading={createInvite.isPending}>
             Create invite
           </Button>
         </form>
         {inviteFeedback && <p className="text-xs text-[var(--color-ink-muted)]">{inviteFeedback}</p>}
+        <p className="text-xs text-[var(--color-ink-muted)]">New invites default to the Beta plan — assign Pro/Enterprise from Users after signup.</p>
 
         {invitesLoading ? (
           <Spinner size="sm" />
@@ -194,88 +209,6 @@ export function AdminDashboardPage() {
             </table>
           </div>
         )}
-      </SurfaceCard>
-
-      {/* Users */}
-      <SurfaceCard className="flex flex-col gap-4">
-        <SectionHeading>Users</SectionHeading>
-        {usersLoading ? (
-          <Spinner size="sm" />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="text-[var(--color-ink-muted)]">
-                  <th className="pb-2 pr-4 font-medium">Email</th>
-                  <th className="pb-2 pr-4 font-medium">Plan</th>
-                  <th className="pb-2 pr-4 font-medium">Beta status</th>
-                  <th className="pb-2 pr-4 font-medium">AI usage</th>
-                  <th className="pb-2 pr-4 font-medium">Signed up</th>
-                  <th className="pb-2 font-medium">Last active</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id} className="border-t border-[var(--color-border)]">
-                    <td className="py-2 pr-4 text-[var(--color-ink)]">{u.display_name ?? u.email}</td>
-                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{u.plan_name ?? '–'}</td>
-                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{u.beta_status ?? '–'}</td>
-                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">
-                      {u.quota_used ?? 0} / {u.quota_limit ?? '–'}
-                    </td>
-                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{new Date(u.created_at).toLocaleDateString()}</td>
-                    <td className="py-2 text-[var(--color-ink-muted)]">
-                      {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString() : 'Never'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </SurfaceCard>
-
-      {/* Plans & Quotas */}
-      <SurfaceCard className="flex flex-col gap-4">
-        <SectionHeading>Plans & Quotas</SectionHeading>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {plansAndQuotas?.plans.map((plan) => {
-            const quota = plansAndQuotas.quotas.find((q) => q.plan_id === plan.id && q.quota_key === 'ai_messages')
-            return (
-              <div key={plan.id} className="rounded-control border border-[var(--color-border)] p-3">
-                <div className="text-sm font-medium text-[var(--color-ink)]">{plan.name}</div>
-                <div className="mt-1 text-xs text-[var(--color-ink-muted)]">{plan.description}</div>
-                <div className="mt-2 text-xs text-[var(--color-ink-muted)]">
-                  AI messages: {quota ? `${quota.quota_limit.toLocaleString()} / ${quota.quota_period}` : 'not configured'}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </SurfaceCard>
-
-      {/* AI Providers — the existing Provider Control Center (health, live
-          test, enable/disable via provider_overrides), moved here from
-          ordinary Settings now that provider governance is a founder-only
-          capability, not something every signed-in user sees. */}
-      <div>
-        <SectionHeading>AI Providers</SectionHeading>
-        <div className="mt-4">
-          <ProviderStatusCard />
-        </div>
-      </div>
-
-      {/* System Health */}
-      <SurfaceCard className="flex flex-col gap-4">
-        <SectionHeading>System Health</SectionHeading>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <StatTile label="Database reachable" value={users.length >= 0 && !usersLoading ? 'Yes' : 'Checking…'} />
-          <StatTile label="Auth session" value="Active" />
-          <StatTile label="Providers reachable" value={`${providers.filter((p) => p.keyAvailable).length}/${providers.length}`} />
-          <StatTile label="Quota system" value={plansAndQuotas ? 'Reachable' : 'Checking…'} />
-          <StatTile label="Recent AI errors (last 50)" value={recentErrors.length} />
-          <StatTile label="Pending beta invites" value={pendingInvites.length} />
-        </div>
       </SurfaceCard>
 
       <ConfirmDialog
