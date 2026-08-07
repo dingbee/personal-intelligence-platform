@@ -33,7 +33,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       check_email: email,
     },
   )
-console.log('Beta check:', invited, inviteError)
   if (inviteError) {
     return { error: inviteError.message }
   }

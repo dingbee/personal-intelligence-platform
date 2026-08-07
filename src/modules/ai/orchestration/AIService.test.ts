@@ -47,6 +47,16 @@ vi.mock('@/modules/settings/api/profile', () => ({ getProfile: vi.fn(async () =>
 // UX-7: the reference resolver's own lookups — same reasoning, no real Supabase call from this suite.
 vi.mock('@/modules/processing/api/chunks', () => ({ getChunkLocations: vi.fn(async () => []) }))
 vi.mock('@/modules/library/api/documents', () => ({ getDocumentTitles: vi.fn(async () => []) }))
+// Beta Invite + Quota repair — quotaService talks to Supabase directly
+// (no mockable API-layer indirection), so unlike everything above this
+// suite must mock it explicitly or every sendMessage call hits the real
+// project over the network.
+vi.mock('@/shared/lib/quotaService', () => ({
+  quotaService: {
+    checkQuota: vi.fn(async () => ({ allowed: true, used: 0, limit: 1000 })),
+    consumeQuota: vi.fn(async () => true),
+  },
+}))
 // AI Workspace Actions v1 — the router itself is unit-tested in
 // workspace-actions/registry.test.ts; here it's mocked so this suite can
 // assert on how sendMessage wires its result, without depending on which

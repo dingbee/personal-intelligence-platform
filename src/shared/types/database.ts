@@ -460,6 +460,73 @@ export type Asset = {
   created_at: string
 }
 
+export type BetaInviteStatus = 'invited' | 'accepted'
+
+/**
+ * Beta Invite + Quota Reconciliation & Repair — `beta_invites`/`plans`/
+ * `plan_quotas`/`user_plan_assignments`/`quota_usage` were created
+ * manually in the Supabase dashboard (not via any migration in this
+ * repo); `0034_beta_invite_quota_repair.sql` captures the live schema
+ * and repairs four confirmed defects found there (see that file's own
+ * header) without redesigning the manual work. RLS on this table is
+ * enabled with zero client policies — the only access paths are the
+ * SECURITY DEFINER functions below (`is_beta_invited`,
+ * `assign_default_plan`, the `enforce_beta_invite_gate` trigger).
+ */
+export type BetaInvite = {
+  id: string
+  email: string
+  status: BetaInviteStatus
+  full_name: string | null
+  organization: string | null
+  invited_by: string | null
+  created_at: string
+  accepted_at: string | null
+  plan_id: string | null
+  accepted_by: string | null
+}
+
+export type Plan = {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  active: boolean
+  created_at: string
+}
+
+export type PlanQuota = {
+  id: string
+  plan_id: string
+  quota_key: string
+  quota_limit: number
+  quota_period: string
+  created_at: string
+}
+
+/** RLS: a user can SELECT their own row only. All writes go through `assign_default_plan` (SECURITY DEFINER, fires on `auth.users` insert) — see 0034_beta_invite_quota_repair.sql. */
+export type UserPlanAssignment = {
+  id: string
+  user_id: string
+  plan_id: string
+  starts_at: string
+  ends_at: string | null
+  active: boolean
+  created_at: string
+}
+
+/** RLS: a user can SELECT their own row only. All writes go through the `consume_quota` RPC (SECURITY DEFINER, atomic upsert) — see 0034_beta_invite_quota_repair.sql. Query by `period_start` to get the current period's row (quotaService.checkQuota does this); the table is period-scoped (`UNIQUE(user_id, quota_key, period_start)`), a new row is created per calendar month. */
+export type QuotaUsage = {
+  id: string
+  user_id: string
+  quota_key: string
+  usage_count: number
+  period_start: string
+  period_end: string
+  created_at: string
+  updated_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -703,6 +770,36 @@ export type Database = {
         Update: Partial<Asset>
         Relationships: []
       }
+      beta_invites: {
+        Row: BetaInvite
+        Insert: Partial<BetaInvite> & { email: string }
+        Update: Partial<BetaInvite>
+        Relationships: []
+      }
+      plans: {
+        Row: Plan
+        Insert: Partial<Plan> & { code: string; name: string }
+        Update: Partial<Plan>
+        Relationships: []
+      }
+      plan_quotas: {
+        Row: PlanQuota
+        Insert: Partial<PlanQuota> & { plan_id: string; quota_key: string; quota_limit: number }
+        Update: Partial<PlanQuota>
+        Relationships: []
+      }
+      user_plan_assignments: {
+        Row: UserPlanAssignment
+        Insert: Partial<UserPlanAssignment> & { user_id: string; plan_id: string }
+        Update: Partial<UserPlanAssignment>
+        Relationships: []
+      }
+      quota_usage: {
+        Row: QuotaUsage
+        Insert: Partial<QuotaUsage> & { user_id: string; quota_key: string }
+        Update: Partial<QuotaUsage>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -760,6 +857,14 @@ export type Database = {
           target_workspace_id: string
         }
         Returns: WorkspaceMemberWithProfile[]
+      }
+      is_beta_invited: {
+        Args: { check_email: string }
+        Returns: boolean
+      }
+      consume_quota: {
+        Args: { p_quota_key: string }
+        Returns: { usage_count: number; quota_limit: number; allowed: boolean }[]
       }
     }
     Enums: {
