@@ -11,7 +11,6 @@ import { MobileConversationDrawer } from '@/modules/ai/chat/components/MobileCon
 import { ConversationTitleEditor } from '@/modules/ai/chat/components/ConversationTitleEditor'
 import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
-import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
 import { SaveConversationDialog } from '@/modules/notes/components/SaveConversationDialog'
 import { useSaveMessageToNote } from '@/modules/notes/hooks/useSaveMessageToNote'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
@@ -20,10 +19,6 @@ import { buildConversationExportContent } from '@/modules/export/content/convers
 import { KnowledgeExportDialog } from '@/modules/export/components/KnowledgeExportDialog'
 import { exportFilename } from '@/modules/export/types'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
-import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
-import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
-import { isProviderAvailable } from '@/modules/ai/providers/availability'
-import { providerRegistry } from '@/modules/core/providers/registry'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -79,7 +74,6 @@ export function ChatPage() {
     duplicate,
     togglePin,
     toggleFavorite,
-    updateProvider,
   } = useConversations(documentId)
   const [viewingArchived, setViewingArchived] = useState(false)
   const { data: archivedConversations = [] } = useArchivedConversations(documentId)
@@ -95,13 +89,12 @@ export function ChatPage() {
   // workspace/document filter it still opens (messages load independently
   // of the sidebar list), it just won't be highlighted in that list.
   const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get('conversationId'))
+  // Provider selection is invisible to the chat UI entirely (see
+  // src/modules/settings/pages/AdvancedSettingsPage.tsx for the one place
+  // a Pro+ user can set a preference) — this is just what a new
+  // conversation is created with and what useSendMessage's chain prefers;
+  // it's never surfaced or user-adjustable from here.
   const defaultProviderId = useDefaultChatProviderId()
-  // null = "no explicit choice yet, follow the live default" — as opposed to
-  // snapshotting defaultProviderId into useState's initializer, which would
-  // freeze it at whatever it resolved to before the profile/availability
-  // queries finished loading.
-  const [newProviderId, setNewProviderId] = useState<string | null>(null)
-  const effectiveNewProviderId = newProviderId ?? defaultProviderId
   const [conversationDrawerOpen, setConversationDrawerOpen] = useState(false)
   const [savingConversation, setSavingConversation] = useState(false)
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
@@ -110,12 +103,6 @@ export function ChatPage() {
     if (!selectedId && conversations.length > 0) setSelectedId(conversations[0]!.id)
   }, [conversations, selectedId])
 
-  // Don't carry a provider-switch error over when the user moves to a
-  // different conversation — it belongs to the conversation it happened in.
-  useEffect(() => {
-    updateProvider.reset()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId])
 
   const { data: messages = [], isLoading: messagesLoading } = useMessages(selectedId)
 
@@ -178,7 +165,7 @@ export function ChatPage() {
     memoryCandidates,
     dismissMemoryCandidate,
     artifactPreview,
-  } = useSendMessage(conversation?.provider_id ?? effectiveNewProviderId, documentId)
+  } = useSendMessage(conversation?.provider_id ?? defaultProviderId, documentId)
   const { rememberCandidate } = useMemories()
   // UX-6 Phase 7 status indicator — workspace name from the already-loaded
   // list (no new query), "understanding" from the last user turn.
@@ -252,22 +239,9 @@ export function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sending, contextTrace, reasoningPlan, lastUserMessage])
 
-  const { data: availability } = useProviderAvailability()
-  const { data: overrides } = useProviderOverrides()
-  // Only meaningful for an existing conversation — a not-yet-created one's
-  // newProviderId can only ever be something ProviderSelect already offered,
-  // which is available by construction.
-  const conversationProviderUnavailable =
-    Boolean(conversation) && !isProviderAvailable(conversation!.provider_id, availability, overrides)
-
   async function handleNew() {
-    const created = await create.mutateAsync({ providerId: effectiveNewProviderId })
+    const created = await create.mutateAsync({ providerId: defaultProviderId })
     setSelectedId(created.id)
-  }
-
-  function handleProviderChange(providerId: string) {
-    if (!conversation || providerId === conversation.provider_id || updateProvider.isPending) return
-    updateProvider.mutate({ id: conversation.id, providerId })
   }
 
   async function handleSend(text: string) {
@@ -380,12 +354,7 @@ export function ChatPage() {
             <EmptyState
               title="Ask about your library"
               description="Answers are grounded in your own documents via retrieval-augmented generation — not model memory."
-              action={
-                <div className="flex items-center gap-2">
-                  <ProviderSelect value={effectiveNewProviderId} onChange={setNewProviderId} />
-                  <Button onClick={() => void handleNew()}>Start chat</Button>
-                </div>
-              }
+              action={<Button onClick={() => void handleNew()}>Start chat</Button>}
             />
           </div>
         ) : (
@@ -405,7 +374,6 @@ export function ChatPage() {
                 {isShared && <SharingBadge isShared />}
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                {updateProvider.isPending && <Spinner size="sm" />}
                 <Button variant="secondary" onClick={() => setSavingConversation(true)} disabled={!conversation || messages.length === 0}>
                   Save to Notes
                 </Button>
@@ -417,11 +385,6 @@ export function ChatPage() {
                 <Button variant="ghost" onClick={() => setExportDialogOpen(true)} disabled={!conversation || messages.length === 0}>
                   Save As…
                 </Button>
-                <ProviderSelect
-                  value={conversation?.provider_id ?? effectiveNewProviderId}
-                  onChange={handleProviderChange}
-                  disabled={updateProvider.isPending || !canEditConversation}
-                />
               </div>
             </div>
             {isShared && conversation && (
@@ -469,19 +432,6 @@ export function ChatPage() {
                 workspaceName={currentWorkspaceName}
               />
             </div>
-            {conversationProviderUnavailable && (
-              <p className="px-6 pt-2 text-xs text-[var(--color-warning)]">
-                This conversation is set to {providerRegistry.get(conversation!.provider_id)?.label ?? conversation!.provider_id},
-                which isn't currently available. It's still selected above so nothing about this conversation is
-                changed — pick a different provider to continue chatting.
-              </p>
-            )}
-            {updateProvider.isError && (
-              <p className="px-6 pt-2 text-xs text-[var(--color-danger)]">
-                Couldn't switch provider — reverted to the previous one.{' '}
-                {updateProvider.error instanceof Error ? updateProvider.error.message : ''}
-              </p>
-            )}
             <div className="flex-1 overflow-y-auto p-6">
               {/* UX-13.6 Phase 1 — gap-5 (up from gap-4) gives each turn more breathing room, closer to how a real messaging app paces a conversation. */}
               <div className="flex flex-col gap-5">

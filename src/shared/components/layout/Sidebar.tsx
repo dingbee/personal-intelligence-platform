@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { appConfig } from '@/app/appConfig'
 import { WorkspaceSwitcher } from '@/modules/workspaces/components/WorkspaceSwitcher'
+import { usePlatformAdmin } from '@/modules/admin/hooks/usePlatformAdmin'
 
 // UX-15.2 — Dashboard and Evolution dropped from top-level nav: their
 // content folds into Hub's "Explore Deeper" zone as contextual links
@@ -27,13 +28,16 @@ const navItems = [
  * vs. dialog-drawer) appropriate to where it renders.
  */
 export function SidebarNav() {
+  const { data: isAdmin } = usePlatformAdmin()
+  const items = isAdmin ? [...navItems, { to: '/admin', label: 'Admin' }] : navItems
+
   return (
     <>
       <span className="mb-4 px-2 text-sm font-semibold tracking-tight text-[var(--color-ink)]">
         {appConfig.productName}
       </span>
       <WorkspaceSwitcher />
-      {navItems.map((item) => (
+      {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}

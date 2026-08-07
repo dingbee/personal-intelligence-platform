@@ -460,6 +460,13 @@ export type Asset = {
   created_at: string
 }
 
+/** Beta / Admin / AI Governance Foundation (0035_platform_admin_foundation.sql). Not a `profiles` column — see that migration's own header for why. RLS: a user may SELECT only their own row; no client write policy exists at all — granting admin status is a manual, out-of-band SQL statement, never client-reachable. */
+export type PlatformAdmin = {
+  user_id: string
+  granted_at: string
+  granted_by: string | null
+}
+
 export type BetaInviteStatus = 'invited' | 'accepted'
 
 /**
@@ -800,6 +807,12 @@ export type Database = {
         Update: Partial<QuotaUsage>
         Relationships: []
       }
+      platform_admins: {
+        Row: PlatformAdmin
+        Insert: Partial<PlatformAdmin> & { user_id: string }
+        Update: Partial<PlatformAdmin>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -865,6 +878,50 @@ export type Database = {
       consume_quota: {
         Args: { p_quota_key: string }
         Returns: { usage_count: number; quota_limit: number; allowed: boolean }[]
+      }
+      is_platform_admin: {
+        Args: { uid?: string }
+        Returns: boolean
+      }
+      admin_list_users: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          email: string
+          display_name: string | null
+          created_at: string
+          last_sign_in_at: string | null
+          plan_code: string | null
+          plan_name: string | null
+          quota_used: number | null
+          quota_limit: number | null
+          beta_status: string | null
+        }[]
+      }
+      admin_list_beta_invites: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          email: string
+          status: string
+          full_name: string | null
+          organization: string | null
+          invited_by: string | null
+          created_at: string
+          accepted_at: string | null
+          accepted_by: string | null
+          accepted_by_email: string | null
+          plan_id: string | null
+          plan_code: string | null
+        }[]
+      }
+      admin_create_beta_invite: {
+        Args: { p_email: string; p_full_name?: string | null; p_organization?: string | null; p_plan_id?: string | null }
+        Returns: { outcome: 'created' | 'duplicate'; invite_id: string | null }[]
+      }
+      admin_revoke_beta_invite: {
+        Args: { p_invite_id: string }
+        Returns: boolean
       }
     }
     Enums: {

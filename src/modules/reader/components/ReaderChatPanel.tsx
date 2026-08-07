@@ -4,15 +4,10 @@ import { useMessages } from '@/modules/ai/chat/hooks/useMessages'
 import { useSendMessage } from '@/modules/ai/chat/hooks/useSendMessage'
 import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
-import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
 import { SaveConversationDialog } from '@/modules/notes/components/SaveConversationDialog'
 import { useSaveMessageToNote } from '@/modules/notes/hooks/useSaveMessageToNote'
 import { Button } from '@/shared/components/ui/Button'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
-import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvailability'
-import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
-import { isProviderAvailable } from '@/modules/ai/providers/availability'
-import { providerRegistry } from '@/modules/core/providers/registry'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
@@ -54,10 +49,10 @@ const ANALYST_QUESTIONS = [
 /**
  * Contextual chat scoped to one document, embedded in the reader rather
  * than requiring a trip to /chat. Reuses the same conversations/messages
- * hooks and AIService path as the full Chat page — including the same
- * provider-awareness model (ProviderSelect, unavailable-provider warning,
- * updateProvider switching) and, as of UX-9, the same reference/evidence/
- * signal rendering ChatPage already has, plus Reader-specific insights/
+ * hooks and AIService path as the full Chat page — provider selection is
+ * invisible here too (see ChatPage's own note on why), and, as of UX-9,
+ * the same reference/evidence/signal rendering ChatPage already has, plus
+ * Reader-specific insights/
  * journey/suggestions (ReaderIntelligencePanel, collapsed by default
  * inside ReaderInsightDrawer as of UX-13.10.2 — same InsightDrawerShell
  * NovaInsightDrawer uses on the main Chat page).
@@ -83,8 +78,7 @@ export function ReaderChatPanel({
   onLocalSuggestion,
   isSpreadsheet,
 }: ReaderChatPanelProps) {
-  const { data: conversations = [], isLoading: conversationsLoading, create, updateProvider } =
-    useConversations(documentId)
+  const { data: conversations = [], isLoading: conversationsLoading, create } = useConversations(documentId)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [savingConversation, setSavingConversation] = useState(false)
   const defaultProviderId = useDefaultChatProviderId()
@@ -92,13 +86,6 @@ export function ReaderChatPanel({
   useEffect(() => {
     if (!conversationId && conversations.length > 0) setConversationId(conversations[0]!.id)
   }, [conversations, conversationId])
-
-  // Don't carry a provider-switch error over when the reader moves to a
-  // different conversation — same reasoning as ChatPage.
-  useEffect(() => {
-    updateProvider.reset()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId])
 
   const { data: messages = [], isLoading: messagesLoading } = useMessages(conversationId)
   const conversation = conversations.find((c) => c.id === conversationId)
@@ -148,11 +135,6 @@ export function ReaderChatPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId, activeChapterIndex, scrollFraction, hasProgress, progressUpdatedAt, contextTrace, references])
 
-  const { data: availability } = useProviderAvailability()
-  const { data: overrides } = useProviderOverrides()
-  const conversationProviderUnavailable =
-    Boolean(conversation) && !isProviderAvailable(conversation!.provider_id, availability, overrides)
-
   async function handleSend(text: string) {
     const id = conversationId ?? (await create.mutateAsync({ providerId: defaultProviderId })).id
     if (!conversationId) setConversationId(id)
@@ -160,32 +142,18 @@ export function ReaderChatPanel({
     await send(id, text, history)
   }
 
-  function handleProviderChange(providerId: string) {
-    if (!conversation || providerId === conversation.provider_id || updateProvider.isPending) return
-    updateProvider.mutate({ id: conversation.id, providerId })
-  }
-
   return (
     <div className="flex h-full flex-col">
       {conversationId && (
-        <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] px-4 py-2">
-          <span className="text-xs font-medium text-[var(--color-ink-muted)]">AI provider</span>
-          <div className="flex items-center gap-2">
-            {updateProvider.isPending && <Spinner size="sm" />}
-            <Button
-              variant="secondary"
-              className="px-2 py-1 text-xs"
-              onClick={() => setSavingConversation(true)}
-              disabled={messages.length === 0}
-            >
-              Save to Notes
-            </Button>
-            <ProviderSelect
-              value={conversation?.provider_id ?? defaultProviderId}
-              onChange={handleProviderChange}
-              disabled={updateProvider.isPending}
-            />
-          </div>
+        <div className="flex items-center justify-end gap-2 border-b border-[var(--color-border)] px-4 py-2">
+          <Button
+            variant="secondary"
+            className="px-2 py-1 text-xs"
+            onClick={() => setSavingConversation(true)}
+            disabled={messages.length === 0}
+          >
+            Save to Notes
+          </Button>
         </div>
       )}
       {conversation && (
@@ -197,13 +165,6 @@ export function ReaderChatPanel({
           workspaceId={workspaceId}
           messages={messages}
         />
-      )}
-      {conversationProviderUnavailable && (
-        <p className="px-4 pt-2 text-xs text-[var(--color-warning)]">
-          This conversation is set to{' '}
-          {providerRegistry.get(conversation!.provider_id)?.label ?? conversation!.provider_id}, which isn't
-          currently available. Pick a different provider above to continue.
-        </p>
       )}
       <div className="flex-1 overflow-y-auto p-4">
         {conversationsLoading ? (

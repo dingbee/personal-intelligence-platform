@@ -18,6 +18,7 @@ import { KnowledgeCollectionDetailPage } from '@/modules/knowledge-intelligence/
 import { SearchPage } from '@/modules/search/pages/SearchPage'
 import { ChatPage } from '@/modules/ai/chat/pages/ChatPage'
 import { SettingsPage } from '@/modules/settings/pages/SettingsPage'
+import { AdvancedSettingsPage } from '@/modules/settings/pages/AdvancedSettingsPage'
 import { WorkspaceManagementPage } from '@/modules/workspaces/pages/WorkspaceManagementPage'
 import { WorkspaceMembersPage } from '@/modules/workspaces/pages/WorkspaceMembersPage'
 import { WorkspaceCollaborationPage } from '@/modules/workspaces/pages/WorkspaceCollaborationPage'
@@ -31,7 +32,8 @@ import { WorkspaceEvolutionPage } from '@/modules/evolution/pages/WorkspaceEvolu
 import { WorkspaceIntelligenceHubPage } from '@/modules/hub/pages/WorkspaceIntelligenceHubPage'
 import { ExportCenterPage } from '@/modules/export/pages/ExportCenterPage'
 import { HomeRedirect } from '@/app/HomeRedirect'
-import { BetaInvitesPage } from '@/modules/admin/pages/BetaInvitesPage'
+import { AdminDashboardPage } from '@/modules/admin/pages/AdminDashboardPage'
+import { RequireAdmin } from '@/modules/admin/RequireAdmin'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -81,12 +83,35 @@ export const router = createBrowserRouter([
       { path: 'search', element: <SearchPage /> },
       { path: 'chat', element: <ChatPage /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'settings/advanced', element: <AdvancedSettingsPage /> },
       { path: 'settings/workspaces', element: <WorkspaceManagementPage /> },
       { path: 'settings/workspaces/:workspaceId/members', element: <WorkspaceMembersPage /> },
       { path: 'settings/memory', element: <MemoryManagementPage /> },
-      { path: 'settings/ai-health', element: <AiHealthPage /> },
-      { path: 'settings/ai-health/provider/:providerId', element: <ProviderHealthDetailPage /> },
-      { path: 'admin/beta', element: <BetaInvitesPage /> },
+      {
+        path: 'settings/ai-health',
+        element: (
+          <RequireAdmin>
+            <AiHealthPage />
+          </RequireAdmin>
+        ),
+      },
+      {
+        path: 'settings/ai-health/provider/:providerId',
+        element: (
+          <RequireAdmin>
+            <ProviderHealthDetailPage />
+          </RequireAdmin>
+        ),
+      },
+      {
+        path: 'admin',
+        element: (
+          <RequireAdmin>
+            <AdminDashboardPage />
+          </RequireAdmin>
+        ),
+      },
+      { path: 'admin/beta', element: <Navigate to="/admin" replace /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

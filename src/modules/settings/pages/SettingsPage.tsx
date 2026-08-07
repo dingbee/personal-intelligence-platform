@@ -1,20 +1,19 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/modules/auth/useAuth'
-import { useRecentAiRequests } from '@/modules/ai/observability/hooks/useRecentAiRequests'
 import { useProfile } from '@/modules/settings/hooks/useProfile'
+import { useCurrentPlan } from '@/modules/plans/hooks/useCurrentPlan'
+import { canSelectProvider } from '@/modules/plans/entitlements'
+import { usePlatformAdmin } from '@/modules/admin/hooks/usePlatformAdmin'
 import { ProfileCard } from '@/modules/settings/components/ProfileCard'
 import { ChangePasswordCard } from '@/modules/settings/components/ChangePasswordCard'
-import { ProviderStatusCard } from '@/modules/settings/components/ProviderStatusCard'
-import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
-import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
-import { Spinner } from '@/shared/components/ui/Spinner'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 
 export function SettingsPage() {
   const { user } = useAuth()
-  const { data: profile, isLoading: profileLoading, updateDefaultProvider } = useProfile()
-  const defaultProviderId = useDefaultChatProviderId()
-  const { data: aiRequests = [] } = useRecentAiRequests()
+  const { data: profile, isLoading: profileLoading } = useProfile()
+  const { data: plan } = useCurrentPlan()
+  const { data: isAdmin } = usePlatformAdmin()
+  const showAdvancedSettings = isAdmin || canSelectProvider(plan?.planCode)
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,86 +50,24 @@ export function SettingsPage() {
         </p>
       </SurfaceCard>
 
-      <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-        <h2 className="text-sm font-medium text-[var(--color-ink)]">Default AI provider</h2>
-        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
-          Used for new conversations and AI features (summaries, flashcards, knowledge extraction) unless a
-          conversation already has its own provider set.
-        </p>
-        <div className="mt-3 flex items-center gap-2">
-          {profileLoading ? (
-            <Spinner size="sm" />
-          ) : (
-            <ProviderSelect
-              value={defaultProviderId}
-              onChange={(id) => updateDefaultProvider.mutate(id)}
-              disabled={updateDefaultProvider.isPending}
-            />
-          )}
-          {updateDefaultProvider.isPending && <Spinner size="sm" />}
-        </div>
-        {updateDefaultProvider.isError && (
-          <p className="mt-2 text-xs text-[var(--color-danger)]">Couldn't save your default provider. Please try again.</p>
-        )}
-      </div>
-
-      <ProviderStatusCard />
-
-      <div className="max-w-2xl rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-[var(--color-ink)]">Recent AI activity</h2>
-          <Link to="/settings/ai-health" className="text-xs text-[var(--color-accent)] hover:underline">
-            View AI health →
-          </Link>
-        </div>
-        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
-          Every chat and embedding call, logged for debugging, usage, and future cost tracking.
-        </p>
-        {aiRequests.length === 0 ? (
-          <p className="mt-3 text-sm text-[var(--color-ink-muted)]">No AI requests yet.</p>
-        ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="text-[var(--color-ink-muted)]">
-                  <th className="pb-2 pr-4 font-medium">Feature</th>
-                  <th className="pb-2 pr-4 font-medium">Provider / model</th>
-                  <th className="pb-2 pr-4 font-medium">Tokens (in/out)</th>
-                  <th className="pb-2 pr-4 font-medium">Latency</th>
-                  <th className="pb-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {aiRequests.map((request) => (
-                  <tr key={request.id} className="border-t border-[var(--color-border)]">
-                    <td className="py-2 pr-4 text-[var(--color-ink)]">{request.feature}</td>
-                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">
-                      {request.provider}
-                      {request.model ? ` / ${request.model}` : ''}
-                    </td>
-                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">
-                      {request.tokens_input ?? '–'} / {request.tokens_output ?? '–'}
-                    </td>
-                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{request.latency_ms}ms</td>
-                    <td className="py-2">
-                      <span
-                        className={
-                          request.status === 'success'
-                            ? 'text-[var(--color-success-strong)]'
-                            : 'text-[var(--color-danger)]'
-                        }
-                        title={request.error_message ?? undefined}
-                      >
-                        {request.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Provider identity/configuration is invisible to Free/Beta entirely
+          (see the Beta / Admin / AI Governance Foundation discovery doc) —
+          NOVA picks a provider automatically. Pro/Enterprise (and
+          founders) get a single link to a dedicated page with just the
+          one provider-preference control; the richer control center
+          (health/test/enable-disable) moved to the founder-only Admin
+          Dashboard. */}
+      {showAdvancedSettings && (
+        <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-[var(--color-ink)]">Advanced Settings</h2>
+            <Link to="/settings/advanced" className="text-xs text-[var(--color-accent)] hover:underline">
+              Open →
+            </Link>
           </div>
-        )}
-      </div>
+          <p className="mt-1 text-xs text-[var(--color-ink-muted)]">Choose which AI provider NOVA uses, available on your plan.</p>
+        </div>
+      )}
     </div>
   )
 }
