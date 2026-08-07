@@ -7,8 +7,8 @@ export interface PlatformProviderRouting {
 }
 
 export interface ResolveProviderChainParams {
-  /** The account's stored default, or a conversation's explicit provider_id — whichever the caller already resolved. Wins outright if it's still an eligible candidate. */
-  preferredProviderId: string
+  /** The account's stored default, or a conversation's explicit provider_id — whichever the caller already resolved. Wins outright if it's still an eligible candidate. Null/undefined means no preference at all ("Auto") — the eligible set is then ordered purely by platform priority/health score, with no candidate treated as preferred. */
+  preferredProviderId: string | null | undefined
   chatProviders: AIProviderDescriptor[]
   availability: ProviderAvailability | undefined
   overrides?: ProviderOverrides
@@ -62,5 +62,5 @@ export function resolveProviderChain(params: ResolveProviderChainParams): string
         })
       : rest
 
-  return eligibleIds.includes(preferredProviderId) ? [preferredProviderId, ...orderedRest] : orderedRest
+  return preferredProviderId && eligibleIds.includes(preferredProviderId) ? [preferredProviderId, ...orderedRest] : orderedRest
 }

@@ -3,8 +3,8 @@ import { useProviderAvailability } from '@/modules/ai/providers/useProviderAvail
 import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverrides'
 import { resolveDefaultChatProviderId } from '@/modules/ai/providers/defaultProvider'
 
-/** The provider id every "use the default" call site should reach for — see resolveDefaultChatProviderId for the fallback rule. */
-export function useDefaultChatProviderId(): string {
+/** The provider id every "use the default" call site should reach for — null means no eligible preference (Auto), and every call site's routing (via resolveProviderChain) already handles that correctly. See resolveDefaultChatProviderId for the resolution rule. */
+export function useDefaultChatProviderId(): string | null {
   const { data: profile } = useProfile()
   const { data: availability } = useProviderAvailability()
   const { data: overrides } = useProviderOverrides()

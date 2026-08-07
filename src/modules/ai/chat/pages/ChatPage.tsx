@@ -165,6 +165,7 @@ export function ChatPage() {
     memoryCandidates,
     dismissMemoryCandidate,
     artifactPreview,
+    chain,
   } = useSendMessage(conversation?.provider_id ?? defaultProviderId, documentId)
   const { rememberCandidate } = useMemories()
   // UX-6 Phase 7 status indicator — workspace name from the already-loaded
@@ -240,7 +241,13 @@ export function ChatPage() {
   }, [sending, contextTrace, reasoningPlan, lastUserMessage])
 
   async function handleNew() {
-    const created = await create.mutateAsync({ providerId: defaultProviderId })
+    // AI Preference Layer v1 — when there's no explicit preference, stamp
+    // the new conversation with what NOVA would actually pick right now
+    // (chain[0], already resolved via platform governance/availability/
+    // health) instead of a hardcoded constant. `chain` here reflects
+    // exactly this same `defaultProviderId` input since no conversation is
+    // selected yet at this point.
+    const created = await create.mutateAsync({ providerId: defaultProviderId ?? chain[0] })
     setSelectedId(created.id)
   }
 

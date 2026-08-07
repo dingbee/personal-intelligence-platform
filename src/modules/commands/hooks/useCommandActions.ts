@@ -3,6 +3,7 @@ import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { useNotes } from '@/modules/notes/hooks/useNotes'
 import { useConversations } from '@/modules/ai/chat/hooks/useConversations'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
+import { useProviderChain } from '@/modules/ai/router/useProviderChain'
 import type { CommandActions } from '@/modules/commands/types'
 
 /**
@@ -17,6 +18,10 @@ export function useCommandActions(params: { onOpenQuickCapture?: () => void } = 
   const { create: createNoteMutation } = useNotes()
   const { create: createConversationMutation } = useConversations()
   const defaultProviderId = useDefaultChatProviderId()
+  // AI Preference Layer v1 — same "resolve via the real chain, not a
+  // hardcoded constant" fallback ChatPage/ReaderChatPanel use when
+  // stamping a brand-new conversation with no explicit preference.
+  const chain = useProviderChain(defaultProviderId)
 
   return {
     navigate: (path) => navigate(path),
@@ -32,7 +37,7 @@ export function useCommandActions(params: { onOpenQuickCapture?: () => void } = 
       // this text once it mounts, via its own existing send pipeline.
       const conversation = await createConversationMutation.mutateAsync({
         title: query.slice(0, 60),
-        providerId: defaultProviderId,
+        providerId: defaultProviderId ?? chain[0],
       })
       navigate(`/chat?conversationId=${conversation.id}&initialQuery=${encodeURIComponent(query)}`)
       return { id: conversation.id }

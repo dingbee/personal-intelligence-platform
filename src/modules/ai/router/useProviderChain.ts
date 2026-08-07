@@ -16,7 +16,7 @@ import { resolveProviderChain } from '@/modules/ai/router/resolveProviderChain'
  * consumer already calling it (Settings' useProviderIntelligence, the AI
  * Health dashboard).
  */
-export function useProviderChain(preferredProviderId: string): string[] {
+export function useProviderChain(preferredProviderId: string | null): string[] {
   const chatProviders = useMemo(() => providerRegistry.list().filter((provider) => provider.kind === 'chat'), [])
   const { data: availability } = useProviderAvailability()
   const { data: overrides } = useProviderOverrides()

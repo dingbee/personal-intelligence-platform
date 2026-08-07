@@ -1,22 +1,26 @@
-import { DEFAULT_CHAT_PROVIDER_ID } from '@/modules/ai/providers/registry'
 import { isProviderAvailable, type ProviderAvailability, type ProviderOverrides } from '@/modules/ai/providers/availability'
 
 /**
- * A user's persisted `profiles.default_chat_provider_id` wins when set and
- * currently available and not runtime-disabled; otherwise falls back to the
- * platform's hardcoded DEFAULT_CHAT_PROVIDER_ID (Provider Registry ->
- * Availability Resolver -> this -> every call site that previously imported
- * the constant directly). Does not itself re-check the hardcoded fallback's
- * candidacy — picking a different provider when even the fallback is
- * disabled is fallback/routing logic, deliberately left for a later phase.
+ * AI Preference Layer v1 — this used to substitute the hardcoded
+ * DEFAULT_CHAT_PROVIDER_ID constant whenever the user had no eligible
+ * preference, which silently defeated "Auto (Recommended)": every call
+ * site downstream saw *some* concrete preferred id and never reached
+ * resolveProviderChain's real automatic (health/priority-ordered)
+ * ordering. "Users only express preference; NOVA decides execution" means
+ * the absence of a preference has to actually reach the resolver as an
+ * absence, not get papered over here. Returns the user's raw eligible
+ * preference, or null — resolveProviderChain already treats a
+ * non-matching/null preferredProviderId correctly (falls straight to the
+ * health/priority-ordered eligible set), so no downstream fallback logic
+ * needs to change.
  */
 export function resolveDefaultChatProviderId(
   preferredProviderId: string | null | undefined,
   availability: ProviderAvailability | undefined,
   overrides?: ProviderOverrides,
-): string {
+): string | null {
   if (preferredProviderId && isProviderAvailable(preferredProviderId, availability, overrides)) {
     return preferredProviderId
   }
-  return DEFAULT_CHAT_PROVIDER_ID
+  return null
 }

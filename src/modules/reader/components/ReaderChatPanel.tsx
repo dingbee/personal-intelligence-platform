@@ -100,6 +100,7 @@ export function ReaderChatPanel({
     memoryCandidates,
     dismissMemoryCandidate,
     artifactPreview,
+    chain,
   } = useSendMessage(conversation?.provider_id ?? defaultProviderId, documentId)
   const { rememberCandidate } = useMemories()
   const saveMessage = useSaveMessageToNote({
@@ -136,7 +137,9 @@ export function ReaderChatPanel({
   }, [documentId, activeChapterIndex, scrollFraction, hasProgress, progressUpdatedAt, contextTrace, references])
 
   async function handleSend(text: string) {
-    const id = conversationId ?? (await create.mutateAsync({ providerId: defaultProviderId })).id
+    // AI Preference Layer v1 — see ChatPage.handleNew for why chain[0] is
+    // the right fallback when there's no explicit preference.
+    const id = conversationId ?? (await create.mutateAsync({ providerId: defaultProviderId ?? chain[0] })).id
     if (!conversationId) setConversationId(id)
     const history = messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
     await send(id, text, history)

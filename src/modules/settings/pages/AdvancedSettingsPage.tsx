@@ -3,7 +3,6 @@ import { useCurrentPlan } from '@/modules/plans/hooks/useCurrentPlan'
 import { canSelectProvider } from '@/modules/plans/entitlements'
 import { usePlatformAdmin } from '@/modules/admin/hooks/usePlatformAdmin'
 import { useProfile } from '@/modules/settings/hooks/useProfile'
-import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { ProviderSelect } from '@/modules/ai/chat/components/ProviderSelect'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
@@ -15,12 +14,17 @@ import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
  * never reach this page at all: redirected out before rendering anything
  * provider-shaped, same as the entitlement check ChatPage never needed
  * to make since it no longer renders provider UI regardless of plan.
+ *
+ * AI Preference Layer v1 — renders the user's raw, un-resolved
+ * `default_chat_provider_id` (null included) rather than a pre-resolved
+ * fallback, so "Auto (Recommended)" actually shows as selected when
+ * there's no preference. This control expresses a preference only; NOVA
+ * still decides execution per-request via resolveProviderChain.
  */
 export function AdvancedSettingsPage() {
   const { data: plan, isLoading: planLoading } = useCurrentPlan()
   const { data: isAdmin, isLoading: adminLoading } = usePlatformAdmin()
   const { data: profile, isLoading: profileLoading, updateDefaultProvider } = useProfile()
-  const defaultProviderId = useDefaultChatProviderId()
 
   if (planLoading || adminLoading) {
     return (
@@ -47,15 +51,16 @@ export function AdvancedSettingsPage() {
       <SurfaceCard className="max-w-md">
         <h2 className="text-sm font-medium text-[var(--color-ink)]">AI Provider</h2>
         <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
-          Used for new conversations and AI features unless a conversation already has its own provider set. Only
-          providers that are currently configured and available are shown.
+          Auto (Recommended) lets NOVA pick the best available provider for every request. Choosing a provider only
+          sets a preference — NOVA still applies platform availability and health before using it. Used for new
+          conversations and AI features unless a conversation already has its own provider set.
         </p>
         <div className="mt-3 flex items-center gap-2">
           {profileLoading ? (
             <Spinner size="sm" />
           ) : (
             <ProviderSelect
-              value={profile?.default_chat_provider_id ?? defaultProviderId}
+              value={profile?.default_chat_provider_id ?? null}
               onChange={(id) => updateDefaultProvider.mutate(id)}
               disabled={updateDefaultProvider.isPending}
             />

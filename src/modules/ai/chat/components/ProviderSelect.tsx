@@ -4,27 +4,33 @@ import { useProviderOverrides } from '@/modules/ai/providers/useProviderOverride
 import { resolveAvailableProviders } from '@/modules/ai/providers/availability'
 
 /**
- * The one provider selector in the app (pre-creation picker and the
- * in-conversation header both render this, not a copy). Options are
- * filtered to providers that are both wired up (registry status
- * 'available') and actually configured right now (availability resolver)
- * — the simplest production-safe behavior, per this task's brief:
- * unavailable providers are hidden rather than merely disabled.
+ * The one provider selector in the app, currently rendered only on
+ * Advanced Settings (Pro+/Founder) — the normal chat composer never
+ * shows provider choice at all, for any plan. Options are filtered to
+ * providers that are both wired up (registry status 'available') and
+ * actually configured right now (availability resolver) — unavailable
+ * providers are hidden rather than merely disabled.
  *
- * Exception: if `value` itself isn't in that filtered list — an existing
- * conversation stored with a provider that's since become unavailable —
+ * `value: null` (or `''`, normalized to null on change) means "Auto
+ * (Recommended)" — no explicit preference. This isn't a hard override:
+ * NOVA still selects the actual provider per-request via
+ * resolveProviderChain (platform governance -> availability ->
+ * preference -> health-ordered automatic fallback); this control only
+ * ever expresses a preference, never pins execution directly.
+ *
+ * Exception: if a *non-null* `value` isn't in the filtered list — an
+ * existing preference for a provider that's since become unavailable —
  * it's still shown, as a single disabled "(unavailable)" option, so the
- * select reflects the conversation's true stored provider_id instead of
- * silently jumping to something else. ChatPage adds a fuller warning
- * banner alongside this for that case.
+ * select reflects the true stored preference instead of silently jumping
+ * to something else.
  */
 export function ProviderSelect({
   value,
   onChange,
   disabled,
 }: {
-  value: string
-  onChange: (id: string) => void
+  value: string | null
+  onChange: (id: string | null) => void
   disabled?: boolean
 }) {
   const { data: availability } = useProviderAvailability()
@@ -32,17 +38,18 @@ export function ProviderSelect({
   const allChatProviders = providerRegistry.list().filter((provider) => provider.kind === 'chat')
   const available = resolveAvailableProviders(allChatProviders, availability, overrides)
 
-  const currentIsAvailable = available.some((provider) => provider.id === value)
-  const current = allChatProviders.find((provider) => provider.id === value)
+  const currentIsAvailable = value !== null && available.some((provider) => provider.id === value)
+  const current = value !== null ? allChatProviders.find((provider) => provider.id === value) : undefined
 
   return (
     <select
       aria-label="AI provider"
-      value={value}
+      value={value ?? ''}
       disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
       className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-ink-muted)] disabled:opacity-60"
     >
+      <option value="">Auto (Recommended)</option>
       {!currentIsAvailable && current && (
         <option value={current.id} disabled>
           {current.label} (unavailable)

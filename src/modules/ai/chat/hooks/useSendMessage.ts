@@ -27,7 +27,7 @@ import type { ArtifactPreview } from '@/modules/workspace-actions/types'
  * it in the same handler — a value from `useState` set moments earlier
  * wouldn't be visible yet in this render's closure otherwise.
  */
-export function useSendMessage(providerId: string, documentId?: string) {
+export function useSendMessage(providerId: string | null, documentId?: string) {
   const { user } = useAuth()
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
@@ -149,5 +149,11 @@ export function useSendMessage(providerId: string, documentId?: string) {
     memoryCandidates,
     dismissMemoryCandidate,
     artifactPreview,
+    // AI Preference Layer v1 — chain[0] is "what NOVA would actually pick
+    // right now" (platform governance -> availability -> preference ->
+    // health-ordered automatic fallback). Exposed so a caller creating a
+    // brand-new conversation with no explicit preference can stamp it with
+    // a genuinely resolved provider instead of a hardcoded constant.
+    chain,
   }
 }
