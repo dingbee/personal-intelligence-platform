@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAsset } from '@/modules/assets/hooks/useAsset'
 import { useAssets } from '@/modules/assets/hooks/useAssets'
+import { useAnalyzeImage } from '@/modules/assets/hooks/useAnalyzeImage'
 import { useSignedAssetUrl } from '@/modules/assets/hooks/useSignedAssetUrl'
 import { createNote } from '@/modules/notes/api/notes'
 import { linkNoteToAsset } from '@/modules/notes/api/knowledgeLinks'
@@ -43,11 +44,16 @@ const MAX_ZOOM = 3
  * it's already a real image, so zoom is a plain CSS transform on an
  * <img>, not a PDF-style re-render pipeline.
  *
- * The Chat tab deliberately does not claim NOVA can see the picture — no
- * vision/OCR this phase (see the phase's scope note) — it starts a
- * normal conversation seeded with the image's title via the same
+ * Multimodal Intelligence v1 — the Chat tab's "Analyze with NOVA" action
+ * (useAnalyzeImage) is the one place in this codebase NOVA actually looks
+ * at an image's pixels (see docs/multimodal-intelligence-discovery.md).
+ * The result is stored (asset.metadata) and fed into the same knowledge-
+ * extraction chain documents use, not injected live into an ongoing chat
+ * turn — "Ask NOVA about this image" still starts a normal text
+ * conversation seeded with the image's title via the same
  * createConversationWithQuery command action other quick-start entry
- * points already use.
+ * points already use, so the copy here is careful not to claim NOVA can
+ * see the image mid-conversation, only that it can be asked to look once.
  */
 export function ImageReaderPage() {
   const { assetId } = useParams<{ assetId: string }>()
@@ -55,6 +61,7 @@ export function ImageReaderPage() {
   const { user } = useAuth()
   const { data: asset, isLoading, isError } = useAsset(assetId!)
   const { rename, remove } = useAssets()
+  const analyzeImage = useAnalyzeImage()
   const { createConversationWithQuery } = useCommandActions()
   const { data: imageUrl, isLoading: imageLoading } = useSignedAssetUrl(asset?.optimized_path)
   const { data: role } = useWorkspaceRole(asset?.workspace_id ?? null)
@@ -164,11 +171,35 @@ export function ImageReaderPage() {
           <aside className="w-full shrink-0 overflow-y-auto border-l border-[var(--color-border)] md:w-96">
             {activePanel === 'chat' && (
               <div className="flex flex-col gap-3 p-4">
-                <p className="text-sm text-[var(--color-ink-muted)]">
-                  NOVA can discuss this image by name and context, but can't see its contents yet — image
-                  understanding is a future capability.
-                </p>
-                <Button onClick={() => void createConversationWithQuery(`I'd like to talk about an image called "${asset.title}".`)}>
+                {asset.metadata ? (
+                  <div className="flex flex-col gap-2 rounded-control border border-[var(--color-border)] bg-[var(--surface-raised)] p-3">
+                    <p className="text-xs font-medium text-[var(--color-ink-muted)]">What NOVA sees</p>
+                    <p className="text-sm text-[var(--color-ink)]">{asset.metadata.description}</p>
+                    {asset.metadata.extractedText && (
+                      <>
+                        <p className="text-xs font-medium text-[var(--color-ink-muted)]">Visible text</p>
+                        <p className="whitespace-pre-wrap text-sm text-[var(--color-ink)]">{asset.metadata.extractedText}</p>
+                      </>
+                    )}
+                    <Button variant="ghost" loading={analyzeImage.isPending} onClick={() => analyzeImage.mutate(asset)}>
+                      Re-analyze
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-[var(--color-ink-muted)]">
+                      NOVA hasn't looked at this image yet — analyzing it adds a description and any visible text to
+                      your knowledge graph.
+                    </p>
+                    <Button loading={analyzeImage.isPending} onClick={() => analyzeImage.mutate(asset)}>
+                      Analyze with NOVA
+                    </Button>
+                    {analyzeImage.isError && (
+                      <p className="text-sm text-[var(--color-danger)]">{(analyzeImage.error as Error).message}</p>
+                    )}
+                  </>
+                )}
+                <Button variant="secondary" onClick={() => void createConversationWithQuery(`I'd like to talk about an image called "${asset.title}".`)}>
                   Ask NOVA about this image
                 </Button>
               </div>

@@ -21,11 +21,13 @@ import { OwnershipLine } from '@/shared/components/collaboration/OwnershipLine'
 /**
  * UX-13.9 — the image equivalent of DocumentCard, same shape: a thumbnail
  * (here, an actual visual instead of a file-type badge), title, metadata
- * line, primary View action, and a ⋯ menu. "Ask NOVA" deliberately does
- * not claim NOVA can see the picture — no vision/OCR this phase — it
- * opens a normal conversation seeded with the image's title via the same
+ * line, primary View action, and a ⋯ menu. "Ask NOVA" opens a normal text
+ * conversation seeded with the image's title via the same
  * createConversationWithQuery command action other quick-start entry
- * points already use, not a new AIService path.
+ * points already use, not a new AIService path — it deliberately doesn't
+ * claim NOVA can see the picture mid-conversation. Multimodal Intelligence
+ * v1 — the one place NOVA does actually look at an image is the "Analyze
+ * with NOVA" action on ImageReaderPage, not here in the grid card.
  */
 export function ImageCard({ asset, onOpenLightbox }: { asset: Asset; onOpenLightbox: () => void }) {
   const navigate = useNavigate()

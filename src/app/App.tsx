@@ -10,6 +10,7 @@ import { appConfig } from '@/app/appConfig'
 // anything tries to read from those registries. See modules/core/README.md.
 import '@/modules/core/modules/coreModule'
 import '@/modules/knowledge-intelligence/module'
+import '@/modules/processing/documentIntelligence/module'
 import '@/modules/ai/artifacts/module'
 import '@/modules/search/registerBuiltInProviders'
 import '@/modules/commands/registerBuiltInCommands'

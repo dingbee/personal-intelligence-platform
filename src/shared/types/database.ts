@@ -155,6 +155,23 @@ export type ProcessingJob = {
 
 export type ExtractionChapterSummary = { index: number; title: string }
 
+/**
+ * Multimodal Intelligence v1 — Document Intelligence: structured
+ * classification/extraction over a document's already-extracted text, no
+ * new AI runtime capability needed (pure text in, text out, same
+ * runCapability path knowledge extraction already uses). Every field is
+ * "only what's explicitly present" — empty arrays are the honest default,
+ * not an error, for a document with no dates/decisions/tasks in it.
+ */
+export type DocumentIntelligence = {
+  documentType: string
+  dates: { label: string; date: string }[]
+  decisions: string[]
+  tasks: { description: string; owner: string | null }[]
+  analyzedAt: string
+  provider: string
+}
+
 export type ExtractionMetadata = {
   document_id: string
   user_id: string
@@ -165,8 +182,8 @@ export type ExtractionMetadata = {
   chapter_count: number | null
   word_count: number | null
   char_count: number | null
-  /** `spreadsheet` (UX-13.10) holds SheetAnalysis[] from `@/modules/processing/spreadsheet/types` — kept as `unknown[]` here so shared/types doesn't depend on a feature module; readers should go through `getSpreadsheetAnalysis` in `@/modules/processing/api/extractionMetadata` rather than casting this directly. */
-  metadata: { chapters?: ExtractionChapterSummary[]; spreadsheet?: unknown[] } & Record<string, unknown>
+  /** `spreadsheet` (UX-13.10) holds SheetAnalysis[] from `@/modules/processing/spreadsheet/types` — kept as `unknown[]` here so shared/types doesn't depend on a feature module; readers should go through `getSpreadsheetAnalysis` in `@/modules/processing/api/extractionMetadata` rather than casting this directly. `documentIntelligence` (Multimodal Intelligence v1) is fully typed here since it has no feature-module dependency of its own. */
+  metadata: { chapters?: ExtractionChapterSummary[]; spreadsheet?: unknown[]; documentIntelligence?: DocumentIntelligence } & Record<string, unknown>
   created_at: string
   updated_at: string
 }
@@ -454,6 +471,19 @@ export type DismissedSuggestion = {
 }
 
 /** UX-13.8.2 — an uploaded image and its generated derivatives. Deliberately not a `documents` row; see the 0022_assets.sql migration header. */
+/**
+ * Multimodal Intelligence v1 — AI-generated interpretation of an image,
+ * stored honestly: a description and any visible text NOVA read, not a
+ * calibrated OCR confidence score (no provider in this codebase exposes
+ * one). See docs/multimodal-intelligence-discovery.md §4.
+ */
+export type AssetAnalysis = {
+  description: string
+  extractedText: string | null
+  analyzedAt: string
+  provider: string
+}
+
 export type Asset = {
   id: string
   workspace_id: string | null
@@ -467,6 +497,7 @@ export type Asset = {
   height: number
   size_bytes: number
   created_at: string
+  metadata: AssetAnalysis | null
 }
 
 /** Beta / Admin / AI Governance Foundation (0035_platform_admin_foundation.sql). Not a `profiles` column — see that migration's own header for why. RLS: a user may SELECT only their own row; no client write policy exists at all — granting admin status is a manual, out-of-band SQL statement, never client-reachable. */

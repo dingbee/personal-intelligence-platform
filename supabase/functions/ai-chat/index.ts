@@ -22,9 +22,41 @@ const CORS_HEADERS = {
 
 type ChatProviderId = 'anthropic' | 'openai' | 'google'
 
+// Multimodal Intelligence v1 — mirrors src/modules/ai/providers/ChatProvider.ts's
+// ChatContentPart exactly. Additive: every existing caller sends a plain
+// string and nothing below changes for them. imageUrl is a hosted URL
+// (an asset's signed URL), not inline base64 — every provider's real API
+// accepts a hosted image URL directly.
+type ChatContentPart = { type: 'text'; text: string } | { type: 'image'; imageUrl: string }
+
 interface ChatMessage {
   role: 'user' | 'assistant'
-  content: string
+  content: string | ChatContentPart[]
+}
+
+/** Anthropic Messages API content blocks: {type:'image', source:{type:'url', url}} alongside {type:'text', text}. */
+function toAnthropicContent(content: string | ChatContentPart[]): unknown {
+  if (typeof content === 'string') return content
+  return content.map((part) =>
+    part.type === 'text' ? { type: 'text', text: part.text } : { type: 'image', source: { type: 'url', url: part.imageUrl } },
+  )
+}
+
+/** OpenAI Chat Completions content parts: {type:'image_url', image_url:{url}} alongside {type:'text', text}. */
+function toOpenAiContent(content: string | ChatContentPart[]): unknown {
+  if (typeof content === 'string') return content
+  return content.map((part) => (part.type === 'text' ? { type: 'text', text: part.text } : { type: 'image_url', image_url: { url: part.imageUrl } }))
+}
+
+/**
+ * Gemini generateContent parts: fileData.fileUri references a hosted URL.
+ * Unverified in this deployment — GOOGLE_API_KEY is not a configured
+ * secret here (see registry.ts's own comment on this), so this path has
+ * never actually been exercised against the live API.
+ */
+function toGoogleParts(content: string | ChatContentPart[]): unknown[] {
+  if (typeof content === 'string') return [{ text: content }]
+  return content.map((part) => (part.type === 'text' ? { text: part.text } : { fileData: { fileUri: part.imageUrl } }))
 }
 
 interface ChatRequestBody {
@@ -170,7 +202,7 @@ async function handleChat(body: ChatRequestBody): Promise<Response> {
         model,
         max_tokens: 4096,
         system: body.system,
-        messages: body.messages,
+        messages: body.messages.map((m) => ({ role: m.role, content: toAnthropicContent(m.content) })),
         stream: true,
       }),
     })
@@ -184,7 +216,8 @@ async function handleChat(body: ChatRequestBody): Promise<Response> {
     const apiKey = Deno.env.get('OPENAI_API_KEY')
     if (!apiKey) return errorResponse('OPENAI_API_KEY is not configured', 500)
 
-    const messages = body.system ? [{ role: 'system', content: body.system }, ...body.messages] : body.messages
+    const converted = body.messages.map((m) => ({ role: m.role, content: toOpenAiContent(m.content) }))
+    const messages = body.system ? [{ role: 'system', content: body.system }, ...converted] : converted
     const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
@@ -207,7 +240,7 @@ async function handleChat(body: ChatRequestBody): Promise<Response> {
 
   const contents = body.messages.map((message) => ({
     role: message.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: message.content }],
+    parts: toGoogleParts(message.content),
   }))
   const upstream = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`,

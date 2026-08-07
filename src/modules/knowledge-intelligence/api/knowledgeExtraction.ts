@@ -11,10 +11,10 @@ import {
   parseRelationshipsResponse,
 } from '@/modules/knowledge-intelligence/utils/parseKnowledgeExtractionResponse'
 
-/** Bounds how much document content goes into a single extraction prompt — same truncation-consciousness as the chunker's MAX_CHUNK_CHARS, just applied at the prompt-assembly end instead of the chunking end. */
+/** Bounds how much document content goes into a single extraction prompt — same truncation-consciousness as the chunker's MAX_CHUNK_CHARS, just applied at the prompt-assembly end instead of the chunking end. Exported for Document Intelligence v1's runDocumentIntelligence, which needs the identical bounded-content shape for its own document-scoped capability call. */
 const MAX_CONTENT_CHARS = 12000
 
-function boundContent(chunks: DocumentChunk[]): { content: string; chunkIds: string[] } {
+export function boundContent(chunks: DocumentChunk[]): { content: string; chunkIds: string[] } {
   let content = ''
   const chunkIds: string[] = []
   for (const chunk of chunks) {
@@ -39,23 +39,33 @@ export interface KnowledgeExtractionResult {
   edgesCreated: number
 }
 
-/**
- * Document -> extract concepts/entities -> detect relationships between
- * them -> persist. Every step reuses existing infrastructure: runCapability
- * for execution (which itself logs to ai_requests), upsertKnowledgeNodes/
- * upsertKnowledgeEdges for persistence (upsert, so re-running is a refresh,
- * never a duplicate or a delete). No new AI provider or embedding call —
- * see the Phase 7A audit for why source_chunk_ids substitutes for a
- * per-node embedding.
- */
-export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParams): Promise<KnowledgeExtractionResult> {
-  const { documentId, userId, workspaceId, chain } = params
+export interface RunKnowledgeExtractionFromContentParams {
+  content: string
+  /** Polymorphic — knowledge_nodes.source_type/source_id, same convention knowledge_links already uses (enforced in application code, not the database, per 0012_knowledge_intelligence_foundation.sql). 'document' for the existing pipeline; 'asset' for Multimodal Intelligence v1's image analysis. */
+  sourceType: string
+  sourceId: string
+  /** Empty when the source has no document_chunks of its own (e.g. an asset) — knowledge_nodes.source_chunk_ids is just jsonb, no non-empty constraint. */
+  sourceChunkIds: string[]
+  userId: string
+  workspaceId: string | null
+  /** Ordered candidates from useProviderChain. See RunKnowledgeExtractionParams.chain. */
+  chain: string[]
+}
 
-  const chunks = await listDocumentChunks(documentId)
-  if (chunks.length === 0) {
-    throw new Error('This document has no processed content to extract from yet.')
-  }
-  const { content, chunkIds } = boundContent(chunks)
+/**
+ * The actual extract-concepts/entities -> detect-relationships -> persist
+ * chain, generalized over its source (Multimodal Intelligence v1 — this
+ * used to be runKnowledgeExtraction's own body, hardcoded to
+ * sourceType: 'document'/sourceId: documentId; runKnowledgeExtraction is
+ * now a thin document-chunk-fetching wrapper around this). Every step
+ * reuses existing infrastructure: runCapability for execution (which
+ * itself logs to ai_requests), upsertKnowledgeNodes/upsertKnowledgeEdges
+ * for persistence (upsert, so re-running is a refresh, never a duplicate
+ * or a delete). No new AI provider or embedding call — see the Phase 7A
+ * audit for why source_chunk_ids substitutes for a per-node embedding.
+ */
+export async function runKnowledgeExtractionFromContent(params: RunKnowledgeExtractionFromContentParams): Promise<KnowledgeExtractionResult> {
+  const { content, sourceType, sourceId, sourceChunkIds: chunkIds, userId, workspaceId, chain } = params
   const generatedAt = new Date().toISOString()
 
   // The first call is the only one that ever falls back — it establishes
@@ -86,8 +96,8 @@ export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParam
         nodeType: 'concept',
         title: item.title,
         description: item.description,
-        sourceType: 'document',
-        sourceId: documentId,
+        sourceType,
+        sourceId,
         sourceChunkIds: chunkIds,
         generationMetadata: {
           capability: 'extract-concepts',
@@ -104,8 +114,8 @@ export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParam
         nodeType: 'entity',
         title: item.title,
         description: item.description,
-        sourceType: 'document',
-        sourceId: documentId,
+        sourceType,
+        sourceId,
         sourceChunkIds: chunkIds,
         generationMetadata: {
           capability: 'extract-entities',
@@ -144,4 +154,31 @@ export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParam
   await upsertKnowledgeEdges(edges)
 
   return { concepts, entities, edgesCreated: edges.length }
+}
+
+/**
+ * The original document-scoped entry point, now a thin wrapper: fetch the
+ * document's chunks, bound them into one prompt-sized string, and delegate
+ * to runKnowledgeExtractionFromContent with sourceType: 'document'. Every
+ * existing call site (Knowledge Extraction Controls on Document Detail,
+ * etc.) is unaffected.
+ */
+export async function runKnowledgeExtraction(params: RunKnowledgeExtractionParams): Promise<KnowledgeExtractionResult> {
+  const { documentId, userId, workspaceId, chain } = params
+
+  const chunks = await listDocumentChunks(documentId)
+  if (chunks.length === 0) {
+    throw new Error('This document has no processed content to extract from yet.')
+  }
+  const { content, chunkIds } = boundContent(chunks)
+
+  return runKnowledgeExtractionFromContent({
+    content,
+    sourceType: 'document',
+    sourceId: documentId,
+    sourceChunkIds: chunkIds,
+    userId,
+    workspaceId,
+    chain,
+  })
 }

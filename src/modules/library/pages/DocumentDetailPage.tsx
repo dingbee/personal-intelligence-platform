@@ -13,6 +13,7 @@ import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
 import { useWorkspaceMemberDirectory } from '@/modules/workspaces/hooks/useWorkspaceMemberDirectory'
 import { ProcessingStatusBadge } from '@/modules/processing/components/ProcessingStatusBadge'
 import { KnowledgeExtractionPanel } from '@/modules/knowledge-intelligence/components/KnowledgeExtractionPanel'
+import { DocumentIntelligencePanel } from '@/modules/processing/documentIntelligence/DocumentIntelligencePanel'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import { DocumentTagEditor } from '@/modules/library/components/DocumentTagEditor'
 import { CollectionMoveSelect } from '@/modules/library/components/CollectionMoveSelect'
@@ -220,6 +221,10 @@ export function DocumentDetailPage() {
         )}
 
         {document.status === 'ready' && <KnowledgeExtractionPanel documentId={document.id} />}
+
+        {document.status === 'ready' && (
+          <DocumentIntelligencePanel documentId={document.id} documentIntelligence={metadata?.metadata.documentIntelligence ?? null} />
+        )}
 
         <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-4">
           {readerMode && document.status === 'ready' && (

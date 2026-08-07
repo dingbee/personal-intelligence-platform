@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase'
-import type { Asset } from '@/shared/types/database'
+import type { Asset, AssetAnalysis } from '@/shared/types/database'
 import { resolveFileSize, validateImageFile } from '@/modules/assets/validation'
 import { generateDerivatives } from '@/modules/assets/pipeline/generateDerivatives'
 
@@ -109,6 +109,13 @@ export async function getAsset(id: string): Promise<Asset> {
 
 export async function renameAsset(id: string, title: string): Promise<Asset> {
   const { data, error } = await supabase.from('assets').update({ title }).eq('id', id).select().single()
+  if (error) throw error
+  return data
+}
+
+/** Multimodal Intelligence v1 — persists the "Analyze with NOVA" result. */
+export async function updateAssetMetadata(id: string, metadata: AssetAnalysis): Promise<Asset> {
+  const { data, error } = await supabase.from('assets').update({ metadata }).eq('id', id).select().single()
   if (error) throw error
   return data
 }

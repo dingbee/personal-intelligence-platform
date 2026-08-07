@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase'
-import type { ExtractionMetadata } from '@/shared/types/database'
+import type { DocumentIntelligence, ExtractionMetadata } from '@/shared/types/database'
 import type { ExtractionResult } from '@/modules/processing/extractors/types'
 import { toChapterSummaries } from '@/modules/processing/extractors/types'
 import type { SheetAnalysis } from '@/modules/processing/spreadsheet/types'
@@ -45,4 +45,20 @@ export async function getExtractionMetadata(documentId: string): Promise<Extract
 export function getSpreadsheetAnalysis(metadata: ExtractionMetadata | null | undefined): SheetAnalysis[] | null {
   const spreadsheet = metadata?.metadata.spreadsheet
   return spreadsheet && spreadsheet.length > 0 ? (spreadsheet as SheetAnalysis[]) : null
+}
+
+/**
+ * Multimodal Intelligence v1 — a targeted `metadata` update, not a full
+ * saveExtractionMetadata upsert: this runs long after processing (a
+ * separate, user-triggered "Analyze Document Intelligence" action), so it
+ * must not clobber `chapters`/`spreadsheet` (or title/author/counts) the
+ * way re-sending saveExtractionMetadata's whole payload would.
+ */
+export async function saveDocumentIntelligence(documentId: string, documentIntelligence: DocumentIntelligence): Promise<void> {
+  const current = await getExtractionMetadata(documentId)
+  const { error } = await supabase
+    .from('extraction_metadata')
+    .update({ metadata: { ...(current?.metadata ?? {}), documentIntelligence } })
+    .eq('document_id', documentId)
+  if (error) throw error
 }
