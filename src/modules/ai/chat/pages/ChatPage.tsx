@@ -298,7 +298,14 @@ export function ChatPage() {
   }
 
   return (
-    <div className="-m-4 flex h-[calc(100vh-3.5rem)] md:-m-8">
+    // PIP Stabilization v1 (P0/P1) — was h-[calc(100vh-3.5rem)], assuming
+    // TopBar is a fixed 3.5rem tall. TopBar is a two-row header with no
+    // fixed-height class, so that assumption was false on every viewport,
+    // not just mobile — h-full instead lets this fill exactly what
+    // AppShell's flexbox chain (h-screen/h-dvh -> flex-col -> TopBar +
+    // flex-1 main) already computed as the real remaining space, self-
+    // correcting if TopBar's height ever changes.
+    <div className="-m-4 flex h-full md:-m-8">
       <ConversationList
         conversations={displayedConversations}
         selectedId={selectedId}

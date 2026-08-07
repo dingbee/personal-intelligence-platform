@@ -8,6 +8,7 @@ import { useSignedAssetUrl } from '@/modules/assets/hooks/useSignedAssetUrl'
 import { createNote } from '@/modules/notes/api/notes'
 import { linkNoteToAsset } from '@/modules/notes/api/knowledgeLinks'
 import { buildStructuredNoteContent } from '@/modules/assets/intelligence/buildStructuredNoteContent'
+import { buildImageChatSeedQuery } from '@/modules/assets/intelligence/buildImageChatSeedQuery'
 import { needsConfidenceReview } from '@/modules/assets/intelligence/assetConfidence'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import { exportAssetPackage } from '@/modules/knowledge-exchange/assets/exportAssetPackage'
@@ -105,7 +106,7 @@ export function ImageReaderPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen h-dvh items-center justify-center">
         <Spinner />
       </div>
     )
@@ -126,7 +127,7 @@ export function ImageReaderPage() {
   const canDelete = isAssetOwner || role === 'owner'
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen h-dvh flex-col">
       <header className="flex h-14 shrink-0 items-center gap-4 border-b border-[var(--color-border)] px-4">
         <Link to="/library" className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
           ← Library
@@ -135,7 +136,7 @@ export function ImageReaderPage() {
           <span className="truncate">{asset.title}</span>
           {isShared && <SharingBadge isShared />}
         </h1>
-        <div className="ml-auto flex shrink-0 items-center gap-3 text-xs text-[var(--color-ink-muted)]">
+        <div className="ml-auto flex shrink-0 items-center gap-3 overflow-x-auto text-xs text-[var(--color-ink-muted)]">
           <div className="hidden items-center gap-1.5 md:flex">
             <button
               type="button"
@@ -177,10 +178,22 @@ export function ImageReaderPage() {
           {imageLoading ? (
             <Spinner />
           ) : imageUrl ? (
+            // PIP Stabilization v1 (P1 mobile) — at the default zoom (1), fit
+            // the image within its container instead of forcing native pixel
+            // width: most photos are wider than a phone screen, so this used
+            // to force horizontal scrolling on every image, every time,
+            // unlike the PDF reader's fit-width default. Zooming in/out still
+            // switches to an explicit pixel width, which is when
+            // intentionally overflowing the container (to pan/scroll) is the
+            // whole point.
             <img
               src={imageUrl}
               alt={asset.title}
-              style={{ width: `${asset.width * zoom}px`, maxWidth: 'none' }}
+              style={
+                zoom === 1
+                  ? { maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }
+                  : { width: `${asset.width * zoom}px`, maxWidth: 'none' }
+              }
               className="shadow-raised"
             />
           ) : (
@@ -245,7 +258,7 @@ export function ImageReaderPage() {
                     )}
                   </>
                 )}
-                <Button variant="secondary" onClick={() => void createConversationWithQuery(`I'd like to talk about an image called "${asset.title}".`)}>
+                <Button variant="secondary" onClick={() => void createConversationWithQuery(buildImageChatSeedQuery(asset.title, asset.metadata))}>
                   Ask NOVA about this image
                 </Button>
               </div>

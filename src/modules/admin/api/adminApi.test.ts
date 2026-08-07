@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-const { rpcMock } = vi.hoisted(() => ({ rpcMock: vi.fn() }))
-vi.mock('@/shared/lib/supabase', () => ({ supabase: { rpc: rpcMock } }))
+const { rpcMock, functionsInvokeMock } = vi.hoisted(() => ({ rpcMock: vi.fn(), functionsInvokeMock: vi.fn() }))
+vi.mock('@/shared/lib/supabase', () => ({ supabase: { rpc: rpcMock, functions: { invoke: functionsInvokeMock } } }))
 
 import {
   adminAiUsageSummary,
@@ -15,6 +15,7 @@ import {
   adminSetPlatformProviderSetting,
   adminSetUserDisabled,
   adminUpdatePlanQuota,
+  sendBetaInvitationEmail,
 } from '@/modules/admin/api/adminApi'
 
 describe('adminApi', () => {
@@ -162,6 +163,33 @@ describe('adminApi', () => {
       p_plan_id: 'plan-pro',
       p_quota_key: 'ai_messages',
       p_quota_limit: 5000,
+    })
+  })
+
+  describe('sendBetaInvitationEmail', () => {
+    it('invokes the edge function with only the invite id and returns no error on success', async () => {
+      functionsInvokeMock.mockResolvedValueOnce({ data: { sent: true }, error: null })
+
+      const result = await sendBetaInvitationEmail('invite-1')
+
+      expect(functionsInvokeMock).toHaveBeenCalledWith('send-beta-invitation', { body: { inviteId: 'invite-1' } })
+      expect(result).toEqual({ error: null })
+    })
+
+    it('returns the error message rather than throwing when the provider rejects the send', async () => {
+      functionsInvokeMock.mockResolvedValueOnce({ data: null, error: new Error('Email provider error: 502 upstream failure') })
+
+      const result = await sendBetaInvitationEmail('invite-1')
+
+      expect(result).toEqual({ error: 'Email provider error: 502 upstream failure' })
+    })
+
+    it('surfaces a 409 for an already-accepted invite as an error, not a throw', async () => {
+      functionsInvokeMock.mockResolvedValueOnce({ data: null, error: new Error('Invite is no longer pending (accepted)') })
+
+      const result = await sendBetaInvitationEmail('invite-1')
+
+      expect(result.error).toMatch(/no longer pending/)
     })
   })
 })

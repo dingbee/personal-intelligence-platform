@@ -87,4 +87,25 @@ describe('buildSystemPrompt', () => {
     const result = buildSystemPrompt([], null, '- Likes concise answers', 'Revenue: sum USD 1,500')
     expect(result.indexOf('<spreadsheet_analysis>')).toBeLessThan(result.indexOf('<personal_context>'))
   })
+
+  it('appends a <visual_context> block when assetMatches is given (PIP Stabilization v1, P0)', () => {
+    const result = buildSystemPrompt([], null, null, null, [{ assetId: 'a1', title: 'IMG_0231', content: 'Image: "IMG_0231"\nHandwritten notes.', similarity: 0.9 }])
+    expect(result).toContain('<visual_context>\n[1] Image: "IMG_0231"\nHandwritten notes.\n</visual_context>')
+  })
+
+  it('produces no <visual_context> block when assetMatches is missing or empty (old behavior unchanged)', () => {
+    expect(buildSystemPrompt([])).not.toContain('<visual_context>')
+    expect(buildSystemPrompt([], null, null, null, [])).not.toContain('<visual_context>')
+  })
+
+  it('places visual context before knowledge connections, evidence-first ordering', () => {
+    const result = buildSystemPrompt(
+      [],
+      'Concept: Marketing Plan',
+      null,
+      null,
+      [{ assetId: 'a1', title: 'IMG_0231', content: 'Handwritten notes.', similarity: 0.9 }],
+    )
+    expect(result.indexOf('<visual_context>')).toBeLessThan(result.indexOf('<knowledge_connections>'))
+  })
 })

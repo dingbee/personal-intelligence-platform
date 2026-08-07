@@ -53,6 +53,16 @@ export function buildGraphContextText(nodes: GraphContextNode[], links: GraphCon
 
 export interface RetrieveGraphContextParams {
   documentIds: string[]
+  /**
+   * PIP Stabilization v1 (P0, root cause B) — the asset-sourced counterpart
+   * of documentIds. Kept as a separate, optional field rather than folding
+   * assets into documentIds: the two ids live in different tables
+   * (documents vs. assets), and this preserves every existing caller's
+   * behavior exactly (an omitted assetIds is a no-op, not a behavior
+   * change) while extending the same polymorphic source_type convention
+   * knowledge_node_sources/knowledge_links already use everywhere else.
+   */
+  assetIds?: string[]
   userId: string
   workspaceId: string | null
 }
@@ -74,17 +84,20 @@ export interface RetrieveGraphContextParams {
  */
 export async function retrieveGraphContext(params: RetrieveGraphContextParams): Promise<string | null> {
   try {
-    const { documentIds } = params
-    if (documentIds.length === 0) return null
+    const { documentIds, assetIds = [] } = params
+    if (documentIds.length === 0 && assetIds.length === 0) return null
 
-    const { data: sourceRows, error: sourceError } = await supabase
-      .from('knowledge_node_sources')
-      .select('node_id')
-      .eq('source_type', 'document')
-      .in('source_id', documentIds)
-    if (sourceError) throw sourceError
+    const sourceQueries = []
+    if (documentIds.length > 0) {
+      sourceQueries.push(supabase.from('knowledge_node_sources').select('node_id').eq('source_type', 'document').in('source_id', documentIds))
+    }
+    if (assetIds.length > 0) {
+      sourceQueries.push(supabase.from('knowledge_node_sources').select('node_id').eq('source_type', 'asset').in('source_id', assetIds))
+    }
+    const sourceResults = await Promise.all(sourceQueries)
+    for (const result of sourceResults) if (result.error) throw result.error
 
-    const nodeIds = [...new Set(sourceRows.map((row) => row.node_id))]
+    const nodeIds = [...new Set(sourceResults.flatMap((result) => result.data!.map((row) => row.node_id)))]
     if (nodeIds.length === 0) return null
 
     const { data: nodes, error: nodesError } = await supabase
@@ -107,10 +120,16 @@ export async function retrieveGraphContext(params: RetrieveGraphContextParams): 
       .limit(MAX_RELATIONSHIPS)
     if (linksError) throw linksError
 
-    const { data: documents, error: documentsError } = await supabase.from('documents').select('id, title').in('id', documentIds)
-    if (documentsError) throw documentsError
+    const [documentsResult, assetsResult] = await Promise.all([
+      documentIds.length > 0 ? supabase.from('documents').select('id, title').in('id', documentIds) : Promise.resolve({ data: [], error: null }),
+      assetIds.length > 0 ? supabase.from('assets').select('id, title').in('id', assetIds) : Promise.resolve({ data: [], error: null }),
+    ])
+    if (documentsResult.error) throw documentsResult.error
+    if (assetsResult.error) throw assetsResult.error
 
-    return buildGraphContextText(nodes, links ?? [], documents.map((doc) => doc.title))
+    const sourceTitles = [...documentsResult.data!.map((doc) => doc.title), ...assetsResult.data!.map((asset) => asset.title)]
+
+    return buildGraphContextText(nodes, links ?? [], sourceTitles)
   } catch {
     return null
   }

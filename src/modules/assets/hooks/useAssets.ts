@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { deleteAsset, listAssets, renameAsset, uploadAsset } from '@/modules/assets/api/assets'
+import { useAnalyzeImage } from '@/modules/assets/hooks/useAnalyzeImage'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 
@@ -17,11 +18,24 @@ export function useAssets(params: { search?: string } = {}) {
   })
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['assets'] })
+  const analyzeImage = useAnalyzeImage()
 
   const upload = useMutation({
     mutationFn: (params: { file: File; title?: string }) =>
       uploadAsset({ file: params.file, title: params.title, userId: user!.id, workspaceId: currentWorkspaceId }),
-    onSuccess: invalidate,
+    onSuccess: (asset) => {
+      invalidate()
+      // PIP Stabilization v1 (P0, root cause D) — vision analysis used to
+      // require the user to separately open the image and click "Analyze
+      // with NOVA"; a freshly uploaded image had no description, no
+      // extracted text, and no knowledge nodes until then. Fire-and-forget,
+      // same "never block the UI, swallow own errors" contract indexAsset/
+      // indexNote/autoReconcileNewKnowledge already follow — useAnalyzeImage
+      // itself already invalidates the knowledge-graph queries this produces.
+      analyzeImage.mutate(asset, {
+        onError: (err) => console.error(`Automatic analysis failed for asset ${asset.id}:`, err),
+      })
+    },
   })
 
   const rename = useMutation({

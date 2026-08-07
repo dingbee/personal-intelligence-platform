@@ -19,7 +19,11 @@ export function ChatInput({ disabled, onSend }: { disabled: boolean; onSend: (te
   }
 
   return (
-    <div className="flex items-end gap-2 border-t border-[var(--color-border)] p-4">
+    // PIP Stabilization v1 (P1 mobile) — pb-[max(1rem,env(safe-area-inset-bottom))]
+    // keeps the composer clear of the home-indicator area on notched
+    // iPhones (env() resolves once index.html's viewport-fit=cover is set;
+    // it's simply 0 elsewhere, so this is a no-op on every other device).
+    <div className="flex items-end gap-2 border-t border-[var(--color-border)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}

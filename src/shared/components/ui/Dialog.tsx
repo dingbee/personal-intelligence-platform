@@ -1,7 +1,12 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 
+// PIP Stabilization v1 (P1 mobile) — max-h-[85dvh]/overflow-y-auto replace
+// reliance on the native <dialog> UA-stylesheet height clamp, which is
+// computed against the layout viewport rather than the visual one — on a
+// short mobile viewport (e.g. keyboard open) that clamp can be taller than
+// what's actually visible, with no scroll affordance of its own.
 const DEFAULT_DIALOG_CLASS =
-  'w-full max-w-lg rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] p-6 shadow-floating backdrop:bg-black/30'
+  'w-full max-w-lg max-h-[85dvh] overflow-y-auto rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] p-6 shadow-floating backdrop:bg-black/30'
 
 export interface DialogProps {
   open: boolean

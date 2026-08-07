@@ -4,6 +4,7 @@ import { getChatProvider } from '@/modules/ai/providers/registry'
 import { insertMessage } from '@/modules/ai/chat/api/messages'
 import { touchConversation } from '@/modules/ai/chat/api/conversations'
 import { retrieveContext } from '@/modules/ai/orchestration/retrieveContext'
+import { retrieveAssetContext } from '@/modules/ai/orchestration/retrieveAssetContext'
 import { buildSystemPrompt } from '@/modules/ai/orchestration/buildSystemPrompt'
 import { buildContextTrace, type ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import { retrieveGraphContext } from '@/modules/knowledge-intelligence/api/retrieveGraphContext'
@@ -129,12 +130,22 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   }
 
   const matches = await retrieveContext({ query: text, userId, workspaceId, documentId })
+  // PIP Stabilization v1 (P0, root cause A) — the image-context counterpart
+  // of retrieveContext: never throws (matches the never-throws contract
+  // every other optional context source here already follows) — a failure
+  // or an unanalyzed/nonexistent image just means no <visual_context>
+  // block, never a broken chat response.
+  const assetMatches = await retrieveAssetContext({ query: text, userId, workspaceId }).catch(() => [])
   // retrieveGraphContext/retrieveMemoryContext never throw (see their own
   // try/catch) — a missing or empty knowledge graph or memory store just
   // means no <knowledge_connections>/<personal_context> block, never a
   // broken chat response.
   const graphContext = await retrieveGraphContext({
     documentIds: [...new Set(matches.map((match) => match.documentId))],
+    // PIP Stabilization v1 (P0, root cause B) — without this, an image's
+    // own knowledge-graph relationships (concepts/entities extracted from
+    // it) were unreachable even when the image itself was found above.
+    assetIds: [...new Set(assetMatches.map((match) => match.assetId))],
     userId,
     workspaceId,
   })
@@ -144,9 +155,9 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   // this is only meaningful when the reader/chat is actually anchored to
   // one spreadsheet, same scoping retrieveContext itself already uses.
   const spreadsheetContext = await retrieveSpreadsheetContext(documentId)
-  let system = buildSystemPrompt(matches, graphContext, memoryContext, spreadsheetContext)
+  let system = buildSystemPrompt(matches, graphContext, memoryContext, spreadsheetContext, assetMatches)
 
-  const contextTrace = buildContextTrace(matches.length, graphContext, memoryContext)
+  const contextTrace = buildContextTrace(matches.length + assetMatches.length, graphContext, memoryContext)
   // Internal-only, logged not persisted (Phase UX-5.2) — "why did NOVA
   // answer this way" isn't user- or UI-facing yet, that's a later phase.
   console.debug('[AIService] context trace', contextTrace)

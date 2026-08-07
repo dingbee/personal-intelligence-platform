@@ -25,8 +25,15 @@ export function AppShell() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // PIP Stabilization v1 (P1 mobile) — h-dvh (dynamic viewport height)
+  // after h-screen (100vh) as a fallback: on iOS Safari, 100vh includes
+  // the area the address bar/toolbar can cover, so h-screen alone can
+  // size this shell taller than what's actually visible, pushing
+  // bottom-of-shell content (like ChatInput) out of view. Browsers that
+  // don't support dvh simply never parse the second declaration and
+  // keep the h-screen fallback.
   return (
-    <div className="flex h-screen bg-[var(--surface-base)]">
+    <div className="flex h-screen h-dvh bg-[var(--surface-base)]">
       <Sidebar />
       <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <NovaCommandBar

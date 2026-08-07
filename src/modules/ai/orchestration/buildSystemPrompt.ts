@@ -1,6 +1,7 @@
 import { getActivePrompt } from '@/modules/core/prompts/registry'
 import { renderPromptTemplate } from '@/modules/core/prompts/renderPromptTemplate'
 import type { VectorMatch } from '@/modules/ai/retrieval/VectorStore'
+import type { AssetContextMatch } from '@/modules/ai/orchestration/retrieveAssetContext'
 
 /**
  * Told to the model explicitly rather than left implicit — memory is
@@ -36,6 +37,7 @@ export function buildSystemPrompt(
   graphContext?: string | null,
   memoryContext?: string | null,
   spreadsheetContext?: string | null,
+  assetMatches?: AssetContextMatch[],
 ): string {
   const template = getActivePrompt('chat')
   if (!template) throw new Error('No active prompt template for the "chat" capability — is coreModule registered?')
@@ -46,6 +48,16 @@ export function buildSystemPrompt(
       : '(No relevant content found in the user\'s library.)'
 
   let prompt = renderPromptTemplate(template.template, { context })
+
+  // PIP Stabilization v1 (P0) — a distinct tagged block, not folded into
+  // {{context}}: an image's analyzed content is real evidence, same as a
+  // document chunk, but keeping it separately labeled lets the model (and
+  // the user, if it explains itself) be explicit that this came from an
+  // uploaded image rather than a document.
+  if (assetMatches && assetMatches.length > 0) {
+    const visualContext = assetMatches.map((match, i) => `[${i + 1}] ${match.content}`).join('\n\n')
+    prompt += `\n\n<visual_context>\n${visualContext}\n</visual_context>`
+  }
 
   if (graphContext) {
     prompt += `\n\n<knowledge_connections>\n${graphContext}\n</knowledge_connections>`

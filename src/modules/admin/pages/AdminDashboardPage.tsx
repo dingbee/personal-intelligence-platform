@@ -6,6 +6,7 @@ import {
   useAdminCreateBetaInvite,
   useAdminPlatformCounts,
   useAdminRevokeBetaInvite,
+  useAdminSendBetaInvitationEmail,
   useAdminUsers,
 } from '@/modules/admin/hooks/useAdminData'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
@@ -44,6 +45,7 @@ export function AdminDashboardPage() {
   const { data: users = [], isLoading: usersLoading } = useAdminUsers()
   const { data: invites = [], isLoading: invitesLoading } = useAdminBetaInvites()
   const createInvite = useAdminCreateBetaInvite()
+  const sendInviteEmail = useAdminSendBetaInvitationEmail()
   const revokeInvite = useAdminRevokeBetaInvite()
   const { data: aiUsage = [] } = useAdminAiUsageSummary()
   const { data: counts } = useAdminPlatformCounts()
@@ -74,11 +76,26 @@ export function AdminDashboardPage() {
     })
     if (result.outcome === 'duplicate') {
       setInviteFeedback(`${inviteEmail} already has an invite on file.`)
+      return
+    }
+    setInviteEmail('')
+    setInviteName('')
+    setInviteOrg('')
+    // PIP Stabilization v1 (P1) — invite-row creation and email delivery are
+    // reported as two distinct facts: a database row existing was never
+    // proof the invitee was told anything. If invite_id is missing (should
+    // not happen for a 'created' outcome, but the RPC's return type allows
+    // it) there is nothing to email, so say so rather than silently trying.
+    if (!result.invite_id) {
+      setInviteFeedback(`Invite created for ${inviteEmail}, but no invite id was returned — email not sent.`)
+      return
+    }
+    setInviteFeedback(`Invite created for ${inviteEmail}. Sending invitation email…`)
+    const { error } = await sendInviteEmail.mutateAsync(result.invite_id)
+    if (error) {
+      setInviteFeedback(`Invite created for ${inviteEmail}, but the invitation email failed to send: ${error}`)
     } else {
-      setInviteFeedback(`Invite created for ${inviteEmail}.`)
-      setInviteEmail('')
-      setInviteName('')
-      setInviteOrg('')
+      setInviteFeedback(`Invite created and invitation email sent to ${inviteEmail}.`)
     }
   }
 

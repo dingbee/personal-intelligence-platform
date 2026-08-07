@@ -36,6 +36,23 @@ export async function adminRevokeBetaInvite(inviteId: string) {
   return data ?? false
 }
 
+/**
+ * PIP Stabilization v1 (P1) — invokes the send-beta-invitation edge
+ * function, mirroring sendWorkspaceInvitationEmail's own shape exactly:
+ * takes only the invite id, never email/name, so the function re-resolves
+ * everything itself from the database rather than trusting client state.
+ * `supabase.functions.invoke` forwards the caller's own session JWT
+ * automatically — never a service-role key, which only exists server-side.
+ * Returns `{ error }` rather than throwing so the invite-creation flow can
+ * treat "invite created, email failed" as a distinct, non-corrupting
+ * outcome from "invite creation itself failed" — the database row is
+ * unaffected either way.
+ */
+export async function sendBetaInvitationEmail(inviteId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.functions.invoke('send-beta-invitation', { body: { inviteId } })
+  return { error: error ? error.message : null }
+}
+
 export async function adminChangeUserPlan(params: { userId: string; planId: string }) {
   const { error } = await supabase.rpc('admin_change_user_plan', { p_user_id: params.userId, p_plan_id: params.planId })
   if (error) throw error

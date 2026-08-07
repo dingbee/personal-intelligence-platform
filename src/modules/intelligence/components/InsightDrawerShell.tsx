@@ -83,7 +83,11 @@ export function InsightDrawerShell({ storageKey, label, icon = '✨', children }
         type="button"
         onClick={() => setPersistedState('expanded')}
         aria-label={`Restore ${label} panel`}
-        className="fixed bottom-24 right-6 z-20 flex items-center gap-1.5 rounded-pill border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-ink)] shadow-raised transition-colors hover:text-[var(--color-accent)] sm:bottom-6"
+        // PIP Stabilization v1 (P1 mobile) — the fixed bottom offsets add
+        // env(safe-area-inset-bottom) so the clearance from the home-
+        // indicator area on notched iPhones is robust rather than
+        // coincidental (a no-op where the inset is 0, same as ChatInput).
+        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-6 z-20 flex items-center gap-1.5 rounded-pill border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-ink)] shadow-raised transition-colors hover:text-[var(--color-accent)] sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
       >
         <span aria-hidden>{icon}</span> {label}
       </button>

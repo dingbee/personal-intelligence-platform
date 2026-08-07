@@ -4,11 +4,12 @@ import { promptRegistry } from '@/modules/core/prompts/registry'
 // vi.mock calls are hoisted above these imports by Vitest — vi.hoisted is
 // what lets a mock factory safely close over a variable this file also
 // asserts against later (retrieveMemoryContextMock).
-const { retrieveMemoryContextMock, retrieveGraphContextMock, retrieveContextMock, streamChatCompletionMock } =
+const { retrieveMemoryContextMock, retrieveGraphContextMock, retrieveContextMock, retrieveAssetContextMock, streamChatCompletionMock } =
   vi.hoisted(() => ({
     retrieveMemoryContextMock: vi.fn(async () => null as string | null),
     retrieveGraphContextMock: vi.fn(async () => null as string | null),
     retrieveContextMock: vi.fn(async () => [] as { chunkId: string; documentId: string; content: string; similarity: number }[]),
+    retrieveAssetContextMock: vi.fn(async () => [] as { assetId: string; title: string; content: string; similarity: number }[]),
     streamChatCompletionMock: vi.fn(async (_params: { system: string }) => ({ content: 'Hello there.', model: 'test-model' })),
   }))
 
@@ -32,6 +33,7 @@ vi.mock('@/modules/ai/chat/api/conversations', () => ({
 vi.mock('@/modules/search/indexing/indexMessage', () => ({ indexMessage: vi.fn(async () => {}) }))
 vi.mock('@/modules/knowledge-intelligence/api/linkKnownConcepts', () => ({ linkKnownConceptsToSource: vi.fn(async () => {}) }))
 vi.mock('@/modules/ai/orchestration/retrieveContext', () => ({ retrieveContext: retrieveContextMock }))
+vi.mock('@/modules/ai/orchestration/retrieveAssetContext', () => ({ retrieveAssetContext: retrieveAssetContextMock }))
 vi.mock('@/modules/knowledge-intelligence/api/retrieveGraphContext', () => ({ retrieveGraphContext: retrieveGraphContextMock }))
 vi.mock('@/modules/ai/memory/retrieveMemoryContext', () => ({ retrieveMemoryContext: retrieveMemoryContextMock }))
 vi.mock('@/modules/ai/orchestration/streamChatCompletion', () => ({ streamChatCompletion: streamChatCompletionMock }))
@@ -130,6 +132,43 @@ describe('sendMessage', () => {
   it('returns a contextTrace alongside the message', async () => {
     const result = await sendMessage(baseParams())
     expect(result.contextTrace).toEqual({ retrievedChunks: 0, graphNodes: 0, memoriesUsed: 0 })
+  })
+
+  // PIP Stabilization v1 (P0) — the fix for "NOVA has no information about
+  // an uploaded image": an analyzed asset's content must actually reach
+  // the prompt sent to the provider, and its id must reach
+  // retrieveGraphContext so the image's own knowledge-graph relationships
+  // are reachable too.
+  it('includes analyzed image content in the prompt sent to the provider when retrieveAssetContext finds a match', async () => {
+    retrieveAssetContextMock.mockResolvedValueOnce([
+      { assetId: 'asset-1', title: 'IMG_0231', content: 'Image: "IMG_0231"\nA handwritten page of notes.', similarity: 0.9 },
+    ])
+    await sendMessage(baseParams())
+    const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+    expect(lastCall?.system).toContain('<visual_context>')
+    expect(lastCall?.system).toContain('A handwritten page of notes.')
+  })
+
+  it('counts asset matches into retrievedChunks, so an image-only answer is not misreported as "nothing retrieved"', async () => {
+    retrieveAssetContextMock.mockResolvedValueOnce([
+      { assetId: 'asset-1', title: 'IMG_0231', content: 'Image: "IMG_0231"\nA handwritten page of notes.', similarity: 0.9 },
+    ])
+    const result = await sendMessage(baseParams())
+    expect(result.contextTrace.retrievedChunks).toBe(1)
+  })
+
+  it('passes matched asset ids into retrieveGraphContext, so an image\'s own extracted knowledge nodes are reachable', async () => {
+    retrieveAssetContextMock.mockResolvedValueOnce([
+      { assetId: 'asset-1', title: 'IMG_0231', content: 'Image: "IMG_0231"\nA handwritten page of notes.', similarity: 0.9 },
+    ])
+    await sendMessage(baseParams())
+    expect(retrieveGraphContextMock).toHaveBeenCalledWith(expect.objectContaining({ assetIds: ['asset-1'] }))
+  })
+
+  it('never breaks the chat response when retrieveAssetContext rejects (never-throws contract)', async () => {
+    retrieveAssetContextMock.mockRejectedValueOnce(new Error('embedding provider unavailable'))
+    const result = await sendMessage(baseParams())
+    expect(result.message.content).toBe('Hello there.')
   })
 
   it('returns no suggestions and no signals-worth-noting when nothing in context justifies one, except the always-applicable knowledge gap signal for an empty match set', async () => {

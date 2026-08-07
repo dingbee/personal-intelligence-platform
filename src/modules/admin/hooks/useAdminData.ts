@@ -12,6 +12,7 @@ import {
   adminSetPlatformProviderSetting,
   adminSetUserDisabled,
   adminUpdatePlanQuota,
+  sendBetaInvitationEmail,
 } from '@/modules/admin/api/adminApi'
 import { listPlatformProviderSettings } from '@/modules/ai/providers/api/platformProviderSettings'
 
@@ -41,6 +42,11 @@ export function useAdminRevokeBetaInvite() {
       void queryClient.invalidateQueries({ queryKey: ['admin-beta-invites'] })
     },
   })
+}
+
+/** PIP Stabilization v1 (P1) — deliberately not wired to invalidate ['admin-beta-invites']: sending the email never changes the invite row's status, so there's nothing in that list to refresh. Kept as its own mutation (rather than folded into useAdminCreateBetaInvite) so the UI can report "invite created" and "email sent/failed" as the two distinct outcomes the task requires. */
+export function useAdminSendBetaInvitationEmail() {
+  return useMutation({ mutationFn: sendBetaInvitationEmail })
 }
 
 export function useAdminChangeUserPlan() {

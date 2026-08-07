@@ -162,7 +162,7 @@ export function ReaderPage() {
 
   if (isLoading || activeIndex === null) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen h-dvh items-center justify-center">
         <Spinner />
       </div>
     )
@@ -209,7 +209,7 @@ export function ReaderPage() {
   const positionLabel = isPdf ? 'Page' : isSpreadsheet ? 'Sheet' : 'Chapter'
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen h-dvh flex-col">
       <header className="flex h-14 shrink-0 items-center gap-4 border-b border-[var(--color-border)] px-4">
         <Link to="/library" className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
           ← Library
@@ -217,7 +217,7 @@ export function ReaderPage() {
         <h1 className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-ink)]" title={document.title}>
           {document.title}
         </h1>
-        <div className="ml-auto flex shrink-0 items-center gap-3 text-xs text-[var(--color-ink-muted)]">
+        <div className="ml-auto flex shrink-0 items-center gap-3 overflow-x-auto text-xs text-[var(--color-ink-muted)]">
           {/* Chapter/page counter + progress bar dropped below md — on a
               narrow phone there isn't room for them alongside the tab
               buttons (including the mobile-only Chapters toggle below),
