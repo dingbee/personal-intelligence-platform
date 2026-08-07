@@ -5,6 +5,7 @@ import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { upsertKnowledgeNodes } from '@/modules/knowledge-intelligence/api/knowledgeNodes'
 import { upsertKnowledgeEdges } from '@/modules/knowledge-intelligence/api/knowledgeEdges'
 import { buildEdgeInputsFromRelationships } from '@/modules/knowledge-intelligence/api/knowledgeRelationships'
+import { autoReconcileNewKnowledge } from '@/modules/knowledge-intelligence/api/reconcileKnowledgeGraph'
 import {
   parseConceptsResponse,
   parseEntitiesResponse,
@@ -129,6 +130,17 @@ export async function runKnowledgeExtractionFromContent(params: RunKnowledgeExtr
   ])
 
   const allNodes = [...concepts, ...entities]
+
+  // Feature 2 — "does this connect to something you already know?" Fire-
+  // and-forget: never lets a reconciliation failure fail the extraction
+  // that triggered it, matching indexAsset/indexNote's own
+  // swallow-and-log contract for background enrichment work.
+  if (allNodes.length > 0) {
+    void autoReconcileNewKnowledge({ newNodes: allNodes, userId, workspaceId, chain }).catch((err: unknown) => {
+      console.error('Automatic knowledge connection discovery failed:', err)
+    })
+  }
+
   if (allNodes.length < 2) {
     return { concepts, entities, edgesCreated: 0 }
   }

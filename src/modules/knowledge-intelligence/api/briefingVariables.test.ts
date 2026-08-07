@@ -32,7 +32,9 @@ describe('buildBriefingVariables', () => {
         { type: 'document', id: 'doc-1', label: 'Q1 Report', createdAt: '2026-01-01T00:00:00Z' },
         { type: 'note', id: 'note-1', label: 'Revenue thoughts', createdAt: '2026-01-02T00:00:00Z' },
       ],
-      relatedNodes: [{ nodeId: 'node-2', title: 'Marketing Campaign', relationshipType: 'relates_to', confidence: 0.8 }],
+      relatedNodes: [
+        { nodeId: 'node-2', title: 'Marketing Campaign', relationshipType: 'relates_to', confidence: 0.8, relationshipConfidence: { relationship: 0.8, evidenceCount: 0, sources: [] } },
+      ],
       confidence: 0.6,
     }
 

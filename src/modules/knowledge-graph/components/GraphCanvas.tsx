@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { GraphEdge, GraphNode, GraphNodeType, KnowledgeGraphData } from '@/modules/knowledge-graph/api/types'
 
-const ROW_ORDER: GraphNodeType[] = ['document', 'note', 'highlight', 'tag', 'concept', 'entity']
+const ROW_ORDER: GraphNodeType[] = ['document', 'note', 'highlight', 'tag', 'concept', 'entity', 'asset', 'conversation']
 
 const NODE_STYLE: Record<GraphNodeType, { fill: string; label: string }> = {
   document: { fill: 'var(--graph-color-document)', label: 'Document' },
@@ -11,6 +11,8 @@ const NODE_STYLE: Record<GraphNodeType, { fill: string; label: string }> = {
   tag: { fill: 'var(--graph-color-tag)', label: 'Tag' },
   concept: { fill: 'var(--graph-color-concept)', label: 'Concept' },
   entity: { fill: 'var(--graph-color-entity)', label: 'Entity' },
+  asset: { fill: 'var(--graph-color-asset)', label: 'Image' },
+  conversation: { fill: 'var(--graph-color-conversation)', label: 'Conversation' },
 }
 
 const ROW_HEIGHT = 140
@@ -57,6 +59,10 @@ function navigateTargetFor(node: GraphNode): string | null {
       return `/notes/${node.id}`
     case 'highlight':
       return node.documentId ? `/library/${node.documentId}/read` : null
+    case 'asset':
+      return `/library/assets/${node.id}`
+    case 'conversation':
+      return `/chat?conversationId=${node.id}`
     case 'tag':
     case 'concept':
     case 'entity':

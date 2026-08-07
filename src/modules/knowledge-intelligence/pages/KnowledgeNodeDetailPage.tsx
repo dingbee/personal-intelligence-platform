@@ -5,6 +5,8 @@ import { useKnowledgeNodeEvidence } from '@/modules/knowledge-intelligence/hooks
 import { useGenerateBriefing } from '@/modules/knowledge-intelligence/hooks/useGenerateBriefing'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import type { EvidenceItem } from '@/modules/knowledge-intelligence/api/knowledgeNodeEvidence'
+import { groupEvidenceByPeriod } from '@/modules/knowledge-intelligence/timeline/knowledgeTimeline'
+import { IntelligenceQueryBox } from '@/modules/knowledge-intelligence/components/IntelligenceQueryBox'
 import { buildKnowledgeExportMarkdown, knowledgeExportFilename } from '@/modules/knowledge-intelligence/api/knowledgeExportMarkdown'
 import { exportKnowledgeNodePackage } from '@/modules/knowledge-exchange/knowledge-nodes/exportKnowledgeNodePackage'
 import { exportKnowledgeLinkPackage, knowledgeLinkPackageFilename } from '@/modules/knowledge-exchange/knowledge-links/exportKnowledgeLinkPackage'
@@ -111,6 +113,9 @@ export function KnowledgeNodeDetailPage() {
       {/* UX-13 roadmap Phase 2 — Knowledge Confidence: "how sure are we", not just "here are the documents". Deterministic (source count + diversity + freshness + relationship density), see computeKnowledgeConfidence. */}
       <StatCard label="Knowledge Confidence" value={`${Math.round(confidence * 100)}%`} />
 
+      {/* Knowledge Intelligence Layer v1, Feature 5 — Intelligence Queries. */}
+      <IntelligenceQueryBox nodeId={node.id} />
+
       {/* Knowledge Actions v1 — "knowledge stops being passive": act on a concept, not just view it. */}
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" loading={generateBriefing.isPending} onClick={() => generateBriefing.mutate()}>
@@ -173,27 +178,36 @@ export function KnowledgeNodeDetailPage() {
           )}
           <ul className="flex flex-col gap-1.5">
             {relatedNodes.map((related) => (
-              <li key={related.nodeId} className="flex items-center justify-between gap-2 text-sm">
-                <Link
-                  to={`/knowledge/nodes/${related.nodeId}`}
-                  className="min-w-0 truncate text-[var(--color-ink)] hover:text-[var(--color-accent)]"
-                >
-                  {related.relationshipType.replace(/_/g, ' ')} → {related.title}
-                </Link>
-                <span className="flex shrink-0 items-center gap-2">
-                  <ConfidenceBadge confidence={related.confidence} />
-                  <button
-                    type="button"
-                    disabled={exportLink.isPending}
-                    onClick={() => exportLink.mutate(related.nodeId)}
-                    className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] disabled:opacity-50"
+              <li key={related.nodeId} className="flex flex-col gap-0.5 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <Link
+                    to={`/knowledge/nodes/${related.nodeId}`}
+                    className="min-w-0 truncate text-[var(--color-ink)] hover:text-[var(--color-accent)]"
                   >
-                    {/* UX-15.1 — distinguishes this single-relationship
-                        Knowledge Link package download from the node's own
-                        "Save As…"/"Export Briefing" actions above. */}
-                    Export relationship
-                  </button>
-                </span>
+                    {related.relationshipType.replace(/_/g, ' ')} → {related.title}
+                  </Link>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <ConfidenceBadge confidence={related.confidence} />
+                    <button
+                      type="button"
+                      disabled={exportLink.isPending}
+                      onClick={() => exportLink.mutate(related.nodeId)}
+                      className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] disabled:opacity-50"
+                    >
+                      {/* UX-15.1 — distinguishes this single-relationship
+                          Knowledge Link package download from the node's own
+                          "Save As…"/"Export Briefing" actions above. */}
+                      Export relationship
+                    </button>
+                  </span>
+                </div>
+                {/* Knowledge Intelligence Layer v1, Feature 3 — never state a relationship's confidence without also showing what it's based on. */}
+                {related.relationshipConfidence.evidenceCount > 0 && (
+                  <p className="text-xs text-[var(--color-ink-muted)]">
+                    Backed by {related.relationshipConfidence.evidenceCount} shared source
+                    {related.relationshipConfidence.evidenceCount === 1 ? '' : 's'} ({related.relationshipConfidence.sources.join(', ')})
+                  </p>
+                )}
               </li>
             ))}
           </ul>
@@ -209,14 +223,21 @@ export function KnowledgeNodeDetailPage() {
 
       {items.length > 0 && (
         <div className="flex flex-col gap-3">
-          <SectionHeader title="Timeline" />
-          <ul className="flex flex-col gap-1 text-sm text-[var(--color-ink-muted)]">
-            {items.map((item) => (
-              <li key={`${item.type}-${item.id}`}>
-                Mentioned in <span className="text-[var(--color-ink)]">{item.label}</span> — {formatRelativeTime(item.createdAt)}
+          <SectionHeader title="Knowledge Timeline" description="How this concept has developed, earliest first." />
+          <ol className="flex flex-col gap-4">
+            {groupEvidenceByPeriod(items).map((period) => (
+              <li key={period.key}>
+                <p className="text-xs font-medium text-[var(--color-ink-muted)]">{period.label}</p>
+                <ul className="mt-1 flex flex-col gap-1 text-sm text-[var(--color-ink-muted)]">
+                  {period.items.map((item) => (
+                    <li key={`${item.type}-${item.id}`}>
+                      Mentioned in <span className="text-[var(--color-ink)]">{item.label}</span> — {formatRelativeTime(item.createdAt)}
+                    </li>
+                  ))}
+                </ul>
               </li>
             ))}
-          </ul>
+          </ol>
         </div>
       )}
 

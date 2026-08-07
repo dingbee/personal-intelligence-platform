@@ -28,7 +28,9 @@ function fakeEvidence(overrides: Partial<KnowledgeNodeEvidence> = {}): Knowledge
     node: fakeNode(),
     countsBySourceType: { document: 1 },
     evidence: [{ type: 'document', id: 'doc-1', label: 'Field Notes', createdAt: '2026-01-02T00:00:00.000Z' }],
-    relatedNodes: [{ nodeId: 'node-2', title: 'Chlorophyll', relationshipType: 'requires', confidence: 0.9 }],
+    relatedNodes: [
+      { nodeId: 'node-2', title: 'Chlorophyll', relationshipType: 'requires', confidence: 0.9, relationshipConfidence: { relationship: 0.9, evidenceCount: 0, sources: [] } },
+    ],
     confidence: 0.82,
     ...overrides,
   }

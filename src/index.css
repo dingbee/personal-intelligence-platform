@@ -50,6 +50,8 @@
   --graph-color-tag: #e11d48;
   --graph-color-concept: #7c3aed;
   --graph-color-entity: #0891b2;
+  --graph-color-asset: #be185d;
+  --graph-color-conversation: #65a30d;
 
   /* Soft-raised surface tokens (Tailwind v4 turns --shadow-* into shadow-*
      utilities). Introduced for the AI Health dashboard's move toward the
@@ -149,6 +151,8 @@
     --graph-color-tag: #fb7185;
     --graph-color-concept: #a78bfa;
     --graph-color-entity: #22d3ee;
+    --graph-color-asset: #f472b6;
+    --graph-color-conversation: #a3e635;
 
     --surface-inset: #141110;
   }

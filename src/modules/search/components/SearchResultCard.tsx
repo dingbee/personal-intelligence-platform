@@ -9,11 +9,13 @@ const SOURCE_LABEL: Record<string, string> = {
   conversation: 'Conversation',
   note: 'Note',
   asset: 'Image',
+  concept: 'Concept',
 }
 
 const SOURCE_ICON: Record<string, string> = {
   conversation: '💬',
   asset: '🖼️',
+  concept: '🧠',
 }
 
 export function SearchResultCard({ result }: { result: SearchResult }) {

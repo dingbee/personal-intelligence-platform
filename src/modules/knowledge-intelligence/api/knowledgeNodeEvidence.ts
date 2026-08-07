@@ -2,7 +2,9 @@ import { supabase } from '@/shared/lib/supabase'
 import type { KnowledgeNode } from '@/shared/types/database'
 import type { SourceReferenceItem } from '@/shared/components/knowledge/SourceReference'
 import { computeKnowledgeConfidence } from '@/modules/knowledge-intelligence/confidence/knowledgeConfidence'
+import { computeRelationshipConfidence, type RelationshipConfidence } from '@/modules/knowledge/intelligence/relationshipStrength'
 import { fetchTitlesByIds, resolveSourceItems } from '@/modules/knowledge-intelligence/api/sourceResolution'
+import { listKnowledgeNodeSourcesForNodes } from '@/modules/knowledge-intelligence/api/knowledgeNodes'
 
 export interface EvidenceItem extends SourceReferenceItem {
   createdAt: string
@@ -13,6 +15,8 @@ export interface RelatedConceptRef {
   title: string
   relationshipType: string
   confidence: number | null
+  /** Knowledge Intelligence Layer v1, Feature 3 — {relationship, evidenceCount, sources}, see computeRelationshipConfidence. */
+  relationshipConfidence: RelationshipConfidence
 }
 
 export interface KnowledgeNodeEvidence {
@@ -73,12 +77,16 @@ export async function getKnowledgeNodeEvidence(nodeId: string): Promise<Knowledg
 
   let relatedNodes: RelatedConceptRef[] = []
   if (otherNodeIds.size > 0) {
-    const { data: otherNodes, error: otherNodesError } = await supabase
-      .from('knowledge_nodes')
-      .select('id, title')
-      .in('id', Array.from(otherNodeIds))
-    if (otherNodesError) throw otherNodesError
-    const otherTitleById = new Map(otherNodes.map((n) => [n.id, n.title]))
+    const [otherNodesResult, otherNodeSources] = await Promise.all([
+      supabase.from('knowledge_nodes').select('id, title').in('id', Array.from(otherNodeIds)),
+      listKnowledgeNodeSourcesForNodes(Array.from(otherNodeIds)),
+    ])
+    if (otherNodesResult.error) throw otherNodesResult.error
+    const otherTitleById = new Map(otherNodesResult.data.map((n) => [n.id, n.title]))
+
+    // Feature 3 needs both ends' evidence to find shared sources — this node's own sources plus every related node's.
+    const ownSourceRefs = sources.map((s) => ({ nodeId: s.node_id, sourceType: s.source_type, sourceId: s.source_id }))
+    const allSourceRefs = [...ownSourceRefs, ...otherNodeSources]
 
     relatedNodes = [
       ...outgoingLinksResult.data
@@ -88,6 +96,7 @@ export async function getKnowledgeNodeEvidence(nodeId: string): Promise<Knowledg
           title: otherTitleById.get(link.target_id),
           relationshipType: link.relationship_type ?? 'related_to',
           confidence: link.confidence,
+          relationshipConfidence: computeRelationshipConfidence(nodeId, link.target_id, link, allSourceRefs),
         })),
       ...incomingLinksResult.data
         .filter((link) => link.source_type === 'knowledge_node')
@@ -96,6 +105,7 @@ export async function getKnowledgeNodeEvidence(nodeId: string): Promise<Knowledg
           title: otherTitleById.get(link.source_id),
           relationshipType: link.relationship_type ?? 'related_to',
           confidence: link.confidence,
+          relationshipConfidence: computeRelationshipConfidence(nodeId, link.source_id, link, allSourceRefs),
         })),
     ].filter((ref): ref is RelatedConceptRef => Boolean(ref.title))
   }

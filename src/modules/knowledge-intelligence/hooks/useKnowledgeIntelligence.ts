@@ -4,9 +4,11 @@ import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import { listKnowledgeNodes, listKnowledgeNodeSourcesForNodes } from '@/modules/knowledge-intelligence/api/knowledgeNodes'
 import { listKnowledgeLinks } from '@/modules/knowledge-graph/api/graph'
 import { getKnowledgeInsights } from '@/modules/knowledge-intelligence/api/knowledgeInsights'
-import { generateKnowledgeMap } from '@/modules/knowledge-intelligence/api/knowledgeMap'
+import { generateKnowledgeMap, getConceptSourceNodes } from '@/modules/knowledge-intelligence/api/knowledgeMap'
 import { runKnowledgeExtraction } from '@/modules/knowledge-intelligence/api/knowledgeExtraction'
-import { reconcileKnowledgeGraph } from '@/modules/knowledge-intelligence/api/reconcileKnowledgeGraph'
+import { reconcileKnowledgeGraph, listRecentAutoDiscoveredConnections } from '@/modules/knowledge-intelligence/api/reconcileKnowledgeGraph'
+import { detectTopicalKnowledgeGaps } from '@/modules/knowledge-intelligence/api/detectTopicalKnowledgeGaps'
+import { runIntelligenceQuery } from '@/modules/knowledge-intelligence/queries/runIntelligenceQuery'
 import { withProviderAvailability } from '@/modules/ai/orchestration/withProviderAvailability'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
@@ -62,6 +64,44 @@ export function useKnowledgeMap() {
   })
 }
 
+/** Knowledge Intelligence Layer v1, Feature 6 — manually triggered (same cost-consciousness as useReconcileKnowledgeGraph): a topical gap suggestion is a real AI call, not a free deterministic computation like computeKnowledgeGaps. */
+export function useDetectTopicalKnowledgeGaps() {
+  const { user } = useAuth()
+  const { currentWorkspaceId } = useWorkspace()
+  const queryClient = useQueryClient()
+  const providerId = useDefaultChatProviderId()
+  const chain = useProviderChain(providerId)
+
+  return useMutation({
+    mutationFn: () =>
+      withProviderAvailability(
+        chain,
+        () => detectTopicalKnowledgeGaps({ userId: user!.id, workspaceId: currentWorkspaceId, chain }),
+        { queryClient },
+      ),
+  })
+}
+
+/** Knowledge Intelligence Layer v1, Feature 2 — "does this connect to something you already know?" surfaced from the edges autoReconcileNewKnowledge already wrote. */
+export function useRecentAutoDiscoveredConnections() {
+  const { user } = useAuth()
+  const { currentWorkspaceId } = useWorkspace()
+  return useQuery({
+    queryKey: ['knowledge-auto-discovered-connections', currentWorkspaceId],
+    queryFn: () => listRecentAutoDiscoveredConnections(currentWorkspaceId),
+    enabled: Boolean(user),
+  })
+}
+
+/** Knowledge Intelligence Layer v1, Feature 1 — "Show sources" toggle on the AI Knowledge Graph. Only fetches while `enabled` (the toggle is on) and there's at least one concept node to resolve sources for. */
+export function useConceptSourceNodes(nodeIds: string[], enabled: boolean) {
+  return useQuery({
+    queryKey: ['knowledge-concept-source-nodes', nodeIds],
+    queryFn: () => getConceptSourceNodes(nodeIds),
+    enabled: enabled && nodeIds.length > 0,
+  })
+}
+
 export function useRunKnowledgeExtraction(documentId: string) {
   const { user } = useAuth()
   const { currentWorkspaceId } = useWorkspace()
@@ -110,5 +150,23 @@ export function useReconcileKnowledgeGraph() {
       queryClient.invalidateQueries({ queryKey: ['knowledge-insights'] })
       queryClient.invalidateQueries({ queryKey: ['knowledge-map'] })
     },
+  })
+}
+
+/** Knowledge Intelligence Layer v1, Feature 5 — the query box on a concept's detail page: the node is already known from the route, so this only needs to classify the *kind* of question, not resolve which concept it's about. */
+export function useIntelligenceQuery(nodeId: string) {
+  const { user } = useAuth()
+  const { currentWorkspaceId } = useWorkspace()
+  const queryClient = useQueryClient()
+  const providerId = useDefaultChatProviderId()
+  const chain = useProviderChain(providerId)
+
+  return useMutation({
+    mutationFn: (text: string) =>
+      withProviderAvailability(
+        chain,
+        () => runIntelligenceQuery({ text, nodeId, userId: user!.id, workspaceId: currentWorkspaceId, chain }),
+        { queryClient },
+      ),
   })
 }

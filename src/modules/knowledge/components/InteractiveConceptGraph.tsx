@@ -12,6 +12,8 @@ import {
   toGraphData,
   togglePin,
 } from '@/modules/knowledge/intelligence/graphNavigator'
+import { buildSourceGraphAdditions, mergeGraphLayers } from '@/modules/knowledge/intelligence/graphSourceNodes'
+import { useConceptSourceNodes } from '@/modules/knowledge-intelligence/hooks/useKnowledgeIntelligence'
 
 /**
  * UX-10 Phase 10 — the interactive layer over the AI concept graph. Reuses
@@ -24,13 +26,25 @@ export function InteractiveConceptGraph({ nodes, edges }: { nodes: KnowledgeNode
   const [viewState, setViewState] = useState(createGraphViewState())
   const [pathFromId, setPathFromId] = useState('')
   const [pathToId, setPathToId] = useState('')
+  const [showSources, setShowSources] = useState(false)
 
   const highlightedNodeIds = useMemo(
     () => (viewState.focusedNodeId ? getNeighborhood(viewState.focusedNodeId, edges, 1) : new Set<string>()),
     [viewState.focusedNodeId, edges],
   )
   const visibleNodeIds = useMemo(() => computeVisibleNodeIds(viewState, nodes, edges), [viewState, nodes, edges])
-  const graphData = useMemo(() => toGraphData(nodes, edges, visibleNodeIds), [nodes, edges, visibleNodeIds])
+  const conceptGraphData = useMemo(() => toGraphData(nodes, edges, visibleNodeIds), [nodes, edges, visibleNodeIds])
+
+  // Feature 1 — "Show sources" adds one more layer (documents/notes/assets/
+  // conversations each concept's evidence points to) onto the same concept
+  // graph, without touching graphNavigator's BFS (focus/expand/pin/shortest
+  // path stay scoped to concept↔concept edges, unchanged).
+  const visibleConceptIds = useMemo(() => Array.from(visibleNodeIds), [visibleNodeIds])
+  const conceptSourceNodes = useConceptSourceNodes(visibleConceptIds, showSources)
+  const graphData = useMemo(() => {
+    if (!showSources || !conceptSourceNodes.data) return conceptGraphData
+    return mergeGraphLayers(conceptGraphData, buildSourceGraphAdditions(conceptSourceNodes.data))
+  }, [showSources, conceptGraphData, conceptSourceNodes.data])
 
   const focusedNode = nodes.find((n) => n.id === viewState.focusedNodeId) ?? null
   const shortestPath = pathFromId && pathToId && pathFromId !== pathToId ? findShortestPath(pathFromId, pathToId, edges) : null
@@ -40,6 +54,11 @@ export function InteractiveConceptGraph({ nodes, edges }: { nodes: KnowledgeNode
 
   return (
     <div className="flex flex-col gap-3">
+      <label className="flex w-fit items-center gap-1.5 text-xs text-[var(--color-ink-muted)]">
+        <input type="checkbox" checked={showSources} onChange={(e) => setShowSources(e.target.checked)} />
+        Show sources (documents, notes, images, conversations)
+      </label>
+
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {focusedNode ? (
           <>

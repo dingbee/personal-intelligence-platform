@@ -6,7 +6,9 @@ import {
   useReconcileKnowledgeGraph,
   useKnowledgeNodes,
   useKnowledgeEdges,
+  useRecentAutoDiscoveredConnections,
 } from '@/modules/knowledge-intelligence/hooks/useKnowledgeIntelligence'
+import { useDismissedSuggestions } from '@/modules/intelligence/dismissals/useDismissedSuggestions'
 import { useKnowledgeNodeDetails } from '@/modules/knowledge-intelligence/hooks/useKnowledgeNodeDetails'
 import { ImportKnowledgeNodePackageDialog } from '@/modules/knowledge-exchange/components/ImportKnowledgeNodePackageDialog'
 import { ImportKnowledgeLinkPackageDialog } from '@/modules/knowledge-exchange/components/ImportKnowledgeLinkPackageDialog'
@@ -62,6 +64,9 @@ export function KnowledgeExplorerPage() {
   const graphNodes = useKnowledgeNodes()
   const graphEdges = useKnowledgeEdges()
   const { currentWorkspaceId } = useWorkspace()
+  const autoConnections = useRecentAutoDiscoveredConnections()
+  const { dismissedKeys, dismiss: dismissConnection } = useDismissedSuggestions(currentWorkspaceId)
+  const visibleAutoConnections = (autoConnections.data ?? []).filter((c) => !dismissedKeys.has(`auto-connection:${c.edgeId}`))
   const commandContext = useCommandContext()
   const commandActions = useCommandActions()
   const [query, setQuery] = useState('')
@@ -105,6 +110,31 @@ export function KnowledgeExplorerPage() {
       />
 
       <SuggestedForYou />
+
+      {/* Knowledge Intelligence Layer v1, Feature 2 — "does this connect to something you already know?" surfaced automatically, not just via the Reconcile button below. */}
+      {visibleAutoConnections.length > 0 && (
+        <InsightPanel title="New connections NOVA found" isLoading={false} isEmpty={false} emptyMessage="">
+          <ul className="flex flex-col gap-2">
+            {visibleAutoConnections.map((connection) => (
+              <li key={connection.edgeId} className="flex items-center justify-between gap-2 text-sm">
+                <span className="min-w-0 truncate text-[var(--color-ink)]">
+                  {connection.sourceTitle} — {connection.relationshipType.replace(/_/g, ' ')} → {connection.targetTitle}
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <ConfidenceBadge confidence={connection.confidence} />
+                  <button
+                    type="button"
+                    onClick={() => dismissConnection(`auto-connection:${connection.edgeId}`)}
+                    className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-accent)]"
+                  >
+                    Dismiss
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </InsightPanel>
+      )}
 
       <InsightPanel
         title="Knowledge Intelligence"

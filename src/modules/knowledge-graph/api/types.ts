@@ -1,5 +1,12 @@
-/** 'concept'/'entity' added in UX-10 Phase 10 — GraphCanvas now also renders the AI concept graph (knowledge_nodes/knowledge_links), not just the document/note/highlight/tag graph it was built for in Phase 6C. */
-export type GraphNodeType = 'document' | 'note' | 'highlight' | 'tag' | 'concept' | 'entity'
+/**
+ * 'concept'/'entity' added in UX-10 Phase 10 — GraphCanvas now also renders
+ * the AI concept graph (knowledge_nodes/knowledge_links), not just the
+ * document/note/highlight/tag graph it was built for in Phase 6C.
+ * 'asset'/'conversation' added in Knowledge Intelligence Layer v1 —
+ * `knowledge_node_sources.source_type` has recorded both since Multimodal
+ * Intelligence v1, but no graph could render either as a node until now.
+ */
+export type GraphNodeType = 'document' | 'note' | 'highlight' | 'tag' | 'concept' | 'entity' | 'asset' | 'conversation'
 
 export interface GraphNode {
   id: string

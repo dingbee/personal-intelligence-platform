@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { KnowledgeLink, KnowledgeNode } from '@/shared/types/database'
-import { computeRelationshipStrengths, scoreRelationship, type KnowledgeNodeSourceRef } from '@/modules/knowledge/intelligence/relationshipStrength'
+import {
+  computeRelationshipConfidence,
+  computeRelationshipStrengths,
+  scoreRelationship,
+  type KnowledgeNodeSourceRef,
+} from '@/modules/knowledge/intelligence/relationshipStrength'
 
 function makeNode(id: string, title: string): KnowledgeNode {
   return {
@@ -101,5 +106,64 @@ describe('computeRelationshipStrengths', () => {
 
   it('returns an empty array when there are no edges', () => {
     expect(computeRelationshipStrengths([makeNode('a', 'A')], [], [])).toEqual([])
+  })
+})
+
+describe('computeRelationshipConfidence', () => {
+  it('reports null relationship confidence when there is no edge, never fabricating a number', () => {
+    const result = computeRelationshipConfidence('a', 'b', null, [])
+    expect(result.relationship).toBeNull()
+    expect(result.evidenceCount).toBe(0)
+    expect(result.sources).toEqual([])
+  })
+
+  it('reads the edge confidence as-is (the model self-estimate), does not recompute it', () => {
+    const result = computeRelationshipConfidence('a', 'b', makeEdge('a', 'b', { confidence: 0.82 }), [])
+    expect(result.relationship).toBe(0.82)
+  })
+
+  it('counts a shared source of any type, not just documents', () => {
+    const sources: KnowledgeNodeSourceRef[] = [
+      { nodeId: 'a', sourceType: 'conversation', sourceId: 'conv-1' },
+      { nodeId: 'b', sourceType: 'conversation', sourceId: 'conv-1' },
+    ]
+    const result = computeRelationshipConfidence('a', 'b', null, sources)
+    expect(result.evidenceCount).toBe(1)
+    expect(result.sources).toEqual(['conversation'])
+  })
+
+  it('lists distinct source types across multiple shared sources', () => {
+    const sources: KnowledgeNodeSourceRef[] = [
+      { nodeId: 'a', sourceType: 'document', sourceId: 'doc-1' },
+      { nodeId: 'b', sourceType: 'document', sourceId: 'doc-1' },
+      { nodeId: 'a', sourceType: 'conversation', sourceId: 'conv-1' },
+      { nodeId: 'b', sourceType: 'conversation', sourceId: 'conv-1' },
+      { nodeId: 'a', sourceType: 'asset', sourceId: 'asset-1' },
+      { nodeId: 'b', sourceType: 'asset', sourceId: 'asset-1' },
+    ]
+    const result = computeRelationshipConfidence('a', 'b', null, sources)
+    expect(result.evidenceCount).toBe(3)
+    expect(result.sources).toEqual(['asset', 'conversation', 'document'])
+  })
+
+  it('does not count a source only one of the two nodes has', () => {
+    const sources: KnowledgeNodeSourceRef[] = [
+      { nodeId: 'a', sourceType: 'document', sourceId: 'doc-1' },
+      { nodeId: 'b', sourceType: 'document', sourceId: 'doc-2' },
+    ]
+    const result = computeRelationshipConfidence('a', 'b', null, sources)
+    expect(result.evidenceCount).toBe(0)
+    expect(result.sources).toEqual([])
+  })
+
+  it('does not double-count duplicate source rows for the same id', () => {
+    const sources: KnowledgeNodeSourceRef[] = [
+      { nodeId: 'a', sourceType: 'document', sourceId: 'same-id' },
+      { nodeId: 'b', sourceType: 'document', sourceId: 'same-id' },
+      { nodeId: 'a', sourceType: 'document', sourceId: 'same-id' },
+      { nodeId: 'b', sourceType: 'document', sourceId: 'same-id' },
+    ]
+    const result = computeRelationshipConfidence('a', 'b', null, sources)
+    expect(result.evidenceCount).toBe(1)
   })
 })

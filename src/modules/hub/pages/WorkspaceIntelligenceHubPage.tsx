@@ -9,6 +9,7 @@ import { RecommendedActionsSection } from '@/modules/intelligence/dashboard/comp
 import { useDismissedSuggestions } from '@/modules/intelligence/dismissals/useDismissedSuggestions'
 import { SignalList } from '@/modules/intelligence/components/SignalList'
 import { WorkspaceGapsSection } from '@/modules/hub/components/WorkspaceGapsSection'
+import { TopicalKnowledgeGapsSection } from '@/modules/hub/components/TopicalKnowledgeGapsSection'
 import { WorkspaceObjectivesSection } from '@/modules/hub/components/WorkspaceObjectivesSection'
 import { RecentNotesSection } from '@/modules/hub/components/RecentNotesSection'
 import { ActiveConversationsSection } from '@/modules/hub/components/ActiveConversationsSection'
@@ -161,6 +162,7 @@ export function WorkspaceIntelligenceHubPage() {
             <div className="flex flex-col gap-3">
               <SectionHeader level="section" title="Knowledge Gaps" description="What's missing or being neglected." />
               <WorkspaceGapsSection gaps={data.gaps} />
+              <TopicalKnowledgeGapsSection />
             </div>
 
             <div className="flex flex-col gap-3">

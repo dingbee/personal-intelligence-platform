@@ -40,6 +40,11 @@ registerPlatformModule({
       label: 'Generate Briefing',
       description: "Synthesize a concept's accumulated evidence and relationships into a short briefing.",
     },
+    {
+      id: 'detect-topical-knowledge-gaps',
+      label: 'Detect Topical Knowledge Gaps',
+      description: 'Suggest plausible missing areas of knowledge, given the concepts already extracted.',
+    },
   ],
   prompts: [
     {
@@ -109,6 +114,21 @@ registerPlatformModule({
         'markdown, no preamble.\n\nKnowledge confidence: {{confidence}}\n\nDescription: {{description}}\n\n' +
         'Related concepts:\n{{relatedConcepts}}\n\nEvidence sources:\n{{evidenceSources}}\n\n' +
         'Part of these collections:\n{{collections}}',
+    },
+    {
+      id: 'detect-topical-knowledge-gaps@1.0',
+      capabilityId: 'detect-topical-knowledge-gaps',
+      version: '1.0',
+      active: true,
+      template:
+        'The following is a list of concepts already extracted from a user\'s personal knowledge base. Suggest up to 3 ' +
+        'plausible categories of information that appear to be missing, given what is already there — for example, a ' +
+        'knowledge base with a business idea, a marketing plan, and a budget but no financial projections. Be ' +
+        'conservative: only suggest a gap when the existing concepts give a clear, specific reason to expect it. These ' +
+        'are suggestions for the user to confirm, never a certainty. Respond with ONLY a JSON array of objects shaped ' +
+        'like {"label": "short name for the missing area", "reason": "one sentence explaining why, referencing the ' +
+        'existing concepts"} — an empty array if nothing stands out. No markdown code fences, no other text.\n\n' +
+        'Existing concepts:\n{{concepts}}',
     },
   ],
 })

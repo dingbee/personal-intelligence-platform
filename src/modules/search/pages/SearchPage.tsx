@@ -21,12 +21,21 @@ export function SearchPage() {
   const [hasSearched, setHasSearched] = useState(false)
   const autoRunRef = useRef(false)
 
+  // Knowledge Intelligence Layer v1, Feature 7 — conceptSearchProvider now
+  // makes concepts real, ranked SearchResults (closing the "two silos" gap
+  // the discovery audit found), but the "Knowledge" section below already
+  // renders each concept with its full evidence/related-concepts/confidence
+  // via ConceptCard — a plain SearchResultCard would just duplicate the
+  // same item with less detail, so concept results are excluded from the
+  // flat list rather than shown twice.
+  const nonConceptResults = results.filter((result) => result.sourceType !== 'concept')
+
   // UX-13.11 Phase 3 — zero-result recovery: null while unknown/not
   // applicable, otherwise whether the account has any indexable content at
   // all. Only checked once a search has genuinely come back empty, so it
   // never runs on a normal search.
   const [hasAnyContent, setHasAnyContent] = useState<boolean | null>(null)
-  const isEmpty = hasSearched && !loading && !conceptsLoading && results.length === 0 && concepts.length === 0
+  const isEmpty = hasSearched && !loading && !conceptsLoading && nonConceptResults.length === 0 && concepts.length === 0
   useEffect(() => {
     if (!isEmpty) {
       setHasAnyContent(null)
@@ -119,9 +128,9 @@ export function SearchPage() {
             description="Nothing matched closely enough. Try rephrasing, or check that your documents have finished processing."
           />
         )
-      ) : results.length > 0 ? (
+      ) : nonConceptResults.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {results.map((result) => (
+          {nonConceptResults.map((result) => (
             <SearchResultCard key={`${result.sourceType}-${result.sourceId}-${result.snippet.slice(0, 20)}`} result={result} />
           ))}
         </div>

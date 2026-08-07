@@ -82,3 +82,47 @@ export function computeRelationshipStrengths(
     .map((edge) => scoreRelationship(edge.source_id, edge.target_id, edges, nodeSources))
     .sort((a, b) => b.score - a.score)
 }
+
+/**
+ * Knowledge Intelligence Layer v1, Feature 3 — the `{relationship,
+ * evidenceCount, sources}` shape the milestone asks every relationship to
+ * carry. Deliberately not a new scoring formula: `relationship` is the
+ * edge's own already-persisted `confidence` (the model's self-estimate at
+ * creation time, same value `scoreRelationship` reads), and
+ * evidence/sources come from `knowledge_node_sources` — but unlike
+ * `countSharedSources` above (document-only, by design, for the coarser
+ * strength score), this counts a shared source of ANY type, since "this
+ * relationship is corroborated by a document AND a conversation" is
+ * exactly what Feature 3's own example asks to show. Never fabricates a
+ * number where the edge has none: `relationship` stays null if the model
+ * never reported a confidence for this edge.
+ */
+export interface RelationshipConfidence {
+  relationship: number | null
+  evidenceCount: number
+  sources: string[]
+}
+
+export function computeRelationshipConfidence(
+  nodeAId: string,
+  nodeBId: string,
+  edge: KnowledgeLink | null,
+  nodeSources: KnowledgeNodeSourceRef[],
+): RelationshipConfidence {
+  const aSourceKeys = new Set(
+    nodeSources.filter((s) => s.nodeId === nodeAId).map((s) => `${s.sourceType}:${s.sourceId}`),
+  )
+  const sharedKeys = nodeSources
+    .filter((s) => s.nodeId === nodeBId)
+    .map((s) => `${s.sourceType}:${s.sourceId}`)
+    .filter((key) => aSourceKeys.has(key))
+
+  const distinctShared = new Set(sharedKeys)
+  const sources = Array.from(new Set(Array.from(distinctShared).map((key) => key.split(':')[0]!))).sort()
+
+  return {
+    relationship: edge?.confidence ?? null,
+    evidenceCount: distinctShared.size,
+    sources,
+  }
+}
