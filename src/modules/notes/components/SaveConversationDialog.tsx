@@ -279,12 +279,12 @@ export function SaveConversationDialog({
           </div>
 
           {filtered.length === 0 && (
-            <p className="text-sm text-amber-600">
+            <p className="text-sm text-[var(--color-warning)]">
               {scope === 'selected' ? 'Select at least one message to save.' : 'Nothing to save yet — this conversation has no messages of this kind.'}
             </p>
           )}
 
-          {save.isError && <p className="text-sm text-red-600">{save.error instanceof Error ? save.error.message : 'Failed to save'}</p>}
+          {save.isError && <p className="text-sm text-[var(--color-danger)]">{save.error instanceof Error ? save.error.message : 'Failed to save'}</p>}
 
           <div className="flex justify-end gap-2 border-t border-[var(--color-border)] pt-4">
             <Button variant="secondary" onClick={onClose}>

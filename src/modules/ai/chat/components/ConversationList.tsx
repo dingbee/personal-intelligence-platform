@@ -128,7 +128,7 @@ function ConversationRow({
             </span>
           )}
           {conversation.favorite && (
-            <span aria-label="Favorite" className="shrink-0 text-xs text-amber-500">
+            <span aria-label="Favorite" className="shrink-0 text-xs text-[var(--color-warning)]">
               ★
             </span>
           )}

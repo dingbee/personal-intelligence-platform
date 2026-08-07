@@ -55,7 +55,7 @@ function FilterPill<T extends string>({
       onClick={() => onSelect(value)}
       className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
         active
-          ? 'bg-[var(--color-ink)] text-white'
+          ? 'bg-[var(--color-ink)] text-[var(--color-canvas)]'
           : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
       }`}
     >

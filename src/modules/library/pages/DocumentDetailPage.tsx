@@ -155,7 +155,7 @@ export function DocumentDetailPage() {
             )}
           </div>
           {job?.status === 'failed' && job.error_message && (
-            <p className="mt-2 rounded-lg bg-[var(--color-canvas)] p-3 text-sm text-red-600">
+            <p className="mt-2 rounded-lg bg-[var(--color-canvas)] p-3 text-sm text-[var(--color-danger)]">
               {job.error_message}
             </p>
           )}
@@ -244,7 +244,7 @@ export function DocumentDetailPage() {
           {canDelete && (
             <Button
               variant="ghost"
-              className="text-red-600 hover:text-red-700"
+              className="text-[var(--color-danger)] hover:text-[var(--color-danger-strong)]"
               onClick={() => setConfirmingDelete(true)}
             >
               Delete

@@ -41,7 +41,7 @@ export function KnowledgeExtractionPanel({ documentId }: { documentId: string })
       </div>
 
       {extraction.isError && (
-        <p className="mt-2 text-sm text-red-600">
+        <p className="mt-2 text-sm text-[var(--color-danger)]">
           {extraction.error instanceof Error ? extraction.error.message : 'Failed to extract knowledge from this document.'}
         </p>
       )}

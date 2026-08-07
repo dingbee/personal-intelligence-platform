@@ -31,7 +31,7 @@ export function MetricCard({
           {trend && (
             <span
               className={
-                trend.isGood === null ? 'text-[var(--color-ink-muted)]' : trend.isGood ? 'text-green-600' : 'text-red-600'
+                trend.isGood === null ? 'text-[var(--color-ink-muted)]' : trend.isGood ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'
               }
             >
               {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→'} {trend.text}

@@ -143,7 +143,7 @@ export function KnowledgeExplorerPage() {
           <StatCard variant="inset" label="Documents" value={insights.data?.documentsWithKnowledge ?? 0} />
         </div>
         {reconcile.isError && (
-          <p className="text-sm text-red-600">
+          <p className="text-sm text-[var(--color-danger)]">
             {reconcile.error instanceof Error ? reconcile.error.message : 'Failed to reconcile the AI Knowledge Graph.'}
           </p>
         )}
@@ -204,7 +204,7 @@ export function KnowledgeExplorerPage() {
               onClick={() => setTypeFilter(filter.value)}
               className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
                 typeFilter === filter.value
-                  ? 'bg-[var(--color-ink)] text-white'
+                  ? 'bg-[var(--color-ink)] text-[var(--color-canvas)]'
                   : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
               }`}
             >

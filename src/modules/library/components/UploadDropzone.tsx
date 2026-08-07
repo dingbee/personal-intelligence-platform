@@ -117,9 +117,9 @@ export function UploadDropzone({ collectionId }: { collectionId: string | null }
               <span
                 className={
                   item.status === 'error'
-                    ? 'text-red-600'
+                    ? 'text-[var(--color-danger)]'
                     : item.status === 'done'
-                      ? 'text-green-600'
+                      ? 'text-[var(--color-success)]'
                       : 'text-[var(--color-ink-muted)]'
                 }
               >

@@ -3,10 +3,10 @@ import { getHealthStatus, type HealthStatus } from '@/modules/ai/observability/h
 type BadgeKey = HealthStatus | 'offline'
 
 const STATUS_STYLES: Record<BadgeKey, { label: string; className: string }> = {
-  excellent: { label: 'Excellent', className: 'bg-green-100 text-green-700' },
-  healthy: { label: 'Healthy', className: 'bg-green-100 text-green-700' },
-  degraded: { label: 'Degraded', className: 'bg-amber-100 text-amber-700' },
-  critical: { label: 'Critical', className: 'bg-red-100 text-red-700' },
+  excellent: { label: 'Excellent', className: 'bg-[var(--color-success-bg)] text-[var(--color-success-strong)]' },
+  healthy: { label: 'Healthy', className: 'bg-[var(--color-success-bg)] text-[var(--color-success-strong)]' },
+  degraded: { label: 'Degraded', className: 'bg-[var(--color-warning-bg)] text-[var(--color-warning-strong)]' },
+  critical: { label: 'Critical', className: 'bg-[var(--color-danger-bg)] text-[var(--color-danger-strong)]' },
   // Not one of getHealthStatus's four tiers — a UI-only label for an
   // unavailable provider (which always scores 0, i.e. 'critical' by the
   // numeric mapping, but "Offline" is a clearer reason for a user to see).

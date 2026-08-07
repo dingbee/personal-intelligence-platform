@@ -58,7 +58,7 @@ export function SpreadsheetSummaryCard({ analyses, lastUpdatedLabel }: { analyse
           <ul className="mt-1.5 flex flex-col gap-1 text-sm text-[var(--color-ink)]">
             {summary.detectedLabels.map((label) => (
               <li key={label} className="flex items-center gap-1.5">
-                <span className="text-green-600" aria-hidden>
+                <span className="text-[var(--color-success)]" aria-hidden>
                   ✓
                 </span>
                 {label}

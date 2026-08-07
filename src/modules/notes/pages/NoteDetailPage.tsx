@@ -244,13 +244,13 @@ export function NoteDetailPage() {
             </Button>
           </div>
           {canDelete && (
-            <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setConfirmingDelete(true)}>
+            <Button variant="ghost" className="text-[var(--color-danger)] hover:text-[var(--color-danger-strong)]" onClick={() => setConfirmingDelete(true)}>
               Delete
             </Button>
           )}
         </div>
         {summarize.isError && (
-          <p className="text-sm text-red-600">
+          <p className="text-sm text-[var(--color-danger)]">
             {summarize.error instanceof Error ? summarize.error.message : 'Failed to summarize'}
           </p>
         )}

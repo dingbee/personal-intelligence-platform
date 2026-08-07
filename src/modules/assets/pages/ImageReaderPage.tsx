@@ -134,7 +134,7 @@ export function ImageReaderPage() {
               onClick={() => setActivePanel(activePanel === tab.id ? null : tab.id)}
               className={`rounded-md px-2 py-1 font-medium ${
                 activePanel === tab.id
-                  ? 'bg-[var(--color-ink)] text-white'
+                  ? 'bg-[var(--color-ink)] text-[var(--color-canvas)]'
                   : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
               }`}
             >
@@ -235,7 +235,7 @@ export function ImageReaderPage() {
                     Save As…
                   </Button>
                   {canDelete && (
-                    <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setConfirmingDelete(true)}>
+                    <Button variant="ghost" className="text-[var(--color-danger)] hover:text-[var(--color-danger-strong)]" onClick={() => setConfirmingDelete(true)}>
                       Delete
                     </Button>
                   )}

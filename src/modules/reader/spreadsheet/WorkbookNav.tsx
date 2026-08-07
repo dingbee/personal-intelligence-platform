@@ -17,7 +17,7 @@ export function WorkbookNav({
           onClick={() => onSelect(index)}
           className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
             index === activeIndex
-              ? 'bg-[var(--color-ink)] text-white'
+              ? 'bg-[var(--color-ink)] text-[var(--color-canvas)]'
               : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]'
           }`}
         >

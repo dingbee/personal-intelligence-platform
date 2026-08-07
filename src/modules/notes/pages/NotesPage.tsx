@@ -94,7 +94,7 @@ export function NotesPage() {
       </div>
 
       {mergeNotes.isError && (
-        <p className="text-sm text-red-600">
+        <p className="text-sm text-[var(--color-danger)]">
           Couldn't merge those notes: {mergeNotes.error instanceof Error ? mergeNotes.error.message : 'Unknown error'}.
           The merge runs in several steps — check your notes list before retrying, in case it partially completed
           (e.g. a merged note was created but the originals weren't deleted yet).
@@ -106,7 +106,7 @@ export function NotesPage() {
           <Spinner />
         </div>
       ) : isError ? (
-        <p className="text-sm text-red-600">
+        <p className="text-sm text-[var(--color-danger)]">
           Couldn't load your notes: {error instanceof Error ? error.message : 'Unknown error'}
         </p>
       ) : notes.length === 0 ? (

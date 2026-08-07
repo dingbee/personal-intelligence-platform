@@ -56,7 +56,7 @@ export function ProviderStatusCard() {
                       className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium disabled:opacity-60 ${
                         provider.enabled
                           ? 'bg-[var(--color-surface)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
-                          : 'bg-red-100 text-red-700'
+                          : 'bg-[var(--color-danger-bg)] text-[var(--color-danger-strong)]'
                       }`}
                     >
                       {provider.enabled ? 'Disable' : 'Enable'}
@@ -85,15 +85,15 @@ export function ProviderStatusCard() {
                     <span className="font-medium text-[var(--color-ink)]">Last test: </span>
                     {testResult ? (
                       testResult.success ? (
-                        <span className="text-green-700">Successful just now</span>
+                        <span className="text-[var(--color-success-strong)]">Successful just now</span>
                       ) : (
-                        <span className="text-red-600">Failed just now — {testResult.message}</span>
+                        <span className="text-[var(--color-danger)]">Failed just now — {testResult.message}</span>
                       )
                     ) : provider.lastTest ? (
                       provider.lastTest.success ? (
-                        <span className="text-green-700">Successful {formatRelativeTime(provider.lastTest.at)}</span>
+                        <span className="text-[var(--color-success-strong)]">Successful {formatRelativeTime(provider.lastTest.at)}</span>
                       ) : (
-                        <span className="text-red-600">
+                        <span className="text-[var(--color-danger)]">
                           Failed {formatRelativeTime(provider.lastTest.at)}
                           {provider.lastTest.message ? ` — ${provider.lastTest.message}` : ''}
                         </span>
@@ -125,7 +125,7 @@ export function ProviderStatusCard() {
         </ul>
       )}
 
-      {setOverride.isError && <p className="mt-3 text-xs text-red-600">Couldn't update provider status. Please try again.</p>}
+      {setOverride.isError && <p className="mt-3 text-xs text-[var(--color-danger)]">Couldn't update provider status. Please try again.</p>}
 
       {plannedProviders.length > 0 && (
         <div className="mt-5 border-t border-[var(--color-border)] pt-4">

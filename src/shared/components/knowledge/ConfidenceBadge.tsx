@@ -9,7 +9,7 @@ export function ConfidenceBadge({ confidence }: { confidence: number | null }) {
 
   const pct = Math.round(confidence * 100)
   const toneClass =
-    confidence >= 0.7 ? 'text-green-600' : confidence >= 0.4 ? 'text-amber-600' : 'text-[var(--color-ink-muted)]'
+    confidence >= 0.7 ? 'text-[var(--color-success)]' : confidence >= 0.4 ? 'text-[var(--color-warning)]' : 'text-[var(--color-ink-muted)]'
 
   return (
     <span

@@ -150,7 +150,7 @@ export function AddToCollectionButton({ itemType, itemId }: { itemType: Collecti
       </div>
       {membershipLoading && <span className="text-xs text-[var(--color-ink-muted)]">Loading collections…</span>}
       {membershipError && (
-        <span className="inline-flex items-center gap-1.5 text-xs text-red-600">
+        <span className="inline-flex items-center gap-1.5 text-xs text-[var(--color-danger)]">
           Couldn't load which collections this belongs to.
           <button type="button" onClick={() => void refetchMembership()} className="font-medium hover:underline">
             Retry
@@ -169,7 +169,7 @@ export function AddToCollectionButton({ itemType, itemId }: { itemType: Collecti
             type="button"
             onClick={() => remove.mutate(collection.id)}
             aria-label={`Remove from ${collection.name}`}
-            className="hover:text-red-600"
+            className="hover:text-[var(--color-danger)]"
           >
             ×
           </button>

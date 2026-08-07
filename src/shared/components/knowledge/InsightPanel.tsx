@@ -56,7 +56,7 @@ export function InsightPanel({
         </div>
       ) : isError ? (
         <div className="flex flex-col items-start gap-2">
-          <p className="text-sm text-red-600">{errorMessage}</p>
+          <p className="text-sm text-[var(--color-danger)]">{errorMessage}</p>
           {onRetry && (
             <button type="button" onClick={onRetry} className="text-xs font-medium text-[var(--color-accent)] hover:underline">
               Retry

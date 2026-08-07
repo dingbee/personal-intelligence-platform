@@ -5,12 +5,12 @@ import type { GraphEdge, GraphNode, GraphNodeType, KnowledgeGraphData } from '@/
 const ROW_ORDER: GraphNodeType[] = ['document', 'note', 'highlight', 'tag', 'concept', 'entity']
 
 const NODE_STYLE: Record<GraphNodeType, { fill: string; label: string }> = {
-  document: { fill: '#4f46e5', label: 'Document' },
-  note: { fill: '#059669', label: 'Note' },
-  highlight: { fill: '#d97706', label: 'Highlight' },
-  tag: { fill: '#e11d48', label: 'Tag' },
-  concept: { fill: '#7c3aed', label: 'Concept' },
-  entity: { fill: '#0891b2', label: 'Entity' },
+  document: { fill: 'var(--graph-color-document)', label: 'Document' },
+  note: { fill: 'var(--graph-color-note)', label: 'Note' },
+  highlight: { fill: 'var(--graph-color-highlight)', label: 'Highlight' },
+  tag: { fill: 'var(--graph-color-tag)', label: 'Tag' },
+  concept: { fill: 'var(--graph-color-concept)', label: 'Concept' },
+  entity: { fill: 'var(--graph-color-entity)', label: 'Entity' },
 }
 
 const ROW_HEIGHT = 140

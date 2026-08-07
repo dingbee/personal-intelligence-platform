@@ -23,7 +23,7 @@ export function TagFilterBar({
         onClick={() => onSelect(null)}
         className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
           selectedTagId === null
-            ? 'bg-[var(--color-ink)] text-white'
+            ? 'bg-[var(--color-ink)] text-[var(--color-canvas)]'
             : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
         }`}
       >
@@ -75,7 +75,7 @@ function TagPill({
   return (
     <div
       className={`group flex items-center rounded-full pr-0.5 text-xs font-medium transition-colors ${
-        selected ? 'bg-[var(--color-ink)] text-white' : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)]'
+        selected ? 'bg-[var(--color-ink)] text-[var(--color-canvas)]' : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)]'
       }`}
     >
       <button
@@ -89,7 +89,7 @@ function TagPill({
         trigger={
           <span
             aria-hidden
-            className={`px-1 opacity-0 group-hover:opacity-100 ${selected ? 'text-white' : ''}`}
+            className={`px-1 opacity-0 group-hover:opacity-100 ${selected ? 'text-[var(--color-canvas)]' : ''}`}
           >
             ⋯
           </span>

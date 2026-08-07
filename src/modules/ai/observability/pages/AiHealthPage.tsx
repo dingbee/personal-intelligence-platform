@@ -43,7 +43,7 @@ function TrendDelta({ percent, kind }: { percent: number | null; kind: TrendKind
   const trend = toMetricTrend(percent, kind)
   if (!trend) return null
   const arrow = trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→'
-  const colorClass = trend.isGood === false ? 'text-red-600' : trend.isGood ? 'text-green-600' : 'text-[var(--color-ink-muted)]'
+  const colorClass = trend.isGood === false ? 'text-[var(--color-danger)]' : trend.isGood ? 'text-[var(--color-success)]' : 'text-[var(--color-ink-muted)]'
   return (
     <span className={colorClass}>
       {arrow} {trend.text}
@@ -96,7 +96,7 @@ export function AiHealthPage() {
               onClick={() => setTimeRange(option.value)}
               className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
                 timeRange === option.value
-                  ? 'bg-[var(--color-ink)] text-white'
+                  ? 'bg-[var(--color-ink)] text-[var(--color-canvas)]'
                   : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
               }`}
             >
@@ -111,7 +111,7 @@ export function AiHealthPage() {
           <Spinner />
         </div>
       ) : isError ? (
-        <p className="text-sm text-red-600">Couldn't load AI health data.</p>
+        <p className="text-sm text-[var(--color-danger)]">Couldn't load AI health data.</p>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -287,7 +287,7 @@ export function AiHealthPage() {
                             {failure.provider}
                             {failure.fallbackReason && (
                               <span
-                                className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+                                className="ml-1.5 rounded-full bg-[var(--color-warning-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-warning-strong)]"
                                 title={failure.fallbackReason}
                               >
                                 fallback

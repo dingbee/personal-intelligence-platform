@@ -470,14 +470,14 @@ export function ChatPage() {
               />
             </div>
             {conversationProviderUnavailable && (
-              <p className="px-6 pt-2 text-xs text-amber-600">
+              <p className="px-6 pt-2 text-xs text-[var(--color-warning)]">
                 This conversation is set to {providerRegistry.get(conversation!.provider_id)?.label ?? conversation!.provider_id},
                 which isn't currently available. It's still selected above so nothing about this conversation is
                 changed — pick a different provider to continue chatting.
               </p>
             )}
             {updateProvider.isError && (
-              <p className="px-6 pt-2 text-xs text-red-600">
+              <p className="px-6 pt-2 text-xs text-[var(--color-danger)]">
                 Couldn't switch provider — reverted to the previous one.{' '}
                 {updateProvider.error instanceof Error ? updateProvider.error.message : ''}
               </p>
@@ -505,7 +505,7 @@ export function ChatPage() {
                     message={{ role: 'assistant', content: streamingText || '…', context_chunk_ids: [] }}
                   />
                 )}
-                {error && <p className="text-sm text-red-600">{error}</p>}
+                {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
               </div>
             </div>
             {!sending && contextTrace && (

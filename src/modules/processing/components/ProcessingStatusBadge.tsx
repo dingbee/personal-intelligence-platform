@@ -38,9 +38,9 @@ export function ProcessingStatusBadge({
       title={job.status === 'failed' ? (job.error_message ?? undefined) : undefined}
       className={`inline-flex items-center gap-1 text-xs ${
         job.status === 'failed'
-          ? 'text-red-600'
+          ? 'text-[var(--color-danger)]'
           : job.status === 'completed'
-            ? 'text-green-600'
+            ? 'text-[var(--color-success)]'
             : 'text-[var(--color-ink-muted)]'
       }`}
     >

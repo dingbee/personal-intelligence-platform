@@ -199,7 +199,7 @@ export function ReaderChatPanel({
         />
       )}
       {conversationProviderUnavailable && (
-        <p className="px-4 pt-2 text-xs text-amber-600">
+        <p className="px-4 pt-2 text-xs text-[var(--color-warning)]">
           This conversation is set to{' '}
           {providerRegistry.get(conversation!.provider_id)?.label ?? conversation!.provider_id}, which isn't
           currently available. Pick a different provider above to continue.
@@ -255,7 +255,7 @@ export function ReaderChatPanel({
             {streamingText !== null && (
               <MessageBubble message={{ role: 'assistant', content: streamingText || '…', context_chunk_ids: [] }} />
             )}
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
           </div>
         )}
       </div>

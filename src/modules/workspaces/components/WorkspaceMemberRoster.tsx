@@ -108,12 +108,12 @@ export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) 
             Invite
           </Button>
           {invite.isError && (
-            <p className="w-full text-sm text-red-600">
+            <p className="w-full text-sm text-[var(--color-danger)]">
               {invite.error instanceof Error ? invite.error.message : 'Failed to send invitation'}
             </p>
           )}
           {emailWarning && (
-            <p className="w-full text-sm text-amber-600">
+            <p className="w-full text-sm text-[var(--color-warning)]">
               {emailWarning}{' '}
               <button type="button" className="underline" onClick={() => setEmailWarning(null)}>
                 Dismiss
@@ -174,7 +174,7 @@ export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) 
                   {canManage && (
                     <Button
                       variant="ghost"
-                      className="text-red-600 hover:text-red-700"
+                      className="text-[var(--color-danger)] hover:text-[var(--color-danger-strong)]"
                       onClick={() => setRemovingId(member.id)}
                     >
                       Remove
@@ -232,7 +232,7 @@ export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) 
                     </Button>
                     <Button
                       variant="ghost"
-                      className="text-red-600 hover:text-red-700"
+                      className="text-[var(--color-danger)] hover:text-[var(--color-danger-strong)]"
                       onClick={() => setCancelingId(invitation.id)}
                     >
                       Cancel

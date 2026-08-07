@@ -29,7 +29,7 @@ export function ContinueWorkingCard({ inProgressDocument }: { inProgressDocument
       </div>
       <Link
         to={`/library/${inProgressDocument.id}/read`}
-        className="shrink-0 rounded-full bg-[var(--color-accent)] px-4 py-1.5 text-sm font-medium text-white hover:opacity-90"
+        className="shrink-0 rounded-full bg-[var(--color-accent)] px-4 py-1.5 text-sm font-medium text-[var(--color-canvas)] hover:opacity-90"
       >
         Continue reading →
       </Link>

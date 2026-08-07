@@ -193,7 +193,7 @@ export function LibraryPage() {
                 <Spinner />
               </div>
             ) : isError ? (
-              <p className="text-sm text-red-600">
+              <p className="text-sm text-[var(--color-danger)]">
                 Couldn't load your documents: {error instanceof Error ? error.message : 'Unknown error'}
               </p>
             ) : (
@@ -237,7 +237,7 @@ export function LibraryPage() {
                 <Spinner />
               </div>
             ) : assetsIsError ? (
-              <p className="text-sm text-red-600">Couldn't load your images.</p>
+              <p className="text-sm text-[var(--color-danger)]">Couldn't load your images.</p>
             ) : (
               <>
                 <p className="mb-3 text-xs text-[var(--color-ink-muted)]">

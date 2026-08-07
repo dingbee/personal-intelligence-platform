@@ -107,7 +107,7 @@ export function PdfPageControls({
           onClick={() => onZoomChange({ type: 'fit-width' })}
           className={`ml-1 rounded-md px-2 py-1 text-xs font-medium ${
             zoom.type === 'fit-width'
-              ? 'bg-[var(--color-ink)] text-white'
+              ? 'bg-[var(--color-ink)] text-[var(--color-canvas)]'
               : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
           }`}
         >

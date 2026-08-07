@@ -110,9 +110,9 @@ export function ImportKnowledgeNodePackageDialog({ open, onClose }: ImportKnowle
           </label>
 
           {fileName && issues.length > 0 && (
-            <div className="flex flex-col gap-1.5 rounded-control border border-red-200 bg-red-50 p-3">
-              <p className="text-sm font-medium text-red-700">Couldn't import "{fileName}":</p>
-              <ul className="list-inside list-disc text-sm text-red-600">
+            <div className="flex flex-col gap-1.5 rounded-control border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] p-3">
+              <p className="text-sm font-medium text-[var(--color-danger-strong)]">Couldn't import "{fileName}":</p>
+              <ul className="list-inside list-disc text-sm text-[var(--color-danger)]">
                 {issues.map((issueItem, index) => (
                   <li key={index}>{issueItem.message}</li>
                 ))}
@@ -147,7 +147,7 @@ export function ImportKnowledgeNodePackageDialog({ open, onClose }: ImportKnowle
           </label>
 
           {importPackage.isError && (
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-[var(--color-danger)]">
               {importPackage.error instanceof Error ? importPackage.error.message : 'Failed to import this package.'}
             </p>
           )}

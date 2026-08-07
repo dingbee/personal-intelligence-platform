@@ -13,7 +13,7 @@ export function ActiveConversationsSection({ conversations }: { conversations: C
         leading: (
           <>
             {conversation.is_pinned && <span aria-label="Pinned">📌</span>}
-            {conversation.favorite && <span aria-label="Favorite" className="text-amber-500">★</span>}
+            {conversation.favorite && <span aria-label="Favorite" className="text-[var(--color-warning)]">★</span>}
           </>
         ),
       }))}

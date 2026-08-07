@@ -46,7 +46,7 @@ export function ActionMenu({ actions, trigger }: { actions: ResolvedAction[]; tr
               to={action.href}
               role="menuitem"
               className={`block w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-canvas)] ${
-                destructive ? 'text-red-600' : 'text-[var(--color-ink)]'
+                destructive ? 'text-[var(--color-danger)]' : 'text-[var(--color-ink)]'
               }`}
             >
               {action.label}

@@ -59,7 +59,7 @@ export function DropdownMenuItem({
       role="menuitem"
       onClick={onClick}
       className={`block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--surface-base)] ${
-        danger ? 'text-red-600' : 'text-[var(--color-ink)]'
+        danger ? 'text-[var(--color-danger)]' : 'text-[var(--color-ink)]'
       }`}
     >
       {children}

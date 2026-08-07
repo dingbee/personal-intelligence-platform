@@ -39,7 +39,7 @@ export function MessageBubble({
           <div
             className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed transition-shadow duration-700 ${
               isUser
-                ? 'bg-[var(--color-accent)] text-white'
+                ? 'bg-[var(--color-accent)] text-[var(--color-canvas)]'
                 : 'bg-[var(--color-surface)] text-[var(--color-ink)] border border-[var(--color-border)]'
             } ${highlighted ? 'ring-2 ring-offset-2 ring-[var(--color-accent)] ring-offset-[var(--color-canvas)]' : ''}`}
           >

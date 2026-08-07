@@ -85,7 +85,7 @@ export function SearchPage() {
         </Button>
       </form>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
 
       {hasSearched && !conceptsLoading && concepts.length > 0 && (
         <div className="flex flex-col gap-3">

@@ -48,7 +48,7 @@ export function ForgotPasswordPage() {
           onChange={(e) => setEmail(e.target.value)}
         />
         {error && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-[var(--color-danger)]">
             {error}
           </p>
         )}

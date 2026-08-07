@@ -29,7 +29,7 @@ export function KnowledgeGraphPage() {
           <Spinner />
         </div>
       ) : isError ? (
-        <p className="text-sm text-red-600">
+        <p className="text-sm text-[var(--color-danger)]">
           Couldn't load content connections: {error instanceof Error ? error.message : 'Unknown error'}
         </p>
       ) : !data || data.nodes.length === 0 ? (

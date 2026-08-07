@@ -24,7 +24,7 @@ export function FlashcardsPanel({
       </div>
 
       {generate.isError && (
-        <p className="mt-2 text-sm text-red-600">
+        <p className="mt-2 text-sm text-[var(--color-danger)]">
           {generate.error instanceof Error ? generate.error.message : 'Failed to generate flashcards'}
         </p>
       )}

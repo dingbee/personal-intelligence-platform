@@ -2,8 +2,8 @@ import type { WorkspaceHealthIndicator } from '@/modules/hub/workspaceHealth'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 
 const STATUS_DOT_CLASS: Record<WorkspaceHealthIndicator['status'], string> = {
-  good: 'bg-emerald-500',
-  warning: 'bg-amber-500',
+  good: 'bg-[var(--color-success)]',
+  warning: 'bg-[var(--color-warning)]',
   unknown: 'bg-[var(--color-ink-muted)]',
 }
 

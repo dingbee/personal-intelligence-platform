@@ -54,11 +54,11 @@ export function ChangePasswordCard() {
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
         {error && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-[var(--color-danger)]">
             {error}
           </p>
         )}
-        {success && <p className="text-sm text-green-700">Password updated.</p>}
+        {success && <p className="text-sm text-[var(--color-success-strong)]">Password updated.</p>}
         <Button type="submit" loading={submitting} className="mt-1">
           Update password
         </Button>

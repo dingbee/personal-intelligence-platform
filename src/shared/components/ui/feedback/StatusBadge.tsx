@@ -1,7 +1,7 @@
 const VARIANT_CLASSES = {
-  success: 'bg-green-100 text-green-700',
-  warning: 'bg-amber-100 text-amber-700',
-  error: 'bg-red-100 text-red-700',
+  success: 'bg-[var(--color-success-bg)] text-[var(--color-success-strong)]',
+  warning: 'bg-[var(--color-warning-bg)] text-[var(--color-warning-strong)]',
+  error: 'bg-[var(--color-danger-bg)] text-[var(--color-danger-strong)]',
   info: 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]',
   neutral: 'bg-[var(--color-ink-muted)]/10 text-[var(--color-ink-muted)]',
 } as const

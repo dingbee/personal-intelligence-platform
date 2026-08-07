@@ -65,7 +65,7 @@ export function KnowledgeExportDialog({ open, onClose, objectLabel, request }: K
         </div>
 
         {download.isError && (
-          <p className="text-sm text-red-600">
+          <p className="text-sm text-[var(--color-danger)]">
             {download.error instanceof Error ? download.error.message : 'Failed to generate this export.'}
           </p>
         )}

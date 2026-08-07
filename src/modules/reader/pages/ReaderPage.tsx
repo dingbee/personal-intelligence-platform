@@ -242,7 +242,7 @@ export function ReaderPage() {
               onClick={() => setActivePanel(activePanel === 'chapters' ? null : 'chapters')}
               className={`rounded-md px-2 py-1 font-medium md:hidden ${
                 activePanel === 'chapters'
-                  ? 'bg-[var(--color-ink)] text-white'
+                  ? 'bg-[var(--color-ink)] text-[var(--color-canvas)]'
                   : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
               }`}
             >
@@ -259,7 +259,7 @@ export function ReaderPage() {
               onClick={() => setActivePanel(activePanel === tab.id ? null : tab.id)}
               className={`rounded-md px-2 py-1 font-medium ${
                 activePanel === tab.id
-                  ? 'bg-[var(--color-ink)] text-white'
+                  ? 'bg-[var(--color-ink)] text-[var(--color-canvas)]'
                   : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
               }`}
             >

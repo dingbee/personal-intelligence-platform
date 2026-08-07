@@ -40,7 +40,7 @@ export function WorkspaceObjectivesSection({ workspaceId }: { workspaceId: strin
                 <button
                   type="button"
                   onClick={() => remove.mutate(objective.id)}
-                  className="text-[var(--color-ink-muted)] transition-colors hover:text-red-600"
+                  className="text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-danger)]"
                 >
                   Dismiss
                 </button>
@@ -53,7 +53,7 @@ export function WorkspaceObjectivesSection({ workspaceId }: { workspaceId: strin
               <button
                 type="button"
                 onClick={() => remove.mutate(objective.id)}
-                className="shrink-0 text-xs transition-colors hover:text-red-600"
+                className="shrink-0 text-xs transition-colors hover:text-[var(--color-danger)]"
               >
                 Remove
               </button>

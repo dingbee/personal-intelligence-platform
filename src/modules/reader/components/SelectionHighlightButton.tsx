@@ -54,7 +54,7 @@ export function SelectionHighlightButton({
         window.getSelection()?.removeAllRanges()
         setSelection(null)
       }}
-      className="z-50 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-white shadow-md hover:opacity-90"
+      className="z-50 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-canvas)] shadow-md hover:opacity-90"
     >
       Highlight
     </button>

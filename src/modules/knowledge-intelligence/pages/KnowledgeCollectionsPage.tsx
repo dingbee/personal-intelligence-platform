@@ -72,7 +72,7 @@ export function KnowledgeCollectionsPage() {
           <Spinner />
         </div>
       ) : isError ? (
-        <p className="text-sm text-red-600">Couldn't load your collections.</p>
+        <p className="text-sm text-[var(--color-danger)]">Couldn't load your collections.</p>
       ) : collections.length === 0 ? (
         <EmptyState
           title="No collections yet"

@@ -156,7 +156,7 @@ export function ExportCenterPage() {
             onClick={() => selectTab(tab.type)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium ${
               activeType === tab.type
-                ? 'bg-[var(--color-ink)] text-white'
+                ? 'bg-[var(--color-ink)] text-[var(--color-canvas)]'
                 : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
             }`}
           >
@@ -223,9 +223,9 @@ export function ExportCenterPage() {
                   <span
                     className={
                       result.status === 'done'
-                        ? 'shrink-0 text-green-600'
+                        ? 'shrink-0 text-[var(--color-success)]'
                         : result.status === 'error'
-                          ? 'shrink-0 text-red-600'
+                          ? 'shrink-0 text-[var(--color-danger)]'
                           : 'shrink-0 text-[var(--color-ink-muted)]'
                     }
                   >

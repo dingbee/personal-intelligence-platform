@@ -4,8 +4,13 @@
   --font-sans:
     'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  /* Calm, minimal neutral palette. Dark variants are applied via the
-     `dark:` variant against these same semantic roles. */
+  /* Calm, minimal neutral palette. Dark values are declared below, in a
+     `@media (prefers-color-scheme: dark)` block that overrides these same
+     custom properties at :root — every component that reads them via
+     `bg-[var(--color-canvas)]` etc. re-themes automatically, with zero
+     component-level `dark:` classes needed. See UX-15.3.1's discovery doc
+     for why this project had *no* working dark theme before this phase
+     despite `color-scheme: light dark` already being declared below. */
   --color-canvas: #fafaf9;
   --color-surface: #ffffff;
   --color-border: #e7e5e4;
@@ -13,6 +18,38 @@
   --color-ink-muted: #78716c;
   --color-accent: #4f46e5;
   --color-accent-hover: #4338ca;
+
+  /* UX-15.3.1 — semantic status colors. Every red-600/green-600/amber-600
+     (etc.) Tailwind literal across the app is a dark-mode bug by
+     construction (fixed shades tuned for a white background only) — these
+     tokens replace them, following the same "-bg"/"-strong" naming the
+     existing status badges (HealthScoreBadge, ProcessingStatusBadge)
+     already establish informally. -strong pairs with -bg for a tinted
+     badge/pill (text-strong on bg); the bare color is for plain text/icons
+     directly on the page surface; -border is the one banner/alert border
+     color in use (`border-red-200`). */
+  --color-danger: #dc2626;
+  --color-danger-strong: #b91c1c;
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-success: #16a34a;
+  --color-success-strong: #15803d;
+  --color-success-bg: #dcfce7;
+  --color-warning: #d97706;
+  --color-warning-strong: #b45309;
+  --color-warning-bg: #fef3c7;
+
+  /* UX-15.3.1 — GraphCanvas's per-node-type categorical colors. Same
+     dark-mode problem as the status colors: the light-tuned 600-shades
+     dropped as low as 2.4:1 against the dark surface (below the 3:1 WCAG
+     non-text-contrast minimum for graphical objects) — see the dark
+     override below for the checked replacements. */
+  --graph-color-document: #4f46e5;
+  --graph-color-note: #059669;
+  --graph-color-highlight: #d97706;
+  --graph-color-tag: #e11d48;
+  --graph-color-concept: #7c3aed;
+  --graph-color-entity: #0891b2;
 
   /* Soft-raised surface tokens (Tailwind v4 turns --shadow-* into shadow-*
      utilities). Introduced for the AI Health dashboard's move toward the
@@ -62,6 +99,90 @@
   --radius-card: 0.75rem;
   --radius-panel: 1rem;
   --radius-pill: 9999px;
+}
+
+/*
+ * UX-15.3.1 — dark theme. Overrides the exact same custom properties
+ * `@theme` above declares, at :root, gated on the OS-level preference
+ * `color-scheme: light dark` (below) already advertises. Every component
+ * in the app reads these roles via `bg-[var(--color-canvas)]`-style
+ * arbitrary values rather than Tailwind's own color utilities, so this
+ * one block re-themes the entire app with no component-level `dark:`
+ * classes required — confirmed by grep: zero `dark:` variants existed
+ * anywhere in this codebase before this phase, meaning there was no
+ * working dark theme at all, despite `color-scheme: light dark` already
+ * being declared (see discovery doc). Values follow Tailwind's own
+ * neutral "stone" family to keep the same warm-neutral character as the
+ * light palette, just inverted in weight; accent/status colors move to
+ * their brighter 300–400-equivalent shades (standard dark-UI practice —
+ * saturated 600-shades read as muddy/low-contrast on a dark surface).
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas: #1c1917;
+    --color-surface: #292524;
+    /* stone-500, not stone-700 (the naive "one step darker than canvas"
+       choice) — measured contrast at stone-700 was 1.7:1 against canvas,
+       well under the 3:1 WCAG non-text-contrast minimum for a UI boundary;
+       stone-500 clears it (3.65:1 canvas / 3.16:1 surface) while staying a
+       muted divider, not a loud one. */
+    --color-border: #78716c;
+    --color-ink: #f5f5f4;
+    --color-ink-muted: #a8a29e;
+    --color-accent: #818cf8;
+    --color-accent-hover: #a5b4fc;
+
+    --color-danger: #f87171;
+    --color-danger-strong: #fca5a5;
+    --color-danger-bg: #3a1a1a;
+    --color-danger-border: #7f1d1d;
+    --color-success: #4ade80;
+    --color-success-strong: #86efac;
+    --color-success-bg: #14291d;
+    --color-warning: #fbbf24;
+    --color-warning-strong: #fcd34d;
+    --color-warning-bg: #3a2a0d;
+
+    --graph-color-document: #818cf8;
+    --graph-color-note: #34d399;
+    --graph-color-highlight: #fbbf24;
+    --graph-color-tag: #fb7185;
+    --graph-color-concept: #a78bfa;
+    --graph-color-entity: #22d3ee;
+
+    --surface-inset: #141110;
+  }
+
+  /* The light-tuned shadow tokens (0.04–0.20 alpha black) are built to sit
+     against a near-white canvas; against the near-black dark canvas the
+     same alpha reads as functionally invisible, collapsing the neomorphic
+     elevation system this app otherwise relies on for depth. NOTE: this
+     can't be fixed by overriding the --shadow-* custom properties on :root
+     the way the colors above are — Tailwind v4 resolves @theme's
+     --shadow-* values into each shadow-* utility's own --tw-shadow at
+     build time (confirmed via the compiled output: zero `var(--shadow-*)`
+     references anywhere, so a :root-level override is silently inert).
+     Overriding --tw-shadow directly on the utility classes themselves,
+     here, is what actually reaches the box-shadow declaration. Raising
+     alpha (roughly 3x) restores a visible elevation cue while keeping the
+     same soft, single-shadow-stack character per utility — no added
+     highlight/emboss layer, consistent with --shadow-raised's own
+     "no dual light/dark embossing" rule above. */
+  .shadow-soft {
+    --tw-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 12px -4px rgb(0 0 0 / 0.4);
+  }
+  .shadow-soft-lg {
+    --tw-shadow: 0 2px 4px rgb(0 0 0 / 0.3), 0 10px 28px -8px rgb(0 0 0 / 0.45);
+  }
+  .shadow-raised {
+    --tw-shadow: 0 1px 3px rgb(0 0 0 / 0.35), 0 8px 20px -6px rgb(0 0 0 / 0.5);
+  }
+  .shadow-inset {
+    --tw-shadow: inset 0 1px 3px rgb(0 0 0 / 0.4), inset 0 1px 2px rgb(0 0 0 / 0.3);
+  }
+  .shadow-floating {
+    --tw-shadow: 0 4px 8px rgb(0 0 0 / 0.35), 0 20px 48px -12px rgb(0 0 0 / 0.55);
+  }
 }
 
 @layer base {

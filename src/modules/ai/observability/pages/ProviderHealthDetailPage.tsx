@@ -170,14 +170,14 @@ export function ProviderHealthDetailPage() {
                     <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{formatLatency(request.latency_ms)}</td>
                     <td className="py-2">
                       <span
-                        className={request.status === 'success' ? 'text-green-700' : 'text-red-600'}
+                        className={request.status === 'success' ? 'text-[var(--color-success-strong)]' : 'text-[var(--color-danger)]'}
                         title={request.error_message ?? undefined}
                       >
                         {request.status}
                       </span>
                       {request.fallback_reason && (
                         <span
-                          className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+                          className="ml-1.5 rounded-full bg-[var(--color-warning-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-warning-strong)]"
                           title={request.fallback_reason}
                         >
                           fallback

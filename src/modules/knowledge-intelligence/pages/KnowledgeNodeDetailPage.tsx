@@ -146,7 +146,7 @@ export function KnowledgeNodeDetailPage() {
           </Link>
         )}
         {generateBriefing.isError && (
-          <span className="text-sm text-red-600">
+          <span className="text-sm text-[var(--color-danger)]">
             {generateBriefing.error instanceof Error ? generateBriefing.error.message : 'Failed to generate briefing.'}
           </span>
         )}
@@ -167,7 +167,7 @@ export function KnowledgeNodeDetailPage() {
         <div className="flex flex-col gap-3">
           <SectionHeader title="Related concepts" />
           {exportLink.isError && (
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-[var(--color-danger)]">
               {exportLink.error instanceof Error ? exportLink.error.message : 'Failed to export this relationship.'}
             </p>
           )}

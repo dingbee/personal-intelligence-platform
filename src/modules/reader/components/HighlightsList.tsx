@@ -90,7 +90,7 @@ export function HighlightsList({
             <button
               type="button"
               onClick={() => remove.mutate(highlight.id)}
-              className="text-xs text-[var(--color-ink-muted)] hover:text-red-600"
+              className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-danger)]"
             >
               Remove highlight
             </button>

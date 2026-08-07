@@ -29,7 +29,7 @@ export function SearchResultCard({ result }: { result: SearchResult }) {
           {SOURCE_LABEL[result.sourceType] ?? result.sourceType}
         </span>
         {result.matchCount !== undefined && (
-          <span aria-label={`${scoreToStars(result.similarity)} out of 5 relevance`} className="text-xs text-amber-500">
+          <span aria-label={`${scoreToStars(result.similarity)} out of 5 relevance`} className="text-xs text-[var(--color-warning)]">
             {'★'.repeat(scoreToStars(result.similarity))}
             <span className="text-[var(--color-border)]">{'★'.repeat(5 - scoreToStars(result.similarity))}</span>
           </span>

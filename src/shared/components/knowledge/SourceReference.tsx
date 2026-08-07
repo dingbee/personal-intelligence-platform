@@ -57,7 +57,7 @@ export function SourceReference({
                 type="button"
                 onClick={() => onRemove(source)}
                 aria-label={`Remove ${source.label}`}
-                className="text-xs text-[var(--color-ink-muted)] hover:text-red-600"
+                className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-danger)]"
               >
                 ×
               </button>

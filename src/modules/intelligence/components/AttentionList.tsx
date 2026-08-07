@@ -5,7 +5,7 @@ export function AttentionList({ items }: { items: AttentionItem[] }) {
   if (items.length === 0) return null
 
   return (
-    <ul className="flex flex-col gap-1 text-xs text-amber-700">
+    <ul className="flex flex-col gap-1 text-xs text-[var(--color-warning-strong)]">
       {items.map((item, index) => (
         <li key={`${item.type}-${index}`}>⚠ {item.message}</li>
       ))}

@@ -61,7 +61,7 @@ export function MemoryCard({ memory, allMemories }: { memory: AiMemory; allMemor
           <button
             type="button"
             onClick={() => setConfirmingDelete(true)}
-            className="rounded px-1 text-xs text-[var(--color-ink-muted)] transition-colors hover:text-red-600"
+            className="rounded px-1 text-xs text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-danger)]"
           >
             Delete
           </button>

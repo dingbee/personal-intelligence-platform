@@ -94,7 +94,7 @@ export function AssetUploadDropzone() {
               <span className="truncate text-[var(--color-ink)]">{item.fileName}</span>
               <span
                 className={
-                  item.status === 'error' ? 'text-red-600' : item.status === 'done' ? 'text-green-600' : 'text-[var(--color-ink-muted)]'
+                  item.status === 'error' ? 'text-[var(--color-danger)]' : item.status === 'done' ? 'text-[var(--color-success)]' : 'text-[var(--color-ink-muted)]'
                 }
               >
                 {item.status === 'uploading' && 'Uploading…'}

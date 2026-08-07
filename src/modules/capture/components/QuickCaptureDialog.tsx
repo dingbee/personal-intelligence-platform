@@ -212,7 +212,7 @@ export function QuickCaptureDialog({ open, onClose }: { open: boolean; onClose: 
                     View →
                   </Link>
                 ) : (
-                  <span className={`shrink-0 ${item.status === 'error' ? 'text-red-600' : 'text-[var(--color-ink-muted)]'}`}>
+                  <span className={`shrink-0 ${item.status === 'error' ? 'text-[var(--color-danger)]' : 'text-[var(--color-ink-muted)]'}`}>
                     {item.status === 'uploading' && 'Uploading…'}
                     {item.status === 'error' && item.error}
                   </span>
@@ -235,7 +235,7 @@ export function QuickCaptureDialog({ open, onClose }: { open: boolean; onClose: 
             className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm leading-relaxed text-[var(--color-ink)] outline-none focus:border-[var(--color-accent)]"
           />
           {isUrl && <p className="text-xs text-[var(--color-ink-muted)]">Saved as a note containing this link.</p>}
-          {noteError && <p className="text-sm text-red-600">{noteError}</p>}
+          {noteError && <p className="text-sm text-[var(--color-danger)]">{noteError}</p>}
           {savedNote && (
             <p className="text-sm text-[var(--color-ink-muted)]">
               Saved —{' '}

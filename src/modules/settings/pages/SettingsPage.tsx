@@ -70,7 +70,7 @@ export function SettingsPage() {
           {updateDefaultProvider.isPending && <Spinner size="sm" />}
         </div>
         {updateDefaultProvider.isError && (
-          <p className="mt-2 text-xs text-red-600">Couldn't save your default provider. Please try again.</p>
+          <p className="mt-2 text-xs text-[var(--color-danger)]">Couldn't save your default provider. Please try again.</p>
         )}
       </div>
 
@@ -116,8 +116,8 @@ export function SettingsPage() {
                       <span
                         className={
                           request.status === 'success'
-                            ? 'text-green-700'
-                            : 'text-red-600'
+                            ? 'text-[var(--color-success-strong)]'
+                            : 'text-[var(--color-danger)]'
                         }
                         title={request.error_message ?? undefined}
                       >
