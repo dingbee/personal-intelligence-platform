@@ -472,14 +472,21 @@ export type DismissedSuggestion = {
 
 /** UX-13.8.2 — an uploaded image and its generated derivatives. Deliberately not a `documents` row; see the 0022_assets.sql migration header. */
 /**
- * Multimodal Intelligence v1 — AI-generated interpretation of an image,
- * stored honestly: a description and any visible text NOVA read, not a
- * calibrated OCR confidence score (no provider in this codebase exposes
- * one). See docs/multimodal-intelligence-discovery.md §4.
+ * Multimodal Intelligence v1/v2 — AI-generated interpretation of an
+ * image, stored honestly: a description and any visible text NOVA read,
+ * not a calibrated OCR confidence score (no provider in this codebase
+ * exposes one). `confidence` (v2) is the model's own self-reported
+ * estimate, not a statistical guarantee — see
+ * docs/multimodal-intelligence-v2-discovery.md §5. `documentIntelligence`
+ * (v2) reuses the exact same type documents get, applied to this asset's
+ * analyzed text via runDocumentIntelligenceFromContent.
  */
 export type AssetAnalysis = {
   description: string
   extractedText: string | null
+  detectedLanguage: string | null
+  confidence: { text: number | null; entities: number | null; relationships: number | null } | null
+  documentIntelligence: DocumentIntelligence | null
   analyzedAt: string
   provider: string
 }
@@ -498,6 +505,15 @@ export type Asset = {
   size_bytes: number
   created_at: string
   metadata: AssetAnalysis | null
+}
+
+/** Multimodal Intelligence v2 — Universal Search's fourth source type, mirroring NoteEmbedding exactly. See 0039_asset_search.sql. */
+export type AssetEmbedding = {
+  id: string
+  asset_id: string
+  model: string
+  embedding: number[]
+  created_at: string
 }
 
 /** Beta / Admin / AI Governance Foundation (0035_platform_admin_foundation.sql). Not a `profiles` column — see that migration's own header for why. RLS: a user may SELECT only their own row; no client write policy exists at all — granting admin status is a manual, out-of-band SQL statement, never client-reachable. */
@@ -832,6 +848,12 @@ export type Database = {
         Update: Partial<Asset>
         Relationships: []
       }
+      asset_embeddings: {
+        Row: AssetEmbedding
+        Insert: Partial<AssetEmbedding> & { asset_id: string; model: string; embedding: number[] }
+        Update: Partial<AssetEmbedding>
+        Relationships: []
+      }
       beta_invites: {
         Row: BetaInvite
         Insert: Partial<BetaInvite> & { email: string }
@@ -904,6 +926,15 @@ export type Database = {
           filter_workspace_id?: string | null
         }
         Returns: { note_id: string; title: string; content: string; similarity: number }[]
+      }
+      match_assets: {
+        Args: {
+          query_embedding: number[]
+          match_count?: number
+          filter_user_id?: string
+          filter_workspace_id?: string | null
+        }
+        Returns: { asset_id: string; title: string; similarity: number }[]
       }
       invite_to_workspace: {
         Args: {

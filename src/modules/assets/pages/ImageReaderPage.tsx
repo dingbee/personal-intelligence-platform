@@ -7,6 +7,8 @@ import { useAnalyzeImage } from '@/modules/assets/hooks/useAnalyzeImage'
 import { useSignedAssetUrl } from '@/modules/assets/hooks/useSignedAssetUrl'
 import { createNote } from '@/modules/notes/api/notes'
 import { linkNoteToAsset } from '@/modules/notes/api/knowledgeLinks'
+import { buildStructuredNoteContent } from '@/modules/assets/intelligence/buildStructuredNoteContent'
+import { needsConfidenceReview } from '@/modules/assets/intelligence/assetConfidence'
 import { AddToCollectionButton } from '@/modules/knowledge-intelligence/components/AddToCollectionButton'
 import { exportAssetPackage } from '@/modules/knowledge-exchange/assets/exportAssetPackage'
 import { fetchAssetOriginalAsBase64 } from '@/modules/knowledge-exchange/assets/assetFileTransfer'
@@ -76,6 +78,25 @@ export function ImageReaderPage() {
   const saveAsNote = useMutation({
     mutationFn: async () => {
       const note = await createNote({ userId: user!.id, workspaceId: asset!.workspace_id, title: asset!.title })
+      await linkNoteToAsset({ userId: user!.id, workspaceId: asset!.workspace_id, noteId: note.id, assetId: asset!.id })
+      return note
+    },
+    onSuccess: (note) => navigate(`/notes/${note.id}`),
+  })
+
+  // Multimodal Intelligence v2 — the "Notes + Knowledge Nodes + Tasks"
+  // conversion: unlike saveAsNote (an empty note seeded with just the
+  // title), this renders the asset's analysis + extracted dates/decisions/
+  // tasks (buildStructuredNoteContent) as real note content, tasks as a
+  // markdown checklist rather than a first-class Task entity — see
+  // docs/multimodal-intelligence-v2-discovery.md §9 for why.
+  const saveStructuredNote = useMutation({
+    mutationFn: async () => {
+      const content = buildStructuredNoteContent({
+        description: asset!.metadata!.description,
+        documentIntelligence: asset!.metadata!.documentIntelligence,
+      })
+      const note = await createNote({ userId: user!.id, workspaceId: asset!.workspace_id, title: asset!.title, content })
       await linkNoteToAsset({ userId: user!.id, workspaceId: asset!.workspace_id, noteId: note.id, assetId: asset!.id })
       return note
     },
@@ -173,14 +194,39 @@ export function ImageReaderPage() {
               <div className="flex flex-col gap-3 p-4">
                 {asset.metadata ? (
                   <div className="flex flex-col gap-2 rounded-control border border-[var(--color-border)] bg-[var(--surface-raised)] p-3">
+                    {needsConfidenceReview(asset.metadata.confidence) && (
+                      <p className="rounded-control bg-[var(--color-warning-bg)] px-2 py-1 text-xs text-[var(--color-warning-strong)]">
+                        NOVA wasn't fully confident about parts of this analysis — worth a quick review before relying on it.
+                      </p>
+                    )}
                     <p className="text-xs font-medium text-[var(--color-ink-muted)]">What NOVA sees</p>
                     <p className="text-sm text-[var(--color-ink)]">{asset.metadata.description}</p>
                     {asset.metadata.extractedText && (
                       <>
-                        <p className="text-xs font-medium text-[var(--color-ink-muted)]">Visible text</p>
+                        <p className="text-xs font-medium text-[var(--color-ink-muted)]">
+                          Visible text{asset.metadata.detectedLanguage ? ` (${asset.metadata.detectedLanguage})` : ''}
+                        </p>
                         <p className="whitespace-pre-wrap text-sm text-[var(--color-ink)]">{asset.metadata.extractedText}</p>
                       </>
                     )}
+                    {asset.metadata.documentIntelligence &&
+                      (asset.metadata.documentIntelligence.dates.length > 0 ||
+                        asset.metadata.documentIntelligence.decisions.length > 0 ||
+                        asset.metadata.documentIntelligence.tasks.length > 0) && (
+                        <>
+                          <p className="text-xs font-medium text-[var(--color-ink-muted)]">
+                            Found {asset.metadata.documentIntelligence.dates.length} date
+                            {asset.metadata.documentIntelligence.dates.length === 1 ? '' : 's'},{' '}
+                            {asset.metadata.documentIntelligence.decisions.length} decision
+                            {asset.metadata.documentIntelligence.decisions.length === 1 ? '' : 's'}, and{' '}
+                            {asset.metadata.documentIntelligence.tasks.length} task
+                            {asset.metadata.documentIntelligence.tasks.length === 1 ? '' : 's'}
+                          </p>
+                          <Button variant="secondary" loading={saveStructuredNote.isPending} onClick={() => saveStructuredNote.mutate()}>
+                            Convert to structured note
+                          </Button>
+                        </>
+                      )}
                     <Button variant="ghost" loading={analyzeImage.isPending} onClick={() => analyzeImage.mutate(asset)}>
                       Re-analyze
                     </Button>

@@ -8,10 +8,12 @@ const SOURCE_LABEL: Record<string, string> = {
   document: 'Document',
   conversation: 'Conversation',
   note: 'Note',
+  asset: 'Image',
 }
 
 const SOURCE_ICON: Record<string, string> = {
   conversation: '💬',
+  asset: '🖼️',
 }
 
 export function SearchResultCard({ result }: { result: SearchResult }) {
