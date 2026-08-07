@@ -1,4 +1,5 @@
 import type { AiMemory, AiMemoryType } from '@/shared/types/database'
+import { rankMemories } from '@/modules/ai/memory/rankMemories'
 
 const SECTION_TITLES: Record<AiMemoryType, string> = {
   explicit_profile: 'What NOVA knows about you',
@@ -23,10 +24,7 @@ export function formatMemoriesForPrompt(memories: AiMemory[], options: FormatMem
   const maxPerType = options.maxPerType ?? 20
 
   const sections = SECTION_ORDER.map((type) => {
-    const items = memories
-      .filter((memory) => memory.memory_type === type)
-      .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
-      .slice(0, maxPerType)
+    const items = rankMemories(memories.filter((memory) => memory.memory_type === type)).slice(0, maxPerType)
     if (items.length === 0) return null
     const lines = items.map((memory) => `- ${memory.content}`).join('\n')
     return `## ${SECTION_TITLES[type]}\n${lines}`

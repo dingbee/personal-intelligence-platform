@@ -444,6 +444,15 @@ export type WorkspaceObjective = {
   updated_at: string
 }
 
+/** AI Experience Intelligence v1 — a user's dismissal of one proactive-intelligence item (a Hub IntelligenceItem or a dashboard-scope Recommendation), keyed by the caller-derived item_key. See 0037_dismissed_suggestions.sql. */
+export type DismissedSuggestion = {
+  id: string
+  workspace_id: string
+  user_id: string
+  item_key: string
+  dismissed_at: string
+}
+
 /** UX-13.8.2 — an uploaded image and its generated derivatives. Deliberately not a `documents` row; see the 0022_assets.sql migration header. */
 export type Asset = {
   id: string
@@ -769,6 +778,12 @@ export type Database = {
         Row: WorkspaceObjective
         Insert: Partial<WorkspaceObjective> & { workspace_id: string; user_id: string; content: string }
         Update: Partial<WorkspaceObjective>
+        Relationships: []
+      }
+      dismissed_suggestions: {
+        Row: DismissedSuggestion
+        Insert: Partial<DismissedSuggestion> & { workspace_id: string; user_id: string; item_key: string }
+        Update: Partial<DismissedSuggestion>
         Relationships: []
       }
       assets: {

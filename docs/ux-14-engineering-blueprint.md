@@ -245,3 +245,11 @@ Not one of the four areas this blueprint originally scoped — added retrospecti
 5. **Decision point, not yet scheduled:** an infrastructure spike for scheduled/background execution (needed for Proactive Intelligence's increment 2), and an explicit permission/confirmation model (needed before Agent Capabilities can be scoped at all) — both remain future exploration per the Roadmap, not part of this blueprint's four sections.
 
 Every section above builds on code that already exists and is already live in production; none requires new database infrastructure beyond additive columns/tables on top of the existing single-owner RLS model, and none requires new AI runtime capability beyond richer prompt construction. That is a direct consequence of treating NOVA PIP v1 as a foundation rather than something to rebuild, per the constraint this blueprint was written under.
+
+---
+
+## Addendum — AI Experience Intelligence v1
+
+This blueprint's own §3 correction called out "persistence, cross-session delivery, and true background computation" as the narrower, more specific gaps than "nothing proactive exists." AI Experience Intelligence v1 (see `docs/ai-experience-intelligence-discovery.md`) closed the **persistence** piece: `dismissed_suggestions` (`0037_dismissed_suggestions.sql`) gives every existing `IntelligenceItem`/`Recommendation` a real, cross-session "I've seen this" mechanism, wired into the Hub's attention/organize/shared/learned zones and its recommendations section. Cross-session delivery (a notification surface beyond in-page rendering) and true background/scheduled computation remain the still-open items from this addendum's own §3 — unchanged, and still a decision point rather than scheduled work.
+
+That phase also closed a small, separate gap in §1's Personal Intelligence Layer: memory retrieval now ranks by the `confidence` score the system has computed since `0027_ai_memory_confidence.sql` but never read back at prompt-assembly time (`rankMemories.ts`), and added one new evidence-backed signal — an unresolved-conversation continuation nudge — to the existing `recommendationEngine.ts` dashboard branch, using data the Hub already fetches.

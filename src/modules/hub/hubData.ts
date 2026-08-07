@@ -13,12 +13,27 @@ import { generateRecommendations, type Recommendation } from '@/modules/intellig
 import { listNotes, type NoteWithDocument } from '@/modules/notes/api/notes'
 import { listTaggedNoteIds } from '@/modules/notes/api/noteTags'
 import { listConversations } from '@/modules/ai/chat/api/conversations'
+import { listLastMessageRoles } from '@/modules/ai/chat/api/messages'
 import { listDocuments } from '@/modules/library/api/documents'
 import { listKnowledgeCollections } from '@/modules/knowledge-intelligence/api/knowledgeCollections'
 import { computeWorkspaceIntelligence, type IntelligenceItem } from '@/modules/hub/workspaceIntelligence'
 import { computeWorkspaceHealth, type WorkspaceHealthIndicator } from '@/modules/hub/workspaceHealth'
 
 const RECENT_LIST_LIMIT = 5
+
+/**
+ * AI Experience Intelligence v1 — the most-recently-updated conversation
+ * (among the already-fetched activeConversations, so no extra fan-out
+ * beyond the one listLastMessageRoles query) whose last message role is
+ * 'user'. activeConversations is already sorted pinned-first/updated_at-
+ * desc by listConversations, so the first match here is genuinely the most
+ * recent unresolved one.
+ */
+async function findUnresolvedConversation(activeConversations: Conversation[]): Promise<{ id: string; title: string } | null> {
+  const lastRoles = await listLastMessageRoles(activeConversations.map((c) => c.id))
+  const conversation = activeConversations.find((c) => lastRoles.get(c.id) === 'user')
+  return conversation ? { id: conversation.id, title: conversation.title || 'Untitled conversation' } : null
+}
 
 export interface WorkspaceHubState {
   report: WorkspaceEvolutionReport
@@ -78,19 +93,21 @@ export async function buildWorkspaceHubState(workspaceId: string, commandContext
   const organizedDocumentCount = documents.filter((d) => d.collection_id !== null || d.tags.length > 0).length
   const informationOrganizationScore = documents.length === 0 ? 100 : Math.round((organizedDocumentCount / documents.length) * 100)
 
+  const activeConcepts = report.concepts.filter((c) => c.status === 'emerging' || c.status === 'growing')
+  const readyDocuments = snapshot.documents.filter((d) => d.status === 'ready')
+  const activeConversations = conversations.slice(0, RECENT_LIST_LIMIT)
+
+  const taggedNoteIds = await listTaggedNoteIds(allNotes.map((n) => n.id))
+  const unresolvedConversation = await findUnresolvedConversation(activeConversations)
+
   const recommendations = generateRecommendations({
     scope: 'dashboard',
     commandContext,
     hasGraphContext: snapshot.concepts.length > 0,
     hasMemoryToReview: hasMemoryNeedingReview(snapshot.memories),
     informationOrganizationScore,
+    unresolvedConversation,
   })
-
-  const activeConcepts = report.concepts.filter((c) => c.status === 'emerging' || c.status === 'growing')
-  const readyDocuments = snapshot.documents.filter((d) => d.status === 'ready')
-  const activeConversations = conversations.slice(0, RECENT_LIST_LIMIT)
-
-  const taggedNoteIds = await listTaggedNoteIds(allNotes.map((n) => n.id))
 
   const intelligenceItems = computeWorkspaceIntelligence({
     documents,

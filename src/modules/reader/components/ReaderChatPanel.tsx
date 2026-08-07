@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useConversations } from '@/modules/ai/chat/hooks/useConversations'
 import { useMessages } from '@/modules/ai/chat/hooks/useMessages'
 import { useSendMessage } from '@/modules/ai/chat/hooks/useSendMessage'
+import { useGenerateConversationTitle } from '@/modules/ai/chat/hooks/useGenerateConversationTitle'
 import { MessageBubble } from '@/modules/ai/chat/components/MessageBubble'
 import { ChatInput } from '@/modules/ai/chat/components/ChatInput'
 import { SaveConversationDialog } from '@/modules/notes/components/SaveConversationDialog'
@@ -78,10 +79,11 @@ export function ReaderChatPanel({
   onLocalSuggestion,
   isSpreadsheet,
 }: ReaderChatPanelProps) {
-  const { data: conversations = [], isLoading: conversationsLoading, create } = useConversations(documentId)
+  const { data: conversations = [], isLoading: conversationsLoading, create, rename } = useConversations(documentId)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [savingConversation, setSavingConversation] = useState(false)
   const defaultProviderId = useDefaultChatProviderId()
+  const generateTitle = useGenerateConversationTitle()
 
   useEffect(() => {
     if (!conversationId && conversations.length > 0) setConversationId(conversations[0]!.id)
@@ -139,8 +141,20 @@ export function ReaderChatPanel({
   async function handleSend(text: string) {
     // AI Preference Layer v1 — see ChatPage.handleNew for why chain[0] is
     // the right fallback when there's no explicit preference.
+    const isNewConversation = !conversationId
     const id = conversationId ?? (await create.mutateAsync({ providerId: defaultProviderId ?? chain[0] })).id
     if (!conversationId) setConversationId(id)
+    // AI Experience Intelligence v1 — Reader-originated conversations never
+    // got the same auto-title ChatPage.handleSend gives every new
+    // conversation (see useGenerateConversationTitle). isNewConversation is
+    // exactly "conversationId was null before this call," which is the one
+    // moment a Reader conversation is guaranteed to still hold the
+    // 'New conversation' default set by createConversation — same gate as
+    // ChatPage's `title === 'New conversation'` check, expressed without
+    // depending on this panel's own conversations cache having caught up.
+    if (isNewConversation) {
+      generateTitle.mutate(text, { onSuccess: (result) => rename.mutate({ id, title: result.title }) })
+    }
     const history = messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
     await send(id, text, history)
   }

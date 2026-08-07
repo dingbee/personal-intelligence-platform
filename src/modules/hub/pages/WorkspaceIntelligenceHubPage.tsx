@@ -6,6 +6,7 @@ import { MaturityBadge } from '@/modules/evolution/components/MaturityBadge'
 import { ConceptEvolutionSection } from '@/modules/evolution/components/ConceptEvolutionSection'
 import { EvolutionTimelineSection } from '@/modules/evolution/components/EvolutionTimelineSection'
 import { RecommendedActionsSection } from '@/modules/intelligence/dashboard/components/RecommendedActionsSection'
+import { useDismissedSuggestions } from '@/modules/intelligence/dismissals/useDismissedSuggestions'
 import { SignalList } from '@/modules/intelligence/components/SignalList'
 import { WorkspaceGapsSection } from '@/modules/hub/components/WorkspaceGapsSection'
 import { WorkspaceObjectivesSection } from '@/modules/hub/components/WorkspaceObjectivesSection'
@@ -38,8 +39,18 @@ function ZoneLabel({ children }: { children: string }) {
  * RecentActivityList's existing `trailing` slot, so a recommendation
  * states what clicking it does instead of only being an unlabeled link.
  */
-function IntelligenceZoneItems({ items, zone }: { items: IntelligenceItem[]; zone: IntelligenceZone }) {
-  const zoneItems = items.filter((item) => item.zone === zone)
+function IntelligenceZoneItems({
+  items,
+  zone,
+  dismissedKeys,
+  onDismiss,
+}: {
+  items: IntelligenceItem[]
+  zone: IntelligenceZone
+  dismissedKeys: Set<string>
+  onDismiss: (itemKey: string) => void
+}) {
+  const zoneItems = items.filter((item) => item.zone === zone && !dismissedKeys.has(item.id))
   if (zoneItems.length === 0) return null
   return (
     <RecentActivityList
@@ -49,6 +60,7 @@ function IntelligenceZoneItems({ items, zone }: { items: IntelligenceItem[]; zon
         title: item.title,
         updatedAt: item.timestamp,
         trailing: <span className="text-[var(--color-accent)]">{item.actionLabel} →</span>,
+        onDismiss: () => onDismiss(item.id),
       }))}
       emptyTitle=""
       emptyDescription=""
@@ -95,6 +107,7 @@ export function WorkspaceIntelligenceHubPage() {
   const commandContext = useCommandContext()
   const commandActions = useCommandActions()
   const { members, isShared } = useWorkspaceMemberDirectory(currentWorkspaceId)
+  const { dismissedKeys, dismiss } = useDismissedSuggestions(currentWorkspaceId)
 
   return (
     <div className="flex flex-col gap-8">
@@ -143,7 +156,7 @@ export function WorkspaceIntelligenceHubPage() {
           <section className="flex flex-col gap-6">
             <ZoneLabel>Requires Attention</ZoneLabel>
 
-            <IntelligenceZoneItems items={data.intelligenceItems} zone="attention" />
+            <IntelligenceZoneItems items={data.intelligenceItems} zone="attention" dismissedKeys={dismissedKeys} onDismiss={dismiss} />
 
             <div className="flex flex-col gap-3">
               <SectionHeader level="section" title="Knowledge Gaps" description="What's missing or being neglected." />
@@ -152,7 +165,13 @@ export function WorkspaceIntelligenceHubPage() {
 
             <div className="flex flex-col gap-3">
               <SectionHeader level="section" title="Suggested Next Actions" />
-              <RecommendedActionsSection recommendations={data.recommendations} commandContext={commandContext} commandActions={commandActions} />
+              <RecommendedActionsSection
+                recommendations={data.recommendations}
+                commandContext={commandContext}
+                commandActions={commandActions}
+                dismissedKeys={dismissedKeys}
+                onDismiss={dismiss}
+              />
             </div>
 
             <div className="flex flex-col gap-3">
@@ -197,7 +216,7 @@ export function WorkspaceIntelligenceHubPage() {
           <section className="flex flex-col gap-6">
             <ZoneLabel>Suggested Organization</ZoneLabel>
 
-            <IntelligenceZoneItems items={data.intelligenceItems} zone="organize" />
+            <IntelligenceZoneItems items={data.intelligenceItems} zone="organize" dismissedKeys={dismissedKeys} onDismiss={dismiss} />
 
             <div className="flex flex-col gap-3">
               <SectionHeader level="section" title="Workspace Objectives" description={`What ${workspaceName} is trying to accomplish.`} />
@@ -246,7 +265,7 @@ export function WorkspaceIntelligenceHubPage() {
 
             {isShared &&
               (data.intelligenceItems.some((item) => item.zone === 'shared') ? (
-                <IntelligenceZoneItems items={data.intelligenceItems} zone="shared" />
+                <IntelligenceZoneItems items={data.intelligenceItems} zone="shared" dismissedKeys={dismissedKeys} onDismiss={dismiss} />
               ) : (
                 <EmptyState title="Nothing shared recently" description="A teammate's recent note or conversation will show up here." />
               ))}
@@ -256,7 +275,7 @@ export function WorkspaceIntelligenceHubPage() {
           <section className="flex flex-col gap-6">
             <ZoneLabel>Recently Learned</ZoneLabel>
 
-            <IntelligenceZoneItems items={data.intelligenceItems} zone="learned" />
+            <IntelligenceZoneItems items={data.intelligenceItems} zone="learned" dismissedKeys={dismissedKeys} onDismiss={dismiss} />
 
             <div className="flex flex-col gap-3">
               <SectionHeader level="section" title="Active Concepts" description="Concepts that are new or actively growing." />

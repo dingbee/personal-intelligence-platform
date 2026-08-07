@@ -45,6 +45,15 @@ export interface GenerateRecommendationsInput {
   hasMemoryToReview?: boolean
   /** Information Organization score (0-100) — below the threshold, "organize your library" becomes a real recommendation. */
   informationOrganizationScore?: number
+  /**
+   * AI Experience Intelligence v1 — the most-recently-updated active
+   * conversation whose last message role is 'user' (see
+   * listLastMessageRoles), i.e. an exchange that never got an assistant
+   * reply. Evidence-backed, not a guess: only set when hubData.ts actually
+   * observes this, so it's absent (not fabricated) on every ordinary
+   * conversation that already got its reply.
+   */
+  unresolvedConversation?: { id: string; title: string } | null
 }
 
 /**
@@ -113,6 +122,14 @@ function dashboardRecommendations(input: GenerateRecommendationsInput): Recommen
   const continueReading = buildContinueReadingCommand(input.commandContext)
   if (continueReading) {
     recommendations.push({ category: 'continue', command: continueReading, reason: 'Pick up where you left off.' })
+  }
+
+  if (input.unresolvedConversation) {
+    recommendations.push({
+      category: 'continue',
+      command: buildResumeConversationCommand(input.unresolvedConversation),
+      reason: "Your last message here didn't get a reply yet.",
+    })
   }
 
   recommendations.push({

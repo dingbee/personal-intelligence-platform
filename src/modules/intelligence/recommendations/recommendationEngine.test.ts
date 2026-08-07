@@ -178,6 +178,21 @@ describe('generateRecommendations — dashboard scope', () => {
     expect(recommendations.every((r) => typeof r.reason === 'string' && r.reason.length > 0)).toBe(true)
   })
 
+  it('suggests resuming a conversation that never got a reply, when one is provided', () => {
+    const recommendations = generateRecommendations(
+      baseDashboardInput({ unresolvedConversation: { id: 'conv-2', title: 'Q3 planning' } }),
+    )
+    const found = recommendations.find((r) => r.command.id === 'conversation-resume-conv-2')
+    expect(found).toBeDefined()
+    expect(found?.category).toBe('continue')
+    expect(found?.reason).toMatch(/didn't get a reply/)
+  })
+
+  it('omits the unresolved-conversation recommendation when none is provided', () => {
+    const recommendations = generateRecommendations(baseDashboardInput({ unresolvedConversation: null }))
+    expect(recommendations.some((r) => r.command.id.startsWith('conversation-resume-'))).toBe(false)
+  })
+
   it('produces at least one recommendation in every category when all conditions are met', () => {
     const recommendations = generateRecommendations({
       scope: 'dashboard',

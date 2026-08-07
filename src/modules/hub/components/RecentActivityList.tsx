@@ -12,6 +12,8 @@ export interface ActivityListItem {
   leading?: ReactNode
   /** Rendered after the title, before the relative time — e.g. an owner avatar (`CollaborationSection`). */
   trailing?: ReactNode
+  /** AI Experience Intelligence v1 — present only for dismissible proactive-intelligence rows (Hub's IntelligenceZoneItems). Other consumers (RecentNotesSection, ActiveConversationsSection, CollaborationSection) omit it and render no dismiss control. */
+  onDismiss?: () => void
 }
 
 /**
@@ -48,6 +50,16 @@ export function RecentActivityList({
           <span className="flex shrink-0 items-center gap-2 text-xs text-[var(--color-ink-muted)]">
             {item.trailing}
             {formatRelativeTime(item.updatedAt)}
+            {item.onDismiss && (
+              <button
+                type="button"
+                onClick={item.onDismiss}
+                aria-label="Dismiss"
+                className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+              >
+                ✕
+              </button>
+            )}
           </span>
         </li>
       ))}
