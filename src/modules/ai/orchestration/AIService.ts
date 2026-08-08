@@ -8,6 +8,7 @@ import { retrieveAssetContext } from '@/modules/ai/orchestration/retrieveAssetCo
 import { buildSystemPrompt } from '@/modules/ai/orchestration/buildSystemPrompt'
 import { buildContextTrace, type ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import { retrieveGraphContext } from '@/modules/knowledge-intelligence/api/retrieveGraphContext'
+import { retrieveNamedEntityGraphContext } from '@/modules/knowledge-intelligence/api/retrieveNamedEntityGraphContext'
 import { retrieveMemoryContext } from '@/modules/ai/memory/retrieveMemoryContext'
 import { retrieveSpreadsheetContext } from '@/modules/processing/api/retrieveSpreadsheetContext'
 import { resolveChunkProvenance } from '@/modules/ai/orchestration/resolveChunkProvenance'
@@ -141,7 +142,7 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   // try/catch) — a missing or empty knowledge graph or memory store just
   // means no <knowledge_connections>/<personal_context> block, never a
   // broken chat response.
-  const graphContext = await retrieveGraphContext({
+  const chunkSourcedGraphContext = await retrieveGraphContext({
     documentIds: [...new Set(matches.map((match) => match.documentId))],
     // PIP Stabilization v1 (P0, root cause B) — without this, an image's
     // own knowledge-graph relationships (concepts/entities extracted from
@@ -150,6 +151,16 @@ await quotaService.consumeQuota(userId, 'ai_messages')
     userId,
     workspaceId,
   })
+  // PIP Sprint 5/10 — retrieveGraphContext above only ever surfaces nodes
+  // sourced from documents/assets a *chunk* search already matched. A
+  // question naming an entity directly ("What is ARRIYIA connected to?")
+  // deserves that entity's real graph evidence even when no chunk search
+  // happened to surface the right document (or extraction was only ever
+  // run on a different source). Never throws (see its own try/catch);
+  // both blocks use the identical "Concept:"/"Entity:" line convention, so
+  // buildContextTrace's node counting stays accurate across either source.
+  const namedEntityGraphContext = await retrieveNamedEntityGraphContext({ text, userId })
+  const graphContext = [chunkSourcedGraphContext, namedEntityGraphContext].filter((block): block is string => Boolean(block)).join('\n\n') || null
   const memoryContext = await retrieveMemoryContext({ userId, workspaceId })
   // UX-13.10 — same never-throws contract as graph/memory context; scoped
   // to `documentId` specifically (not the matched chunks' documents) since

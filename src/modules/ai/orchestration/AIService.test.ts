@@ -7,6 +7,7 @@ import { promptRegistry } from '@/modules/core/prompts/registry'
 const {
   retrieveMemoryContextMock,
   retrieveGraphContextMock,
+  retrieveNamedEntityGraphContextMock,
   retrieveContextMock,
   retrieveAssetContextMock,
   retrieveSpreadsheetContextMock,
@@ -14,6 +15,7 @@ const {
 } = vi.hoisted(() => ({
     retrieveMemoryContextMock: vi.fn(async () => null as string | null),
     retrieveGraphContextMock: vi.fn(async () => null as string | null),
+    retrieveNamedEntityGraphContextMock: vi.fn(async () => null as string | null),
     retrieveContextMock: vi.fn(async () => [] as { chunkId: string; documentId: string; content: string; similarity: number }[]),
     retrieveAssetContextMock: vi.fn(async () => [] as { assetId: string; title: string; content: string; similarity: number }[]),
     retrieveSpreadsheetContextMock: vi.fn(async () => null as string | null),
@@ -49,6 +51,7 @@ vi.mock('@/modules/knowledge-intelligence/api/linkKnownConcepts', () => ({ linkK
 vi.mock('@/modules/ai/orchestration/retrieveContext', () => ({ retrieveContext: retrieveContextMock }))
 vi.mock('@/modules/ai/orchestration/retrieveAssetContext', () => ({ retrieveAssetContext: retrieveAssetContextMock }))
 vi.mock('@/modules/knowledge-intelligence/api/retrieveGraphContext', () => ({ retrieveGraphContext: retrieveGraphContextMock }))
+vi.mock('@/modules/knowledge-intelligence/api/retrieveNamedEntityGraphContext', () => ({ retrieveNamedEntityGraphContext: retrieveNamedEntityGraphContextMock }))
 vi.mock('@/modules/ai/memory/retrieveMemoryContext', () => ({ retrieveMemoryContext: retrieveMemoryContextMock }))
 vi.mock('@/modules/processing/api/retrieveSpreadsheetContext', () => ({ retrieveSpreadsheetContext: retrieveSpreadsheetContextMock }))
 vi.mock('@/modules/ai/orchestration/streamChatCompletion', () => ({ streamChatCompletion: streamChatCompletionMock }))
@@ -390,6 +393,40 @@ describe('sendMessage', () => {
       expect(streamChatCompletionMock).toHaveBeenCalledWith(
         expect.objectContaining({ provider: expect.objectContaining({ id: 'anthropic' }), requestedProvider: 'anthropic' }),
       )
+    })
+  })
+
+  describe('Named-entity graph context (Sprint 5/10)', () => {
+    it('passes the raw question text and userId to retrieveNamedEntityGraphContext, independent of chunk retrieval', async () => {
+      await sendMessage({ ...baseParams(), text: 'What is ARRIYIA connected to?' })
+      expect(retrieveNamedEntityGraphContextMock).toHaveBeenCalledWith({ text: 'What is ARRIYIA connected to?', userId: 'user-1' })
+    })
+
+    it('includes named-entity graph evidence in the system prompt even when no document chunk matched (retrieveGraphContext returns null)', async () => {
+      retrieveGraphContextMock.mockResolvedValueOnce(null)
+      retrieveNamedEntityGraphContextMock.mockResolvedValueOnce('Entity: ARRIYIA\nConnections:\n- manages Northern Expansion — corroborated by 2 shared sources (document, note)')
+      await sendMessage({ ...baseParams(), text: 'What is ARRIYIA connected to?' })
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('<knowledge_connections>')
+      expect(lastCall?.system).toContain('Entity: ARRIYIA')
+      expect(lastCall?.system).toContain('corroborated by 2 shared sources')
+    })
+
+    it('merges chunk-sourced and named-entity graph context into one block rather than one silently overwriting the other', async () => {
+      retrieveGraphContextMock.mockResolvedValueOnce('Concept: Northern Expansion\n\nSources:\n- Plan.pdf')
+      retrieveNamedEntityGraphContextMock.mockResolvedValueOnce('Entity: ARRIYIA\n\nEvidence: 1 note')
+      await sendMessage({ ...baseParams(), text: 'What is ARRIYIA connected to?' })
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('Concept: Northern Expansion')
+      expect(lastCall?.system).toContain('Entity: ARRIYIA')
+    })
+
+    it('produces no <knowledge_connections> block when neither graph context source has anything — never fabricates a connection', async () => {
+      retrieveGraphContextMock.mockResolvedValueOnce(null)
+      retrieveNamedEntityGraphContextMock.mockResolvedValueOnce(null)
+      await sendMessage({ ...baseParams(), text: 'Does the document mention ZYNTHOCORP?' })
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).not.toContain('<knowledge_connections>')
     })
   })
 })
