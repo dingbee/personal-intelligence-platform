@@ -18,7 +18,12 @@ export async function retrieveSpreadsheetContext(documentId: string | undefined)
     const analysis = getSpreadsheetAnalysis(metadata)
     if (!analysis) return null
     return formatSpreadsheetContextText(analysis)
-  } catch {
+  } catch (err) {
+    // PIP Sprint 8/10 — same never-throws contract, now with a trace: a
+    // genuine failure here (e.g. a broken extraction-metadata query) was
+    // previously indistinguishable from "this document has no computed
+    // spreadsheet analysis" even in server logs.
+    console.error(`retrieveSpreadsheetContext failed for document ${documentId} — chat continues without spreadsheet_analysis:`, err)
     return null
   }
 }

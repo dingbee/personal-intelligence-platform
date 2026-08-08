@@ -138,14 +138,24 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   // every other optional context source here already follows) — a failure
   // or an unanalyzed/nonexistent image just means no <visual_context>
   // block, never a broken chat response.
-  const assetMatches = await retrieveAssetContext({ query: text, userId, workspaceId }).catch(() => [])
+  const assetMatches = await retrieveAssetContext({ query: text, userId, workspaceId }).catch((err: unknown) => {
+    // PIP Sprint 8/10 — same never-throws contract, now with a trace: a
+    // genuine failure here was previously indistinguishable from "no
+    // analyzed image matched" even in server logs.
+    console.error('retrieveAssetContext failed — chat continues without visual_context:', err)
+    return []
+  })
   // PIP Sprint 7/10 — the note-content counterpart of retrieveAssetContext
   // above: notes have had full hybrid semantic+lexical search (Universal
   // Search's notesSearchProvider) for two sprints, but chat's own
   // retrieval path never queried them — a fact written only in a note was
   // unreachable from chat unless a knowledge-graph node for it happened to
   // already exist from a different source. Same never-throws contract.
-  const noteMatches = await retrieveNoteContext({ query: text, userId, workspaceId }).catch(() => [])
+  const noteMatches = await retrieveNoteContext({ query: text, userId, workspaceId }).catch((err: unknown) => {
+    // PIP Sprint 8/10 — same trace as retrieveAssetContext above.
+    console.error('retrieveNoteContext failed — chat continues without note_context:', err)
+    return []
+  })
   // retrieveGraphContext/retrieveMemoryContext never throw (see their own
   // try/catch) — a missing or empty knowledge graph or memory store just
   // means no <knowledge_connections>/<personal_context> block, never a

@@ -45,7 +45,11 @@ export async function retrieveNamedEntityGraphContext(params: { text: string; us
 
     const evidenceByNode = await Promise.all(nodes.map((node) => getKnowledgeNodeEvidence(node.id)))
     return formatNamedEntityGraphContext(evidenceByNode)
-  } catch {
+  } catch (err) {
+    // PIP Sprint 8/10 — same never-throws contract, now with a trace: a
+    // genuine failure here was previously indistinguishable from "no node
+    // matches this entity" even in server logs.
+    console.error('retrieveNamedEntityGraphContext failed — chat continues without named-entity evidence:', err)
     return null
   }
 }

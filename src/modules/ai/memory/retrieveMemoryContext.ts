@@ -32,7 +32,12 @@ export async function retrieveMemoryContext(params: RetrieveMemoryContextParams)
     if (relevant.length === 0) return null
     const text = formatMemoriesForPrompt(relevant, { maxPerType: MAX_MEMORIES_PER_TYPE })
     return text || null
-  } catch {
+  } catch (err) {
+    // PIP Sprint 8/10 — same never-throws contract, now with a trace: a
+    // genuine failure here (e.g. a broken ai_memory query) was previously
+    // indistinguishable from "the user has no relevant memories" even in
+    // server logs.
+    console.error('retrieveMemoryContext failed — chat continues without personal_context:', err)
     return null
   }
 }

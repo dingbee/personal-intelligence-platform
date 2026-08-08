@@ -130,7 +130,13 @@ export async function retrieveGraphContext(params: RetrieveGraphContextParams): 
     const sourceTitles = [...documentsResult.data!.map((doc) => doc.title), ...assetsResult.data!.map((asset) => asset.title)]
 
     return buildGraphContextText(nodes, links ?? [], sourceTitles)
-  } catch {
+  } catch (err) {
+    // PIP Sprint 8/10 — this failure must never break chat (see this
+    // function's own contract, unchanged), but was previously discarded
+    // with zero trace anywhere. A real, ongoing failure here (a broken
+    // RPC, an RLS misconfiguration) was indistinguishable from "the graph
+    // genuinely has nothing relevant" even in server logs.
+    console.error('retrieveGraphContext failed — chat continues without knowledge_connections:', err)
     return null
   }
 }

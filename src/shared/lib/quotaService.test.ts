@@ -42,12 +42,21 @@ describe('quotaService.checkQuota', () => {
     expect(fromMock).toHaveBeenCalledWith('user_plan_assignments')
   })
 
-  it('is not allowed when the assignment lookup errors', async () => {
+  it('is not allowed when the assignment lookup errors, with an honest reason distinct from "no plan" (PIP Sprint 8/10)', async () => {
     assignmentMaybeSingle.mockResolvedValueOnce({ data: null, error: new Error('boom') })
 
     const result = await quotaService.checkQuota('user-1', 'ai_messages')
 
-    expect(result).toEqual({ allowed: false, reason: 'No active plan found' })
+    expect(result).toEqual({ allowed: false, reason: 'Could not verify your plan — please try again.' })
+  })
+
+  it('is not allowed when the quota lookup errors, with the same honest reason (PIP Sprint 8/10)', async () => {
+    assignmentMaybeSingle.mockResolvedValueOnce({ data: { plan_id: 'plan-beta' }, error: null })
+    quotaMaybeSingle.mockResolvedValueOnce({ data: null, error: new Error('boom') })
+
+    const result = await quotaService.checkQuota('user-1', 'ai_messages')
+
+    expect(result).toEqual({ allowed: false, reason: 'Could not verify your plan — please try again.' })
   })
 
   it('is not allowed when the plan has no quota configured for the key', async () => {

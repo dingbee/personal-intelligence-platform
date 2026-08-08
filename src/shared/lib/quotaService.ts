@@ -15,7 +15,21 @@ export const quotaService = {
       .eq('active', true)
       .maybeSingle()
 
-    if (assignmentError || !assignment) {
+    // PIP Sprint 8/10 — a genuine query failure here (network blip, RLS
+    // misconfiguration) previously produced the exact same message as a
+    // user who legitimately has no plan, telling them to sign up when the
+    // real problem was an infrastructure error. Still fails closed
+    // (allowed: false either way — never risk unmetered usage on an
+    // unverifiable check), but the reason now tells the truth about which
+    // case actually happened, and the real error is logged for diagnosis.
+    if (assignmentError) {
+      console.error('checkQuota: plan assignment lookup failed:', assignmentError)
+      return {
+        allowed: false,
+        reason: 'Could not verify your plan — please try again.',
+      }
+    }
+    if (!assignment) {
       return {
         allowed: false,
         reason: 'No active plan found',
@@ -29,7 +43,14 @@ export const quotaService = {
       .eq('quota_key', quotaKey)
       .maybeSingle()
 
-    if (quotaError || !quota) {
+    if (quotaError) {
+      console.error('checkQuota: quota lookup failed:', quotaError)
+      return {
+        allowed: false,
+        reason: 'Could not verify your plan — please try again.',
+      }
+    }
+    if (!quota) {
       return {
         allowed: false,
         reason: 'Quota not configured',
