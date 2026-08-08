@@ -4,6 +4,9 @@ import { computeCategoryBreakdown, computeColumnStats, computeTrend, detectAnoma
 import { classifyFinancialPattern } from '@/modules/processing/spreadsheet/financialPatterns'
 import { isNonEmptyCell, parseDateValue } from '@/modules/processing/spreadsheet/cellParsing'
 
+/** Sprint 3/10 — a sheet's own row cap per breakdown (MAX_CATEGORY_ROWS in aggregates.ts) already bounds each breakdown's size; this bounds how many (category column x numeric column) breakdowns a single sheet can produce, so a wide sheet with many category-like and numeric columns can't blow up the grounding text. */
+const MAX_BREAKDOWNS_PER_SHEET = 20
+
 function pickLabelColumnIndex(columns: ColumnAnalysis[]): number | null {
   const entity = columns.find((c) => c.meaning === 'entity')
   if (entity) return entity.columnIndex
@@ -44,7 +47,17 @@ export function analyzeSheet(rows: unknown[][], sheetIndex: number, sheetName: s
 
   const labelColumnIndex = pickLabelColumnIndex(columns)
   const numericColumns = columns.filter((c) => c.dataType === 'currency' || c.dataType === 'number')
-  const categoryColumns = columns.filter((c) => c.meaning === 'category')
+  // Sprint 3/10 — a header like "Month" always gets meaning 'timeline'
+  // (detectColumnMeaning matches the header regex before it ever looks at
+  // dataType), but real-world period labels like "Jan"/"Feb"/"Mar" don't
+  // parse as absolute dates (no year), so they fall through to dataType
+  // 'category' rather than 'date'. Without this, a plain monthly column
+  // was silently excluded from every breakdown — "which month had the
+  // highest revenue" had nothing to group by. Genuine date columns
+  // (dataType 'date') are left out here since they're already covered by
+  // the month-grouped `trends` below; this only rescues the case where
+  // detection landed on 'timeline' meaning but not a real date.
+  const categoryColumns = columns.filter((c) => c.meaning === 'category' || (c.meaning === 'timeline' && c.dataType !== 'date'))
   const dateColumn = columns.find((c) => c.dataType === 'date') ?? null
   const primaryNumericColumn = numericColumns.find((c) => c.dataType === 'currency') ?? numericColumns[0] ?? null
 
@@ -63,12 +76,22 @@ export function analyzeSheet(rows: unknown[][], sheetIndex: number, sheetName: s
     .map((c) => computeColumnStats(dataRows, c.name, c.columnIndex, labelColumnIndex))
     .filter((s): s is NonNullable<typeof s> => s !== null)
 
-  const categoryBreakdowns = primaryNumericColumn
-    ? categoryColumns
-        .filter((c) => c.columnIndex !== primaryNumericColumn.columnIndex)
-        .map((c) => computeCategoryBreakdown(dataRows, c.name, c.columnIndex, primaryNumericColumn.name, primaryNumericColumn.columnIndex))
-        .filter((b): b is NonNullable<typeof b> => b !== null)
-    : []
+  // Sprint 3/10 — every numeric column gets its own breakdown per category
+  // column, not just the single "primary" one. With Revenue and Cost both
+  // present, grouping only Revenue by Product left Cost-by-Product (needed
+  // to answer "which product had the highest gross profit") entirely
+  // unavailable to the model, forcing it to reconstruct per-product cost
+  // from prose instead of reading it directly.
+  const categoryBreakdowns = categoryColumns
+    .flatMap((categoryColumn) =>
+      numericColumns
+        .filter((numericColumn) => numericColumn.columnIndex !== categoryColumn.columnIndex)
+        .map((numericColumn) =>
+          computeCategoryBreakdown(dataRows, categoryColumn.name, categoryColumn.columnIndex, numericColumn.name, numericColumn.columnIndex),
+        ),
+    )
+    .filter((b): b is NonNullable<typeof b> => b !== null)
+    .slice(0, MAX_BREAKDOWNS_PER_SHEET)
 
   const trends: SheetAggregates['trends'] = []
   if (dateColumn && primaryNumericColumn) {

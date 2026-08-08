@@ -4,12 +4,19 @@ import { promptRegistry } from '@/modules/core/prompts/registry'
 // vi.mock calls are hoisted above these imports by Vitest — vi.hoisted is
 // what lets a mock factory safely close over a variable this file also
 // asserts against later (retrieveMemoryContextMock).
-const { retrieveMemoryContextMock, retrieveGraphContextMock, retrieveContextMock, retrieveAssetContextMock, streamChatCompletionMock } =
-  vi.hoisted(() => ({
+const {
+  retrieveMemoryContextMock,
+  retrieveGraphContextMock,
+  retrieveContextMock,
+  retrieveAssetContextMock,
+  retrieveSpreadsheetContextMock,
+  streamChatCompletionMock,
+} = vi.hoisted(() => ({
     retrieveMemoryContextMock: vi.fn(async () => null as string | null),
     retrieveGraphContextMock: vi.fn(async () => null as string | null),
     retrieveContextMock: vi.fn(async () => [] as { chunkId: string; documentId: string; content: string; similarity: number }[]),
     retrieveAssetContextMock: vi.fn(async () => [] as { assetId: string; title: string; content: string; similarity: number }[]),
+    retrieveSpreadsheetContextMock: vi.fn(async () => null as string | null),
     streamChatCompletionMock: vi.fn(
       async (_params: {
         system: string
@@ -43,6 +50,7 @@ vi.mock('@/modules/ai/orchestration/retrieveContext', () => ({ retrieveContext: 
 vi.mock('@/modules/ai/orchestration/retrieveAssetContext', () => ({ retrieveAssetContext: retrieveAssetContextMock }))
 vi.mock('@/modules/knowledge-intelligence/api/retrieveGraphContext', () => ({ retrieveGraphContext: retrieveGraphContextMock }))
 vi.mock('@/modules/ai/memory/retrieveMemoryContext', () => ({ retrieveMemoryContext: retrieveMemoryContextMock }))
+vi.mock('@/modules/processing/api/retrieveSpreadsheetContext', () => ({ retrieveSpreadsheetContext: retrieveSpreadsheetContextMock }))
 vi.mock('@/modules/ai/orchestration/streamChatCompletion', () => ({ streamChatCompletion: streamChatCompletionMock }))
 // UX-6: the NOVA Context Engine's own data sources — mocked here the same
 // way retrieveGraphContext/retrieveMemoryContext are, so this test suite
@@ -332,6 +340,49 @@ describe('sendMessage', () => {
 
     it('routes a note-analysis message through the same provider fallback as any other message — no note-specific provider path', async () => {
       await sendMessage({ ...baseParams(), providerChain: ['anthropic', 'openai'], text: 'Please analyze this note...' })
+      expect(streamChatCompletionMock).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: expect.objectContaining({ id: 'anthropic' }), requestedProvider: 'anthropic' }),
+      )
+    })
+  })
+
+  describe('Spreadsheet analysis context integrity (Sprint 3/10)', () => {
+    const SPREADSHEET_TEXT = 'Sheet: Sales (6 rows, 5 columns)\nRevenue: sum 57,000, average 9,500, min 7,000, max 12,000'
+
+    it('is not fetched at all when the turn has no documentId — the same guard every non-spreadsheet chat turn already relies on', async () => {
+      retrieveSpreadsheetContextMock.mockClear()
+      await sendMessage(baseParams())
+      expect(retrieveSpreadsheetContextMock).toHaveBeenCalledWith(undefined)
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).not.toContain('<spreadsheet_analysis>')
+    })
+
+    it('places the precomputed spreadsheet figures in a distinct <spreadsheet_analysis> block in the system prompt, not blended into {{context}}', async () => {
+      retrieveSpreadsheetContextMock.mockResolvedValueOnce(SPREADSHEET_TEXT)
+      await sendMessage({ ...baseParams(), documentId: 'doc-sales-1', text: 'What was our total revenue?' })
+      expect(retrieveSpreadsheetContextMock).toHaveBeenCalledWith('doc-sales-1')
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('<spreadsheet_analysis>')
+      expect(lastCall?.system).toContain('57,000')
+    })
+
+    it('recomputes and re-includes the spreadsheet context on a follow-up turn — Test J does not depend on the model re-deriving figures from chat history alone', async () => {
+      retrieveSpreadsheetContextMock.mockResolvedValue(SPREADSHEET_TEXT)
+      const history = [
+        { role: 'user' as const, content: 'What was our total revenue?' },
+        { role: 'assistant' as const, content: 'Total revenue across all months was 57,000.' },
+      ]
+      await sendMessage({ ...baseParams(), documentId: 'doc-sales-1', history, text: 'Why was February stronger than March?' })
+      expect(retrieveSpreadsheetContextMock).toHaveBeenLastCalledWith('doc-sales-1')
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('<spreadsheet_analysis>')
+      const messages = lastCall?.messages as { role: string; content: string }[]
+      expect(messages).toEqual([...history, { role: 'user', content: 'Why was February stronger than March?' }])
+    })
+
+    it('routes a spreadsheet-grounded message through the same provider fallback as any other message — no spreadsheet-specific provider path', async () => {
+      retrieveSpreadsheetContextMock.mockResolvedValueOnce(SPREADSHEET_TEXT)
+      await sendMessage({ ...baseParams(), documentId: 'doc-sales-1', providerChain: ['anthropic', 'openai'], text: 'Which product had the highest revenue?' })
       expect(streamChatCompletionMock).toHaveBeenCalledWith(
         expect.objectContaining({ provider: expect.objectContaining({ id: 'anthropic' }), requestedProvider: 'anthropic' }),
       )

@@ -53,4 +53,40 @@ describe('analyzeSheet', () => {
     expect(result.rowCount).toBe(0)
     expect(result.columnCount).toBe(0)
   })
+
+  describe('Sprint 3/10 — breakdown fixes', () => {
+    const MONTH_ROWS: unknown[][] = [
+      ['Month', 'Product', 'Revenue', 'Cost'],
+      ['Jan', 'A', 100, 60],
+      ['Feb', 'A', 200, 90],
+    ]
+
+    it('groups by a bare month-name column ("Jan"/"Feb", no year) even though it never resolves to a real date', () => {
+      const result = analyzeSheet(MONTH_ROWS, 0, 'Sales')
+
+      const monthColumn = result.columns.find((c) => c.name === 'Month')
+      expect(monthColumn?.meaning).toBe('timeline')
+      expect(monthColumn?.dataType).not.toBe('date') // no year present — parseDateValue can't resolve it
+      expect(result.dateRange).toBeNull() // honest: no fabricated date range from a partial label
+
+      const revenueByMonth = result.aggregates.categoryBreakdowns.find((b) => b.categoryColumn === 'Month' && b.valueColumn === 'Revenue')
+      expect(revenueByMonth?.best).toEqual({ category: 'Feb', total: 200 })
+    })
+
+    it('computes a breakdown for every numeric column, not only the first ("primary") one', () => {
+      const result = analyzeSheet(MONTH_ROWS, 0, 'Sales')
+
+      const revenueByProduct = result.aggregates.categoryBreakdowns.find((b) => b.categoryColumn === 'Product' && b.valueColumn === 'Revenue')
+      const costByProduct = result.aggregates.categoryBreakdowns.find((b) => b.categoryColumn === 'Product' && b.valueColumn === 'Cost')
+      expect(revenueByProduct?.best).toEqual({ category: 'A', total: 300 })
+      expect(costByProduct?.best).toEqual({ category: 'A', total: 150 })
+    })
+
+    it('does not double up: a genuine full-date column is still covered by trends, not also duplicated as a per-exact-date breakdown', () => {
+      const result = analyzeSheet(SALES_ROWS, 0, 'Sales')
+      const dateBreakdown = result.aggregates.categoryBreakdowns.find((b) => b.categoryColumn === 'Date')
+      expect(dateBreakdown).toBeUndefined()
+      expect(result.aggregates.trends).toHaveLength(1)
+    })
+  })
 })
