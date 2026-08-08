@@ -15,5 +15,5 @@ export function buildNoteAnalysisSeedQuery(title: string, content: string): stri
   if (!trimmed) {
     return `Please analyze my note titled "${title}". It's currently empty — let me know once I've added some content.`
   }
-  return `Please analyze this note titled "${title}":\n\n${trimmed}\n\nSummarize the main ideas, and identify any decisions, dates, tasks, and notable people or entities mentioned.`
+  return `Please analyze this note titled "${title}":\n\n${trimmed}\n\nSummarize the main ideas, and separately identify any decisions, dates, tasks, priorities, and notable people mentioned — keep each category distinct rather than blending them into one summary.`
 }

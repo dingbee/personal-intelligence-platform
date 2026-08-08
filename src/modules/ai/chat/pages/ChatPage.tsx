@@ -44,8 +44,7 @@ import { buildDecisionFramework } from '@/modules/intelligence/decision/decision
 import { detectLearningIntelligence } from '@/modules/intelligence/learning/learningEngine'
 import { MemoryApprovalPanel } from '@/modules/ai/memory/memoryDetection/MemoryApprovalPanel'
 import { useMemories } from '@/modules/ai/memory/hooks/useMemories'
-import { getNote } from '@/modules/notes/api/notes'
-import { buildNoteAnalysisSeedQuery } from '@/modules/notes/intelligence/buildNoteAnalysisSeedQuery'
+import { resolveNoteAnalysisSeedText } from '@/modules/notes/intelligence/resolveNoteAnalysisSeedText'
 
 export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -305,7 +304,11 @@ export function ChatPage() {
     if (!initialNoteId || initialNoteSentRef.current) return
     if (!selectedId || messagesLoading || messages.length > 0) return
     initialNoteSentRef.current = true
-    void getNote(initialNoteId).then((note) => handleSend(buildNoteAnalysisSeedQuery(note.title, note.content)))
+    // PIP Reliability Sprint 2/10 — resolveNoteAnalysisSeedText never
+    // throws (its own try/catch), so this can never leave the user with a
+    // silently-empty conversation the way an uncaught getNote() rejection
+    // used to.
+    void resolveNoteAnalysisSeedText(initialNoteId).then((seedText) => handleSend(seedText))
     setSearchParams(
       (previous) => {
         const next = new URLSearchParams(previous)

@@ -14,6 +14,13 @@ describe('buildNoteAnalysisSeedQuery', () => {
     expect(query).toMatch(/decisions/i)
     expect(query).toMatch(/dates/i)
     expect(query).toMatch(/tasks/i)
+    expect(query).toMatch(/priorities/i)
+    expect(query).toMatch(/people/i)
+  })
+
+  it('asks NOVA to keep categories distinct rather than blending them into one summary', () => {
+    const query = buildNoteAnalysisSeedQuery('Notes', 'Some content.')
+    expect(query).toMatch(/distinct/i)
   })
 
   it('is honest about an empty note rather than fabricating something to analyze', () => {

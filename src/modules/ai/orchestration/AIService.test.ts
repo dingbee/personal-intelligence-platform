@@ -10,7 +10,14 @@ const { retrieveMemoryContextMock, retrieveGraphContextMock, retrieveContextMock
     retrieveGraphContextMock: vi.fn(async () => null as string | null),
     retrieveContextMock: vi.fn(async () => [] as { chunkId: string; documentId: string; content: string; similarity: number }[]),
     retrieveAssetContextMock: vi.fn(async () => [] as { assetId: string; title: string; content: string; similarity: number }[]),
-    streamChatCompletionMock: vi.fn(async (_params: { system: string }) => ({ content: 'Hello there.', model: 'test-model' })),
+    streamChatCompletionMock: vi.fn(
+      async (_params: {
+        system: string
+        messages: { role: string; content: string }[]
+        provider: { id: string }
+        requestedProvider?: string
+      }) => ({ content: 'Hello there.', model: 'test-model' }),
+    ),
   }))
 
 vi.mock('@/modules/ai/chat/api/messages', () => ({
@@ -275,6 +282,59 @@ describe('sendMessage', () => {
       const result = await sendMessage({ ...baseParams(), text: 'Save this' })
       expect(result.contextTrace).toEqual({ retrievedChunks: 0, graphNodes: 0, memoriesUsed: 0 })
       expect(result.references).toEqual([])
+    })
+  })
+
+  // PIP Reliability Sprint 2/10 — Phase 6's central check: proving Note
+  // content actually reaches the request sent to the provider, not merely
+  // that a note id was passed around somewhere upstream. Explicit Note
+  // analysis carries real content through `text` (buildNoteAnalysisSeedQuery,
+  // called by ChatPage before this is ever invoked) rather than through
+  // retrieval — so the property to verify here is that `text` (and prior
+  // `history`) survive into `messages` completely unmodified: no
+  // truncation, no chunking, no silent drop.
+  describe('Note analysis context integrity', () => {
+    it('carries the full note-analysis seed text — real content, not just a note id or title — into the provider request', async () => {
+      const seedText =
+        'Please analyze this note titled "Project meeting, 14 September":\n\n' +
+        'Client wants the website launched before 30 September. Sarah will prepare the photography. ' +
+        'Daniel will finalize the booking flow. Budget ceiling is $4,500. ' +
+        'Decision: use the existing payment gateway rather than introducing a new provider.\n\n' +
+        'Summarize the main ideas...'
+      await sendMessage({ ...baseParams(), text: seedText })
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      const messages = lastCall?.messages as { role: string; content: string }[]
+      expect(messages.at(-1)).toEqual({ role: 'user', content: seedText })
+      expect(messages.at(-1)?.content).toContain('Budget ceiling is $4,500')
+      expect(messages.at(-1)?.content).toContain('Sarah will prepare the photography')
+    })
+
+    it('does not truncate a substantially long note — the transport this milestone worried about is the URL, not this message array, and no length cap exists here', async () => {
+      const longContent = 'Paragraph about the project. '.repeat(500) // ~15,000 characters
+      await sendMessage({ ...baseParams(), text: longContent })
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      const messages = lastCall?.messages as { role: string; content: string }[]
+      expect(messages.at(-1)?.content).toHaveLength(longContent.length)
+      expect(messages.at(-1)?.content).toBe(longContent)
+    })
+
+    it('includes prior conversation history unmodified in the provider request, so a follow-up question still has the note-analysis turn in view', async () => {
+      const history = [
+        { role: 'user' as const, content: 'Please analyze this note titled "Project meeting":\n\nBudget ceiling is $4,500.' },
+        { role: 'assistant' as const, content: 'The budget ceiling is $4,500.' },
+      ]
+      await sendMessage({ ...baseParams(), history, text: 'Which of those points is most important, and why?' })
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      const messages = lastCall?.messages as { role: string; content: string }[]
+      expect(messages).toEqual([...history, { role: 'user', content: 'Which of those points is most important, and why?' }])
+      expect(messages.some((m) => m.content.includes('$4,500'))).toBe(true)
+    })
+
+    it('routes a note-analysis message through the same provider fallback as any other message — no note-specific provider path', async () => {
+      await sendMessage({ ...baseParams(), providerChain: ['anthropic', 'openai'], text: 'Please analyze this note...' })
+      expect(streamChatCompletionMock).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: expect.objectContaining({ id: 'anthropic' }), requestedProvider: 'anthropic' }),
+      )
     })
   })
 })

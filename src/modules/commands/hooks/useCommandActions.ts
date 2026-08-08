@@ -4,6 +4,7 @@ import { useNotes } from '@/modules/notes/hooks/useNotes'
 import { useConversations } from '@/modules/ai/chat/hooks/useConversations'
 import { useDefaultChatProviderId } from '@/modules/ai/providers/useDefaultChatProviderId'
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
+import { buildNoteAnalysisConversationUrl } from '@/modules/commands/buildNoteAnalysisConversationUrl'
 import type { CommandActions } from '@/modules/commands/types'
 
 /**
@@ -51,7 +52,7 @@ export function useCommandActions(params: { onOpenQuickCapture?: () => void } = 
         title: noteTitle.slice(0, 60),
         providerId: defaultProviderId ?? chain[0],
       })
-      navigate(`/chat?conversationId=${conversation.id}&initialNoteId=${encodeURIComponent(noteId)}`)
+      navigate(buildNoteAnalysisConversationUrl(conversation.id, noteId))
       return { id: conversation.id }
     },
     openQuickCapture: params.onOpenQuickCapture ?? (() => {}),
