@@ -1,5 +1,6 @@
 import { listMemories } from '@/modules/ai/memory/api/memory'
 import { formatMemoriesForPrompt } from '@/modules/ai/memory/formatMemoriesForPrompt'
+import { filterMemoriesByRelevance } from '@/modules/ai/memory/filterMemoriesByRelevance'
 
 /** Prompt-sized cap — smaller than formatMemoriesForPrompt's own default, matching retrieveGraphContext's MAX_NODES/MAX_RELATIONSHIPS bounding for the same reason: this is supplementary context, not the main event. Exported so the Memory page can show which stored memories actually make it into the prompt, without duplicating this number. */
 export const MAX_MEMORIES_PER_TYPE = 10
@@ -7,6 +8,8 @@ export const MAX_MEMORIES_PER_TYPE = 10
 export interface RetrieveMemoryContextParams {
   userId: string
   workspaceId: string | null
+  /** PIP Sprint 6/10 — the current turn's message, used by filterMemoriesByRelevance to exclude conversation_memory rows unrelated to what's actually being asked. */
+  text: string
 }
 
 /**
@@ -25,7 +28,9 @@ export async function retrieveMemoryContext(params: RetrieveMemoryContextParams)
   try {
     const memories = await listMemories({ workspaceId: params.workspaceId })
     if (memories.length === 0) return null
-    const text = formatMemoriesForPrompt(memories, { maxPerType: MAX_MEMORIES_PER_TYPE })
+    const relevant = filterMemoriesByRelevance(memories, params.text)
+    if (relevant.length === 0) return null
+    const text = formatMemoriesForPrompt(relevant, { maxPerType: MAX_MEMORIES_PER_TYPE })
     return text || null
   } catch {
     return null

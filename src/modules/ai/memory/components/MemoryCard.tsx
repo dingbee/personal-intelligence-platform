@@ -36,7 +36,7 @@ export function MemoryCard({ memory, allMemories }: { memory: AiMemory; allMemor
           />
           {usedByPrompt ? (
             <span
-              title="This memory is included when NOVA builds its response context."
+              title="NOVA can draw on this memory when building a response — for conversation memories, only when it's relevant to what you're asking."
               className="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--color-accent)]"
             >
               Used by NOVA

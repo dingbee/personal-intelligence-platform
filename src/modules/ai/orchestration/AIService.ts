@@ -161,7 +161,7 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   // buildContextTrace's node counting stays accurate across either source.
   const namedEntityGraphContext = await retrieveNamedEntityGraphContext({ text, userId })
   const graphContext = [chunkSourcedGraphContext, namedEntityGraphContext].filter((block): block is string => Boolean(block)).join('\n\n') || null
-  const memoryContext = await retrieveMemoryContext({ userId, workspaceId })
+  const memoryContext = await retrieveMemoryContext({ userId, workspaceId, text })
   // UX-13.10 — same never-throws contract as graph/memory context; scoped
   // to `documentId` specifically (not the matched chunks' documents) since
   // this is only meaningful when the reader/chat is actually anchored to

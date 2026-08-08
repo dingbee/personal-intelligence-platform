@@ -114,9 +114,13 @@ function baseParams() {
 }
 
 describe('sendMessage', () => {
-  it('calls retrieveMemoryContext with the userId/workspaceId, wiring it into the request exactly like retrieveGraphContext', async () => {
+  it('calls retrieveMemoryContext with the userId/workspaceId/text, wiring it into the request exactly like retrieveGraphContext', async () => {
     await sendMessage(baseParams())
-    expect(retrieveMemoryContextMock).toHaveBeenCalledWith({ userId: 'user-1', workspaceId: 'workspace-1' })
+    expect(retrieveMemoryContextMock).toHaveBeenCalledWith({
+      userId: 'user-1',
+      workspaceId: 'workspace-1',
+      text: 'What have I learned about hospitality?',
+    })
   })
 
   it('completes and returns the assistant reply even when memory retrieval yields nothing (its documented failure behavior is returning null, never throwing)', async () => {
