@@ -38,13 +38,27 @@ export function buildSystemPrompt(
   memoryContext?: string | null,
   spreadsheetContext?: string | null,
   assetMatches?: AssetContextMatch[],
+  /**
+   * PIP Sprint 4/10 — chunkId -> "Document Title — Page/Chapter Title"
+   * (or just the title, when there's no page/chapter data). Optional and
+   * additive: omitted (every call site before this sprint, and every
+   * existing test) renders the exact unlabeled `[i] content` form this
+   * function already produced — see resolveChunkProvenance.ts for how
+   * the map is built.
+   */
+  chunkProvenance?: Map<string, string>,
 ): string {
   const template = getActivePrompt('chat')
   if (!template) throw new Error('No active prompt template for the "chat" capability — is coreModule registered?')
 
   const context =
     matches.length > 0
-      ? matches.map((match, i) => `[${i + 1}] ${match.content}`).join('\n\n')
+      ? matches
+          .map((match, i) => {
+            const label = chunkProvenance?.get(match.chunkId)
+            return `[${i + 1}]${label ? ` (${label})` : ''} ${match.content}`
+          })
+          .join('\n\n')
       : '(No relevant content found in the user\'s library.)'
 
   let prompt = renderPromptTemplate(template.template, { context })

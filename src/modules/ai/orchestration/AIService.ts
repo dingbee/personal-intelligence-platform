@@ -10,6 +10,7 @@ import { buildContextTrace, type ContextTrace } from '@/modules/ai/orchestration
 import { retrieveGraphContext } from '@/modules/knowledge-intelligence/api/retrieveGraphContext'
 import { retrieveMemoryContext } from '@/modules/ai/memory/retrieveMemoryContext'
 import { retrieveSpreadsheetContext } from '@/modules/processing/api/retrieveSpreadsheetContext'
+import { resolveChunkProvenance } from '@/modules/ai/orchestration/resolveChunkProvenance'
 import { streamChatCompletion } from '@/modules/ai/orchestration/streamChatCompletion'
 import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { indexMessage } from '@/modules/search/indexing/indexMessage'
@@ -155,7 +156,12 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   // this is only meaningful when the reader/chat is actually anchored to
   // one spreadsheet, same scoping retrieveContext itself already uses.
   const spreadsheetContext = await retrieveSpreadsheetContext(documentId)
-  let system = buildSystemPrompt(matches, graphContext, memoryContext, spreadsheetContext, assetMatches)
+  // PIP Sprint 4/10 — resolved before buildSystemPrompt (not after, the
+  // way resolveReferences below is) so the model itself can see which
+  // document/page each excerpt came from, not just the UI's reference
+  // chips. Never throws (see its own try/catch).
+  const chunkProvenance = await resolveChunkProvenance(matches)
+  let system = buildSystemPrompt(matches, graphContext, memoryContext, spreadsheetContext, assetMatches, chunkProvenance)
 
   const contextTrace = buildContextTrace(matches.length + assetMatches.length, graphContext, memoryContext)
   // Internal-only, logged not persisted (Phase UX-5.2) — "why did NOVA

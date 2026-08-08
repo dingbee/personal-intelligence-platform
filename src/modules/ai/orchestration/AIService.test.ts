@@ -238,10 +238,14 @@ describe('sendMessage', () => {
     ])
     const { getChunkLocations } = await import('@/modules/processing/api/chunks')
     const { getDocumentTitles } = await import('@/modules/library/api/documents')
-    vi.mocked(getChunkLocations).mockResolvedValueOnce([
+    // PIP Sprint 4/10 — resolveChunkProvenance now also calls these (before
+    // the LLM call, to label context for the model) in addition to
+    // resolveReferences (after, for the UI chips) — mockResolvedValue, not
+    // Once, since both legitimately see the same chunk/document data.
+    vi.mocked(getChunkLocations).mockResolvedValue([
       { id: 'chunk-1', document_id: 'doc-1', chapter_index: 3, chapter_title: 'The Turning Point' },
     ])
-    vi.mocked(getDocumentTitles).mockResolvedValueOnce([{ id: 'doc-1', title: 'Atomic Habits' }])
+    vi.mocked(getDocumentTitles).mockResolvedValue([{ id: 'doc-1', title: 'Atomic Habits' }])
 
     const result = await sendMessage(baseParams())
     expect(result.references).toEqual([

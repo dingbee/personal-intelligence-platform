@@ -108,4 +108,28 @@ describe('buildSystemPrompt', () => {
     )
     expect(result.indexOf('<visual_context>')).toBeLessThan(result.indexOf('<knowledge_connections>'))
   })
+
+  describe('chunk provenance labeling (PIP Sprint 4/10)', () => {
+    it('prefixes a match with its document/page label when chunkProvenance has an entry for it', () => {
+      const result = buildSystemPrompt(
+        [makeMatch('ARRIYIA was discussed in the third section.')],
+        null,
+        null,
+        null,
+        undefined,
+        new Map([['chunk-1', 'Article.pdf — Page 5']]),
+      )
+      expect(result).toContain('[1] (Article.pdf — Page 5) ARRIYIA was discussed in the third section.')
+    })
+
+    it('renders the exact old unlabeled form when chunkProvenance is omitted (backward compatible — every pre-Sprint-4 call site)', () => {
+      const result = buildSystemPrompt([makeMatch('Revenue management basics.')])
+      expect(result).toBe('System instructions.\n\nContext:\n[1] Revenue management basics.')
+    })
+
+    it('renders the exact old unlabeled form for a chunk with no entry in a non-empty chunkProvenance map', () => {
+      const result = buildSystemPrompt([makeMatch('Revenue management basics.')], null, null, null, undefined, new Map([['other-chunk', 'X']]))
+      expect(result).toBe('System instructions.\n\nContext:\n[1] Revenue management basics.')
+    })
+  })
 })
