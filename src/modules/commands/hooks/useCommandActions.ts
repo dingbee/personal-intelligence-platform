@@ -42,6 +42,18 @@ export function useCommandActions(params: { onOpenQuickCapture?: () => void } = 
       navigate(`/chat?conversationId=${conversation.id}&initialQuery=${encodeURIComponent(query)}`)
       return { id: conversation.id }
     },
+    createConversationWithNoteAnalysis: async (noteId, noteTitle) => {
+      // Same conversation-creation path as createConversationWithQuery, but
+      // ?initialNoteId= instead of ?initialQuery= — see this action's own
+      // doc comment on CommandActions for why: a note's content doesn't fit
+      // safely in a URL query param the way a short typed question does.
+      const conversation = await createConversationMutation.mutateAsync({
+        title: noteTitle.slice(0, 60),
+        providerId: defaultProviderId ?? chain[0],
+      })
+      navigate(`/chat?conversationId=${conversation.id}&initialNoteId=${encodeURIComponent(noteId)}`)
+      return { id: conversation.id }
+    },
     openQuickCapture: params.onOpenQuickCapture ?? (() => {}),
   }
 }

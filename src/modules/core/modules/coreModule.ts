@@ -38,9 +38,13 @@ registerPlatformModule({
     // `models` mirrors ai-chat's own DEFAULT_MODEL map exactly (display-only —
     // no client ever sends a model override today, so this is the one model
     // actually in play per provider, not an aspirational list).
-    { id: 'anthropic', label: 'Anthropic (Claude)', kind: 'chat', status: 'available', models: ['claude-sonnet-5'] },
-    { id: 'openai', label: 'OpenAI (GPT)', kind: 'chat', status: 'available', models: ['gpt-5.1'] },
-    { id: 'google', label: 'Google (Gemini)', kind: 'chat', status: 'available', models: ['gemini-2.5-flash'] },
+    // `supportsVision: true` on all three matches ai-chat's own per-provider
+    // content-block builders (toAnthropicContent/toOpenAiContent/
+    // toGoogleParts) — every provider wired up here genuinely accepts image
+    // content today, distinct from whether a key happens to be configured.
+    { id: 'anthropic', label: 'Anthropic (Claude)', kind: 'chat', status: 'available', models: ['claude-sonnet-5'], supportsVision: true },
+    { id: 'openai', label: 'OpenAI (GPT)', kind: 'chat', status: 'available', models: ['gpt-5.1'], supportsVision: true },
+    { id: 'google', label: 'Google (Gemini)', kind: 'chat', status: 'available', models: ['gemini-2.5-flash'], supportsVision: true },
     { id: 'ollama', label: 'Ollama (local)', kind: 'chat', status: 'planned' },
     { id: 'openrouter', label: 'OpenRouter', kind: 'chat', status: 'planned' },
     { id: 'azure-openai', label: 'Azure OpenAI', kind: 'chat', status: 'planned' },

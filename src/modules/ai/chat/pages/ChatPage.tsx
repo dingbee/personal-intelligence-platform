@@ -44,6 +44,8 @@ import { buildDecisionFramework } from '@/modules/intelligence/decision/decision
 import { detectLearningIntelligence } from '@/modules/intelligence/learning/learningEngine'
 import { MemoryApprovalPanel } from '@/modules/ai/memory/memoryDetection/MemoryApprovalPanel'
 import { useMemories } from '@/modules/ai/memory/hooks/useMemories'
+import { getNote } from '@/modules/notes/api/notes'
+import { buildNoteAnalysisSeedQuery } from '@/modules/notes/intelligence/buildNoteAnalysisSeedQuery'
 
 export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -54,6 +56,13 @@ export function ChatPage() {
   // AI pipeline.
   const initialQuery = searchParams.get('initialQuery')
   const initialQuerySentRef = useRef(false)
+  // PIP Multimodal Intelligence Stabilization v1 — Notes "Analyze with
+  // NOVA" deep-links here with just the note's id, not its content (see
+  // createConversationWithNoteAnalysis's own doc comment on why: a note's
+  // content doesn't fit safely in a URL query param). This fetches the
+  // note once mounted and builds the real seed message client-side.
+  const initialNoteId = searchParams.get('initialNoteId')
+  const initialNoteSentRef = useRef(false)
   // UX-13.11 Phase 2A — deep-linked from a grouped conversation search
   // result's best-matching message: scrolls to and briefly highlights it
   // once the conversation's messages have loaded, then strips the param.
@@ -288,6 +297,25 @@ export function ChatPage() {
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery, selectedId, messagesLoading, messages.length])
+
+  // Mirrors the initialQuery effect above exactly (same once-per-mount /
+  // only-into-an-empty-conversation guards), except the seed text is built
+  // here from a freshly-fetched note rather than carried in the URL.
+  useEffect(() => {
+    if (!initialNoteId || initialNoteSentRef.current) return
+    if (!selectedId || messagesLoading || messages.length > 0) return
+    initialNoteSentRef.current = true
+    void getNote(initialNoteId).then((note) => handleSend(buildNoteAnalysisSeedQuery(note.title, note.content)))
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        next.delete('initialNoteId')
+        return next
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialNoteId, selectedId, messagesLoading, messages.length])
 
   if (conversationsLoading) {
     return (

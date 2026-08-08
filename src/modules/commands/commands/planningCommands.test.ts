@@ -39,6 +39,7 @@ describe('planning commands', () => {
         capturedQuery = query
         return { id: 'conv-1' }
       },
+      createConversationWithNoteAnalysis: async () => ({ id: 'conv-1' }),
       openQuickCapture: () => {},
     }
     await planProjectCommand.execute(commandContext(), actions)
@@ -56,6 +57,7 @@ describe('planning commands', () => {
           capturedQuery = query
           return { id: 'conv-1' }
         },
+        createConversationWithNoteAnalysis: async () => ({ id: 'conv-1' }),
         openQuickCapture: () => {},
       }
       await command.execute(commandContext(), actions)

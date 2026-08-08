@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AIProviderDescriptor } from '@/modules/core/providers/types'
+import type { ProviderAvailability } from '@/modules/ai/providers/availability'
 import { resolveProviderChain } from '@/modules/ai/router/resolveProviderChain'
 
 const chatProviders: AIProviderDescriptor[] = [
@@ -112,5 +113,78 @@ describe('resolveProviderChain', () => {
       healthScores: { anthropic: 40, google: 90 },
     })
     expect(chain).toEqual(['google', 'anthropic'])
+  })
+
+  describe('requireVision', () => {
+    const mixedVisionProviders: AIProviderDescriptor[] = [
+      { id: 'anthropic', label: 'Anthropic', kind: 'chat', status: 'available', supportsVision: true },
+      { id: 'openai', label: 'OpenAI', kind: 'chat', status: 'available', supportsVision: true },
+      { id: 'text-only', label: 'Text Only', kind: 'chat', status: 'available', supportsVision: false },
+    ]
+    const allAvailableMixed: ProviderAvailability & Record<string, boolean> = {
+      anthropic: true,
+      openai: true,
+      google: true,
+      'text-only': true,
+    }
+
+    it('excludes a provider explicitly marked supportsVision: false when requireVision is set', () => {
+      const chain = resolveProviderChain({
+        preferredProviderId: 'openai',
+        chatProviders: mixedVisionProviders,
+        availability: allAvailableMixed,
+        requireVision: true,
+      })
+      expect(chain).not.toContain('text-only')
+      expect(chain).toEqual(['openai', 'anthropic'])
+    })
+
+    it('excludes even a preferred provider when it is not vision-capable', () => {
+      const chain = resolveProviderChain({
+        preferredProviderId: 'text-only',
+        chatProviders: mixedVisionProviders,
+        availability: allAvailableMixed,
+        requireVision: true,
+      })
+      expect(chain).not.toContain('text-only')
+    })
+
+    it('treats a descriptor with supportsVision omitted as vision-capable', () => {
+      const chain = resolveProviderChain({
+        preferredProviderId: 'openai',
+        chatProviders, // no supportsVision field on any entry here
+        availability: allAvailable,
+        requireVision: true,
+      })
+      expect(chain).toEqual(['openai', 'anthropic', 'google'])
+    })
+
+    it('does not affect the chain at all when requireVision is omitted, even with a text-only provider registered', () => {
+      const chain = resolveProviderChain({
+        preferredProviderId: 'openai',
+        chatProviders: mixedVisionProviders,
+        availability: allAvailableMixed,
+      })
+      expect(chain).toContain('text-only')
+    })
+
+    it('returns an empty chain when no vision-capable provider is eligible', () => {
+      const textOnlyProviders: AIProviderDescriptor[] = [
+        { id: 'text-only', label: 'Text Only', kind: 'chat', status: 'available', supportsVision: false },
+      ]
+      const availability: ProviderAvailability & Record<string, boolean> = {
+        anthropic: false,
+        openai: false,
+        google: false,
+        'text-only': true,
+      }
+      const chain = resolveProviderChain({
+        preferredProviderId: 'text-only',
+        chatProviders: textOnlyProviders,
+        availability,
+        requireVision: true,
+      })
+      expect(chain).toEqual([])
+    })
   })
 })

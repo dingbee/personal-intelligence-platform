@@ -46,7 +46,7 @@ export function NoteDetailPage() {
   const { tags: noteTags } = useNoteTags(noteId!)
   const { data: documents = [] } = useDocuments({})
   const { data: relatedKnowledge = [] } = useRelatedKnowledge(noteId!)
-  const { createConversationWithQuery } = useCommandActions()
+  const { createConversationWithNoteAnalysis } = useCommandActions()
   const { data: workspaceRole } = useWorkspaceRole(note?.workspace_id ?? null)
   const { isShared, lookup } = useWorkspaceMemberDirectory(note?.workspace_id ?? null)
 
@@ -236,11 +236,16 @@ export function NoteDetailPage() {
             <Button variant="ghost" onClick={() => setExportDialogOpen(true)}>
               Save As…
             </Button>
-            {/* UX-15.1 — converges "Ask AI" onto the one mechanism/label
-                every other object type's own entry point uses
-                (`createConversationWithQuery`, same as Assets). */}
-            <Button variant="ghost" onClick={() => void createConversationWithQuery(`I'd like to talk about a note called "${note.title}".`)}>
-              Ask NOVA about this note
+            {/* PIP Multimodal Intelligence Stabilization v1 (Problem 3) —
+                was createConversationWithQuery seeded with only the note's
+                title ("I'd like to talk about a note called ..."), so NOVA
+                never actually saw the note's content unless retrieval
+                happened to surface it. createConversationWithNoteAnalysis
+                carries the real content in instead (see its own doc
+                comment for why it's a separate action from
+                createConversationWithQuery, not just a different string). */}
+            <Button variant="ghost" onClick={() => void createConversationWithNoteAnalysis(note.id, note.title)}>
+              Analyze with NOVA
             </Button>
           </div>
           {canDelete && (

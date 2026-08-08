@@ -42,7 +42,13 @@ export function useAnalyzeImage() {
   const { currentWorkspaceId } = useWorkspace()
   const queryClient = useQueryClient()
   const providerId = useDefaultChatProviderId()
-  const chain = useProviderChain(providerId)
+  // PIP Multimodal Intelligence Stabilization v1 — requireVision excludes
+  // any provider explicitly marked text-only from image-analysis routing.
+  // Every provider registered today is vision-capable (coreModule.ts), so
+  // this is currently a no-op in practice; it exists so a future text-only
+  // provider is excluded by construction rather than by a special case
+  // someone has to remember to add here.
+  const chain = useProviderChain(providerId, { requireVision: true })
 
   return useMutation({
     mutationFn: async (asset: Pick<Asset, 'id' | 'optimized_path' | 'title'>): Promise<AssetAnalysis> => {

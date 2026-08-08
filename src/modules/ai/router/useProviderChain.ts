@@ -16,7 +16,8 @@ import { resolveProviderChain } from '@/modules/ai/router/resolveProviderChain'
  * consumer already calling it (Settings' useProviderIntelligence, the AI
  * Health dashboard).
  */
-export function useProviderChain(preferredProviderId: string | null): string[] {
+export function useProviderChain(preferredProviderId: string | null, options: { requireVision?: boolean } = {}): string[] {
+  const { requireVision } = options
   const chatProviders = useMemo(() => providerRegistry.list().filter((provider) => provider.kind === 'chat'), [])
   const { data: availability } = useProviderAvailability()
   const { data: overrides } = useProviderOverrides()
@@ -25,6 +26,6 @@ export function useProviderChain(preferredProviderId: string | null): string[] {
 
   return useMemo(() => {
     const healthScores = Object.fromEntries(providerHealth.map((entry) => [entry.providerId, entry.healthScore]))
-    return resolveProviderChain({ preferredProviderId, chatProviders, availability, overrides, healthScores, platformSettings })
-  }, [preferredProviderId, chatProviders, availability, overrides, providerHealth, platformSettings])
+    return resolveProviderChain({ preferredProviderId, chatProviders, availability, overrides, healthScores, platformSettings, requireVision })
+  }, [preferredProviderId, chatProviders, availability, overrides, providerHealth, platformSettings, requireVision])
 }

@@ -27,6 +27,16 @@ export interface ResolveProviderChainParams {
    * exclusion) completely unchanged — purely additive.
    */
   platformSettings?: Record<string, PlatformProviderRouting>
+  /**
+   * PIP Multimodal Intelligence Stabilization v1 — when true, excludes any
+   * chatProviders entry with `supportsVision === false` from candidacy
+   * entirely (a descriptor with `supportsVision` omitted is treated as
+   * vision-capable, matching every provider currently registered — see
+   * AIProviderDescriptor's own comment). Omit/false to leave existing
+   * text-chat routing completely unchanged; only image-analysis call
+   * sites (useAnalyzeImage) pass this.
+   */
+  requireVision?: boolean
 }
 
 /**
@@ -43,12 +53,13 @@ export interface ResolveProviderChainParams {
  * sole candidacy gate — no parallel eligibility check.
  */
 export function resolveProviderChain(params: ResolveProviderChainParams): string[] {
-  const { preferredProviderId, chatProviders, availability, overrides, healthScores, platformSettings } = params
+  const { preferredProviderId, chatProviders, availability, overrides, healthScores, platformSettings, requireVision } = params
 
   const eligibleIds = chatProviders
     .filter((provider) => provider.kind === 'chat' && provider.status === 'available')
     .filter((provider) => isProviderAvailable(provider.id, availability, overrides))
     .filter((provider) => platformSettings?.[provider.id]?.enabled !== false)
+    .filter((provider) => !requireVision || provider.supportsVision !== false)
     .map((provider) => provider.id)
 
   if (eligibleIds.length === 0) return []

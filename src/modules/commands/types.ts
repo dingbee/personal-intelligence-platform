@@ -19,6 +19,17 @@ export interface CommandActions {
   setCurrentWorkspaceId: (id: string | null) => void
   createNote: () => Promise<{ id: string }>
   createConversationWithQuery: (query: string) => Promise<{ id: string }>
+  /**
+   * PIP Multimodal Intelligence Stabilization v1 — deliberately distinct
+   * from createConversationWithQuery: a note's content can be arbitrarily
+   * long ("substantial work"), and createConversationWithQuery carries its
+   * seed text through a URL query param (?initialQuery=), which real
+   * browsers/servers cap at a few thousand characters. This instead
+   * navigates with just the note id (?initialNoteId=) and lets ChatPage
+   * fetch the note and build the seed message itself once mounted — see
+   * ChatPage.tsx's initialNoteId effect.
+   */
+  createConversationWithNoteAnalysis: (noteId: string, noteTitle: string) => Promise<{ id: string }>
   /** Opens the global Quick Capture dialog (UX-13 Knowledge Capture) — owned by AppShell alongside commandBarOpen. */
   openQuickCapture: () => void
 }
