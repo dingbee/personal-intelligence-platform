@@ -10,6 +10,7 @@ const {
   retrieveNamedEntityGraphContextMock,
   retrieveContextMock,
   retrieveAssetContextMock,
+  retrieveNoteContextMock,
   retrieveSpreadsheetContextMock,
   streamChatCompletionMock,
 } = vi.hoisted(() => ({
@@ -18,6 +19,7 @@ const {
     retrieveNamedEntityGraphContextMock: vi.fn(async () => null as string | null),
     retrieveContextMock: vi.fn(async () => [] as { chunkId: string; documentId: string; content: string; similarity: number }[]),
     retrieveAssetContextMock: vi.fn(async () => [] as { assetId: string; title: string; content: string; similarity: number }[]),
+    retrieveNoteContextMock: vi.fn(async () => [] as { noteId: string; title: string; content: string; similarity: number }[]),
     retrieveSpreadsheetContextMock: vi.fn(async () => null as string | null),
     streamChatCompletionMock: vi.fn(
       async (_params: {
@@ -50,6 +52,7 @@ vi.mock('@/modules/search/indexing/indexMessage', () => ({ indexMessage: vi.fn(a
 vi.mock('@/modules/knowledge-intelligence/api/linkKnownConcepts', () => ({ linkKnownConceptsToSource: vi.fn(async () => {}) }))
 vi.mock('@/modules/ai/orchestration/retrieveContext', () => ({ retrieveContext: retrieveContextMock }))
 vi.mock('@/modules/ai/orchestration/retrieveAssetContext', () => ({ retrieveAssetContext: retrieveAssetContextMock }))
+vi.mock('@/modules/ai/orchestration/retrieveNoteContext', () => ({ retrieveNoteContext: retrieveNoteContextMock }))
 vi.mock('@/modules/knowledge-intelligence/api/retrieveGraphContext', () => ({ retrieveGraphContext: retrieveGraphContextMock }))
 vi.mock('@/modules/knowledge-intelligence/api/retrieveNamedEntityGraphContext', () => ({ retrieveNamedEntityGraphContext: retrieveNamedEntityGraphContextMock }))
 vi.mock('@/modules/ai/memory/retrieveMemoryContext', () => ({ retrieveMemoryContext: retrieveMemoryContextMock }))
@@ -189,6 +192,30 @@ describe('sendMessage', () => {
 
   it('never breaks the chat response when retrieveAssetContext rejects (never-throws contract)', async () => {
     retrieveAssetContextMock.mockRejectedValueOnce(new Error('embedding provider unavailable'))
+    const result = await sendMessage(baseParams())
+    expect(result.message.content).toBe('Hello there.')
+  })
+
+  // PIP Sprint 7/10 — the fix for the central discovery finding: a note's
+  // content must actually reach the prompt sent to the provider, not only
+  // when a knowledge-graph node for its subject happens to already exist
+  // from a different source.
+  it('includes note content in the prompt sent to the provider when retrieveNoteContext finds a match', async () => {
+    retrieveNoteContextMock.mockResolvedValueOnce([{ noteId: 'note-1', title: 'Meeting Notes', content: 'ARRIYIA was mentioned once.', similarity: 0.9 }])
+    await sendMessage(baseParams())
+    const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+    expect(lastCall?.system).toContain('<note_context>')
+    expect(lastCall?.system).toContain('ARRIYIA was mentioned once.')
+  })
+
+  it('counts note matches into retrievedChunks, so a note-only answer is not misreported as "nothing retrieved"', async () => {
+    retrieveNoteContextMock.mockResolvedValueOnce([{ noteId: 'note-1', title: 'Meeting Notes', content: 'ARRIYIA was mentioned once.', similarity: 0.9 }])
+    const result = await sendMessage(baseParams())
+    expect(result.contextTrace.retrievedChunks).toBe(1)
+  })
+
+  it('never breaks the chat response when retrieveNoteContext rejects (never-throws contract)', async () => {
+    retrieveNoteContextMock.mockRejectedValueOnce(new Error('embedding provider unavailable'))
     const result = await sendMessage(baseParams())
     expect(result.message.content).toBe('Hello there.')
   })
@@ -431,6 +458,89 @@ describe('sendMessage', () => {
       await sendMessage({ ...baseParams(), text: 'Does the document mention ZYNTHOCORP?' })
       const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
       expect(lastCall?.system).not.toContain('<knowledge_connections>')
+    })
+  })
+
+  /**
+   * PIP Sprint 7/10, Phase 8 — cross-feature retrieval acceptance tests A-J,
+   * pinned at the same boundary every prior sprint's tests use: the actual
+   * assembled system prompt / contextTrace object reaching the provider,
+   * never an LLM's wording. Several letters (F, part of G) are already
+   * covered in full by the Sprint 5/10 and Sprint 6/10 describe blocks
+   * above and are not duplicated here.
+   */
+  describe('Cross-feature retrieval acceptance (Sprint 7/10, Phase 8)', () => {
+    it('Test A/B — a matched chunk (however retrieveContext found it — exact or semantic) reaches the system prompt', async () => {
+      retrieveContextMock.mockResolvedValueOnce([{ chunkId: 'c1', documentId: 'd1', content: 'ARRIYIA was discussed once.', similarity: 0.9 }])
+      await sendMessage(baseParams())
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('ARRIYIA was discussed once.')
+    })
+
+    it('Test C — a document chunk and a note both contribute evidence in the same turn, in distinct blocks', async () => {
+      retrieveContextMock.mockResolvedValueOnce([{ chunkId: 'c1', documentId: 'd1', content: 'The document says ARRIYIA manages the project.', similarity: 0.8 }])
+      retrieveNoteContextMock.mockResolvedValueOnce([{ noteId: 'n1', title: 'Meeting Notes', content: 'My note says ARRIYIA joined in March.', similarity: 0.7 }])
+      await sendMessage(baseParams())
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('The document says ARRIYIA manages the project.')
+      expect(lastCall?.system).toContain('<note_context>')
+      expect(lastCall?.system).toContain('My note says ARRIYIA joined in March.')
+    })
+
+    it('Test D — an analyzed image and a document both contribute evidence in the same turn, in distinct blocks', async () => {
+      retrieveContextMock.mockResolvedValueOnce([{ chunkId: 'c1', documentId: 'd1', content: 'The document describes the site plan.', similarity: 0.8 }])
+      retrieveAssetContextMock.mockResolvedValueOnce([{ assetId: 'a1', title: 'Photo', content: 'Image: "Photo"\nA photo of the same site.', similarity: 0.7 }])
+      await sendMessage(baseParams())
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('The document describes the site plan.')
+      expect(lastCall?.system).toContain('<visual_context>')
+      expect(lastCall?.system).toContain('A photo of the same site.')
+    })
+
+    it('Test E — a spreadsheet\'s precomputed figures and a document\'s explanatory text both contribute evidence in the same turn', async () => {
+      retrieveContextMock.mockResolvedValueOnce([{ chunkId: 'c1', documentId: 'doc-sales-1', content: 'Revenue grew due to the new product line.', similarity: 0.8 }])
+      retrieveSpreadsheetContextMock.mockResolvedValueOnce('Revenue: sum 57,000, average 9,500')
+      await sendMessage({ ...baseParams(), documentId: 'doc-sales-1' })
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('Revenue grew due to the new product line.')
+      expect(lastCall?.system).toContain('<spreadsheet_analysis>')
+      expect(lastCall?.system).toContain('57,000')
+    })
+
+    it('Test G — an irrelevant personal memory does not contaminate the prompt when retrieveMemoryContext (already relevance-filtered, Sprint 6/10) finds nothing for this turn', async () => {
+      retrieveMemoryContextMock.mockResolvedValueOnce(null)
+      await sendMessage(baseParams())
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).not.toContain('<personal_context>')
+    })
+
+    it('Test H — when nothing is relevant anywhere, the prompt says so explicitly rather than omitting context silently', async () => {
+      const result = await sendMessage(baseParams())
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain("(No relevant content found in the user's library.)")
+      expect(result.contextTrace).toEqual({ retrievedChunks: 0, graphNodes: 0, memoriesUsed: 0 })
+    })
+
+    it('Test I — conflicting evidence from two sources both reach the prompt, distinguishably, rather than one silently overwriting the other', async () => {
+      retrieveContextMock.mockResolvedValueOnce([{ chunkId: 'c1', documentId: 'doc-sales-1', content: 'The report states total revenue was 50,000.', similarity: 0.8 }])
+      retrieveSpreadsheetContextMock.mockResolvedValueOnce('Revenue: sum 57,000')
+      await sendMessage({ ...baseParams(), documentId: 'doc-sales-1' })
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('50,000')
+      expect(lastCall?.system).toContain('57,000')
+      expect(lastCall?.system).toContain('<spreadsheet_analysis>')
+    })
+
+    it('Test J — distinct notes never collapse into one contextTrace count, so no source is silently dropped for looking similar', async () => {
+      retrieveNoteContextMock.mockResolvedValueOnce([
+        { noteId: 'n1', title: 'Note One', content: 'First distinct note.', similarity: 0.8 },
+        { noteId: 'n2', title: 'Note Two', content: 'Second distinct note.', similarity: 0.7 },
+      ])
+      const result = await sendMessage(baseParams())
+      expect(result.contextTrace.retrievedChunks).toBe(2)
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('[1] (Note: Note One) First distinct note.')
+      expect(lastCall?.system).toContain('[2] (Note: Note Two) Second distinct note.')
     })
   })
 })

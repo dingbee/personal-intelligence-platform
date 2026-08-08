@@ -5,6 +5,7 @@ import { insertMessage } from '@/modules/ai/chat/api/messages'
 import { touchConversation } from '@/modules/ai/chat/api/conversations'
 import { retrieveContext } from '@/modules/ai/orchestration/retrieveContext'
 import { retrieveAssetContext } from '@/modules/ai/orchestration/retrieveAssetContext'
+import { retrieveNoteContext } from '@/modules/ai/orchestration/retrieveNoteContext'
 import { buildSystemPrompt } from '@/modules/ai/orchestration/buildSystemPrompt'
 import { buildContextTrace, type ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import { retrieveGraphContext } from '@/modules/knowledge-intelligence/api/retrieveGraphContext'
@@ -138,6 +139,13 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   // or an unanalyzed/nonexistent image just means no <visual_context>
   // block, never a broken chat response.
   const assetMatches = await retrieveAssetContext({ query: text, userId, workspaceId }).catch(() => [])
+  // PIP Sprint 7/10 — the note-content counterpart of retrieveAssetContext
+  // above: notes have had full hybrid semantic+lexical search (Universal
+  // Search's notesSearchProvider) for two sprints, but chat's own
+  // retrieval path never queried them — a fact written only in a note was
+  // unreachable from chat unless a knowledge-graph node for it happened to
+  // already exist from a different source. Same never-throws contract.
+  const noteMatches = await retrieveNoteContext({ query: text, userId, workspaceId }).catch(() => [])
   // retrieveGraphContext/retrieveMemoryContext never throw (see their own
   // try/catch) — a missing or empty knowledge graph or memory store just
   // means no <knowledge_connections>/<personal_context> block, never a
@@ -172,9 +180,9 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   // document/page each excerpt came from, not just the UI's reference
   // chips. Never throws (see its own try/catch).
   const chunkProvenance = await resolveChunkProvenance(matches)
-  let system = buildSystemPrompt(matches, graphContext, memoryContext, spreadsheetContext, assetMatches, chunkProvenance)
+  let system = buildSystemPrompt(matches, graphContext, memoryContext, spreadsheetContext, assetMatches, chunkProvenance, noteMatches)
 
-  const contextTrace = buildContextTrace(matches.length + assetMatches.length, graphContext, memoryContext)
+  const contextTrace = buildContextTrace(matches.length + assetMatches.length + noteMatches.length, graphContext, memoryContext)
   // Internal-only, logged not persisted (Phase UX-5.2) — "why did NOVA
   // answer this way" isn't user- or UI-facing yet, that's a later phase.
   console.debug('[AIService] context trace', contextTrace)
