@@ -63,10 +63,10 @@ describe('retrieveMemoryContext', () => {
     expect(result).toContain('Northern Expansion')
   })
 
-  it('passes workspaceId through to listMemories unchanged', async () => {
+  it('passes workspaceId through to listMemories unchanged, with a bounded fetch limit (PIP Sprint 9/10)', async () => {
     listMemoriesMock.mockResolvedValueOnce([])
     await retrieveMemoryContext({ userId: 'user-1', workspaceId: 'workspace-1', text: 'hello' })
-    expect(listMemoriesMock).toHaveBeenCalledWith({ workspaceId: 'workspace-1' })
+    expect(listMemoriesMock).toHaveBeenCalledWith({ workspaceId: 'workspace-1', limit: 200 })
   })
 
   it('never throws — a listMemories failure returns null, same never-throws contract as retrieveGraphContext', async () => {

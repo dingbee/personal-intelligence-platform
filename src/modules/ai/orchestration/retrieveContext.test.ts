@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { invokeAiEmbedMock, vectorStoreQueryMock, lexicalSearchMock } = vi.hoisted(() => ({
   invokeAiEmbedMock: vi.fn(async () => ({ embeddings: [[0.1, 0.2, 0.3]], model: 'text-embedding-3-small', promptTokens: 10 })),
@@ -26,6 +26,14 @@ function baseParams(overrides: Partial<Parameters<typeof retrieveContext>[0]> = 
  * instruction.
  */
 describe('retrieveContext — hybrid semantic + lexical', () => {
+  // PIP Sprint 9/10 — the two "embeds internally"/"reuses a precomputed
+  // embedding" tests below assert on invokeAiEmbedMock's call count; every
+  // other test in this file also triggers an internal embed call, so
+  // without clearing between tests those counts would leak across them.
+  beforeEach(() => {
+    invokeAiEmbedMock.mockClear()
+  })
+
   it('returns semantic matches unchanged when the query has no entity-like terms to search lexically', async () => {
     vectorStoreQueryMock.mockResolvedValueOnce([{ chunkId: 'c1', documentId: 'd1', content: 'general passage', similarity: 0.5 }])
     const result = await retrieveContext(baseParams({ query: 'what is the summary here' }))
@@ -73,5 +81,21 @@ describe('retrieveContext — hybrid semantic + lexical', () => {
     vectorStoreQueryMock.mockResolvedValueOnce([])
     await retrieveContext(baseParams({ documentId: 'doc-42', query: 'plain question' }))
     expect(vectorStoreQueryMock).toHaveBeenCalledWith(expect.anything(), { documentId: 'doc-42', workspaceId: undefined, matchCount: 8 })
+  })
+
+  // PIP Sprint 9/10 — AIService now embeds the query once and shares it
+  // across retrieveContext/retrieveAssetContext/retrieveNoteContext
+  // instead of each independently re-embedding the same text.
+  it('reuses a precomputed embedding instead of calling the embedding provider again when one is passed', async () => {
+    vectorStoreQueryMock.mockResolvedValueOnce([])
+    await retrieveContext(baseParams({ query: 'plain question', embedding: [0.9, 0.8, 0.7] }))
+    expect(invokeAiEmbedMock).not.toHaveBeenCalled()
+    expect(vectorStoreQueryMock).toHaveBeenCalledWith([0.9, 0.8, 0.7], expect.anything())
+  })
+
+  it('still embeds internally when no precomputed embedding is passed, unchanged from before', async () => {
+    vectorStoreQueryMock.mockResolvedValueOnce([])
+    await retrieveContext(baseParams({ query: 'plain question' }))
+    expect(invokeAiEmbedMock).toHaveBeenCalledTimes(1)
   })
 })

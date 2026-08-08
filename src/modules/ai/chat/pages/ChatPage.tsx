@@ -45,6 +45,7 @@ import { detectLearningIntelligence } from '@/modules/intelligence/learning/lear
 import { MemoryApprovalPanel } from '@/modules/ai/memory/memoryDetection/MemoryApprovalPanel'
 import { useMemories } from '@/modules/ai/memory/hooks/useMemories'
 import { resolveNoteAnalysisSeedText } from '@/modules/notes/intelligence/resolveNoteAnalysisSeedText'
+import { buildChatHistory } from '@/modules/ai/chat/api/buildChatHistory'
 
 export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -272,7 +273,7 @@ export function ChatPage() {
         onSuccess: (result) => rename.mutate({ id: selectedId, title: result.title }),
       })
     }
-    const history = messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+    const history = buildChatHistory(messages)
     await send(selectedId, text, history)
   }
 

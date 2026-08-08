@@ -29,15 +29,21 @@ export async function retrieveAssetContext(params: {
   query: string
   userId: string
   workspaceId: string | null
+  /** PIP Sprint 9/10 — see retrieveContext.ts's identical param: shared with retrieveContext/retrieveNoteContext so the same query text is embedded once per turn, not three times. Falls back to embedding internally when omitted. */
+  embedding?: number[]
 }): Promise<AssetContextMatch[]> {
-  const [embedding] = await embeddingProvider.embed([params.query], {
-    userId: params.userId,
-    workspaceId: params.workspaceId,
-    feature: 'retrieval',
-  })
+  const embedding =
+    params.embedding ??
+    (
+      await embeddingProvider.embed([params.query], {
+        userId: params.userId,
+        workspaceId: params.workspaceId,
+        feature: 'retrieval',
+      })
+    )[0]!
 
   const { data: rows, error } = await supabase.rpc('match_assets', {
-    query_embedding: embedding!,
+    query_embedding: embedding,
     match_count: MATCH_COUNT,
     filter_workspace_id: params.workspaceId,
   })

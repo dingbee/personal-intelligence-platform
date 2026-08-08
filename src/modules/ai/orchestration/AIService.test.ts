@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { promptRegistry } from '@/modules/core/prompts/registry'
 
 // vi.mock calls are hoisted above these imports by Vitest — vi.hoisted is
@@ -30,6 +30,19 @@ const {
       }) => ({ content: 'Hello there.', model: 'test-model' }),
     ),
   }))
+
+// PIP Sprint 9/10 — sendMessage now embeds the query once itself (shared
+// across retrieveContext/retrieveAssetContext/retrieveNoteContext, see
+// AIService.ts) instead of leaving embedding entirely to those mocked
+// functions, so this suite needs its own embedding-provider mock or every
+// sendMessage call would hit the real edge function over the network.
+// Named/hoisted (not an inline factory) so tests below can assert on it —
+// e.g. that the query is embedded exactly once per turn, not three times.
+const { invokeAiEmbedMock } = vi.hoisted(() => ({
+  invokeAiEmbedMock: vi.fn(async () => ({ embeddings: [[0.1, 0.2, 0.3]], model: 'text-embedding-3-small', promptTokens: 5 })),
+}))
+vi.mock('@/modules/ai/providers/edgeFunctionClient', () => ({ invokeAiEmbed: invokeAiEmbedMock }))
+vi.mock('@/modules/ai/observability/api/aiRequests', () => ({ logAiRequest: vi.fn(async () => {}) }))
 
 vi.mock('@/modules/ai/chat/api/messages', () => ({
   insertMessage: vi.fn(
@@ -541,6 +554,63 @@ describe('sendMessage', () => {
       const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
       expect(lastCall?.system).toContain('[1] (Note: Note One) First distinct note.')
       expect(lastCall?.system).toContain('[2] (Note: Note Two) Second distinct note.')
+    })
+  })
+
+  /**
+   * PIP Sprint 9/10 (Performance & Scale) — discovery found retrieveContext,
+   * retrieveAssetContext, and retrieveNoteContext each independently
+   * embedding the same query text (three real OpenAI calls for one
+   * identical string), ~6 of the turn's retrieval sources running in
+   * strict sequence despite being mutually independent, and quotaService
+   * only being checked after all of that work had already run. These
+   * tests pin the fixed contracts at the same boundary every prior
+   * sprint's tests use: sendMessage's actual behavior, not an LLM's
+   * wording or literal call ordering (Promise.all doesn't guarantee
+   * start order, only that every branch does eventually run).
+   */
+  describe('Performance & Scale (Sprint 9/10)', () => {
+    beforeEach(() => {
+      invokeAiEmbedMock.mockClear()
+      retrieveContextMock.mockClear()
+      retrieveAssetContextMock.mockClear()
+      retrieveNoteContextMock.mockClear()
+      retrieveMemoryContextMock.mockClear()
+      streamChatCompletionMock.mockClear()
+    })
+
+    it('embeds the query exactly once per turn, not once per retrieval source', async () => {
+      await sendMessage(baseParams())
+      expect(invokeAiEmbedMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('shares the one computed embedding with retrieveContext, retrieveAssetContext, and retrieveNoteContext', async () => {
+      await sendMessage(baseParams())
+      const embedding = (await invokeAiEmbedMock.mock.results[0]!.value).embeddings[0]
+      expect(retrieveContextMock).toHaveBeenCalledWith(expect.objectContaining({ embedding }))
+      expect(retrieveAssetContextMock).toHaveBeenCalledWith(expect.objectContaining({ embedding }))
+      expect(retrieveNoteContextMock).toHaveBeenCalledWith(expect.objectContaining({ embedding }))
+    })
+
+    it('checks quota before doing any retrieval work, and fails fast without ever calling a retrieval source', async () => {
+      const { quotaService } = await import('@/shared/lib/quotaService')
+      vi.mocked(quotaService.checkQuota).mockResolvedValueOnce({ allowed: false, reason: 'Quota exceeded for this billing period.' })
+
+      await expect(sendMessage(baseParams())).rejects.toThrow('Quota exceeded for this billing period.')
+
+      expect(retrieveContextMock).not.toHaveBeenCalled()
+      expect(retrieveAssetContextMock).not.toHaveBeenCalled()
+      expect(retrieveMemoryContextMock).not.toHaveBeenCalled()
+      expect(invokeAiEmbedMock).not.toHaveBeenCalled()
+      expect(streamChatCompletionMock).not.toHaveBeenCalled()
+    })
+
+    it('still completes a normal turn when every independent retrieval source succeeds concurrently', async () => {
+      retrieveContextMock.mockResolvedValueOnce([{ chunkId: 'c1', documentId: 'd1', content: 'A passage.', similarity: 0.8 }])
+      retrieveMemoryContextMock.mockResolvedValueOnce('## Learned preferences\n- Likes concise answers')
+      const result = await sendMessage(baseParams())
+      expect(result.message.content).toBe('Hello there.')
+      expect(result.contextTrace).toEqual({ retrievedChunks: 1, graphNodes: 0, memoriesUsed: 1 })
     })
   })
 })

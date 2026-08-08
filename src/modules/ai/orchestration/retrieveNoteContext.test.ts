@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { invokeAiEmbedMock, rpcMock, fromMock } = vi.hoisted(() => ({
   invokeAiEmbedMock: vi.fn(async () => ({ embeddings: [[0.1, 0.2, 0.3]], model: 'text-embedding-3-small', promptTokens: 10 })),
@@ -36,6 +36,13 @@ function lexicalQueryChain(result: { data: { id: string; title: string; content:
  * (Sprint 4) established for the analogous document gap.
  */
 describe('retrieveNoteContext — hybrid semantic + lexical', () => {
+  // PIP Sprint 9/10 — the embedding-reuse tests below assert on
+  // invokeAiEmbedMock's call count; every other test in this file also
+  // triggers an internal embed call, so clear between tests.
+  beforeEach(() => {
+    invokeAiEmbedMock.mockClear()
+  })
+
   it('returns semantic matches unchanged when the query has no entity-like terms to search lexically', async () => {
     rpcMock.mockResolvedValueOnce({ data: [{ note_id: 'n1', title: 'Meeting Notes', content: 'general passage', similarity: 0.5 }], error: null })
     const result = await retrieveNoteContext(baseParams({ query: 'what is the summary here' }))
@@ -89,5 +96,24 @@ describe('retrieveNoteContext — hybrid semantic + lexical', () => {
   it('throws when the semantic RPC itself errors — the never-throws contract lives at the call site, matching retrieveAssetContext', async () => {
     rpcMock.mockResolvedValueOnce({ data: null, error: new Error('rpc failed') })
     await expect(retrieveNoteContext(baseParams())).rejects.toThrow()
+  })
+
+  // PIP Sprint 9/10 — AIService now embeds the query once and shares it
+  // across retrieveContext/retrieveAssetContext/retrieveNoteContext
+  // instead of each independently re-embedding the same text.
+  it('reuses a precomputed embedding instead of calling the embedding provider again when one is passed', async () => {
+    rpcMock.mockResolvedValueOnce({ data: [], error: null })
+    await retrieveNoteContext(baseParams({ query: 'what is the summary here', embedding: [0.9, 0.8, 0.7] }))
+    expect(invokeAiEmbedMock).not.toHaveBeenCalled()
+    expect(rpcMock).toHaveBeenCalledWith(
+      'match_notes',
+      expect.objectContaining({ query_embedding: [0.9, 0.8, 0.7] }),
+    )
+  })
+
+  it('still embeds internally when no precomputed embedding is passed, unchanged from before', async () => {
+    rpcMock.mockResolvedValueOnce({ data: [], error: null })
+    await retrieveNoteContext(baseParams({ query: 'what is the summary here' }))
+    expect(invokeAiEmbedMock).toHaveBeenCalledTimes(1)
   })
 })

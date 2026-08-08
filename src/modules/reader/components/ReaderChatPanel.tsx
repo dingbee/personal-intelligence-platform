@@ -18,6 +18,7 @@ import type { LocalSuggestionId } from '@/modules/reader/intelligence/chapterSug
 import { ReaderInsightDrawer } from '@/modules/reader/components/ReaderInsightDrawer'
 import { MemoryApprovalPanel } from '@/modules/ai/memory/memoryDetection/MemoryApprovalPanel'
 import { useMemories } from '@/modules/ai/memory/hooks/useMemories'
+import { buildChatHistory } from '@/modules/ai/chat/api/buildChatHistory'
 
 export interface ReaderChatPanelProps {
   documentId: string
@@ -155,7 +156,7 @@ export function ReaderChatPanel({
     if (isNewConversation) {
       generateTitle.mutate(text, { onSuccess: (result) => rename.mutate({ id, title: result.title }) })
     }
-    const history = messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+    const history = buildChatHistory(messages)
     await send(id, text, history)
   }
 

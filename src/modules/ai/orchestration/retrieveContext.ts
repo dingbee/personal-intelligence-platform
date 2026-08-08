@@ -31,24 +31,42 @@ export async function retrieveContext(params: {
   userId: string
   workspaceId: string | null
   documentId?: string
+  /**
+   * PIP Sprint 9/10 — the same query text was independently re-embedded by
+   * retrieveContext, retrieveAssetContext, and retrieveNoteContext on every
+   * chat turn: three real OpenAI embedding calls (network round trips and
+   * billed tokens) for one identical string. AIService now embeds `text`
+   * once and passes the result here; falls back to embedding internally
+   * when omitted so this function stays usable standalone (its own tests,
+   * any future caller that doesn't already have one).
+   */
+  embedding?: number[]
 }): Promise<VectorMatch[]> {
-  const [embedding] = await embeddingProvider.embed([params.query], {
-    userId: params.userId,
-    workspaceId: params.workspaceId,
-    feature: 'retrieval',
-  })
+  const embedding =
+    params.embedding ??
+    (
+      await embeddingProvider.embed([params.query], {
+        userId: params.userId,
+        workspaceId: params.workspaceId,
+        feature: 'retrieval',
+      })
+    )[0]!
   // Only apply the workspace filter for whole-library chat — a
   // document-scoped conversation should always find that document's
   // chunks even if the workspace switcher has since moved elsewhere.
   const scope = { documentId: params.documentId, workspaceId: params.documentId ? undefined : params.workspaceId }
 
-  const semanticMatches = await supabaseVectorStore.query(embedding!, { ...scope, matchCount: SEMANTIC_MATCH_COUNT })
-
   const lexicalTerms = extractLexicalSearchTerms(params.query)
-  if (lexicalTerms.length === 0) return semanticMatches
+  // PIP Sprint 9/10 — semantic and lexical search are independent (neither
+  // needs the other's result), so they now run concurrently instead of
+  // one blocking the other; a query with no lexical terms skips the
+  // lexical round trip entirely, same as before.
+  const [semanticMatches, lexicalMatches] = await Promise.all([
+    supabaseVectorStore.query(embedding, { ...scope, matchCount: SEMANTIC_MATCH_COUNT }),
+    lexicalTerms.length > 0 ? searchChunksByLexicalTerms(lexicalTerms, scope).catch(() => []) : Promise.resolve([]),
+  ])
 
-  const lexicalMatches = await searchChunksByLexicalTerms(lexicalTerms, scope).catch(() => [])
-  if (lexicalMatches.length === 0) return semanticMatches
+  if (lexicalTerms.length === 0 || lexicalMatches.length === 0) return semanticMatches
 
   const lexicalChunkIds = new Set(lexicalMatches.map((m) => m.chunkId))
   const boosted = semanticMatches.map((match) =>

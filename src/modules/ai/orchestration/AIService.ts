@@ -1,6 +1,7 @@
 import type { Message } from '@/shared/types/database'
 import type { ChatProviderMessage } from '@/modules/ai/providers/ChatProvider'
 import { getChatProvider } from '@/modules/ai/providers/registry'
+import { OpenAIEmbeddingProvider } from '@/modules/ai/embeddings/OpenAIEmbeddingProvider'
 import { insertMessage } from '@/modules/ai/chat/api/messages'
 import { touchConversation } from '@/modules/ai/chat/api/conversations'
 import { retrieveContext } from '@/modules/ai/orchestration/retrieveContext'
@@ -30,6 +31,8 @@ import type { Reference } from '@/modules/intelligence/references/referenceTypes
 import { runWorkspaceAction } from '@/modules/workspace-actions/registry'
 import type { ArtifactPreview } from '@/modules/workspace-actions/types'
 import { quotaService } from '@/shared/lib/quotaService'
+
+const embeddingProvider = new OpenAIEmbeddingProvider()
 
 export interface SendMessageParams {
   conversationId: string
@@ -132,64 +135,83 @@ await quotaService.consumeQuota(userId, 'ai_messages')
     }
   }
 
-  const matches = await retrieveContext({ query: text, userId, workspaceId, documentId })
-  // PIP Stabilization v1 (P0, root cause A) — the image-context counterpart
-  // of retrieveContext: never throws (matches the never-throws contract
-  // every other optional context source here already follows) — a failure
-  // or an unanalyzed/nonexistent image just means no <visual_context>
-  // block, never a broken chat response.
-  const assetMatches = await retrieveAssetContext({ query: text, userId, workspaceId }).catch((err: unknown) => {
-    // PIP Sprint 8/10 — same never-throws contract, now with a trace: a
-    // genuine failure here was previously indistinguishable from "no
-    // analyzed image matched" even in server logs.
-    console.error('retrieveAssetContext failed — chat continues without visual_context:', err)
-    return []
-  })
-  // PIP Sprint 7/10 — the note-content counterpart of retrieveAssetContext
-  // above: notes have had full hybrid semantic+lexical search (Universal
-  // Search's notesSearchProvider) for two sprints, but chat's own
-  // retrieval path never queried them — a fact written only in a note was
-  // unreachable from chat unless a knowledge-graph node for it happened to
-  // already exist from a different source. Same never-throws contract.
-  const noteMatches = await retrieveNoteContext({ query: text, userId, workspaceId }).catch((err: unknown) => {
-    // PIP Sprint 8/10 — same trace as retrieveAssetContext above.
-    console.error('retrieveNoteContext failed — chat continues without note_context:', err)
-    return []
-  })
-  // retrieveGraphContext/retrieveMemoryContext never throw (see their own
-  // try/catch) — a missing or empty knowledge graph or memory store just
-  // means no <knowledge_connections>/<personal_context> block, never a
-  // broken chat response.
-  const chunkSourcedGraphContext = await retrieveGraphContext({
-    documentIds: [...new Set(matches.map((match) => match.documentId))],
-    // PIP Stabilization v1 (P0, root cause B) — without this, an image's
-    // own knowledge-graph relationships (concepts/entities extracted from
-    // it) were unreachable even when the image itself was found above.
-    assetIds: [...new Set(assetMatches.map((match) => match.assetId))],
-    userId,
-    workspaceId,
-  })
-  // PIP Sprint 5/10 — retrieveGraphContext above only ever surfaces nodes
-  // sourced from documents/assets a *chunk* search already matched. A
-  // question naming an entity directly ("What is ARRIYIA connected to?")
-  // deserves that entity's real graph evidence even when no chunk search
-  // happened to surface the right document (or extraction was only ever
-  // run on a different source). Never throws (see its own try/catch);
-  // both blocks use the identical "Concept:"/"Entity:" line convention, so
-  // buildContextTrace's node counting stays accurate across either source.
-  const namedEntityGraphContext = await retrieveNamedEntityGraphContext({ text, userId })
+  // PIP Sprint 9/10 — fail fast on quota before doing any retrieval or
+  // embedding work: previously this check ran after the entire block
+  // below, so a user who was already over quota still paid for a full
+  // retrieval pass (multiple DB round trips, an embedding call) on every
+  // rejected turn. checkQuota depends on nothing computed below, so
+  // nothing is lost by asking first.
+  const quota = await quotaService.checkQuota(userId, 'ai_messages')
+  if (!quota.allowed) {
+    throw new Error(quota.reason ?? 'AI quota limit reached')
+  }
+
+  // PIP Sprint 9/10 — retrieveContext, retrieveAssetContext, and
+  // retrieveNoteContext each independently embedded this exact same query
+  // text, three real OpenAI embedding calls (network round trips and
+  // billed tokens) for one identical string. Embed it once here and share
+  // the result — see each function's own `embedding` param.
+  const [queryEmbedding] = await embeddingProvider.embed([text], { userId, workspaceId, feature: 'retrieval' })
+
+  // PIP Sprint 9/10 — these six sources are mutually independent (none
+  // consumes another's result), so they now run concurrently instead of
+  // one blocking the next — previously ~6 sequential network round trips
+  // per turn. assetMatches/noteMatches keep their own per-call .catch()
+  // (PIP Stabilization v1 / Sprint 7/10 / Sprint 8/10 — never throws, a
+  // failure just means no <visual_context>/<note_context> block) so one
+  // source rejecting can't fail the whole Promise.all batch;
+  // retrieveGraphContext/retrieveNamedEntityGraphContext/
+  // retrieveMemoryContext/retrieveSpreadsheetContext already never throw
+  // internally (see their own try/catch), unchanged by running them in
+  // parallel here instead of in sequence.
+  const [matches, assetMatches, noteMatches, namedEntityGraphContext, memoryContext, spreadsheetContext] = await Promise.all([
+    retrieveContext({ query: text, userId, workspaceId, documentId, embedding: queryEmbedding }),
+    retrieveAssetContext({ query: text, userId, workspaceId, embedding: queryEmbedding }).catch((err: unknown) => {
+      console.error('retrieveAssetContext failed — chat continues without visual_context:', err)
+      return []
+    }),
+    retrieveNoteContext({ query: text, userId, workspaceId, embedding: queryEmbedding }).catch((err: unknown) => {
+      console.error('retrieveNoteContext failed — chat continues without note_context:', err)
+      return []
+    }),
+    // PIP Sprint 5/10 — a question naming an entity directly ("What is
+    // ARRIYIA connected to?") deserves that entity's real graph evidence
+    // even when no chunk search happened to surface the right document.
+    // Independent of `matches` (unlike chunkSourcedGraphContext below,
+    // which needs it), so it belongs in this first parallel batch.
+    retrieveNamedEntityGraphContext({ text, userId }),
+    retrieveMemoryContext({ userId, workspaceId, text }),
+    // UX-13.10 — scoped to `documentId` specifically (not the matched
+    // chunks' documents), so it doesn't depend on `matches` either.
+    retrieveSpreadsheetContext(documentId),
+  ])
+
+  // PIP Sprint 9/10 — these two DO depend on the batch above
+  // (chunkSourcedGraphContext needs matches/assetMatches' ids;
+  // chunkProvenance needs matches' chunk/document ids), so they're a
+  // second stage — but they're independent of EACH OTHER, so they still
+  // run concurrently rather than one blocking the other.
+  const [chunkSourcedGraphContext, chunkProvenance] = await Promise.all([
+    // PIP Stabilization v1 (P0, root cause B) — without assetIds, an
+    // image's own knowledge-graph relationships (concepts/entities
+    // extracted from it) were unreachable even when the image itself was
+    // found above. Never throws (see its own try/catch).
+    retrieveGraphContext({
+      documentIds: [...new Set(matches.map((match) => match.documentId))],
+      assetIds: [...new Set(assetMatches.map((match) => match.assetId))],
+      userId,
+      workspaceId,
+    }),
+    // PIP Sprint 4/10 — resolved before buildSystemPrompt (not after, the
+    // way resolveReferences below is) so the model itself can see which
+    // document/page each excerpt came from, not just the UI's reference
+    // chips. Never throws (see its own try/catch).
+    resolveChunkProvenance(matches),
+  ])
+  // PIP Sprint 5/10 — both blocks use the identical "Concept:"/"Entity:"
+  // line convention, so buildContextTrace's node counting stays accurate
+  // across either source.
   const graphContext = [chunkSourcedGraphContext, namedEntityGraphContext].filter((block): block is string => Boolean(block)).join('\n\n') || null
-  const memoryContext = await retrieveMemoryContext({ userId, workspaceId, text })
-  // UX-13.10 — same never-throws contract as graph/memory context; scoped
-  // to `documentId` specifically (not the matched chunks' documents) since
-  // this is only meaningful when the reader/chat is actually anchored to
-  // one spreadsheet, same scoping retrieveContext itself already uses.
-  const spreadsheetContext = await retrieveSpreadsheetContext(documentId)
-  // PIP Sprint 4/10 — resolved before buildSystemPrompt (not after, the
-  // way resolveReferences below is) so the model itself can see which
-  // document/page each excerpt came from, not just the UI's reference
-  // chips. Never throws (see its own try/catch).
-  const chunkProvenance = await resolveChunkProvenance(matches)
   let system = buildSystemPrompt(matches, graphContext, memoryContext, spreadsheetContext, assetMatches, chunkProvenance, noteMatches)
 
   const contextTrace = buildContextTrace(matches.length + assetMatches.length + noteMatches.length, graphContext, memoryContext)
@@ -226,13 +248,6 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   })
   system = `${system}\n\n${buildNovaContextPrompt(novaContext, text)}`
 
-  const quota = await quotaService.checkQuota(userId, 'ai_messages')
-
-if (!quota.allowed) {
-  throw new Error(
-    quota.reason ?? 'AI quota limit reached',
-  )
-}
   const { result } = await runWithFallback(providerChain, (candidateId) =>
     streamChatCompletion({
       provider: getChatProvider(candidateId),

@@ -37,18 +37,28 @@ export async function retrieveNoteContext(params: {
   query: string
   userId: string
   workspaceId: string | null
+  /** PIP Sprint 9/10 — see retrieveContext.ts's identical param: shared with retrieveContext/retrieveAssetContext so the same query text is embedded once per turn, not three times. Falls back to embedding internally when omitted. */
+  embedding?: number[]
 }): Promise<NoteContextMatch[]> {
-  const [embedding] = await embeddingProvider.embed([params.query], {
-    userId: params.userId,
-    workspaceId: params.workspaceId,
-    feature: 'retrieval',
-  })
+  const embedding =
+    params.embedding ??
+    (
+      await embeddingProvider.embed([params.query], {
+        userId: params.userId,
+        workspaceId: params.workspaceId,
+        feature: 'retrieval',
+      })
+    )[0]!
 
-  const { data: semanticRows, error } = await supabase.rpc('match_notes', {
-    query_embedding: embedding!,
-    match_count: SEMANTIC_MATCH_COUNT,
-    filter_workspace_id: params.workspaceId,
-  })
+  const lexicalTerms = extractLexicalSearchTerms(params.query)
+  // PIP Sprint 9/10 — same independent-concurrency reasoning as
+  // retrieveContext.ts: semantic (match_notes RPC) and lexical (content
+  // ILIKE) search don't depend on each other's result.
+  const [semanticResult, lexicalMatches] = await Promise.all([
+    supabase.rpc('match_notes', { query_embedding: embedding, match_count: SEMANTIC_MATCH_COUNT, filter_workspace_id: params.workspaceId }),
+    lexicalTerms.length > 0 ? searchNotesByLexicalTerms(lexicalTerms, params.workspaceId).catch(() => [] as NoteContextMatch[]) : Promise.resolve([] as NoteContextMatch[]),
+  ])
+  const { data: semanticRows, error } = semanticResult
   if (error) throw error
 
   const semanticMatches: NoteContextMatch[] = semanticRows.map((row) => ({
@@ -58,11 +68,7 @@ export async function retrieveNoteContext(params: {
     similarity: row.similarity,
   }))
 
-  const lexicalTerms = extractLexicalSearchTerms(params.query)
-  if (lexicalTerms.length === 0) return semanticMatches
-
-  const lexicalMatches = await searchNotesByLexicalTerms(lexicalTerms, params.workspaceId).catch(() => [] as NoteContextMatch[])
-  if (lexicalMatches.length === 0) return semanticMatches
+  if (lexicalTerms.length === 0 || lexicalMatches.length === 0) return semanticMatches
 
   const lexicalNoteIds = new Set(lexicalMatches.map((m) => m.noteId))
   const boosted = semanticMatches.map((match) =>
