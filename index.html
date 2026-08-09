@@ -3,6 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Post-10/10 Phase 4 (Application & PWA Readiness) — installability
+         metadata. icon-192/icon-512 are rasterized directly from the
+         existing favicon.svg mark (Playwright screenshot, not a fabricated
+         asset) so the installed icon matches the in-app brand exactly. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <meta name="theme-color" content="#1c1917" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ARRIYIA" />
     <!-- viewport-fit=cover is what makes env(safe-area-inset-*) resolve to
          real values on notched/home-indicator iPhones instead of 0; without
          it, the page never extends under those areas and the inset env()
