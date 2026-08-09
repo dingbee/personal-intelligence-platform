@@ -35,7 +35,7 @@ export function TopBar({
           className="ml-auto hidden items-center gap-2 rounded-control bg-[var(--surface-inset)] px-3 py-1.5 text-sm text-[var(--color-ink-muted)] shadow-inset transition-shadow hover:shadow-raised md:flex"
         >
           <span aria-hidden>✨</span>
-          <span>Ask NOVA...</span>
+          <span>Ask ARRIYIA...</span>
           <kbd className="ml-2 rounded-pill bg-[var(--surface-raised)] px-1.5 py-0.5 text-[0.65rem] text-[var(--color-ink-muted)]">
             ⌘K
           </kbd>
@@ -44,7 +44,7 @@ export function TopBar({
           <button
             type="button"
             onClick={onOpenCommandBar}
-            aria-label="Ask NOVA"
+            aria-label="Ask ARRIYIA"
             className="flex h-8 w-8 items-center justify-center rounded-full text-sm text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--surface-base)] hover:text-[var(--color-ink)] md:hidden"
           >
             ✨

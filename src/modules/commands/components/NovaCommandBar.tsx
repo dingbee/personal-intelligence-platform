@@ -106,7 +106,7 @@ export function NovaCommandBar({
       ref={dialogRef}
       onCancel={onClose}
       onClose={onClose}
-      aria-label="NOVA Command"
+      aria-label="ARRIYIA Command"
       className="inset-0 m-0 h-full max-h-none w-full max-w-none flex-col overflow-hidden border-0 bg-[var(--surface-floating)] p-0 open:flex md:inset-auto md:top-24 md:left-1/2 md:h-auto md:max-h-[70vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:rounded-panel md:border md:border-[var(--color-border)] md:shadow-floating backdrop:bg-black/30"
     >
       <div className="flex items-center gap-2 border-b border-[var(--color-border)] p-4">
@@ -119,7 +119,7 @@ export function NovaCommandBar({
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="What would you like to do?"
-          aria-label="NOVA command input"
+          aria-label="ARRIYIA command input"
           className="flex-1 bg-transparent text-base text-[var(--color-ink)] outline-none placeholder:text-[var(--color-ink-muted)]"
         />
         <button
@@ -135,7 +135,7 @@ export function NovaCommandBar({
       <div className="flex-1 overflow-y-auto p-2">
         {results.length === 0 ? (
           <p className="px-3 py-8 text-center text-sm text-[var(--color-ink-muted)]">
-            Nothing matches "{query}" — try a different word, or ask NOVA directly.
+            Nothing matches "{query}" — try a different word, or ask ARRIYIA directly.
           </p>
         ) : (
           <ul role="listbox" aria-label="Commands">

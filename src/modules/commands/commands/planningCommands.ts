@@ -14,7 +14,7 @@ function buildPlanCommand(id: string, title: string, query: string): Command {
   return {
     id,
     title,
-    description: 'Start a planning conversation with NOVA',
+    description: 'Start a planning conversation with ARRIYIA',
     icon: '🗺️',
     category: 'ai',
     execute: async (_context, actions) => {

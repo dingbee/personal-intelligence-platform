@@ -53,7 +53,7 @@ export function NotesPage() {
                   )
                 }
               >
-                Ask NOVA
+                Ask ARRIYIA
               </Button>
               <Button
                 variant="secondary"

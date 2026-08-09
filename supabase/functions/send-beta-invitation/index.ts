@@ -45,15 +45,15 @@ function escapeHtml(value: string): string {
 function buildBetaInvitationEmail(input: { fullName: string | null; acceptUrl: string }): { subject: string; html: string; text: string } {
   const { fullName, acceptUrl } = input
   const greeting = fullName ? `Hi ${escapeHtml(fullName)},` : 'Hi,'
-  const subject = "You're invited to the NOVA beta"
+  const subject = "You're invited to the ARRIYIA beta"
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1a;">
-      <p style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin: 0 0 24px;">NOVA</p>
-      <h1 style="font-size: 20px; margin: 0 0 16px;">You've been invited to the NOVA beta</h1>
+      <p style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin: 0 0 24px;">ARRIYIA</p>
+      <h1 style="font-size: 20px; margin: 0 0 16px;">You've been invited to the ARRIYIA beta</h1>
       <p style="font-size: 15px; line-height: 1.5; margin: 0 0 8px;">${greeting}</p>
       <p style="font-size: 15px; line-height: 1.5; margin: 0 0 24px;">
-        You've been invited to join the NOVA beta — a personal knowledge intelligence workspace. Use the button below to
+        You've been invited to join the ARRIYIA beta — a personal knowledge intelligence workspace. Use the button below to
         create your account with this email address.
       </p>
       <a href="${acceptUrl}" style="display: inline-block; background: #1a1a1a; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; margin: 8px 0 24px;">
@@ -68,7 +68,7 @@ function buildBetaInvitationEmail(input: { fullName: string | null; acceptUrl: s
 
   const text = [
     `${greeting}`,
-    "You've been invited to the NOVA beta. Create your account with this email address:",
+    "You've been invited to the ARRIYIA beta. Create your account with this email address:",
     acceptUrl,
   ].join('\n\n')
 

@@ -52,7 +52,7 @@ const MAX_ZOOM = 3
  * at an image's pixels (see docs/multimodal-intelligence-discovery.md).
  * The result is stored (asset.metadata) and fed into the same knowledge-
  * extraction chain documents use, not injected live into an ongoing chat
- * turn — "Ask NOVA about this image" still starts a normal text
+ * turn — "Ask ARRIYIA about this image" still starts a normal text
  * conversation seeded with the image's title via the same
  * createConversationWithQuery command action other quick-start entry
  * points already use, so the copy here is careful not to claim NOVA can
@@ -209,10 +209,10 @@ export function ImageReaderPage() {
                   <div className="flex flex-col gap-2 rounded-control border border-[var(--color-border)] bg-[var(--surface-raised)] p-3">
                     {needsConfidenceReview(asset.metadata.confidence) && (
                       <p className="rounded-control bg-[var(--color-warning-bg)] px-2 py-1 text-xs text-[var(--color-warning-strong)]">
-                        NOVA wasn't fully confident about parts of this analysis — worth a quick review before relying on it.
+                        ARRIYIA wasn't fully confident about parts of this analysis — worth a quick review before relying on it.
                       </p>
                     )}
-                    <p className="text-xs font-medium text-[var(--color-ink-muted)]">What NOVA sees</p>
+                    <p className="text-xs font-medium text-[var(--color-ink-muted)]">What ARRIYIA sees</p>
                     <p className="text-sm text-[var(--color-ink)]">{asset.metadata.description}</p>
                     {asset.metadata.extractedText && (
                       <>
@@ -247,11 +247,11 @@ export function ImageReaderPage() {
                 ) : (
                   <>
                     <p className="text-sm text-[var(--color-ink-muted)]">
-                      NOVA hasn't looked at this image yet — analyzing it adds a description and any visible text to
+                      ARRIYIA hasn't looked at this image yet — analyzing it adds a description and any visible text to
                       your knowledge graph.
                     </p>
                     <Button loading={analyzeImage.isPending} onClick={() => analyzeImage.mutate(asset)}>
-                      Analyze with NOVA
+                      Analyze with ARRIYIA
                     </Button>
                     {analyzeImage.isError && (
                       <p className="text-sm text-[var(--color-danger)]">{(analyzeImage.error as Error).message}</p>
@@ -259,7 +259,7 @@ export function ImageReaderPage() {
                   </>
                 )}
                 <Button variant="secondary" onClick={() => void createConversationWithQuery(buildImageChatSeedQuery(asset.title, asset.metadata))}>
-                  Ask NOVA about this image
+                  Ask ARRIYIA about this image
                 </Button>
               </div>
             )}

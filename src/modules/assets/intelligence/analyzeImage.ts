@@ -14,7 +14,7 @@ import type { Asset, AssetAnalysis } from '@/shared/types/database'
  * guarantee — never a substitute for real calibrated confidence. See
  * docs/multimodal-intelligence-v2-discovery.md §5.
  */
-export const ANALYZE_IMAGE_SYSTEM_PROMPT = `You are NOVA, analyzing an image the user uploaded to their personal knowledge workspace.
+export const ANALYZE_IMAGE_SYSTEM_PROMPT = `You are ARRIYIA, analyzing an image the user uploaded to their personal knowledge workspace.
 
 Describe what the image shows in 2-4 plain-language sentences, grounded only in what is visible. Do not speculate about anything not actually shown. If the image contains data, figures, or trends (e.g. a dashboard, spreadsheet, or chart), mention the specific numbers and what they indicate.
 

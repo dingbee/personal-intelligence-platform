@@ -91,14 +91,14 @@ function buildInvitationEmail(input: {
   acceptUrl: string
 }): { subject: string; html: string; text: string } {
   const { workspaceName, inviterName, role, expiresAt, acceptUrl } = input
-  const subject = `${inviterName} invited you to ${workspaceName} on NOVA`
+  const subject = `${inviterName} invited you to ${workspaceName} on ARRIYIA`
   const expiryLine = expiresAt
     ? `This invitation expires on ${new Date(expiresAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}.`
     : ''
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1a;">
-      <p style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin: 0 0 24px;">NOVA</p>
+      <p style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin: 0 0 24px;">ARRIYIA</p>
       <h1 style="font-size: 20px; margin: 0 0 16px;">You've been invited to ${escapeHtml(workspaceName)}</h1>
       <p style="font-size: 15px; line-height: 1.5; margin: 0 0 8px;">
         <strong>${escapeHtml(inviterName)}</strong> invited you to join <strong>${escapeHtml(workspaceName)}</strong> as
@@ -115,7 +115,7 @@ function buildInvitationEmail(input: {
     </div>
   `.trim()
 
-  const text = [`${inviterName} invited you to join ${workspaceName} on NOVA as ${role}.`, expiryLine, `Accept: ${acceptUrl}`]
+  const text = [`${inviterName} invited you to join ${workspaceName} on ARRIYIA as ${role}.`, expiryLine, `Accept: ${acceptUrl}`]
     .filter(Boolean)
     .join('\n\n')
 

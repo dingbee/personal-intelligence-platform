@@ -41,7 +41,7 @@ export function generateChapterSuggestions(input: ChapterSuggestionsInput): Chap
   if (!input.hasFlashcards) suggestions.push({ kind: 'local', id: 'flashcards', label: 'Generate flashcards' })
   if (input.highlightCount > 0) suggestions.push({ kind: 'local', id: 'highlights', label: 'Review highlights' })
 
-  suggestions.push({ kind: 'local', id: 'ask-nova', label: 'Ask NOVA about this chapter' })
+  suggestions.push({ kind: 'local', id: 'ask-nova', label: 'Ask ARRIYIA about this chapter' })
 
   if (input.hasGraphContext) {
     suggestions.push({ kind: 'command', command: openKnowledgeGraphCommand, label: openKnowledgeGraphCommand.title })

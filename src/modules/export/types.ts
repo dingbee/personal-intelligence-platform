@@ -51,7 +51,7 @@ export interface ExportFormatOption {
  * human-readable convenience formats.
  */
 export const EXPORT_FORMAT_OPTIONS: readonly ExportFormatOption[] = [
-  { format: 'nova', label: 'NOVA Package', description: 'Full backup and transfer', extension: 'nova' },
+  { format: 'nova', label: 'ARRIYIA Package', description: 'Full backup and transfer', extension: 'nova' },
   { format: 'pdf', label: 'PDF', description: 'Readable document', extension: 'pdf' },
   { format: 'markdown', label: 'Markdown', description: 'Editable text', extension: 'md' },
   { format: 'docx', label: 'Word', description: 'Editable document', extension: 'docx' },

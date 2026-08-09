@@ -12,15 +12,15 @@ const REASONS: { title: string; description: string }[] = [
   },
   {
     title: 'Industry terminology',
-    description: "Your industry lets NOVA use the vocabulary you'd expect instead of over-explaining basics.",
+    description: "Your industry lets ARRIYIA use the vocabulary you'd expect instead of over-explaining basics.",
   },
   {
     title: 'Remembering ongoing projects',
-    description: "Facts NOVA picks up from your conversations carry forward, so you don't have to re-explain what you're working on.",
+    description: "Facts ARRIYIA picks up from your conversations carry forward, so you don't have to re-explain what you're working on.",
   },
   {
     title: 'Preferred response format',
-    description: 'Decision style and answer length tell NOVA whether to lay out options and tradeoffs or give a direct recommendation.',
+    description: 'Decision style and answer length tell ARRIYIA whether to lay out options and tradeoffs or give a direct recommendation.',
   },
 ]
 
@@ -33,7 +33,7 @@ const REASONS: { title: string; description: string }[] = [
 export function HowNovaUsesThisSection() {
   return (
     <SurfaceCard className="flex flex-col gap-3">
-      <SectionHeader level="section" title="How NOVA uses this information" description="Why it's worth filling in." />
+      <SectionHeader level="section" title="How ARRIYIA uses this information" description="Why it's worth filling in." />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {REASONS.map((reason) => (
           <div key={reason.title} className="rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] p-3">

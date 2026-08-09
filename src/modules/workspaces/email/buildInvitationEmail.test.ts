@@ -89,7 +89,7 @@ describe('buildInvitationEmail', () => {
       acceptUrl: 'https://app.example.com/signup?email=x%40y.com',
     })
 
-    expect(email.subject).toBe('Ada Lovelace invited you to Research Notes on NOVA')
+    expect(email.subject).toBe('Ada Lovelace invited you to Research Notes on ARRIYIA')
     expect(email.html).toContain('Research Notes')
     expect(email.html).toContain('Ada Lovelace')
     expect(email.html).toContain('editor')

@@ -45,7 +45,7 @@ describe('filterMessagesForScope', () => {
 describe('formatConversationAsNoteContent', () => {
   it('labels each message by role and joins with a blank line', () => {
     const content = formatConversationAsNoteContent([message('1', 'user', 'Hi'), message('2', 'assistant', 'Hello')])
-    expect(content).toBe('**You:** Hi\n\n**NOVA:** Hello')
+    expect(content).toBe('**You:** Hi\n\n**ARRIYIA:** Hello')
   })
 
   it('skips system messages entirely', () => {

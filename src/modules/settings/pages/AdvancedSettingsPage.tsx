@@ -51,8 +51,8 @@ export function AdvancedSettingsPage() {
       <SurfaceCard className="max-w-md">
         <h2 className="text-sm font-medium text-[var(--color-ink)]">AI Provider</h2>
         <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
-          Auto (Recommended) lets NOVA pick the best available provider for every request. Choosing a provider only
-          sets a preference — NOVA still applies platform availability and health before using it. Used for new
+          Auto (Recommended) lets ARRIYIA pick the best available provider for every request. Choosing a provider only
+          sets a preference — ARRIYIA still applies platform availability and health before using it. Used for new
           conversations and AI features unless a conversation already has its own provider set.
         </p>
         <div className="mt-3 flex items-center gap-2">

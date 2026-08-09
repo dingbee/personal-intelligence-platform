@@ -203,7 +203,7 @@ export function SaveConversationDialog({
                       className="mt-0.5 accent-[var(--color-accent)]"
                     />
                     <span className="min-w-0">
-                      <span className="font-medium text-[var(--color-ink)]">{message.role === 'user' ? 'You: ' : 'NOVA: '}</span>
+                      <span className="font-medium text-[var(--color-ink)]">{message.role === 'user' ? 'You: ' : 'ARRIYIA: '}</span>
                       <span className="text-[var(--color-ink-muted)]">
                         {message.content.length > 120 ? `${message.content.slice(0, 120)}…` : message.content}
                       </span>

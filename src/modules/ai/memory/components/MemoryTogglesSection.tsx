@@ -5,8 +5,8 @@ import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
 
 const TOGGLES: { type: AiMemoryType; label: string; description: string }[] = [
   { type: 'explicit_profile', label: 'Remember my profile', description: 'Occupation, industry, expertise, goals, and everything else in the Profile section above.' },
-  { type: 'learned_preference', label: 'Remember learned preferences', description: 'Preferences NOVA infers from how you interact with it.' },
-  { type: 'conversation_memory', label: 'Remember conversation context', description: 'Facts NOVA picks up from things you say in chat.' },
+  { type: 'learned_preference', label: 'Remember learned preferences', description: 'Preferences ARRIYIA infers from how you interact with it.' },
+  { type: 'conversation_memory', label: 'Remember conversation context', description: 'Facts ARRIYIA picks up from things you say in chat.' },
 ]
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (next: boolean) => void }) {
@@ -49,7 +49,7 @@ export function MemoryTogglesSection() {
   return (
     <SurfaceCard className="flex flex-col gap-1">
       <div className="pb-2">
-        <SectionHeader level="section" title="Memory" description="What NOVA is allowed to remember." />
+        <SectionHeader level="section" title="Memory" description="What ARRIYIA is allowed to remember." />
       </div>
       {TOGGLES.map(({ type, label, description }) => (
         <div key={type} className="flex items-center justify-between gap-4 border-b border-[var(--color-border)] py-3 last:border-b-0 last:pb-0">

@@ -1,4 +1,4 @@
-# Second Brain
+# ARRIYIA
 
 An AI-native personal intelligence platform — collect, understand, organize,
 and interact with your knowledge. Not a document viewer, not a chat wrapper:

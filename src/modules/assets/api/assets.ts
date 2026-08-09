@@ -113,7 +113,7 @@ export async function renameAsset(id: string, title: string): Promise<Asset> {
   return data
 }
 
-/** Multimodal Intelligence v1 — persists the "Analyze with NOVA" result. */
+/** Multimodal Intelligence v1 — persists the "Analyze with ARRIYIA" result. */
 export async function updateAssetMetadata(id: string, metadata: AssetAnalysis): Promise<Asset> {
   const { data, error } = await supabase.from('assets').update({ metadata }).eq('id', id).select().single()
   if (error) throw error

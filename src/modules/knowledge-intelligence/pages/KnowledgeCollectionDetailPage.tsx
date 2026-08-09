@@ -110,7 +110,7 @@ export function KnowledgeCollectionDetailPage() {
               variant="secondary"
               onClick={() => void createConversationWithQuery(`I'd like to talk about a collection called "${collection.name}".`)}
             >
-              Ask NOVA about this collection
+              Ask ARRIYIA about this collection
             </Button>
             {canDelete && (
               <Button variant="secondary" onClick={() => setConfirmingDelete(true)}>

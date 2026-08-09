@@ -15,7 +15,7 @@ export function TopicalKnowledgeGapsSection() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-[var(--color-ink-muted)]">NOVA's best guess at what topic you haven't covered yet — always worth double-checking.</p>
+        <p className="text-sm text-[var(--color-ink-muted)]">ARRIYIA's best guess at what topic you haven't covered yet — always worth double-checking.</p>
         <Button variant="secondary" loading={detect.isPending} onClick={() => detect.mutate()}>
           {detect.isPending ? 'Thinking…' : 'Suggest missing areas'}
         </Button>

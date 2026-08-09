@@ -71,12 +71,12 @@ function formatExpiryDate(expiresAt: string): string {
 /** Simple, single-file HTML template — no MJML/react-email dependency, matching "keep the template simple." */
 export function buildInvitationEmail(input: InvitationEmailInput): InvitationEmailContent {
   const { workspaceName, inviterName, role, expiresAt, acceptUrl } = input
-  const subject = `${inviterName} invited you to ${workspaceName} on NOVA`
+  const subject = `${inviterName} invited you to ${workspaceName} on ARRIYIA`
   const expiryLine = expiresAt ? `This invitation expires on ${formatExpiryDate(expiresAt)}.` : ''
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1a;">
-      <p style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin: 0 0 24px;">NOVA</p>
+      <p style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin: 0 0 24px;">ARRIYIA</p>
       <h1 style="font-size: 20px; margin: 0 0 16px;">You've been invited to ${escapeHtml(workspaceName)}</h1>
       <p style="font-size: 15px; line-height: 1.5; margin: 0 0 8px;">
         <strong>${escapeHtml(inviterName)}</strong> invited you to join <strong>${escapeHtml(workspaceName)}</strong> as
@@ -94,7 +94,7 @@ export function buildInvitationEmail(input: InvitationEmailInput): InvitationEma
   `.trim()
 
   const text = [
-    `${inviterName} invited you to join ${workspaceName} on NOVA as ${role}.`,
+    `${inviterName} invited you to join ${workspaceName} on ARRIYIA as ${role}.`,
     expiryLine,
     `Accept: ${acceptUrl}`,
   ]

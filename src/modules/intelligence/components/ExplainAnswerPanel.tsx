@@ -4,7 +4,7 @@ import type { ExplainSummary } from '@/modules/intelligence/explain/computeExpla
 export function ExplainAnswerPanel({ summary }: { summary: ExplainSummary }) {
   return (
     <details className="mt-1.5 text-xs text-[var(--color-ink-muted)]">
-      <summary className="cursor-pointer select-none hover:text-[var(--color-ink)]">Why did NOVA answer this?</summary>
+      <summary className="cursor-pointer select-none hover:text-[var(--color-ink)]">Why did ARRIYIA answer this?</summary>
       <ul className="mt-2 flex flex-col gap-1 rounded-control bg-[var(--surface-inset)] p-3 shadow-inset">
         <li>Documents used: {summary.documentsUsed}</li>
         <li>

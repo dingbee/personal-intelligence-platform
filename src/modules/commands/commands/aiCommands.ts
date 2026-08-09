@@ -21,7 +21,7 @@ export const askNovaCommand: Command = {
 export function buildAskNovaQueryCommand(query: string): Command {
   return {
     id: 'ai-ask-nova-query',
-    title: `Ask NOVA: "${query}"`,
+    title: `Ask ARRIYIA: "${query}"`,
     description: 'Grounded in your documents and knowledge graph',
     icon: '🧠',
     category: 'ai',

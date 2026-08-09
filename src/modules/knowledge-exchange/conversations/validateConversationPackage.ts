@@ -61,7 +61,7 @@ export function validateConversationPackage(input: unknown): PackageValidationRe
     issues.push(
       issue(
         'future_version',
-        `This package was exported by a newer version of NOVA (package version ${pkg.version}) that this app can't import yet.`,
+        `This package was exported by a newer version of ARRIYIA (package version ${pkg.version}) that this app can't import yet.`,
       ),
     )
   } else if (!isSupportedPackageVersion(pkg.version)) {

@@ -36,14 +36,14 @@ export function MemoryCard({ memory, allMemories }: { memory: AiMemory; allMemor
           />
           {usedByPrompt ? (
             <span
-              title="NOVA can draw on this memory when building a response — for conversation memories, only when it's relevant to what you're asking."
+              title="ARRIYIA can draw on this memory when building a response — for conversation memories, only when it's relevant to what you're asking."
               className="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--color-accent)]"
             >
-              Used by NOVA
+              Used by ARRIYIA
             </span>
           ) : (
             <span
-              title="This memory exists but falls outside the most-recent items NOVA includes for this category."
+              title="This memory exists but falls outside the most-recent items ARRIYIA includes for this category."
               className="rounded-full bg-[var(--surface-inset)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-ink-muted)]"
             >
               Not currently used
@@ -88,7 +88,7 @@ export function MemoryCard({ memory, allMemories }: { memory: AiMemory; allMemor
       <ConfirmDialog
         open={confirmingDelete}
         title="Remove this memory?"
-        description="Nova will no longer use this information when personalizing responses."
+        description="ARRIYIA will no longer use this information when personalizing responses."
         confirmLabel="Remove"
         onConfirm={() => {
           remove.mutate(memory.id)

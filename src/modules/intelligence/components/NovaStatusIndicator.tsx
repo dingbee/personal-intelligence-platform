@@ -14,7 +14,7 @@ export function NovaStatusIndicator({
   return (
     <FloatingCard className="flex flex-col gap-1 px-3 py-2 text-xs">
       <div className="flex items-center gap-2">
-        <span className="font-medium text-[var(--color-ink)]">NOVA</span>
+        <span className="font-medium text-[var(--color-ink)]">ARRIYIA</span>
         <StatusBadge label={status === 'thinking' ? 'Thinking…' : 'Ready'} variant={status === 'thinking' ? 'info' : 'success'} />
       </div>
       {understanding && (

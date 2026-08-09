@@ -25,7 +25,7 @@ export function ReaderInsightDrawer(props: {
   commandActions: CommandActions
 }) {
   return (
-    <InsightDrawerShell storageKey={STORAGE_KEY} label="NOVA Insights">
+    <InsightDrawerShell storageKey={STORAGE_KEY} label="ARRIYIA Insights">
       <ReaderIntelligencePanel {...props} />
     </InsightDrawerShell>
   )

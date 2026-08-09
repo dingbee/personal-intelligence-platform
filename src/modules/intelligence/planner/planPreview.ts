@@ -6,7 +6,7 @@ const CONTEXT_STEP_DESCRIPTIONS: Record<ContextRequirement, string> = {
   reading_progress: 'Check your reading progress',
   notes: 'Review your notes',
   flashcards: 'Check your flashcards',
-  memory: 'Consider what NOVA remembers about you',
+  memory: 'Consider what ARRIYIA remembers about you',
   knowledge_graph: 'Analyze your knowledge graph',
   recent_conversations: 'Compare previous conversations',
   workspace_overview: 'Review your workspace overview',

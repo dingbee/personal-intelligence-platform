@@ -2,7 +2,7 @@ import type { AiMemory, AiMemoryType } from '@/shared/types/database'
 import { rankMemories } from '@/modules/ai/memory/rankMemories'
 
 const SECTION_TITLES: Record<AiMemoryType, string> = {
-  explicit_profile: 'What NOVA knows about you',
+  explicit_profile: 'What ARRIYIA knows about you',
   learned_preference: 'Learned preferences',
   conversation_memory: 'From past conversations',
 }

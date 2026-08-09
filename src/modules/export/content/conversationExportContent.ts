@@ -1,7 +1,7 @@
 import type { Conversation, Message } from '@/shared/types/database'
 import type { ExportContent } from '@/modules/export/types'
 
-const ROLE_LABEL: Partial<Record<Message['role'], string>> = { user: 'You', assistant: 'NOVA' }
+const ROLE_LABEL: Partial<Record<Message['role'], string>> = { user: 'You', assistant: 'ARRIYIA' }
 
 /**
  * Pure — takes an already-fetched conversation and its already-fetched

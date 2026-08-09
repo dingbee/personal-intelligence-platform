@@ -30,7 +30,7 @@ export function filterMessagesForScope(input: FilterMessagesForScopeInput): Conv
   }
 }
 
-const ROLE_LABEL: Partial<Record<MessageRole, string>> = { user: 'You', assistant: 'NOVA' }
+const ROLE_LABEL: Partial<Record<MessageRole, string>> = { user: 'You', assistant: 'ARRIYIA' }
 
 /** Renders the chosen messages as note content — plain, readable markdown-ish text, not a literal chat-UI transcript. System messages (never shown in the chat UI itself) are skipped rather than labeled. */
 export function formatConversationAsNoteContent(messages: ConversationNoteMessage[]): string {

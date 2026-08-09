@@ -82,7 +82,7 @@ function AddMemoryForm({ onSubmit, onCancel }: { onSubmit: (type: AiMemoryType, 
         ))}
       </select>
       <div className="flex-1">
-        <InlineTextForm placeholder="What should NOVA remember?" onSubmit={(content) => onSubmit(type, content)} onCancel={onCancel} />
+        <InlineTextForm placeholder="What should ARRIYIA remember?" onSubmit={(content) => onSubmit(type, content)} onCancel={onCancel} />
       </div>
     </div>
   )
@@ -130,7 +130,7 @@ export function MemoryManagementPage() {
           <SectionHeader
             level="page"
             title="Memory & Personalization"
-            description="Control what NOVA remembers to personalize your experience."
+            description="Control what ARRIYIA remembers to personalize your experience."
           />
         </div>
       </div>
@@ -143,7 +143,7 @@ export function MemoryManagementPage() {
 
       <div>
         <div className="flex items-center justify-between gap-3">
-          <SectionHeader level="section" title="What NOVA currently knows" />
+          <SectionHeader level="section" title="What ARRIYIA currently knows" />
           {!addingMemory && (
             <Button variant="secondary" onClick={() => setAddingMemory(true)}>
               + Add
@@ -168,7 +168,7 @@ export function MemoryManagementPage() {
         ) : memories.length === 0 ? (
           <EmptyState
             title="Nothing here yet."
-            description="Fill in your profile above, add a memory manually, or just start chatting — NOVA learns preferences as you go."
+            description="Fill in your profile above, add a memory manually, or just start chatting — ARRIYIA learns preferences as you go."
           />
         ) : (
           <>

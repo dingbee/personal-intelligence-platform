@@ -245,7 +245,7 @@ export function NoteDetailPage() {
                 comment for why it's a separate action from
                 createConversationWithQuery, not just a different string). */}
             <Button variant="ghost" onClick={() => void createConversationWithNoteAnalysis(note.id, note.title)}>
-              Analyze with NOVA
+              Analyze with ARRIYIA
             </Button>
           </div>
           {canDelete && (

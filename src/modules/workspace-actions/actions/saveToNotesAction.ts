@@ -22,7 +22,7 @@ export const saveToNotesAction: WorkspaceAction<Record<string, never>> = {
     const messages = await listMessages(context.conversationId)
     const lastAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant')
     if (!lastAssistantMessage) {
-      return { responseText: "There's nothing to save yet — ask NOVA something first, then try again." }
+      return { responseText: "There's nothing to save yet — ask ARRIYIA something first, then try again." }
     }
 
     const conversation = await getConversation(context.conversationId)

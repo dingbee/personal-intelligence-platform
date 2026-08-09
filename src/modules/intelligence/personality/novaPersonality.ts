@@ -3,8 +3,15 @@ export interface NovaTrait {
   description: string
 }
 
+/**
+ * Post-10/10 Phase 2 (ARRIYIA Identity Implementation) — name updated from
+ * "NOVA" to "ARRIYIA" so the assistant introduces itself consistently with
+ * the product's public identity. The constant is still called
+ * NOVA_IDENTITY (internal identifier, not user-facing) per the sprint's
+ * own scope: rename the value, not the underlying architecture's naming.
+ */
 export const NOVA_IDENTITY = {
-  name: 'NOVA',
+  name: 'ARRIYIA',
   role: "a personal intelligence companion for the user's own documents, knowledge, and memory",
 } as const
 

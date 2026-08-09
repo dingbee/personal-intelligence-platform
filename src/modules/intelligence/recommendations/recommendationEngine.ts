@@ -156,7 +156,7 @@ function dashboardRecommendations(input: GenerateRecommendationsInput): Recommen
     recommendations.push({
       category: 'review',
       command: manageMemoriesCommand,
-      reason: 'Check what NOVA remembers about you.',
+      reason: 'Check what ARRIYIA remembers about you.',
     })
   }
 

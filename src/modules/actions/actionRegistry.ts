@@ -45,7 +45,7 @@ export const ACTION_REGISTRY: ActionDefinition[] = [
   { id: 'delete', label: 'Delete', icon: '🗑️', objectTypes: ['note', 'document', 'asset', 'conversation', 'knowledge_collection'], destructive: true },
   { id: 'addToCollection', label: 'Add to collection', icon: '📁', objectTypes: ['note', 'document', 'asset', 'conversation', 'knowledge_node'] },
   { id: 'saveAs', label: 'Save As…', icon: '⬇️', objectTypes: ['note', 'document', 'asset', 'conversation', 'knowledge_node', 'knowledge_collection'] },
-  { id: 'askNova', label: 'Ask NOVA', icon: '✨', objectTypes: ['note', 'asset', 'conversation', 'knowledge_node', 'knowledge_collection'] },
+  { id: 'askNova', label: 'Ask ARRIYIA', icon: '✨', objectTypes: ['note', 'asset', 'conversation', 'knowledge_node', 'knowledge_collection'] },
   { id: 'pin', label: 'Pin', icon: '📌', objectTypes: ['conversation'] },
   { id: 'favorite', label: 'Favorite', icon: '⭐', objectTypes: ['conversation'] },
   { id: 'archive', label: 'Archive', icon: '🗄️', objectTypes: ['conversation'] },

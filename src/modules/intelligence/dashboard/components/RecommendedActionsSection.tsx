@@ -38,7 +38,7 @@ export function RecommendedActionsSection({
   const visible = dismissedKeys ? recommendations.filter((r) => !dismissedKeys.has(recommendationItemKey(r))) : recommendations
 
   if (visible.length === 0) {
-    return <EmptyState title="No recommendations yet" description="Keep using NOVA and recommendations will appear here." />
+    return <EmptyState title="No recommendations yet" description="Keep using ARRIYIA and recommendations will appear here." />
   }
 
   return (

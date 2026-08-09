@@ -6,7 +6,7 @@ import { EmptyState } from '@/shared/components/ui/EmptyState'
 export function GrowthAnalyticsSection({ growth }: { growth: GrowthMetric[] }) {
   const hasAnyActivity = growth.some((metric) => metric.allTime > 0)
   if (!hasAnyActivity) {
-    return <EmptyState title="No activity yet" description="Add documents, take notes, and chat with NOVA to see growth here." />
+    return <EmptyState title="No activity yet" description="Add documents, take notes, and chat with ARRIYIA to see growth here." />
   }
 
   return (

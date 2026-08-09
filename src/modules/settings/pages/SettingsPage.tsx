@@ -47,13 +47,13 @@ export function SettingsPage() {
           </Link>
         </div>
         <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
-          Control what NOVA remembers to personalize your experience.
+          Control what ARRIYIA remembers to personalize your experience.
         </p>
       </SurfaceCard>
 
       {/* Provider identity/configuration is invisible to Free/Beta entirely
           (see the Beta / Admin / AI Governance Foundation discovery doc) —
-          NOVA picks a provider automatically. Pro/Enterprise (and
+          ARRIYIA picks a provider automatically. Pro/Enterprise (and
           founders) get a single link to a dedicated page with just the
           one provider-preference control; the richer control center
           (health/test/enable-disable) moved to the founder-only Admin
@@ -66,7 +66,7 @@ export function SettingsPage() {
               Open →
             </Link>
           </div>
-          <p className="mt-1 text-xs text-[var(--color-ink-muted)]">Choose which AI provider NOVA uses, available on your plan.</p>
+          <p className="mt-1 text-xs text-[var(--color-ink-muted)]">Choose which AI provider ARRIYIA uses, available on your plan.</p>
         </div>
       )}
 

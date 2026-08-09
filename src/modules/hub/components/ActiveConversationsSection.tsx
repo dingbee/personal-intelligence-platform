@@ -18,7 +18,7 @@ export function ActiveConversationsSection({ conversations }: { conversations: C
         ),
       }))}
       emptyTitle="No conversations yet"
-      emptyDescription="Chat with NOVA about this workspace's documents to see recent conversations here."
+      emptyDescription="Chat with ARRIYIA about this workspace's documents to see recent conversations here."
     />
   )
 }

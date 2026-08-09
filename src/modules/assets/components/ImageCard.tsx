@@ -61,7 +61,7 @@ export function ImageCard({ asset, onOpenLightbox }: { asset: Asset; onOpenLight
     { id: 'open', label: 'View', href: `/library/assets/${asset.id}` },
     {
       id: 'askNova',
-      label: 'Ask NOVA',
+      label: 'Ask ARRIYIA',
       onSelect: () => void createConversationWithQuery(`I just uploaded an image called "${asset.title}".`),
     },
     { label: saveAsNote.isPending ? 'Saving…' : 'Save as Notes', onSelect: () => saveAsNote.mutate() },

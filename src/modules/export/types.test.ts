@@ -3,13 +3,13 @@ import { EXPORT_FORMAT_OPTIONS, assertNoSensitiveContent, exportFilename } from 
 import type { ExportContent } from '@/modules/export/types'
 
 describe('EXPORT_FORMAT_OPTIONS', () => {
-  it('lists exactly the four documented formats, NOVA Package first', () => {
+  it('lists exactly the four documented formats, ARRIYIA Package first', () => {
     expect(EXPORT_FORMAT_OPTIONS.map((o) => o.format)).toEqual(['nova', 'pdf', 'markdown', 'docx'])
   })
 
   it('carries the exact labels/descriptions the discovery specified', () => {
     expect(EXPORT_FORMAT_OPTIONS).toEqual([
-      { format: 'nova', label: 'NOVA Package', description: 'Full backup and transfer', extension: 'nova' },
+      { format: 'nova', label: 'ARRIYIA Package', description: 'Full backup and transfer', extension: 'nova' },
       { format: 'pdf', label: 'PDF', description: 'Readable document', extension: 'pdf' },
       { format: 'markdown', label: 'Markdown', description: 'Editable text', extension: 'md' },
       { format: 'docx', label: 'Word', description: 'Editable document', extension: 'docx' },

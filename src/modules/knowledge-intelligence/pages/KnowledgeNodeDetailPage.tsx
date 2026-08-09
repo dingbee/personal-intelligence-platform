@@ -143,7 +143,7 @@ export function KnowledgeNodeDetailPage() {
             every other object type's own entry point uses
             (`createConversationWithQuery`, same as Assets/Notes). */}
         <Button variant="ghost" onClick={() => void createConversationWithQuery(`I'd like to talk about a concept called "${node.title}".`)}>
-          Ask NOVA about this concept
+          Ask ARRIYIA about this concept
         </Button>
         {generateBriefing.isSuccess && generateBriefing.data && (
           <Link to={`/notes/${generateBriefing.data.id}`} className="text-sm text-[var(--color-accent)] hover:underline">

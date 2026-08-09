@@ -70,7 +70,7 @@ export function DocumentCard({
   const actions: ResolvedAction[] = [
     { label: 'View details', href: `/library/${document.id}` },
     ...(isReady && readerMode ? [{ label: 'Read Document', href: `/library/${document.id}/read` }] : []),
-    ...(isReady ? [{ label: 'Chat with NOVA', href: `/chat?documentId=${document.id}` }] : []),
+    ...(isReady ? [{ label: 'Chat with ARRIYIA', href: `/chat?documentId=${document.id}` }] : []),
     ...(isReady && readerMode ? [{ label: 'Summarize', href: `/library/${document.id}/read?panel=summary` }] : []),
     ...(isReady ? [{ label: saveAsNote.isPending ? 'Saving…' : 'Save as Notes', onSelect: () => saveAsNote.mutate() }] : []),
     ...(canEdit ? [{ id: 'rename' as const, label: 'Rename', onSelect: () => setRenaming(true) }] : []),

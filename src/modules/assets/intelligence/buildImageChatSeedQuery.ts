@@ -13,7 +13,7 @@ import type { AssetAnalysis } from '@/shared/types/database'
  */
 export function buildImageChatSeedQuery(title: string, metadata: AssetAnalysis | null): string {
   if (!metadata) {
-    return `I just uploaded an image called "${title}" — NOVA hasn't analyzed it yet.`
+    return `I just uploaded an image called "${title}" — ARRIYIA hasn't analyzed it yet.`
   }
 
   const parts = [`I'd like to talk about an image called "${title}". Here's what you found when you looked at it: ${metadata.description}`]

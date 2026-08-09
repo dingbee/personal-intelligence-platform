@@ -64,13 +64,13 @@ export const ANSWER_LENGTH_LABELS: Record<AnswerLength, string> = { brief: 'Brie
 
 /** UX-13.6 — the one-line "why this matters" shown under each Profile field, so filling it in feels like a deliberate tradeoff rather than a form to get through. */
 export const PROFILE_FIELD_WHY: Record<ProfileFieldKey, string> = {
-  occupation: 'Helps NOVA pitch suggestions at the right level of detail and responsibility.',
-  industry: "Lets NOVA use your industry's terminology instead of generic language.",
-  expertise: "Skips over the basics you already know; NOVA won't over-explain your own field.",
+  occupation: 'Helps ARRIYIA pitch suggestions at the right level of detail and responsibility.',
+  industry: "Lets ARRIYIA use your industry's terminology instead of generic language.",
+  expertise: "Skips over the basics you already know; ARRIYIA won't over-explain your own field.",
   goals: 'Steers recommendations toward what you actually want to achieve.',
   communication_style: 'Shapes tone — professional and formal, or casual and direct.',
-  answer_length: 'Controls how much NOVA writes before getting to the point.',
-  decision_style: 'Changes how NOVA frames choices — options and tradeoffs, or a clear recommendation.',
+  answer_length: 'Controls how much ARRIYIA writes before getting to the point.',
+  decision_style: 'Changes how ARRIYIA frames choices — options and tradeoffs, or a clear recommendation.',
 }
 
 export interface ProfileCompletion {

@@ -1,12 +1,12 @@
 /**
- * Single source of truth for product branding (Phase UX-3.5). Not a
- * rename yet — productName stays "Second Brain" — but every place that
- * used to hardcode that string now reads from here, so swapping to
- * NOVA PIP later is a one-location change instead of a grep-and-replace.
+ * Single source of truth for product branding (Phase UX-3.5). Post-10/10
+ * Phase 2 (ARRIYIA Identity Implementation) — productName is now "ARRIYIA";
+ * every place that reads from here instead of hardcoding the string picked
+ * up the new identity automatically. See docs/arriyia-rebranding-forensic-audit.md.
  */
 export const appConfig = {
-  productName: 'Second Brain',
-  productSubtitle: 'Personal Knowledge Workspace',
+  productName: 'ARRIYIA',
+  productSubtitle: 'Personal Intelligence Platform',
   logo: null as string | null,
   tagline: "Let's continue building your knowledge.",
 }

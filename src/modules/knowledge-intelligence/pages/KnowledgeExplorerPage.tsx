@@ -113,7 +113,7 @@ export function KnowledgeExplorerPage() {
 
       {/* Knowledge Intelligence Layer v1, Feature 2 — "does this connect to something you already know?" surfaced automatically, not just via the Reconcile button below. */}
       {visibleAutoConnections.length > 0 && (
-        <InsightPanel title="New connections NOVA found" isLoading={false} isEmpty={false} emptyMessage="">
+        <InsightPanel title="New connections ARRIYIA found" isLoading={false} isEmpty={false} emptyMessage="">
           <ul className="flex flex-col gap-2">
             {visibleAutoConnections.map((connection) => (
               <li key={connection.edgeId} className="flex items-center justify-between gap-2 text-sm">

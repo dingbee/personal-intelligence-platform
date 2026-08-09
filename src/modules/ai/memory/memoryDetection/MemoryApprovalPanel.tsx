@@ -38,7 +38,7 @@ function MemoryCandidateCard({
       <ConfirmDialog
         open={confirming}
         title="Save this memory?"
-        description={`NOVA will remember: "${candidate.content}" and use it to personalize future responses.`}
+        description={`ARRIYIA will remember: "${candidate.content}" and use it to personalize future responses.`}
         confirmLabel="Remember"
         destructive={false}
         onConfirm={() => {
@@ -73,7 +73,7 @@ export function MemoryApprovalPanel({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-[var(--color-ink-muted)]">
-        NOVA noticed something that may help personalize future responses.
+        ARRIYIA noticed something that may help personalize future responses.
       </p>
       <div className="flex flex-col gap-3">
         {candidates.map((candidate, index) => (

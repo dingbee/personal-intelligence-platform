@@ -39,7 +39,7 @@ describe('formatMemoriesForPrompt', () => {
       }),
     ]
     expect(formatMemoriesForPrompt(memories)).toBe(
-      '## What NOVA knows about you\n- Runs a boutique hotel in Bali\n- Prefers metric units',
+      '## What ARRIYIA knows about you\n- Runs a boutique hotel in Bali\n- Prefers metric units',
     )
   })
 
@@ -50,7 +50,7 @@ describe('formatMemoriesForPrompt', () => {
       makeMemory({ memory_type: 'explicit_profile', content: 'Runs a boutique hotel' }),
     ]
     const result = formatMemoriesForPrompt(memories)
-    const profileIndex = result.indexOf('What NOVA knows about you')
+    const profileIndex = result.indexOf('What ARRIYIA knows about you')
     const preferenceIndex = result.indexOf('Learned preferences')
     const conversationIndex = result.indexOf('From past conversations')
     expect(profileIndex).toBeGreaterThanOrEqual(0)
@@ -61,7 +61,7 @@ describe('formatMemoriesForPrompt', () => {
   it('omits a section entirely when there are no memories of that type', () => {
     const memories = [makeMemory({ memory_type: 'learned_preference', content: 'Likes concise answers' })]
     const result = formatMemoriesForPrompt(memories)
-    expect(result).not.toContain('What NOVA knows about you')
+    expect(result).not.toContain('What ARRIYIA knows about you')
     expect(result).not.toContain('From past conversations')
     expect(result).toContain('Learned preferences')
   })

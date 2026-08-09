@@ -164,7 +164,7 @@ describe('sendMessage', () => {
     await sendMessage(baseParams())
     const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
     expect(lastCall?.system).toContain('Context:') // the mocked rag-chat template itself, untouched
-    expect(lastCall?.system).toContain('You are NOVA')
+    expect(lastCall?.system).toContain('You are ARRIYIA')
   })
 
   it('returns a contextTrace alongside the message', async () => {

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { NOVA_AVOIDANCES, NOVA_TRAITS, buildPersonalityPrompt } from '@/modules/intelligence/personality/novaPersonality'
 
 describe('buildPersonalityPrompt', () => {
-  it('names NOVA and states its role', () => {
-    expect(buildPersonalityPrompt()).toContain('You are NOVA')
+  it('names ARRIYIA and states its role', () => {
+    expect(buildPersonalityPrompt()).toContain('You are ARRIYIA')
   })
 
   it('includes every defined trait', () => {

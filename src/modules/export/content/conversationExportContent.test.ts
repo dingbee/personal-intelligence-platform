@@ -44,7 +44,7 @@ describe('buildConversationExportContent', () => {
 
     expect(content.title).toBe('Summarizing the Q1 report')
     expect(content.sections).toHaveLength(1)
-    expect(content.sections[0]!.body).toEqual(['You: Summarize this document', 'NOVA: Here is the summary...'])
+    expect(content.sections[0]!.body).toEqual(['You: Summarize this document', 'ARRIYIA: Here is the summary...'])
   })
 
   it('summarizes the message count into the subtitle', () => {

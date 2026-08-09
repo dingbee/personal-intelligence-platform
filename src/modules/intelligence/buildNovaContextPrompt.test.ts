@@ -14,7 +14,7 @@ const EMPTY: NovaContext = {
 
 describe('buildNovaContextPrompt', () => {
   it('always includes the personality block', () => {
-    expect(buildNovaContextPrompt(EMPTY, 'What is this?')).toContain('You are NOVA')
+    expect(buildNovaContextPrompt(EMPTY, 'What is this?')).toContain('You are ARRIYIA')
   })
 
   it('always includes response-style guidance', () => {

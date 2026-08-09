@@ -75,7 +75,7 @@ export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
   const hasSuggestions = props.suggestions.length > 0 || props.actionCommands.length > 0
 
   return (
-    <InsightDrawerShell storageKey={STORAGE_KEY} label="NOVA Intelligence">
+    <InsightDrawerShell storageKey={STORAGE_KEY} label="ARRIYIA Intelligence">
       {/* UX-13.6 Phase 1 — matches the redesigned section order: Context
           Used, Evidence, Reasoning, Insights, Suggestions, Timeline.
           "Related knowledge" (UX-13.5D) is split into its own Insights and
