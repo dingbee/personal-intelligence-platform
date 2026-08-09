@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createElement, type ReactNode } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -132,6 +132,10 @@ describe('AuthContext.sendPasswordReset', () => {
     queryClient = new QueryClient()
   })
 
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it('requests the /reset-password route on the current origin as the redirect target', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -139,6 +143,17 @@ describe('AuthContext.sendPasswordReset', () => {
 
     expect(resetPasswordForEmailMock).toHaveBeenCalledWith('user@example.com', {
       redirectTo: `${window.location.origin}/reset-password`,
+    })
+  })
+
+  it('prefers VITE_SITE_URL over window.location.origin when configured, so the redirect stays on the canonical ARRIYIA domain even if this page was served from elsewhere', async () => {
+    vi.stubEnv('VITE_SITE_URL', 'https://app.nolmark.co/')
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    await result.current.sendPasswordReset('user@example.com')
+
+    expect(resetPasswordForEmailMock).toHaveBeenCalledWith('user@example.com', {
+      redirectTo: 'https://app.nolmark.co/reset-password',
     })
   })
 })

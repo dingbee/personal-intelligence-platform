@@ -4,6 +4,19 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import { AuthContext, type AuthContextValue } from '@/modules/auth/context'
 
+// Phase 5.2 — mirrors the edge functions' existing SITE_URL-with-origin-
+// fallback pattern (supabase/functions/send-*-invitation) on the client
+// side. window.location.origin alone breaks if the app is ever reachable
+// from more than one domain (e.g. a corporate site sharing the same
+// deployment) — this pins the reset-password redirect to the canonical
+// ARRIYIA origin when VITE_SITE_URL is configured, without hardcoding a
+// domain into the logic itself. Read per-call (not hoisted to a module
+// constant) so it stays correct if the env value is ever unavailable at
+// module-evaluation time.
+function canonicalSiteUrl(): string {
+  return import.meta.env.VITE_SITE_URL?.replace(/\/$/, '') || window.location.origin
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -72,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async sendPasswordReset(email) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${canonicalSiteUrl()}/reset-password`,
         })
         return { error: error?.message ?? null }
       },

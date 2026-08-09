@@ -8,16 +8,20 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 import { appConfig } from '@/app/appConfig'
 
 /**
- * Post-10/10 password-recovery hotfix. Supabase's client parses the
- * recovery link's token out of the URL on load (default `detectSessionInUrl`
- * behavior) and establishes a session before this component's first
- * meaningful render — `loading` covers that window. A missing session once
- * loading resolves means the link was invalid, expired, or already used;
- * that's shown as a recoverable error rather than a broken/empty form,
- * since calling `updateUser` with no session would just fail anyway.
+ * Post-10/10 password-recovery hotfix, tightened in Phase 5.2. Supabase's
+ * client parses the recovery link's token out of the URL on load (default
+ * `detectSessionInUrl` behavior) and establishes a session before this
+ * component's first meaningful render, firing a `PASSWORD_RECOVERY` event —
+ * `loading` covers that window. The form gates on `passwordRecovery`
+ * specifically, not just a truthy `session`: an already-logged-in user who
+ * manually navigates here has a session too, but arrived outside a genuine
+ * recovery flow, so `updateUser` shouldn't be offered on their behalf. A
+ * missing recovery session once loading resolves means the link was
+ * invalid, expired, already used, or never a recovery link at all — shown
+ * as a recoverable error rather than a broken/empty form.
  */
 export function ResetPasswordPage() {
-  const { session, loading, updatePassword } = useAuth()
+  const { passwordRecovery, loading, updatePassword } = useAuth()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -64,7 +68,7 @@ export function ResetPasswordPage() {
     )
   }
 
-  if (!session) {
+  if (!passwordRecovery) {
     return (
       <AuthCard title="This link is no longer valid">
         <p className="text-sm text-[var(--color-ink-muted)]">
