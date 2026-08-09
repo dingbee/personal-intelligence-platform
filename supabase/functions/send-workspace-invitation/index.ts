@@ -249,7 +249,17 @@ Deno.serve(async (req) => {
   })
 
   if (!resendResponse.ok) {
-    return errorResponse(`Email provider error: ${resendResponse.status} ${await resendResponse.text()}`, 502)
+    const resendBody = await resendResponse.text()
+    // Post-10/10 Phase 5.1 (Auth & Transactional Email Reliability) — this was
+    // previously only ever visible in the HTTP response to the caller, with
+    // no server-side trail for later diagnosis if the frontend caller's own
+    // error handling didn't surface it. workspaceId/kind/id are safe to log
+    // (not secrets); the Resend response body/key never is, and isn't
+    // logged here.
+    console.error(
+      `send-workspace-invitation: Resend rejected the send for ${kind} ${id} in workspace ${workspaceId} (${resendResponse.status})`,
+    )
+    return errorResponse(`Email provider error: ${resendResponse.status} ${resendBody}`, 502)
   }
 
   return new Response(JSON.stringify({ sent: true }), {
