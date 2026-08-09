@@ -7,6 +7,7 @@ import { AuthContext, type AuthContextValue } from '@/modules/auth/context'
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [passwordRecovery, setPasswordRecovery] = useState(false)
   const queryClient = useQueryClient()
 
   useEffect(() => {
@@ -15,9 +16,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession)
       setLoading(false)
+      // Post-10/10 password-recovery hotfix — Supabase's client parses the
+      // recovery link's token out of the URL on load and fires this event;
+      // it's the one reliable signal that the current session came from a
+      // reset-password email rather than a normal login.
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
+      else if (event === 'SIGNED_OUT') setPasswordRecovery(false)
     })
 
     return () => subscription.subscription.unsubscribe()
@@ -28,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       user: session?.user ?? null,
       loading,
+      passwordRecovery,
       async signUpWithPassword(email, password) {
   const { data: invited, error: inviteError } = await supabase.rpc(
     'is_beta_invited',
@@ -70,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async updatePassword(password) {
         const { error } = await supabase.auth.updateUser({ password })
+        if (!error) setPasswordRecovery(false)
         return { error: error?.message ?? null }
       },
       async signOut() {
@@ -82,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient.clear()
       },
     }),
-    [session, loading, queryClient],
+    [session, loading, passwordRecovery, queryClient],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
