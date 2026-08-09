@@ -10,6 +10,18 @@ A living engineering inventory — not user documentation. First drafted as part
 | ✅ Accepted | Visible in the running application **and verified by the user** |
 | 🔲 Backlog | Not implemented, or intentionally deferred |
 
+**Sprint 9.5/10 addendum (Backlog, Technical Debt & Release Scope Review)** — the symbols above answer "does the code exist / has a human seen it work," but not "is this row still open work, or a conscious decision." As of Sprint 9.5/10, every 🔲 row in this file falls into exactly one of the following, resolved in `docs/arriyia-personal-release-backlog.md` (the authoritative classification — consult it, not this legend, for a row's actual disposition):
+
+| Disposition | Meaning |
+|---|---|
+| Accepted limitation | A conscious trade-off for v1, documented with reasoning, not scheduled |
+| Deferred (P2) | Real, unresolved, explicitly not urgent — see the backlog's P2 table |
+| Strategic — Business/Enterprise | Belongs to a future ARRIYIA tier, not Personal v1 — see `docs/arriyia-product-roadmap.md` |
+| Future / Exploratory | A real idea with no current requirement forcing it |
+| Obsolete | No longer has strategic value; safe to ignore or remove |
+
+No 🔲 row in this document should be read as "forgotten" — every one has a home in the backlog above.
+
 Corrected by the Reliability & Truth Audit: this legend previously said ⚙️ meant "merged to `main`," which was never actually true of any current ⚙️ row — the Branch column has always named the feature branch. See `docs/reliability-truth-audit.md` for the full audit; its central finding is that `main` is 11 commits behind this branch and none of the last five feature efforts have reached production, which is why every ⚙️ row below is also, functionally, ❌ Blocked on a deploy rather than on further code work.
 
 **Acceptance pass completed.** The user walked through every ⚙️ Implemented row below against the deployed application and confirmed it working — all such rows are now ✅ Accepted. 🔲 Backlog rows are unaffected (nothing to accept yet). If anything regresses later, flip its row back to ⚙️ and note the issue rather than silently re-marking it ✅.
@@ -460,3 +472,16 @@ Full discovery + implementation record in `docs/pip-performance-v1-discovery.md`
 | Fix — `ai_memory` had zero indexes beyond its primary key since the table's creation; every query has been a full table scan. Additive migration `0040_performance_indexes.sql` adds `ai_memory (user_id, is_active, updated_at desc)` and `messages (conversation_id, created_at)` (the existing single-column index served the filter but not the sort) | ⚙️ | main | ❌ | ✅ (query-plan verification against real data) | — |
 | Discovery confirmation, not a code change: per-source retrieval result caps, Universal Search's concurrent provider execution and batched evidence-count query, the ingestion pipeline's rate-limit-safe sequential embedding batching, and pgvector/table index coverage everywhere else were all already correct — re-verified by reading and re-testing the actual code, not assumed | 🔲 | — | — | — | ✅ (re-confirmed via existing, unchanged test suites for each area) |
 | Explicitly deferred, with reasoning (see the discovery doc): no route-level code splitting (single ~1.27MB main bundle, no measured evidence of harm); `listDocuments`/Library page fetch unbounded with no pagination UI to consume a query-level limit safely; no trigram index for document/note content lexical search (already scoped by indexed columns first, no evidence of current cost); live load-testing against a genuinely large knowledge base — this environment can't generate or measure one | 🔲 | — | — | — | — |
+
+## PIP Sprint 9.5/10 — Backlog, Technical Debt & Release Scope Review
+
+Not a feature sprint — a full-repository audit reconciling every deferred item across Sprints 1-9 against current reality, producing the authoritative pre-freeze release definition. Full record in `docs/pip-release-scope-v1.md` (what v1 is and isn't), `docs/arriyia-personal-release-backlog.md` (the itemized P0/P1/P2/Strategic/Obsolete backlog), and `docs/arriyia-product-roadmap.md` (Personal → Business → Enterprise strategic direction, not implemented).
+
+| Item | Status | Branch | Accepted | Manual | Tests |
+|---|---|---|---|---|---|
+| Audit confirmation: no P0 (release-blocking) issue found — nine prior sprints already closed every defect at that severity found along the way; this audit's own fresh pass (backlog-marker search, every prior "known limitations" section reconciled, end-to-end journey retrace) found nothing new at that severity | 🔲 | — | — | — | — |
+| Finding — full account deletion does not exist (individual content is deletable; a single "delete everything" action is not). Classified P1, deliberately **not** autonomously built this sprint per Phase 7's own criteria: two reasonable designs exist (hard vs. soft delete), it touches every user-owned table plus Storage, and getting it wrong is worse than deferring it. Recorded as the top pre-general-availability priority | 🔲 | — | — | — | — |
+| Finding — two dead-code items found and classified Obsolete: `semanticChunker` (registered, never selected by the ingestion pipeline, throws if ever invoked) and `PlaceholderEmbeddingProvider` (implements the interface, zero production call sites). Neither poses current risk; both recommended for removal in a future cleanup, not this sprint | 🔲 | — | — | — | — |
+| Finding — asset-import provenance documentation was stale: `assetPackageTypes.ts` claims assets have no JSONB metadata column, but `assets.metadata` has existed since the Multimodal Intelligence v1 migration. The underlying capability (an `importedFrom` block, present for Notes/Knowledge Nodes) was still never built for Assets — corrected in the backlog as a documentation fix plus a genuine, low-severity P2 gap | 🔲 | — | — | — | — |
+| Product-boundary audit: workspace collaboration/sharing is real, shipped, tested functionality that structurally belongs to ARRIYIA Business more than Personal — explicitly not removed (it works, it's tested), but flagged in `docs/arriyia-product-roadmap.md` as the one place Personal already carries organizational-shaped scope | 🔲 | — | — | — | — |
+| Release scope decision: nothing must happen before Sprint 10. Every discovered item has an explicit destination (P2/Business/Enterprise/Future/Obsolete) in the new backlog documents; none require resolution to proceed | 🔲 | — | — | — | — |
