@@ -1,5 +1,6 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { ProtectedRoute } from '@/modules/auth/ProtectedRoute'
+import { RouteErrorBoundary } from '@/shared/components/errors/RouteErrorBoundary'
 import { AppShell } from '@/shared/components/layout/AppShell'
 import { LoginPage } from '@/modules/auth/pages/LoginPage'
 import { SignUpPage } from '@/modules/auth/pages/SignUpPage'
@@ -39,107 +40,118 @@ import { AdminAiGovernancePage } from '@/modules/admin/pages/AdminAiGovernancePa
 import { RequireAdmin } from '@/modules/admin/RequireAdmin'
 
 export const router = createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },
-  { path: '/signup', element: <SignUpPage /> },
-  { path: '/forgot-password', element: <ForgotPasswordPage /> },
-  { path: '/reset-password', element: <ResetPasswordPage /> },
+  // Post-10/10 Phase 5 (Application Hardening & App Experience) — a single
+  // pathless root layout route wrapping every existing route unchanged, so
+  // one shared errorElement replaces React Router's unbranded default error
+  // page for any render error anywhere in the tree. Paths/behavior below
+  // are otherwise identical to before this wrapper was added.
   {
-    path: '/library/:documentId/read',
-    element: (
-      <ProtectedRoute>
-        <ReaderPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/library/assets/:assetId',
-    element: (
-      <ProtectedRoute>
-        <ImageReaderPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/',
-    element: (
-      <ProtectedRoute>
-        <AppShell />
-      </ProtectedRoute>
-    ),
+    element: <Outlet />,
+    errorElement: <RouteErrorBoundary />,
     children: [
-      { index: true, element: <HomeRedirect /> },
-      { path: 'dashboard', element: <ExecutiveDashboardPage /> },
-      { path: 'evolution', element: <WorkspaceEvolutionPage /> },
-      { path: 'hub', element: <WorkspaceIntelligenceHubPage /> },
-      { path: 'collaboration', element: <WorkspaceCollaborationPage /> },
-      { path: 'library', element: <LibraryPage /> },
-      { path: 'library/:documentId', element: <DocumentDetailPage /> },
-      { path: 'notes', element: <NotesPage /> },
-      { path: 'notes/:noteId', element: <NoteDetailPage /> },
-      { path: 'knowledge', element: <KnowledgePage /> },
-      { path: 'knowledge/graph', element: <KnowledgeGraphPage /> },
-      { path: 'knowledge/explorer', element: <KnowledgeExplorerPage /> },
-      { path: 'knowledge/nodes/:nodeId', element: <KnowledgeNodeDetailPage /> },
-      { path: 'knowledge/collections', element: <KnowledgeCollectionsPage /> },
-      { path: 'knowledge/collections/:collectionId', element: <KnowledgeCollectionDetailPage /> },
-      { path: 'knowledge/export', element: <ExportCenterPage /> },
-      { path: 'search', element: <SearchPage /> },
-      { path: 'chat', element: <ChatPage /> },
-      { path: 'settings', element: <SettingsPage /> },
-      { path: 'settings/advanced', element: <AdvancedSettingsPage /> },
-      { path: 'settings/workspaces', element: <WorkspaceManagementPage /> },
-      { path: 'settings/workspaces/:workspaceId/members', element: <WorkspaceMembersPage /> },
-      { path: 'settings/memory', element: <MemoryManagementPage /> },
+      { path: '/login', element: <LoginPage /> },
+      { path: '/signup', element: <SignUpPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/reset-password', element: <ResetPasswordPage /> },
       {
-        path: 'settings/ai-health',
+        path: '/library/:documentId/read',
         element: (
-          <RequireAdmin>
-            <AiHealthPage />
-          </RequireAdmin>
+          <ProtectedRoute>
+            <ReaderPage />
+          </ProtectedRoute>
         ),
       },
       {
-        path: 'settings/ai-health/provider/:providerId',
+        path: '/library/assets/:assetId',
         element: (
-          <RequireAdmin>
-            <ProviderHealthDetailPage />
-          </RequireAdmin>
+          <ProtectedRoute>
+            <ImageReaderPage />
+          </ProtectedRoute>
         ),
       },
       {
-        path: 'admin',
+        path: '/',
         element: (
-          <RequireAdmin>
-            <AdminDashboardPage />
-          </RequireAdmin>
+          <ProtectedRoute>
+            <AppShell />
+          </ProtectedRoute>
         ),
+        children: [
+          { index: true, element: <HomeRedirect /> },
+          { path: 'dashboard', element: <ExecutiveDashboardPage /> },
+          { path: 'evolution', element: <WorkspaceEvolutionPage /> },
+          { path: 'hub', element: <WorkspaceIntelligenceHubPage /> },
+          { path: 'collaboration', element: <WorkspaceCollaborationPage /> },
+          { path: 'library', element: <LibraryPage /> },
+          { path: 'library/:documentId', element: <DocumentDetailPage /> },
+          { path: 'notes', element: <NotesPage /> },
+          { path: 'notes/:noteId', element: <NoteDetailPage /> },
+          { path: 'knowledge', element: <KnowledgePage /> },
+          { path: 'knowledge/graph', element: <KnowledgeGraphPage /> },
+          { path: 'knowledge/explorer', element: <KnowledgeExplorerPage /> },
+          { path: 'knowledge/nodes/:nodeId', element: <KnowledgeNodeDetailPage /> },
+          { path: 'knowledge/collections', element: <KnowledgeCollectionsPage /> },
+          { path: 'knowledge/collections/:collectionId', element: <KnowledgeCollectionDetailPage /> },
+          { path: 'knowledge/export', element: <ExportCenterPage /> },
+          { path: 'search', element: <SearchPage /> },
+          { path: 'chat', element: <ChatPage /> },
+          { path: 'settings', element: <SettingsPage /> },
+          { path: 'settings/advanced', element: <AdvancedSettingsPage /> },
+          { path: 'settings/workspaces', element: <WorkspaceManagementPage /> },
+          { path: 'settings/workspaces/:workspaceId/members', element: <WorkspaceMembersPage /> },
+          { path: 'settings/memory', element: <MemoryManagementPage /> },
+          {
+            path: 'settings/ai-health',
+            element: (
+              <RequireAdmin>
+                <AiHealthPage />
+              </RequireAdmin>
+            ),
+          },
+          {
+            path: 'settings/ai-health/provider/:providerId',
+            element: (
+              <RequireAdmin>
+                <ProviderHealthDetailPage />
+              </RequireAdmin>
+            ),
+          },
+          {
+            path: 'admin',
+            element: (
+              <RequireAdmin>
+                <AdminDashboardPage />
+              </RequireAdmin>
+            ),
+          },
+          {
+            path: 'admin/users',
+            element: (
+              <RequireAdmin>
+                <AdminUsersPage />
+              </RequireAdmin>
+            ),
+          },
+          {
+            path: 'admin/plans',
+            element: (
+              <RequireAdmin>
+                <AdminPlansPage />
+              </RequireAdmin>
+            ),
+          },
+          {
+            path: 'admin/ai',
+            element: (
+              <RequireAdmin>
+                <AdminAiGovernancePage />
+              </RequireAdmin>
+            ),
+          },
+          { path: 'admin/beta', element: <Navigate to="/admin" replace /> },
+        ],
       },
-      {
-        path: 'admin/users',
-        element: (
-          <RequireAdmin>
-            <AdminUsersPage />
-          </RequireAdmin>
-        ),
-      },
-      {
-        path: 'admin/plans',
-        element: (
-          <RequireAdmin>
-            <AdminPlansPage />
-          </RequireAdmin>
-        ),
-      },
-      {
-        path: 'admin/ai',
-        element: (
-          <RequireAdmin>
-            <AdminAiGovernancePage />
-          </RequireAdmin>
-        ),
-      },
-      { path: 'admin/beta', element: <Navigate to="/admin" replace /> },
+      { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
-  { path: '*', element: <Navigate to="/" replace /> },
 ])

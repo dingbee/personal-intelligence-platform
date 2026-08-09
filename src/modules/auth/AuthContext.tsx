@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import { AuthContext, type AuthContextValue } from '@/modules/auth/context'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -72,9 +74,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signOut() {
         await supabase.auth.signOut()
+        // Post-10/10 Phase 5 (Application Hardening & App Experience) —
+        // query keys (['notes'], ['conversations'], etc.) aren't scoped by
+        // user id, so without this a second user signing in on the same
+        // device could transiently see the previous user's cached data
+        // before background refetch overwrote it.
+        queryClient.clear()
       },
     }),
-    [session, loading],
+    [session, loading, queryClient],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

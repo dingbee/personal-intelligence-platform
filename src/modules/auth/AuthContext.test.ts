@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createElement, type ReactNode } from 'react'
 import { renderHook } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/modules/auth/AuthContext'
 import { useAuth } from '@/modules/auth/useAuth'
 
@@ -20,24 +21,30 @@ const { rpcMock, signUpMock, getSessionMock, onAuthStateChangeMock } = vi.hoiste
   onAuthStateChangeMock: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
 }))
 
+const { signOutMock } = vi.hoisted(() => ({ signOutMock: vi.fn(async () => ({ error: null })) }))
+
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
     auth: {
       getSession: getSessionMock,
       onAuthStateChange: onAuthStateChangeMock,
       signUp: signUpMock,
+      signOut: signOutMock,
     },
     rpc: rpcMock,
   },
 }))
 
+let queryClient: QueryClient
+
 function wrapper({ children }: { children: ReactNode }) {
-  return createElement(AuthProvider, null, children)
+  return createElement(QueryClientProvider, { client: queryClient }, createElement(AuthProvider, null, children))
 }
 
 describe('AuthContext.signUpWithPassword', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    queryClient = new QueryClient()
   })
 
 
@@ -71,5 +78,28 @@ describe('AuthContext.signUpWithPassword', () => {
 
     expect(outcome).toEqual({ error: 'network error' })
     expect(signUpMock).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Post-10/10 Phase 5 (Application Hardening & App Experience) — on a shared
+ * device, query keys like ['notes']/['conversations'] aren't scoped by user
+ * id, so a stale cache from the previous session could transiently render
+ * for whoever signs in next unless signOut clears it.
+ */
+describe('AuthContext.signOut', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    queryClient = new QueryClient()
+  })
+
+  it('clears the query cache after Supabase sign-out', async () => {
+    queryClient.setQueryData(['notes'], [{ id: 'stale-note' }])
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    await result.current.signOut()
+
+    expect(signOutMock).toHaveBeenCalledTimes(1)
+    expect(queryClient.getQueryData(['notes'])).toBeUndefined()
   })
 })
