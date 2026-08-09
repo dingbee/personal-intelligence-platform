@@ -2,36 +2,36 @@
 
 ## Purpose
 
-Chat is how you talk to NOVA directly — and unlike a generic AI chatbot, every answer is grounded in your own library, notes, conversation history, and (where relevant) the knowledge graph and your personal memory, rather than the model's general training.
+Chat is how you talk to ARRIYIA directly — and unlike a generic AI chatbot, every answer is grounded in your own library, notes, conversation history, and (where relevant) the knowledge graph and your personal memory, rather than the model's general training.
 
 ## Feature Overview
 
 - **Multi-conversation Chat page** — a full conversation list (pin, favorite, archive, rename, duplicate) alongside the active thread
 - **Provider selection** — choose which AI provider (Anthropic, OpenAI, Google) powers a conversation, switchable per-conversation, not just globally
 - **Provider availability detection** — the UI hides or flags providers that aren't currently configured/reachable, rather than letting you pick one that will fail
-- **Provider fallback chain** — if your preferred provider fails mid-request, NOVA automatically retries with the next candidate in your configured chain, rather than just erroring out
+- **Provider fallback chain** — if your preferred provider fails mid-request, ARRIYIA automatically retries with the next candidate in your configured chain, rather than just erroring out
 - **RAG retrieval grounding** — every chat response is grounded in retrieved chunks from your actual documents, with the retrieved context visible via the Insight Drawer
 - **Reader Chat Panel** — the same chat capability, docked inside a document's Reader view, scoped to that document
-- **NOVA Insight Drawer** — a collapsible panel showing what context was used to answer (references, evidence level, reasoning trace), minimizable/maximizable so it doesn't have to dominate the screen
+- **ARRIYIA Insight Drawer** — a collapsible panel showing what context was used to answer (references, evidence level, reasoning trace), minimizable/maximizable so it doesn't have to dominate the screen
 - **AI Health Dashboard** — observability into every AI request: latency, success/failure, which provider actually served each request, and fallback events
-- **Memory** — NOVA remembers explicit facts you've told it, preferences it's learned, and relevant context from past conversations, and surfaces where that memory is actually influencing a given answer
+- **Memory** — ARRIYIA remembers explicit facts you've told it, preferences it's learned, and relevant context from past conversations, and surfaces where that memory is actually influencing a given answer
 - **Natural Language Knowledge Commands** — certain phrasings typed into Chat trigger a concrete action instead of a conversational answer; v1 recognizes "Create an executive briefing on X," which pulls Search, Confidence, Collections, Knowledge Graph, and Notes together to generate and save a grounded briefing (see Chapter 4)
-- **AI Workspace Actions v1** — a shared router (behind both the executive briefing command above and the commands below) that recognizes a chat message as an action rather than a question; also recognizes "Save this," "Remember this," "Capture this," and "Add this to my notes," which save NOVA's most recent reply as a note the same way the per-message **Save to Notes** button does (see Chapter 2)
+- **AI Workspace Actions v1** — a shared router (behind both the executive briefing command above and the commands below) that recognizes a chat message as an action rather than a question; also recognizes "Save this," "Remember this," "Capture this," and "Add this to my notes," which save ARRIYIA's most recent reply as a note the same way the per-message **Save to Notes** button does (see Chapter 2)
 
 ## Navigation
 
 - **Chat** (sidebar) — the full multi-conversation experience
 - Inside any document's Reader, the **Chat** tab gives you the same capability scoped to that document
 - **Settings → AI Health** — the observability dashboard
-- **Settings → Memory** — manage what NOVA remembers about you
+- **Settings → Memory** — manage what ARRIYIA remembers about you
 
 ## Real-World Examples
 
-- Ask "what have I learned about customer experience?" in the main Chat — NOVA retrieves relevant chunks across your library and answers from them, not from general knowledge about customer experience.
+- Ask "what have I learned about customer experience?" in the main Chat — ARRIYIA retrieves relevant chunks across your library and answers from them, not from general knowledge about customer experience.
 - Open a spreadsheet in the Reader and ask "which region performs best?" in the docked Chat panel — the answer is grounded in the Spreadsheet Intelligence Analyst Layer's actual computed aggregates, not a guess from raw cell text.
 - Your preferred provider has an outage mid-conversation — the fallback chain retries with your next configured provider automatically, and the AI Health Dashboard shows exactly when and why that happened.
-- You type "Create an executive briefing on Revenue" into Chat — instead of a conversational answer, NOVA returns a completed briefing with a confidence percentage, and confirms it's been saved as a note.
-- NOVA gives a reply worth keeping — you type "Remember this" instead of reaching for a button, and NOVA confirms it's been saved to Notes, linked back to this exact message.
+- You type "Create an executive briefing on Revenue" into Chat — instead of a conversational answer, ARRIYIA returns a completed briefing with a confidence percentage, and confirms it's been saved as a note.
+- ARRIYIA gives a reply worth keeping — you type "Remember this" instead of reaching for a button, and ARRIYIA confirms it's been saved to Notes, linked back to this exact message.
 
 ## Typical Workflows
 
@@ -51,7 +51,7 @@ Chat is how you talk to NOVA directly — and unlike a generic AI chatbot, every
 - Confusing a provider being "unavailable" (not configured/reachable) with a provider being "not preferred" — the UI only hides truly unavailable providers, not ones you simply haven't chosen.
 - Not noticing when a conversation's provider has silently become unavailable since it was set — the warning banner on the conversation header is the signal to switch.
 - Assuming the executive briefing command understands loose phrasing — v1 only recognizes a specific pattern ("create/generate/write a(n) (executive) briefing on/about/for X"); anything else is answered as an ordinary chat message instead.
-- Expecting "Save this" to save your own last message — it saves NOVA's most recent reply, the natural reading of "this" right after NOVA answers; to save your own message, use that message's own **Save to Notes** button instead.
+- Expecting "Save this" to save your own last message — it saves ARRIYIA's most recent reply, the natural reading of "this" right after ARRIYIA answers; to save your own message, use that message's own **Save to Notes** button instead.
 
 ## Related Features
 

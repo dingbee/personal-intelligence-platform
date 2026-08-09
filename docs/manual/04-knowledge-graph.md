@@ -2,9 +2,9 @@
 
 ## Purpose
 
-This is where NOVA stops being a place you store things and starts being a system that knows things. Every important concept and entity across your documents, notes, and conversations becomes a node in a graph — one canonical node per concept, no matter how many times or where it's mentioned — with relationships between them and a full evidence trail back to every source.
+This is where ARRIYIA stops being a place you store things and starts being a system that knows things. Every important concept and entity across your documents, notes, and conversations becomes a node in a graph — one canonical node per concept, no matter how many times or where it's mentioned — with relationships between them and a full evidence trail back to every source.
 
-**This chapter is about the AI Knowledge Graph specifically** — concepts and entities the AI has extracted. NOVA has a second, separate graph — **Content Connections** — showing how your documents, notes, highlights, and tags literally link to each other (e.g., a note created from a highlight, a highlight belonging to a document). The two are deliberately not merged: one is AI-discovered meaning, the other is direct structural connection. See the dedicated section near the end of this chapter for Content Connections; everything else below is the AI Knowledge Graph.
+**This chapter is about the AI Knowledge Graph specifically** — concepts and entities the AI has extracted. ARRIYIA has a second, separate graph — **Content Connections** — showing how your documents, notes, highlights, and tags literally link to each other (e.g., a note created from a highlight, a highlight belonging to a document). The two are deliberately not merged: one is AI-discovered meaning, the other is direct structural connection. See the dedicated section near the end of this chapter for Content Connections; everything else below is the AI Knowledge Graph.
 
 ## Feature Overview
 
@@ -20,7 +20,7 @@ This is where NOVA stops being a place you store things and starts being a syste
 - **Generate Briefing** — a Knowledge Actions v1 capability on a concept's drill-down page: an LLM synthesizes the concept's own evidence and relationships into a short briefing, which is saved as a real Note and linked back to the concept as new evidence — knowledge acting on itself, not just being viewed
 - **Export Knowledge Package** — a one-click Markdown export of a concept's full picture (description, confidence, related concepts, evidence by source type) as a downloadable file, entirely client-side with no AI call
 - **Knowledge Collections** — curated groupings that can hold any mix of documents, notes, conversations, images, and concepts in one named collection, unlike the Library's document-only, single-parent Collections (folders); "Add to collection" is available from every item's own page
-- **"Create an executive briefing on X" (Chat command)** — typed directly into NOVA chat, this triggers the same Generate Briefing pipeline as the concept page's button (see Chapter 3), without needing to navigate to the concept first
+- **"Create an executive briefing on X" (Chat command)** — typed directly into ARRIYIA chat, this triggers the same Generate Briefing pipeline as the concept page's button (see Chapter 3), without needing to navigate to the concept first
 
 ## Navigation
 
@@ -33,20 +33,20 @@ This is where NOVA stops being a place you store things and starts being a syste
 ## Real-World Examples
 
 - You've uploaded a dozen documents mentioning "Mtoni River Lodge" over months. Because of canonical dedup, there's one "Mtoni River Lodge" node, not twelve — its drill-down page shows every document, note, and conversation that ever mentioned it, in one place.
-- After extracting concepts from several documents, you click "Reconcile knowledge graph" — NOVA finds that "Revenue," "Google Ads," and "Marketing Campaign" are related, and those relationships now show up on each concept's card.
+- After extracting concepts from several documents, you click "Reconcile knowledge graph" — ARRIYIA finds that "Revenue," "Google Ads," and "Marketing Campaign" are related, and those relationships now show up on each concept's card.
 - You write a note mentioning "Revenue" by name — without you doing anything AI-related, that note is now linked as evidence on the existing "Revenue" node, because the deterministic matcher recognized the mention.
 - A concept with a single, months-old document mention shows a low confidence percentage; a concept corroborated by fresh documents, notes, and conversations alike shows a high one — at a glance, before you dig into the evidence yourself.
-- Before a meeting about "Mtoni River Lodge," you click Generate Briefing on that concept's page — NOVA writes a few sentences summarizing what's known and how it relates to Revenue, saved as a note you can skim in seconds.
-- You want to share what NOVA knows about a concept with someone outside the platform — Export Knowledge Package gives you a clean Markdown file you can send or paste anywhere.
-- You're planning a trip: you create a "Mtoni Trip Planning" collection and add the relevant document, two notes, a conversation with NOVA, and the "Mtoni River Lodge" concept to it — one place to see everything related, even though it spans four different content types.
+- Before a meeting about "Mtoni River Lodge," you click Generate Briefing on that concept's page — ARRIYIA writes a few sentences summarizing what's known and how it relates to Revenue, saved as a note you can skim in seconds.
+- You want to share what ARRIYIA knows about a concept with someone outside the platform — Export Knowledge Package gives you a clean Markdown file you can send or paste anywhere.
+- You're planning a trip: you create a "Mtoni Trip Planning" collection and add the relevant document, two notes, a conversation with ARRIYIA, and the "Mtoni River Lodge" concept to it — one place to see everything related, even though it spans four different content types.
 
 ## Typical Workflows
 
 1. **Extract, then reconcile**: upload documents, run "Analyze Document" on the important ones, then periodically run "Reconcile knowledge graph" to discover cross-document relationships once you have enough nodes.
 2. **Explore by concept, not by file**: instead of remembering which document had something, open the Knowledge Explorer, search for the concept, and see every source that ever mentioned it.
 3. **Let evidence accumulate passively**: once a concept exists, just write notes and have conversations normally — the deterministic matcher keeps attaching new evidence to existing concepts without any extra action from you.
-4. **Act on a concept, not just view it**: from a concept's drill-down page, generate a briefing when you need a quick synthesis, or export the whole package when you need to take it outside NOVA.
-5. **Curate across types**: when several different documents/notes/conversations/images/concepts all relate to the same project or topic, create a Collection and add each one from its own page — then revisit the collection instead of hunting across separate sections of NOVA.
+4. **Act on a concept, not just view it**: from a concept's drill-down page, generate a briefing when you need a quick synthesis, or export the whole package when you need to take it outside ARRIYIA.
+5. **Curate across types**: when several different documents/notes/conversations/images/concepts all relate to the same project or topic, create a Collection and add each one from its own page — then revisit the collection instead of hunting across separate sections of ARRIYIA.
 
 ## Best Practices
 
@@ -62,7 +62,7 @@ This is where NOVA stops being a place you store things and starts being a syste
 - Expecting notes and conversations to spontaneously become new concepts — the deterministic matcher only *links* already-known concepts, it never discovers new ones; new concept discovery is still the LLM extraction step, document-triggered.
 - Assuming a concept's "workspace" reflects everywhere it's used — a concept's `workspace_id` reflects only where it was *first* discovered; the concept itself is shared across all your workspaces by design, so the same "Marketing" concept in two different workspaces is one node, not two.
 - Deleting a source document and expecting its concepts to disappear too — document deletion doesn't cascade to the graph; the concept and its other evidence remain, only that one piece of evidence becomes an orphaned reference.
-- Expecting Generate Briefing to research beyond what's already in the graph — it's grounded only in the concept's existing evidence and related concepts, the same discipline as every other capability in NOVA; it won't tell you something the platform doesn't already know.
+- Expecting Generate Briefing to research beyond what's already in the graph — it's grounded only in the concept's existing evidence and related concepts, the same discipline as every other capability in ARRIYIA; it won't tell you something the platform doesn't already know.
 - Confusing Knowledge Collections with the Library's document Collections (folders) — they're two different features with two different pages; a document can be in a Library folder and a Knowledge Collection at the same time, independently.
 - Deleting a Knowledge Collection expecting its contents to be deleted too — deleting a collection only removes the collection and its membership links; every document, note, conversation, image, and concept inside it is untouched.
 
@@ -72,7 +72,7 @@ Reached via **Knowledge → Content Connections** (a button on the Knowledge das
 
 - **What it shows**: direct structural links between the things you've saved — which document a note or highlight came from, which highlights belong to which document, which tags apply to which documents. No AI is involved: these are the same relationships you created by highlighting, tagging, or saving, drawn as a graph instead of listed.
 - **How it differs from the AI Knowledge Graph**: the AI Knowledge Graph's nodes are concepts and entities an LLM decided matter; Content Connections' nodes are the literal documents/notes/highlights/tags you already have, and its edges are direct relationships (e.g. "this note came from this highlight"), not AI-inferred ones.
-- **Why both exist**: they answer different questions. "What does NOVA know about Revenue, and where did that understanding come from?" is the AI Knowledge Graph. "What did I save from this specific document, and what's tagged the way?" is Content Connections.
+- **Why both exist**: they answer different questions. "What does ARRIYIA know about Revenue, and where did that understanding come from?" is the AI Knowledge Graph. "What did I save from this specific document, and what's tagged the way?" is Content Connections.
 - Empty until you have documents with notes/highlights/tags attached — an upload with nothing linked to it yet won't show anything here.
 
 ## Related Features
@@ -89,7 +89,7 @@ Reached via **Knowledge → Content Connections** (a button on the Knowledge das
 - Knowledge Confidence is also **not** AI — it's a deterministic weighted formula (source count, source-type diversity, freshness, relationship count), computed from data the graph already has, with no model call involved
 - Generate Briefing is LLM-based, but tightly grounded: the prompt is built only from the concept's own description, related concepts, and evidence source labels — the model is instructed not to invent facts beyond what's given
 - Export Knowledge Package is **not** AI — it's deterministic Markdown formatting of the same evidence the drill-down page already displays, entirely in the browser
-- Knowledge Collections are **not** AI — creating one, adding items, and removing items are all direct, deterministic actions; NOVA doesn't suggest what belongs in a collection (yet)
+- Knowledge Collections are **not** AI — creating one, adding items, and removing items are all direct, deterministic actions; ARRIYIA doesn't suggest what belongs in a collection (yet)
 
 ## Limitations
 

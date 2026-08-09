@@ -9,7 +9,7 @@ A workspace is a bounded slice of your knowledge — a project, a business, an a
 - **Workspace Intelligence Hub** — the homepage for a workspace: recent notes, active conversations, and a summary of what's happening in it
 - **Executive Dashboard** — a higher-level rollup of workspace activity and knowledge state
 - **Workspace Evolution / timeline** — how a workspace's knowledge has grown and changed over time
-- **Workspace objectives + knowledge gap detection** — declare what a workspace is meant to accomplish, and NOVA surfaces where the existing knowledge doesn't yet support that objective
+- **Workspace objectives + knowledge gap detection** — declare what a workspace is meant to accomplish, and ARRIYIA surfaces where the existing knowledge doesn't yet support that objective
 - **Workspace management** — create, switch between, and archive workspaces; a global "All workspaces" view exists alongside individual ones
 
 ## Navigation

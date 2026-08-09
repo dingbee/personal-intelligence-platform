@@ -1,4 +1,4 @@
-# NOVA PIP Feature Matrix
+# ARRIYIA Feature Matrix
 
 A living engineering inventory — not user documentation. First drafted as part of a Stabilization & Acceptance Sprint, from git history and test coverage. Updated after the user's full acceptance walkthrough of the deployed application. Feature work tracked here belongs to the Knowledge Intelligence initiative.
 
@@ -26,7 +26,7 @@ Corrected by the Reliability & Truth Audit: this legend previously said ⚙️ m
 
 **Acceptance pass completed.** The user walked through every ⚙️ Implemented row below against the deployed application and confirmed it working — all such rows are now ✅ Accepted. 🔲 Backlog rows are unaffected (nothing to accept yet). If anything regresses later, flip its row back to ⚙️ and note the issue rather than silently re-marking it ✅.
 
-`Manual` reflects whether the NOVA PIP Manual has a chapter covering this feature. `Tests` reflects whether the module has automated test coverage at all (file existence, not full-coverage confirmation).
+`Manual` reflects whether the ARRIYIA Manual has a chapter covering this feature. `Tests` reflects whether the module has automated test coverage at all (file existence, not full-coverage confirmation).
 
 ---
 
@@ -167,7 +167,7 @@ Not a new feature phase — a correctness/coherence pass across the five Knowled
 ## Notes
 
 - Acceptance pass completed by the user against the deployed application; all ⚙️ Implemented rows promoted to ✅ Accepted as a batch confirmation ("all fine"), not itemized per-row feedback. If a specific row is later found not to work, flip it back to ⚙️ and record what broke — don't silently re-mark it ✅.
-- The NOVA PIP Manual (`docs/manual/`) now has all 8 planned chapters, covering every ✅ Accepted feature above. The one exception is "Deployment reconciliation," which is an engineering/ops item rather than a user-facing feature, so it isn't a Manual chapter itself — it's mentioned contextually where relevant.
+- The ARRIYIA Manual (`docs/manual/`) now has all 8 planned chapters, covering every ✅ Accepted feature above. The one exception is "Deployment reconciliation," which is an engineering/ops item rather than a user-facing feature, so it isn't a Manual chapter itself — it's mentioned contextually where relevant.
 - Screenshots are not yet part of the Manual — chapters document behavior first; visual capture is a follow-up pass.
 - 🔲 Backlog rows (node lifecycle, note→task/conversation→project, Explorer virtualization, contradiction detection, reading-coverage) remain the canonical Knowledge Intelligence initiative remainder, per the roadmap sequencing already agreed: Universal Search maturity → Knowledge Confidence → Knowledge Actions → Knowledge Collections → Natural Language Commands.
 - Knowledge Actions v1 deliberately shipped three actions that reuse existing infrastructure end-to-end (Notes CRUD, the capability/prompt-template pattern, knowledge_node_sources provenance) and deferred note→task/conversation→project, since those need new Task/Project schema entities — a real design decision, not something to invent unilaterally mid-phase.

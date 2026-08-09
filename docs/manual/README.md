@@ -1,6 +1,6 @@
-# The NOVA PIP Manual
+# The ARRIYIA Manual
 
-NOVA is your Personal Intelligence Platform (PIP) — a system that captures what you read, write, and discuss, and turns it into something that can answer questions on your behalf, not just store files for later. This manual documents the platform as it exists today, verified working in the deployed application as of the Stabilization & Acceptance Sprint.
+ARRIYIA is your Personal Intelligence Platform — a system that captures what you read, write, and discuss, and turns it into something that can answer questions on your behalf, not just store files for later. This manual documents the platform as it exists today, verified working in the deployed application as of the Stabilization & Acceptance Sprint.
 
 ## How this manual is organized
 
@@ -23,17 +23,17 @@ Screenshots are marked as pending throughout — this manual documents behavior 
 ## Chapters
 
 1. [Library & Reading](./01-library-and-reading.md) — documents, books, spreadsheets, images: uploading, organizing, and reading them
-2. [Notes](./02-notes.md) — your own writing, and writing NOVA helps you capture from everything else
-3. [Chat & AI](./03-chat-and-ai.md) — talking to NOVA, grounded in your own knowledge
-4. [AI Knowledge Graph & Intelligence](./04-knowledge-graph.md) — the concepts and entities NOVA extracts, how they connect, and the separate Content Connections graph (documents/notes/highlights/tags)
+2. [Notes](./02-notes.md) — your own writing, and writing ARRIYIA helps you capture from everything else
+3. [Chat & AI](./03-chat-and-ai.md) — talking to ARRIYIA, grounded in your own knowledge
+4. [AI Knowledge Graph & Intelligence](./04-knowledge-graph.md) — the concepts and entities ARRIYIA extracts, how they connect, and the separate Content Connections graph (documents/notes/highlights/tags)
 5. [Universal Search](./05-universal-search.md) — finding files, and increasingly, finding knowledge
-6. [Knowledge Capture](./06-knowledge-capture.md) — getting anything into NOVA in one motion
+6. [Knowledge Capture](./06-knowledge-capture.md) — getting anything into ARRIYIA in one motion
 7. [Workspace Intelligence](./07-workspace-intelligence.md) — the executive view of what a workspace knows
 8. [Settings & Platform](./08-settings-and-platform.md) — providers, workspaces, and the platform's operating controls
 
 ## The four-layer architecture
 
-NOVA PIP is organized around four interacting layers, and every chapter in this manual sits inside one of them:
+ARRIYIA is organized around four interacting layers, and every chapter in this manual sits inside one of them:
 
 - **Knowledge Layer** — documents, notes, images, spreadsheets, conversations (Chapters 1, 2, 6)
 - **Intelligence Layer** — search, graph, summaries, analysis, reasoning (Chapters 3, 4, 5)

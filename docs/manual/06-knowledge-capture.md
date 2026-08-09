@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Quick Capture exists for the moment you have something to save — a file, a thought, a link — and don't want to think about where it belongs first. Drop it in, and NOVA routes it to the right place automatically.
+Quick Capture exists for the moment you have something to save — a file, a thought, a link — and don't want to think about where it belongs first. Drop it in, and ARRIYIA routes it to the right place automatically.
 
 ## Feature Overview
 

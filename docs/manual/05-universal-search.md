@@ -2,14 +2,14 @@
 
 ## Purpose
 
-Search is becoming NOVA's front door — the fastest way to answer both "which file has this?" and, increasingly, "what do I know about this?" Those are different questions, and Universal Search answers both in one place rather than forcing you to pick a mode.
+Search is becoming ARRIYIA's front door — the fastest way to answer both "which file has this?" and, increasingly, "what do I know about this?" Those are different questions, and Universal Search answers both in one place rather than forcing you to pick a mode.
 
 ## Feature Overview
 
 - **Document search** — semantic (embedding-based) search across your uploaded documents' chunks
 - **Conversation search** — as of Phase 2A, results are grouped by whole conversation, not individual message: one card per conversation, showing the strongest-matching message, a match count, last-updated time, workspace, and a relevance star rating; clicking a result deep-links straight to the matching message and briefly highlights it
 - **Notes search** — notes are a fully independent, first-class search source
-- **Graph Layer (Concept Cards)** — as of Phase 2B, a distinct "Knowledge" section on the results page, separate from the flat document/note/conversation grid: search "Mtoni" and get a Concept Card showing everything NOVA knows about Mtoni — evidence counts by source type and related concepts — not just files that contain the word
+- **Graph Layer (Concept Cards)** — as of Phase 2B, a distinct "Knowledge" section on the results page, separate from the flat document/note/conversation grid: search "Mtoni" and get a Concept Card showing everything ARRIYIA knows about Mtoni — evidence counts by source type and related concepts — not just files that contain the word
 - **Hybrid semantic + lexical search** — every source runs a title match alongside its semantic search now, so an exact or partial-name query surfaces a result even if the embedding model didn't score it highly, and a result matching both ways ranks higher than one matching only semantically
 - **Cross-provider ranking** — a document, a note, and a conversation with the same underlying relevance now get the same recency treatment; freshness is no longer a conversation-only advantage
 - **Zero-result recovery** — an empty search tells you whether your library is genuinely empty or whether nothing matched this specific query, instead of one generic "no results" message either way

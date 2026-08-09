@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Library is where everything you own lives before NOVA does anything intelligent with it — every document, book, spreadsheet, and image you've uploaded. Reading is where you actually consume that material, with NOVA available alongside it rather than as a separate destination you have to leave to.
+The Library is where everything you own lives before ARRIYIA does anything intelligent with it — every document, book, spreadsheet, and image you've uploaded. Reading is where you actually consume that material, with ARRIYIA available alongside it rather than as a separate destination you have to leave to.
 
 ## Feature Overview
 
@@ -21,12 +21,12 @@ The Library is where everything you own lives before NOVA does anything intellig
 
 - **Library** (sidebar) — the default landing point for documents; a tab switcher at the top toggles between **Documents** and **Images**
 - Click any document card to open its **Document Detail** page, or use the card's menu for direct **Read** / **Chat** shortcuts
-- Reading a document opens the appropriate Reader automatically based on its file type — you don't choose a reader, NOVA resolves it
+- Reading a document opens the appropriate Reader automatically based on its file type — you don't choose a reader, ARRIYIA resolves it
 
 ## Real-World Examples
 
-- Upload a PDF of a quarterly report, and NOVA's PDF Reader shows you the actual pages with selectable text, while the in-Reader Chat panel (Chapter 3) can already answer questions about it once processing finishes.
-- Upload an `.xlsx` export of your bookings data. NOVA doesn't just render a grid — Spreadsheet Intelligence detects which columns are dates, which are currency, computes aggregates, and the Summary Card on the Document Detail page shows you the headline numbers before you've opened the sheet at all.
+- Upload a PDF of a quarterly report, and ARRIYIA's PDF Reader shows you the actual pages with selectable text, while the in-Reader Chat panel (Chapter 3) can already answer questions about it once processing finishes.
+- Upload an `.xlsx` export of your bookings data. ARRIYIA doesn't just render a grid — Spreadsheet Intelligence detects which columns are dates, which are currency, computes aggregates, and the Summary Card on the Document Detail page shows you the headline numbers before you've opened the sheet at all.
 - Drop a folder of property photos into the Images tab. Each gets a thumbnail generated client-side, and you can flip through them in the Lightbox without waiting for a full page load per image.
 
 ## Typical Workflows
