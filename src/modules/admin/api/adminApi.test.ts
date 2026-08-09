@@ -10,10 +10,12 @@ import {
   adminListBetaInvites,
   adminListUsers,
   adminPlatformCounts,
+  adminRemoveUserQuotaOverride,
   adminResetUserQuota,
   adminRevokeBetaInvite,
   adminSetPlatformProviderSetting,
   adminSetUserDisabled,
+  adminSetUserQuotaOverride,
   adminUpdatePlanQuota,
   sendBetaInvitationEmail,
 } from '@/modules/admin/api/adminApi'
@@ -164,6 +166,41 @@ describe('adminApi', () => {
       p_quota_key: 'ai_messages',
       p_quota_limit: 5000,
     })
+  })
+
+  it('adminSetUserQuotaOverride forwards exactly the target user id, quota key, and limit — proving a single-user call can never carry another user\'s id', async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: null })
+
+    await adminSetUserQuotaOverride({ userId: 'user-a', quotaKey: 'ai_messages', quotaLimit: 250 })
+
+    expect(rpcMock).toHaveBeenCalledWith('admin_set_user_quota_override', {
+      p_user_id: 'user-a',
+      p_quota_key: 'ai_messages',
+      p_quota_limit: 250,
+    })
+    expect(rpcMock).not.toHaveBeenCalledWith('admin_set_user_quota_override', expect.objectContaining({ p_user_id: 'user-b' }))
+  })
+
+  it('adminSetUserQuotaOverride throws on error — a failed save must never be reported as success', async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: new Error('Not authorized') })
+
+    await expect(adminSetUserQuotaOverride({ userId: 'user-a', quotaKey: 'ai_messages', quotaLimit: 250 })).rejects.toThrow(
+      'Not authorized',
+    )
+  })
+
+  it('adminRemoveUserQuotaOverride forwards exactly the target user id and quota key', async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: null })
+
+    await adminRemoveUserQuotaOverride({ userId: 'user-a', quotaKey: 'ai_messages' })
+
+    expect(rpcMock).toHaveBeenCalledWith('admin_remove_user_quota_override', { p_user_id: 'user-a', p_quota_key: 'ai_messages' })
+  })
+
+  it('adminRemoveUserQuotaOverride throws on error', async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: new Error('Not authorized') })
+
+    await expect(adminRemoveUserQuotaOverride({ userId: 'user-a', quotaKey: 'ai_messages' })).rejects.toThrow('Not authorized')
   })
 
   describe('sendBetaInvitationEmail', () => {

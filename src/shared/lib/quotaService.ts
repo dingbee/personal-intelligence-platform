@@ -7,13 +7,25 @@ function currentPeriodStart(): string {
 }
 
 export const quotaService = {
+  /**
+   * ARRIYIA Quota Administration Remediation — the plan-lookup +
+   * quota-lookup this used to do inline (two separate queries, hand-rolled)
+   * is now one call to resolve_effective_quota_limit(), the single
+   * authoritative place that computes effective_limit = coalesce(personal
+   * override, plan default) — see 0041_user_quota_overrides.sql. This is
+   * the same formula consume_quota() now delegates to as well, so the
+   * limit checkQuota reports and the limit consume_quota() enforces can
+   * never drift apart. "No active plan" and "plan has no quota configured
+   * for this key" collapse into one honest, still fail-closed reason
+   * (both are equally "this account cannot use AI messages right now");
+   * the usage-count read below is unrelated to limit resolution (a plain
+   * own-row read, not a computation), so it's unchanged from before.
+   */
   async checkQuota(userId: string, quotaKey: string) {
-    const { data: assignment, error: assignmentError } = await supabase
-      .from('user_plan_assignments')
-      .select('plan_id')
-      .eq('user_id', userId)
-      .eq('active', true)
-      .maybeSingle()
+    const { data: effectiveLimit, error: limitError } = await supabase.rpc('resolve_effective_quota_limit', {
+      p_user_id: userId,
+      p_quota_key: quotaKey,
+    })
 
     // PIP Sprint 8/10 — a genuine query failure here (network blip, RLS
     // misconfiguration) previously produced the exact same message as a
@@ -22,38 +34,17 @@ export const quotaService = {
     // (allowed: false either way — never risk unmetered usage on an
     // unverifiable check), but the reason now tells the truth about which
     // case actually happened, and the real error is logged for diagnosis.
-    if (assignmentError) {
-      console.error('checkQuota: plan assignment lookup failed:', assignmentError)
+    if (limitError) {
+      console.error('checkQuota: quota resolution failed:', limitError)
       return {
         allowed: false,
         reason: 'Could not verify your plan — please try again.',
       }
     }
-    if (!assignment) {
+    if (effectiveLimit === null) {
       return {
         allowed: false,
-        reason: 'No active plan found',
-      }
-    }
-
-    const { data: quota, error: quotaError } = await supabase
-      .from('plan_quotas')
-      .select('quota_limit')
-      .eq('plan_id', assignment.plan_id)
-      .eq('quota_key', quotaKey)
-      .maybeSingle()
-
-    if (quotaError) {
-      console.error('checkQuota: quota lookup failed:', quotaError)
-      return {
-        allowed: false,
-        reason: 'Could not verify your plan — please try again.',
-      }
-    }
-    if (!quota) {
-      return {
-        allowed: false,
-        reason: 'Quota not configured',
+        reason: 'No active plan or quota configured for your account.',
       }
     }
 
@@ -68,9 +59,9 @@ export const quotaService = {
     const used = usage?.usage_count ?? 0
 
     return {
-      allowed: used < quota.quota_limit,
+      allowed: used < effectiveLimit,
       used,
-      limit: quota.quota_limit,
+      limit: effectiveLimit,
     }
   },
 

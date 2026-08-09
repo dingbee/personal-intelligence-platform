@@ -576,6 +576,17 @@ export type PlanQuota = {
   created_at: string
 }
 
+/** RLS: a user can SELECT their own row only. All writes go through `admin_set_user_quota_override`/`admin_remove_user_quota_override` (SECURITY DEFINER) — see 0041_user_quota_overrides.sql. Absence of a row for a (user_id, quota_key) pair means "use the plan default"; `resolve_effective_quota_limit()` is the one place that resolves override-vs-plan. */
+export type UserQuotaOverride = {
+  id: string
+  user_id: string
+  quota_key: string
+  quota_limit: number
+  created_at: string
+  updated_at: string
+  updated_by: string | null
+}
+
 /** RLS: a user can SELECT their own row only. All writes go through `assign_default_plan` (SECURITY DEFINER, fires on `auth.users` insert) — see 0034_beta_invite_quota_repair.sql. */
 export type UserPlanAssignment = {
   id: string
@@ -884,6 +895,12 @@ export type Database = {
         Update: Partial<QuotaUsage>
         Relationships: []
       }
+      user_quota_overrides: {
+        Row: UserQuotaOverride
+        Insert: Partial<UserQuotaOverride> & { user_id: string; quota_key: string; quota_limit: number }
+        Update: Partial<UserQuotaOverride>
+        Relationships: []
+      }
       platform_admins: {
         Row: PlatformAdmin
         Insert: Partial<PlatformAdmin> & { user_id: string }
@@ -985,11 +1002,25 @@ export type Database = {
           last_sign_in_at: string | null
           plan_code: string | null
           plan_name: string | null
+          plan_quota_limit: number | null
+          quota_override: number | null
+          effective_quota_limit: number | null
           quota_used: number | null
-          quota_limit: number | null
           beta_status: string | null
           is_disabled: boolean
         }[]
+      }
+      resolve_effective_quota_limit: {
+        Args: { p_user_id: string; p_quota_key: string }
+        Returns: number | null
+      }
+      admin_set_user_quota_override: {
+        Args: { p_user_id: string; p_quota_key: string; p_quota_limit: number }
+        Returns: void
+      }
+      admin_remove_user_quota_override: {
+        Args: { p_user_id: string; p_quota_key: string }
+        Returns: void
       }
       admin_list_beta_invites: {
         Args: Record<string, never>

@@ -7,10 +7,12 @@ import {
   adminListBetaInvites,
   adminListUsers,
   adminPlatformCounts,
+  adminRemoveUserQuotaOverride,
   adminResetUserQuota,
   adminRevokeBetaInvite,
   adminSetPlatformProviderSetting,
   adminSetUserDisabled,
+  adminSetUserQuotaOverride,
   adminUpdatePlanQuota,
   sendBetaInvitationEmail,
 } from '@/modules/admin/api/adminApi'
@@ -63,6 +65,26 @@ export function useAdminResetUserQuota() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: adminResetUserQuota,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    },
+  })
+}
+
+export function useAdminSetUserQuotaOverride() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: adminSetUserQuotaOverride,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    },
+  })
+}
+
+export function useAdminRemoveUserQuotaOverride() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: adminRemoveUserQuotaOverride,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-users'] })
     },

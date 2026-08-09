@@ -97,3 +97,22 @@ export async function adminUpdatePlanQuota(params: { planId: string; quotaKey: s
   })
   if (error) throw error
 }
+
+/** Sets or replaces a per-user quota override — affects only this user_id + quota_key, never plan_quotas or any other user's row. See 0041_user_quota_overrides.sql. */
+export async function adminSetUserQuotaOverride(params: { userId: string; quotaKey: string; quotaLimit: number }) {
+  const { error } = await supabase.rpc('admin_set_user_quota_override', {
+    p_user_id: params.userId,
+    p_quota_key: params.quotaKey,
+    p_quota_limit: params.quotaLimit,
+  })
+  if (error) throw error
+}
+
+/** Removes a per-user quota override, reverting that user to their plan's default limit. */
+export async function adminRemoveUserQuotaOverride(params: { userId: string; quotaKey: string }) {
+  const { error } = await supabase.rpc('admin_remove_user_quota_override', {
+    p_user_id: params.userId,
+    p_quota_key: params.quotaKey,
+  })
+  if (error) throw error
+}
