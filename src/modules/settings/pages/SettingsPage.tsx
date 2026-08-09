@@ -6,6 +6,7 @@ import { canSelectProvider } from '@/modules/plans/entitlements'
 import { usePlatformAdmin } from '@/modules/admin/hooks/usePlatformAdmin'
 import { ProfileCard } from '@/modules/settings/components/ProfileCard'
 import { ChangePasswordCard } from '@/modules/settings/components/ChangePasswordCard'
+import { DeleteAccountCard } from '@/modules/settings/components/DeleteAccountCard'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 
 export function SettingsPage() {
@@ -68,6 +69,8 @@ export function SettingsPage() {
           <p className="mt-1 text-xs text-[var(--color-ink-muted)]">Choose which AI provider NOVA uses, available on your plan.</p>
         </div>
       )}
+
+      <DeleteAccountCard />
     </div>
   )
 }

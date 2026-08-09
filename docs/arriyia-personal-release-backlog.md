@@ -1,8 +1,8 @@
 # ARRIYIA Personal — Release Backlog
 
-Produced by Sprint 9.5/10 (Backlog, Technical Debt & Release Scope Review). This is the authoritative pre-freeze backlog. See `docs/pip-release-scope-v1.md` for the narrative definition of what v1 is and why, and `docs/arriyia-product-roadmap.md` for where deferred strategic items go next.
+Produced by Sprint 9.5/10 (Backlog, Technical Debt & Release Scope Review); updated by Sprint 10/10 (Final Platform Validation). This is the authoritative pre-freeze backlog. See `docs/pip-release-scope-v1.md` for the narrative definition of what v1 is and why, `docs/arriyia-product-roadmap.md` for where deferred strategic items go next, and `docs/account-deletion-data-map.md` for the account-deletion contract Sprint 10/10 added.
 
-Baseline audited: `dingbee/personal-intelligence-platform`, branch `main`, HEAD `ca16138beedcf4b106be6c93081e0f831186a354` (Sprint 9/10, verified clean and passing before this audit began).
+Baseline audited: `dingbee/personal-intelligence-platform`, branch `main`. Sprint 9.5/10 audited HEAD `ca16138` (Sprint 9/10, verified clean and passing before that audit began); Sprint 10/10 audited HEAD `ee06450` (Sprint 9.5/10, verified clean and passing before this validation began).
 
 ## Release Definition
 
@@ -10,15 +10,15 @@ ARRIYIA Personal v1 is a personal knowledge platform: a user brings in documents
 
 ## P0 — Release Blockers
 
-**None identified.** Nine prior sprints (4-9) each specifically audited for correctness, security, reliability, and performance defects at increasing depth and closed every P0-severity issue found along the way (the ARRIYIA-in-article retrieval failure, the image-context integration gap, the memory over-injection gap, the notes-unreachable-from-chat gap, six silent failure paths, three reliability defects, seven performance defects). This audit's own fresh pass — full backlog-marker search, every prior sprint's own "known limitations" reconciled against current code, and a fresh end-to-end trace of the user journey — found nothing at that severity that survived to this point.
+**None identified — confirmed twice.** Nine prior sprints (4-9) each specifically audited for correctness, security, reliability, and performance defects at increasing depth and closed every P0-severity issue found along the way (the ARRIYIA-in-article retrieval failure, the image-context integration gap, the memory over-injection gap, the notes-unreachable-from-chat gap, six silent failure paths, three reliability defects, seven performance defects). Sprint 9.5/10's own fresh pass (full backlog-marker search, every prior sprint's "known limitations" reconciled against current code, a fresh end-to-end trace) found nothing at that severity. Sprint 10/10's final validation — a repository-wide RLS/isolation re-audit, a full secrets/hardcoded-identity scan, and the complete regression suite — found nothing either.
 
 ## P1 — Release Quality
 
 | Item | Current State | Decision | Reason |
 |---|---|---|---|
-| Full account deletion | Individual content (documents/notes/images/memories/conversations) is deletable; a single "delete my account and everything" action does not exist | **DEFER — human decision required** | Two reasonable, materially different designs exist (immediate hard delete vs. grace-period soft delete); touches every user-owned table plus Storage; getting it wrong is worse than shipping without it. Recommended as the top pre-general-availability priority, not a freeze blocker. |
+| Full account deletion | **RESOLVED (Sprint 10/10).** `supabase/functions/delete-account` deletes the Auth account (cascading every owned table via the schema's existing `on delete cascade` design), every owned Storage object (`documents`/`assets` buckets), preserves other users' content in any shared workspace (`workspace_id` uses `on delete set null` everywhere), and refuses to delete a platform-admin account (role-based check, not a hardcoded identity). Settings UI entry point: `DeleteAccountCard`. | **FIXED** | Sprint 9.5/10 deferred this pending a full data-lifecycle map, since it looked ambiguous (hard vs. soft delete) without one. Sprint 10/10's Phase 7 did that mapping (`docs/account-deletion-data-map.md`) and found the schema's own existing FK design already made a safe, deterministic hard-delete implementation possible with no product decision required — what remained (Storage cleanup, the Auth API call) was localized and safe to build now. |
 
-No other P1 items were found. Every other issue uncovered in this audit was either already closed by a prior sprint, genuinely low-severity, or a deliberate architectural deferral with a documented reason.
+No other P1 items were found in either sprint. Every other issue uncovered was either already closed by a prior sprint, genuinely low-severity, or a deliberate architectural deferral with a documented reason.
 
 ## Accepted P2 — Post-Release
 
@@ -73,4 +73,4 @@ No other P1 items were found. Every other issue uncovered in this audit was eith
 
 ## Release Decision
 
-**Nothing must happen before Sprint 10.** No P0 exists. The one P1 (account deletion) is explicitly a pre-general-availability item, not a freeze blocker — ARRIYIA Personal v1 can be validated and frozen without it, provided it is prioritized before the product is opened beyond its current beta-invite gate. Every other item has an explicit destination (P2/Business/Enterprise/Future/Obsolete) and none require resolution to proceed to Sprint 10.
+**Nothing blocks the ARRIYIA rebranding/migration phase.** No P0 exists, in either Sprint 9.5/10's or Sprint 10/10's audit. The one P1 (account deletion) — identified by Sprint 9.5/10, resolved by Sprint 10/10 — is closed. Every remaining item has an explicit destination (P2/Business/Enterprise/Future/Obsolete) and none require resolution before the platform can be considered technically ready to become ARRIYIA Personal v1. See `docs/pip-release-scope-v1.md` for the full final-validation conclusion.

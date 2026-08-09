@@ -1,6 +1,6 @@
-# PIP → ARRIYIA Personal — Release Scope v1 (Sprint 9.5/10)
+# PIP → ARRIYIA Personal — Release Scope v1 (Sprint 9.5/10, updated Sprint 10/10)
 
-This document exists so someone unfamiliar with the project can understand **why we stopped where we stopped** before Sprint 10 (Final Platform Validation) and the eventual freeze. It is the authoritative statement of what ARRIYIA Personal v1 *is*, what it deliberately *excludes*, and why. Read alongside `docs/arriyia-personal-release-backlog.md` (the itemized backlog) and `docs/arriyia-product-roadmap.md` (what comes after Personal).
+This document exists so someone unfamiliar with the project can understand **why we stopped where we stopped** ahead of the ARRIYIA rebranding/migration phase and the eventual freeze. It is the authoritative statement of what ARRIYIA Personal v1 *is*, what it deliberately *excludes*, and why. Read alongside `docs/arriyia-personal-release-backlog.md` (the itemized backlog), `docs/arriyia-product-roadmap.md` (what comes after Personal), and `docs/account-deletion-data-map.md` (the account-deletion contract Sprint 10/10 added).
 
 ## How this document was produced
 
@@ -13,6 +13,7 @@ A single coherent proposition, validated end-to-end across Sprints 1-9: **bring 
 Concretely, all of the following are shipped, tested, and validated (not aspirational):
 
 - **Authentication**: email/password signup, login, forgot/reset password, session-protected routes. Beta-invite-gated onboarding (`beta_invites` → `user_plan_assignments`), appropriate for a pre-general-availability release.
+- **Account lifecycle**: self-service account deletion (Sprint 10/10) — removes the Auth account, every owned database row (cascading via existing foreign-key design), and every owned Storage object; preserves other users' content in any shared workspace and protects founder/admin accounts via role, not a hardcoded identity. See `docs/account-deletion-data-map.md`.
 - **Personal profile**: structured preference vocabulary (occupation, industry, expertise, goals, communication style, decision style), completion tracking, editable in Settings.
 - **Knowledge Library**: documents (PDF, EPUB, DOCX, TXT, Markdown, spreadsheets), notes, images, all with collections, tags, search, filtering, and a per-document detail view showing processing status and extraction metadata.
 - **Ingestion pipeline**: extraction → chunking → embedding, with an honest `processing_jobs` status machine, real error messages on failure, a working "Reprocess" retry, and rate-limit-safe batched embedding with automatic backoff.
@@ -31,7 +32,6 @@ Concretely, all of the following are shipped, tested, and validated (not aspirat
 
 Nothing here is an oversight; each has a documented reason and a destination (P2/Strategic/Future — see the backlog).
 
-- **Full account deletion.** Individual content (documents, notes, images, memories, conversations) can each be deleted today. A single "delete my account and everything in it" action does not exist. This is the one item in this audit closest to a release-quality concern rather than a pure enhancement — see the backlog's P1 entry and the reasoning for not autonomously building it this sprint.
 - **Cross-conversation retrieval** (past chats as chat grounding evidence for other chats).
 - **UI reference chips** for notes/assets/graph/memory (the model already cites them in text; a clickable citation UI does not exist yet for those four source types — it already exists for document chunks).
 - **Reasoning-plan-influenced prompting.** The planner classifies intent and computes a strategy today, and it's shown in the UI's "Explain My Answer" trace — but it does not yet change what's actually sent to the model. This was the blueprint's own recommended next step and remains not done.
@@ -54,14 +54,11 @@ These are conscious trade-offs, not defects:
 
 ## P0/P1 decisions
 
-**No P0 (release-blocking) issue was found in this audit.** This is the expected, honest result of nine prior sprints each specifically hunting for correctness, security, reliability, and performance defects at increasing depth — Sprint 9.5 did not find anything at that severity that Sprints 4-9 missed. See the backlog's P0 section for the explicit statement of this.
+**No P0 (release-blocking) issue was found across Sprint 9.5 or Sprint 10.** Nine prior sprints each specifically hunted for correctness, security, reliability, and performance defects at increasing depth; Sprint 10's own final validation (repository-wide security scan, RLS/isolation re-audit, full regression suite) found nothing at that severity either.
 
-**One P1 (release-quality) item was identified and *not* autonomously fixed**: full account deletion. Per this sprint's own Phase 7 criteria, it was deliberately left to a human decision rather than built now, because:
-- Two reasonable, materially different implementations exist (immediate hard delete vs. a grace-period soft delete), and choosing between them is a product/legal decision, not an engineering one.
-- It touches every user-owned table plus Storage buckets — a genuinely wide, cross-cutting change, not a localized fix.
-- Getting it wrong (deleting too little, leaving orphaned rows, or deleting too much and violating another user's shared-workspace content) is a worse outcome than shipping v1 without it and building it deliberately.
+**The one P1 identified by Sprint 9.5 — full account deletion — was resolved in Sprint 10.** Sprint 9.5 deferred it pending a full data-lifecycle map; Sprint 10's Phase 7 did that mapping (`docs/account-deletion-data-map.md`) and found a safe, deterministic implementation was actually already possible: every user-owned table's foreign key to `auth.users` uses `on delete cascade` (confirmed across all 37 relevant migrations), and every *other* user's `workspace_id` reference uses `on delete set null` — so deleting the Auth account was already guaranteed, by the schema's own existing design, to cascade every owned row and never touch another user's content. What remained was Storage cleanup (files aren't database rows) and the Auth deletion call itself (needs the service-role key, so it had to be a new Edge Function) — both localized, deterministic, and safe. Implemented as `supabase/functions/delete-account`, with founder/admin accounts explicitly protected via the existing role-based `is_platform_admin()` check (never a hardcoded identity). See `docs/account-deletion-data-map.md` for the full contract and `docs/arriyia-personal-release-backlog.md` for its resolved backlog entry.
 
-This is recorded as the release backlog's single highest-priority pre-general-availability item, distinct from anything blocking *this* freeze.
+The soft-delete/grace-period question this sprint deliberately did *not* resolve — the implementation is an immediate, irreversible hard delete, the least ambiguous interpretation of "delete my account." A grace-period option remains a legitimate future enhancement, not something this sprint needed to decide.
 
 ## Business candidates
 
