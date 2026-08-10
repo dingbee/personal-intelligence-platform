@@ -1,7 +1,9 @@
 import { getActivePrompt } from '@/modules/core/prompts/registry'
 import { renderPromptTemplate } from '@/modules/core/prompts/renderPromptTemplate'
+import { capabilityRegistry } from '@/modules/core/capabilities/registry'
 import { getChatProvider, DEFAULT_CHAT_PROVIDER_ID } from '@/modules/ai/providers/registry'
 import { streamChatCompletion, type StreamChatCompletionResult } from '@/modules/ai/orchestration/streamChatCompletion'
+import { hasFeature } from '@/modules/plans/api/plans'
 
 export interface RunCapabilityParams {
   /** Must match a capability registered via registerPlatformModule, e.g. 'summarize', 'flashcards'. */
@@ -38,9 +40,22 @@ export interface RunCapabilityParams {
  * registries, never calls a provider directly. A capability with no
  * registered PromptTemplate simply can't run yet — that's the point of
  * keeping capabilities and their execution decoupled.
+ *
+ * Phase P0 Pro Intelligence Foundation — if the capability declares a
+ * `requiredFeature` (see AICapability), entitlement is checked here
+ * before any prompt/provider resolution happens, so a future gated
+ * capability (Research/Planning/Deep Academic Intelligence) is denied in
+ * one place regardless of which UI surface called it. Every capability
+ * registered today has no `requiredFeature`, so this is a no-op for all
+ * existing behavior.
  */
 export async function runCapability(params: RunCapabilityParams): Promise<StreamChatCompletionResult> {
   const { capabilityId, variables, userId, workspaceId, providerId = DEFAULT_CHAT_PROVIDER_ID, requestedProviderId, knowledgeContext, spreadsheetContext } = params
+
+  const capability = capabilityRegistry.get(capabilityId)
+  if (capability?.requiredFeature && !(await hasFeature(userId, capability.requiredFeature))) {
+    throw new Error(`${capability.label} requires an upgraded plan.`)
+  }
 
   const template = getActivePrompt(capabilityId)
   if (!template) throw new Error(`No active prompt template for capability "${capabilityId}"`)
