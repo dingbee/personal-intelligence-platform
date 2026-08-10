@@ -710,6 +710,100 @@ export type PesapalCheckoutOrder = {
   updated_at: string
 }
 
+export type FoundingProApplicationStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'enrolled'
+
+/**
+ * Founding Pro Programme Phase 1 (0052_founding_pro_programme_foundation.sql).
+ * An application never consumes a public slot by itself — only
+ * `admin_enroll_founding_pro_member` (once the application is `approved`)
+ * does that. RLS: a user can SELECT their own row only; there is no
+ * client INSERT policy or submission RPC yet (deliberately out of scope
+ * for Phase 1 — see the migration header). The partial unique index on
+ * `(user_id) where status in ('pending','approved')` is what actually
+ * enforces "one active application per user", not application code.
+ */
+export type FoundingProApplication = {
+  id: string
+  user_id: string
+  status: FoundingProApplicationStatus
+  submitted_at: string
+  reviewed_at: string | null
+  reviewed_by: string | null
+  review_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type FoundingProMemberSlotType = 'public' | 'grandfathered'
+export type FoundingProMemberTransitionStatus = 'active' | 'transitioned'
+
+/**
+ * `founding_member_number` is 1-100 for `slot_type = 'public'` and always
+ * null for `slot_type = 'grandfathered'` — enforced by a structural CHECK
+ * constraint, not just this type. `founding_price_cents`/`currency` are
+ * whatever an admin actually supplied at enrollment time (never derived
+ * from `plans.monthly_price_cents`) and are permanently immune to later
+ * edits of that plan's price. RLS: a user can SELECT their own row only;
+ * all writes go through `admin_enroll_founding_pro_member`.
+ */
+export type FoundingProMember = {
+  id: string
+  user_id: string
+  application_id: string | null
+  slot_type: FoundingProMemberSlotType
+  founding_member_number: number | null
+  founding_price_cents: number
+  currency: string
+  founding_started_at: string
+  founding_expires_at: string
+  transition_status: FoundingProMemberTransitionStatus
+  transitioned_at: string | null
+  created_at: string
+}
+
+/**
+ * Singleton row (`id` is always 1) — the sole lockable counter behind the
+ * atomic 100-slot public cap. RLS: zero client policies; the only read
+ * path is `get_founding_pro_public_capacity()`, and the only write path
+ * is the `SELECT ... FOR UPDATE` inside `admin_enroll_founding_pro_member`.
+ */
+export type FoundingProCapacity = {
+  id: number
+  max_public_slots: number
+  enrolled_public_count: number
+  updated_at: string
+}
+
+export type FoundingProEventType =
+  | 'application_submitted'
+  | 'application_approved'
+  | 'application_rejected'
+  | 'application_withdrawn'
+  | 'invitation_issued'
+  | 'invitation_accepted'
+  | 'member_enrolled'
+  | 'member_grandfathered'
+  | 'transition_completed'
+  | 'admin_action'
+
+/**
+ * Append-only audit trail — enforced by BEFORE UPDATE/DELETE triggers
+ * that unconditionally raise, not merely by the absence of a mutating
+ * RPC. RLS: zero client policies; not exposed through any client
+ * `.from('founding_pro_events')` call site, included here purely so
+ * `admin_enroll_founding_pro_member`'s server-side effects are fully typed.
+ */
+export type FoundingProEvent = {
+  id: string
+  event_type: FoundingProEventType
+  application_id: string | null
+  member_id: string | null
+  actor_user_id: string | null
+  target_user_id: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -1049,6 +1143,30 @@ export type Database = {
         Update: Partial<PlatformProviderSetting>
         Relationships: []
       }
+      founding_pro_applications: {
+        Row: FoundingProApplication
+        Insert: Partial<FoundingProApplication> & { user_id: string }
+        Update: Partial<FoundingProApplication>
+        Relationships: []
+      }
+      founding_pro_members: {
+        Row: FoundingProMember
+        Insert: Partial<FoundingProMember> & { user_id: string; slot_type: FoundingProMemberSlotType; founding_price_cents: number; founding_expires_at: string }
+        Update: Partial<FoundingProMember>
+        Relationships: []
+      }
+      founding_pro_capacity: {
+        Row: FoundingProCapacity
+        Insert: Partial<FoundingProCapacity>
+        Update: Partial<FoundingProCapacity>
+        Relationships: []
+      }
+      founding_pro_events: {
+        Row: FoundingProEvent
+        Insert: Partial<FoundingProEvent> & { event_type: FoundingProEventType }
+        Update: Partial<FoundingProEvent>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -1224,6 +1342,32 @@ export type Database = {
           p_active: boolean
         }
         Returns: void
+      }
+      /**
+       * Founding Pro Programme Phase 1 — public-safe capacity read. Never
+       * exposes identity or price, only the aggregate counter.
+       */
+      get_founding_pro_public_capacity: {
+        Args: Record<string, never>
+        Returns: { max_public_slots: number; enrolled_public_count: number; remaining_public_slots: number }[]
+      }
+      /**
+       * Founding Pro Programme Phase 1 — the single atomic, admin-authorized
+       * enrollment RPC (admin check -> verify approved application -> lock
+       * capacity -> verify <100 -> allocate number -> create member row ->
+       * assign founding_pro plan -> mark application enrolled -> audit
+       * event, all in one transaction). `p_founding_price_cents`/
+       * `p_currency` are never defaulted or derived from
+       * `plans.monthly_price_cents` — the caller must always supply them.
+       */
+      admin_enroll_founding_pro_member: {
+        Args: {
+          p_application_id: string
+          p_slot_type: FoundingProMemberSlotType
+          p_founding_price_cents: number
+          p_currency: string
+        }
+        Returns: Record<string, unknown>
       }
       has_feature: {
         Args: { p_user_id: string; p_feature_key: string }
