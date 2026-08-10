@@ -686,6 +686,30 @@ export type SubscriptionEvent = {
   processed_at: string | null
 }
 
+export type PesapalCheckoutOrderStatus = 'pending' | 'completed' | 'failed'
+
+/**
+ * Phase 5B Pesapal Sandbox Billing — the server-controlled mapping from a
+ * Pesapal checkout attempt back to an ARRIYIA user_id/plan_code, created
+ * by the pesapal-checkout Edge Function and updated by pesapal-ipn once
+ * Pesapal's GetTransactionStatus confirms an outcome. RLS: a user can
+ * SELECT their own rows only (drives BillingReturnPage's "payment being
+ * confirmed" polling state); all writes are service-role only, from
+ * those two Edge Functions.
+ */
+export type PesapalCheckoutOrder = {
+  id: string
+  user_id: string
+  merchant_reference: string
+  plan_code: string
+  amount_cents: number
+  currency: string
+  order_tracking_id: string | null
+  status: PesapalCheckoutOrderStatus
+  created_at: string
+  updated_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -993,6 +1017,12 @@ export type Database = {
         Row: SubscriptionEvent
         Insert: Partial<SubscriptionEvent> & { provider: string; provider_event_id: string; event_type: string }
         Update: Partial<SubscriptionEvent>
+        Relationships: []
+      }
+      pesapal_checkout_orders: {
+        Row: PesapalCheckoutOrder
+        Insert: Partial<PesapalCheckoutOrder> & { user_id: string; merchant_reference: string; plan_code: string; amount_cents: number; currency: string }
+        Update: Partial<PesapalCheckoutOrder>
         Relationships: []
       }
       plan_ai_providers: {

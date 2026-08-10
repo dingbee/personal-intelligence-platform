@@ -56,6 +56,17 @@ export function BillingCard() {
         </p>
       )}
 
+      {subscription?.current_period_end && subscription.status === 'active' && !subscription.cancel_at_period_end && (
+        <p className="mt-2 text-xs text-[var(--color-ink-muted)]">Renews {new Date(subscription.current_period_end).toLocaleDateString()}.</p>
+      )}
+
+      {/* Billing provider — who processes the payment. Never to be confused with
+          AI provider (which model answers a question) — that stays admin-only
+          and is never shown anywhere in the app, per the Phase 5A/5B product rule. */}
+      {subscription?.provider === 'pesapal' && (
+        <p className="mt-2 text-xs text-[var(--color-ink-muted)]">Billed via Pesapal (Sandbox — no real charges).</p>
+      )}
+
       {storage && (
         <div className="mt-4">
           <UsageIndicator label="Storage" used={storage.used} limit={storage.limit} formatValue={formatFileSize} />

@@ -33,6 +33,7 @@ import { WorkspaceEvolutionPage } from '@/modules/evolution/pages/WorkspaceEvolu
 import { WorkspaceIntelligenceHubPage } from '@/modules/hub/pages/WorkspaceIntelligenceHubPage'
 import { ExportCenterPage } from '@/modules/export/pages/ExportCenterPage'
 import { PricingPage } from '@/modules/billing/pages/PricingPage'
+import { BillingReturnPage } from '@/modules/billing/pages/BillingReturnPage'
 import { HomeRedirect } from '@/app/HomeRedirect'
 import { AdminDashboardPage } from '@/modules/admin/pages/AdminDashboardPage'
 import { AdminUsersPage } from '@/modules/admin/pages/AdminUsersPage'
@@ -97,6 +98,7 @@ export const router = createBrowserRouter([
           { path: 'search', element: <SearchPage /> },
           { path: 'chat', element: <ChatPage /> },
           { path: 'pricing', element: <PricingPage /> },
+          { path: 'billing/return', element: <BillingReturnPage /> },
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/advanced', element: <AdvancedSettingsPage /> },
           { path: 'settings/workspaces', element: <WorkspaceManagementPage /> },

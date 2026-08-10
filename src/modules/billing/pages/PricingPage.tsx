@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useCurrentPlan } from '@/modules/plans/hooks/useCurrentPlan'
+import { startProCheckout } from '@/modules/billing/api/billing'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
 import { Button } from '@/shared/components/ui/Button'
@@ -56,6 +58,25 @@ const TIERS: PlanTier[] = [
 
 export function PricingPage() {
   const { data: currentPlan } = useCurrentPlan()
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false)
+
+  // Phase 5B Pesapal Sandbox Billing — server resolves everything; this
+  // click sends only a fixed intent, never a price or plan id (see
+  // pesapal-checkout/index.ts). If Pesapal isn't configured for this
+  // environment the function fails closed with a 501, surfaced here as an
+  // honest inline error rather than a silent no-op or a fake success.
+  async function handleUpgradeClick() {
+    setCheckoutError(null)
+    setIsStartingCheckout(true)
+    try {
+      const { redirectUrl } = await startProCheckout()
+      window.location.href = redirectUrl
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : 'Checkout is unavailable right now. Please try again later.')
+      setIsStartingCheckout(false)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,12 +111,13 @@ export function PricingPage() {
                 ))}
               </ul>
               {tier.code === 'pro' && !isCurrent && (
-                // No payment provider is wired yet (see PROVIDER STATUS in
-                // billing-webhook/index.ts) — this is an honest "not live
-                // yet" state, not a broken button pretending to check out.
-                <Button variant="secondary" disabled title="Checkout is coming soon">
-                  Checkout coming soon
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button onClick={handleUpgradeClick} disabled={isStartingCheckout}>
+                    {isStartingCheckout ? 'Starting checkout…' : 'Upgrade to Pro (sandbox)'}
+                  </Button>
+                  <p className="text-xs text-[var(--color-ink-muted)]">Pesapal sandbox checkout — no real payment is processed.</p>
+                  {checkoutError && <p className="text-xs text-[var(--color-danger-strong)]">{checkoutError}</p>}
+                </div>
               )}
               {tier.code === 'founding_pro' && (
                 <p className="text-xs text-[var(--color-ink-muted)]">
