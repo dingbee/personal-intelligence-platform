@@ -1,20 +1,26 @@
 import { useState, type KeyboardEvent } from 'react'
 import { Button } from '@/shared/components/ui/Button'
 
-export function ChatInput({ disabled, onSend }: { disabled: boolean; onSend: (text: string) => void }) {
+export function ChatInput({ disabled, onSend }: { disabled: boolean; onSend: (text: string) => Promise<boolean> }) {
   const [value, setValue] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  function submit() {
+  async function submit() {
     const trimmed = value.trim()
-    if (!trimmed || disabled) return
-    onSend(trimmed)
-    setValue('')
+    if (!trimmed || disabled || submitting) return
+    setSubmitting(true)
+    // Only clear on a confirmed success — a failed send leaves the typed
+    // text in place (still editable) instead of silently discarding it;
+    // the caller's error/Retry affordance covers what happened.
+    const succeeded = await onSend(trimmed)
+    setSubmitting(false)
+    if (succeeded) setValue('')
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
-      submit()
+      void submit()
     }
   }
 
@@ -33,7 +39,7 @@ export function ChatInput({ disabled, onSend }: { disabled: boolean; onSend: (te
         disabled={disabled}
         className="max-h-40 min-h-[2.5rem] flex-1 resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-ink-muted)] focus:border-[var(--color-accent)]"
       />
-      <Button onClick={submit} disabled={disabled || !value.trim()}>
+      <Button onClick={() => void submit()} disabled={disabled || submitting || !value.trim()}>
         Send
       </Button>
     </div>

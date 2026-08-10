@@ -31,6 +31,7 @@ import type { Reference } from '@/modules/intelligence/references/referenceTypes
 import { runWorkspaceAction } from '@/modules/workspace-actions/registry'
 import type { ArtifactPreview } from '@/modules/workspace-actions/types'
 import { quotaService } from '@/shared/lib/quotaService'
+import { ChatSendFailure, QuotaDeniedError } from '@/modules/ai/orchestration/chatSendErrors'
 
 const embeddingProvider = new OpenAIEmbeddingProvider()
 
@@ -46,6 +47,14 @@ export interface SendMessageParams {
   text: string
   /** Called with the accumulated assistant text as it streams in. */
   onDelta?: (textSoFar: string) => void
+  /**
+   * Set by useSendMessage's retry path when this call is re-attempting a
+   * turn that already got as far as persisting the user's message before
+   * failing — skips insertMessage (and its indexMessage/
+   * linkKnownConceptsToSource side effects) so retrying a failed send
+   * never creates a duplicate user message row.
+   */
+  existingUserMessage?: Message
 }
 
 export interface SendMessageResult {
@@ -83,11 +92,41 @@ export interface SendMessageResult {
  * with single-hop fallback via runWithFallback, never re-deciding anything.
  */
 export async function sendMessage(params: SendMessageParams): Promise<SendMessageResult> {
-  const { conversationId, userId, workspaceId, providerChain, documentId, history, text } = params
+  const { conversationId, userId, workspaceId, providerChain, documentId, history, text, existingUserMessage } = params
 
-  const userMessage = await insertMessage({ conversationId, userId, role: 'user', content: text })
-  void indexMessage(userMessage, workspaceId)
-  void linkKnownConceptsToSource({ userId, sourceType: 'conversation', sourceId: conversationId, text })
+  // A retry of a previously-failed send already has this row (see
+  // ChatSendFailure/useSendMessage) — reusing it instead of inserting again
+  // is what keeps Retry from ever duplicating the user's turn.
+  const userMessage = existingUserMessage ?? (await insertMessage({ conversationId, userId, role: 'user', content: text }))
+  if (!existingUserMessage) {
+    void indexMessage(userMessage, workspaceId)
+    void linkKnownConceptsToSource({ userId, sourceType: 'conversation', sourceId: conversationId, text })
+  }
+
+  // Everything below this point can fail (quota, retrieval, the provider
+  // call itself) after userMessage has already been persisted — wrapping
+  // it all in ChatSendFailure carries that row back to the caller so a
+  // subsequent retry can pass it in as existingUserMessage above instead of
+  // inserting a second one.
+  try {
+    return await sendMessageAfterUserTurn({ conversationId, userId, workspaceId, providerChain, documentId, history, text, userMessage, onDelta: params.onDelta })
+  } catch (err) {
+    throw new ChatSendFailure(err, userMessage)
+  }
+}
+
+async function sendMessageAfterUserTurn(params: {
+  conversationId: string
+  userId: string
+  workspaceId: string | null
+  providerChain: string[]
+  documentId?: string
+  history: ChatProviderMessage[]
+  text: string
+  userMessage: Message
+  onDelta?: (textSoFar: string) => void
+}): Promise<SendMessageResult> {
+  const { conversationId, userId, workspaceId, providerChain, documentId, history, text } = params
 
   // AI Workspace Actions v1 — a recognized command (Generate Briefing, Save
   // to Notes, ...) short-circuits the normal retrieval/LLM-chat path
@@ -143,7 +182,7 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   // nothing is lost by asking first.
   const quota = await quotaService.checkQuota(userId, 'ai_messages')
   if (!quota.allowed) {
-    throw new Error(quota.reason ?? 'AI quota limit reached')
+    throw new QuotaDeniedError(quota.reason ?? 'AI quota limit reached')
   }
 
   // PIP Sprint 9/10 — retrieveContext, retrieveAssetContext, and

@@ -1,7 +1,8 @@
 import { isProviderUnavailableError, PROVIDER_UNAVAILABLE_MESSAGE } from '@/modules/ai/providers/availability'
 import { AI_REQUEST_TIMEOUT_MESSAGE } from '@/modules/ai/providers/edgeFunctionClient'
+import { ChatSendFailure, QuotaDeniedError } from '@/modules/ai/orchestration/chatSendErrors'
 
-export type AiErrorCategory = 'provider_unavailable' | 'rate_limited' | 'timeout' | 'invalid_response' | 'unknown'
+export type AiErrorCategory = 'provider_unavailable' | 'rate_limited' | 'timeout' | 'invalid_response' | 'quota_exceeded' | 'unknown'
 
 export interface NormalizedAiError {
   category: AiErrorCategory
@@ -18,6 +19,10 @@ const CATEGORY_MESSAGES: Record<AiErrorCategory, string> = {
   rate_limited: 'This AI provider is temporarily rate-limited. Please wait a moment and try again.',
   timeout: 'The AI took too long to respond. Please try again.',
   invalid_response: 'The AI returned an unexpected response. Please try again.',
+  // Never actually read — normalizeAiError returns QuotaDeniedError's own
+  // (already user-safe) reason text for this category instead. Kept here
+  // only so this Record stays total over AiErrorCategory.
+  quota_exceeded: 'You have reached your plan’s AI usage limit for this period.',
   unknown: 'Something went wrong generating a response. Please try again.',
 }
 
@@ -53,7 +58,23 @@ function categorizeAiError(message: string): AiErrorCategory {
  * this phase.
  */
 export function normalizeAiError(err: unknown): NormalizedAiError {
-  const rawMessage = err instanceof Error ? err.message : 'The AI request failed.'
+  // ChatSendFailure only ever wraps a failure so useSendMessage's retry
+  // path can carry the already-persisted user message alongside it — the
+  // actual failure to categorize is always its `cause`, never the wrapper
+  // itself.
+  const source = err instanceof ChatSendFailure && err.cause ? err.cause : err
+  const rawMessage = source instanceof Error ? source.message : 'The AI request failed.'
+  if (source instanceof QuotaDeniedError) {
+    // quotaService crafts these reason strings to already be safe and
+    // specific to show a user — unlike the other categories below, no
+    // canned CATEGORY_MESSAGES text should replace it.
+    return {
+      category: 'quota_exceeded',
+      message: rawMessage,
+      technicalMessage: rawMessage,
+      isProviderUnavailable: false,
+    }
+  }
   const category = categorizeAiError(rawMessage)
   return {
     category,

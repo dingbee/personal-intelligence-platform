@@ -94,6 +94,8 @@ export function ReaderChatPanel({
   const conversation = conversations.find((c) => c.id === conversationId)
   const {
     send,
+    retry,
+    canRetry,
     streamingText,
     sending,
     error,
@@ -139,7 +141,7 @@ export function ReaderChatPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId, activeChapterIndex, scrollFraction, hasProgress, progressUpdatedAt, contextTrace, references])
 
-  async function handleSend(text: string) {
+  async function handleSend(text: string): Promise<boolean> {
     // AI Preference Layer v1 — see ChatPage.handleNew for why chain[0] is
     // the right fallback when there's no explicit preference.
     const isNewConversation = !conversationId
@@ -157,7 +159,8 @@ export function ReaderChatPanel({
       generateTitle.mutate(text, { onSuccess: (result) => rename.mutate({ id, title: result.title }) })
     }
     const history = buildChatHistory(messages)
-    await send(id, text, history)
+    const result = await send(id, text, history)
+    return result !== undefined
   }
 
   return (
@@ -234,7 +237,16 @@ export function ReaderChatPanel({
             {streamingText !== null && (
               <MessageBubble message={{ role: 'assistant', content: streamingText || '…', context_chunk_ids: [] }} />
             )}
-            {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
+            {error && (
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-[var(--color-danger)]">{error}</p>
+                {canRetry && (
+                  <Button variant="ghost" className="px-2 py-1 text-xs" onClick={retry}>
+                    Retry
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -257,7 +269,7 @@ export function ReaderChatPanel({
           onDismiss={dismissMemoryCandidate}
         />
       )}
-      <ChatInput disabled={sending} onSend={(text) => void handleSend(text)} />
+      <ChatInput disabled={sending} onSend={handleSend} />
     </div>
   )
 }

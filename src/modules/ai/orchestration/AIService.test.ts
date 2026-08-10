@@ -41,7 +41,13 @@ const {
 const { invokeAiEmbedMock } = vi.hoisted(() => ({
   invokeAiEmbedMock: vi.fn(async () => ({ embeddings: [[0.1, 0.2, 0.3]], model: 'text-embedding-3-small', promptTokens: 5 })),
 }))
-vi.mock('@/modules/ai/providers/edgeFunctionClient', () => ({ invokeAiEmbed: invokeAiEmbedMock }))
+// AI_REQUEST_TIMEOUT_MESSAGE has to actually be exported here (not just
+// invokeAiEmbed) — normalizeAiError.ts reads it at module scope, and the
+// Phase 1 chat-send-UX tests below import normalizeAiError directly.
+vi.mock('@/modules/ai/providers/edgeFunctionClient', () => ({
+  invokeAiEmbed: invokeAiEmbedMock,
+  AI_REQUEST_TIMEOUT_MESSAGE: 'AI request timed out after 45s of inactivity',
+}))
 vi.mock('@/modules/ai/observability/api/aiRequests', () => ({ logAiRequest: vi.fn(async () => {}) }))
 
 vi.mock('@/modules/ai/chat/api/messages', () => ({
@@ -611,6 +617,127 @@ describe('sendMessage', () => {
       const result = await sendMessage(baseParams())
       expect(result.message.content).toBe('Hello there.')
       expect(result.contextTrace).toEqual({ retrievedChunks: 1, graphNodes: 0, memoriesUsed: 1 })
+    })
+  })
+
+  /**
+   * ARRIYIA Product Completion Phase 1 — the fix for "a failed chat send
+   * can discard the user's typed message with no retry or restoration."
+   * insertMessage runs unconditionally at the very top of sendMessage,
+   * before quota/retrieval/the provider call — every one of those can
+   * fail *after* the user's turn is already persisted, so a naive retry
+   * (just calling sendMessage again) would insert a second row for the
+   * same turn. These tests pin the fix: failures carry the already-
+   * persisted message back out (ChatSendFailure), and passing it back in
+   * as existingUserMessage on retry skips the insert entirely.
+   */
+  describe('Retry / no-duplicate-user-message (Phase 1 chat-send UX)', () => {
+    beforeEach(async () => {
+      const { insertMessage } = await import('@/modules/ai/chat/api/messages')
+      vi.mocked(insertMessage).mockClear()
+    })
+
+    it('inserts exactly one user message for a normal (non-retry) send', async () => {
+      const { insertMessage } = await import('@/modules/ai/chat/api/messages')
+      await sendMessage(baseParams())
+      const userInserts = vi.mocked(insertMessage).mock.calls.filter(([params]) => params.role === 'user')
+      expect(userInserts).toHaveLength(1)
+    })
+
+    it('skips inserting a new user message when existingUserMessage is provided — only the assistant reply is inserted', async () => {
+      const { insertMessage } = await import('@/modules/ai/chat/api/messages')
+      const existingUserMessage = {
+        id: 'msg-existing',
+        conversation_id: 'conv-1',
+        user_id: 'user-1',
+        role: 'user' as const,
+        content: baseParams().text,
+        context_chunk_ids: [],
+        created_at: new Date().toISOString(),
+      }
+      await sendMessage({ ...baseParams(), existingUserMessage })
+      expect(insertMessage).toHaveBeenCalledTimes(1)
+      expect(insertMessage).toHaveBeenCalledWith(expect.objectContaining({ role: 'assistant' }))
+    })
+
+    it('wraps a downstream provider failure in ChatSendFailure, carrying the already-persisted user message', async () => {
+      streamChatCompletionMock.mockRejectedValueOnce(new Error('upstream 502'))
+      await expect(sendMessage(baseParams())).rejects.toMatchObject({
+        userMessage: expect.objectContaining({ role: 'user', content: baseParams().text }),
+      })
+    })
+
+    it('a retry that reuses the persisted user message never creates a duplicate, even after the first attempt failed downstream', async () => {
+      const { insertMessage } = await import('@/modules/ai/chat/api/messages')
+      streamChatCompletionMock.mockRejectedValueOnce(new Error('upstream 502'))
+
+      let failure: unknown
+      try {
+        await sendMessage(baseParams())
+      } catch (err) {
+        failure = err
+      }
+      expect(insertMessage).toHaveBeenCalledTimes(1) // only the failed attempt's user message
+
+      const userMessage = (failure as { userMessage: { id: string; role: string } }).userMessage
+      expect(userMessage.role).toBe('user')
+
+      // Retry: same conversation/text, reusing the persisted row — this time the provider succeeds.
+      const result = await sendMessage({ ...baseParams(), existingUserMessage: userMessage as never })
+      expect(result.message.content).toBe('Hello there.')
+
+      // Total across both attempts: the one original user insert + one assistant insert. No second user row.
+      expect(insertMessage).toHaveBeenCalledTimes(2)
+      const userInserts = vi.mocked(insertMessage).mock.calls.filter(([params]) => params.role === 'user')
+      expect(userInserts).toHaveLength(1)
+    })
+
+    it('a quota denial also carries the persisted user message, so retry-after-topping-up-quota does not duplicate the turn either', async () => {
+      const { quotaService } = await import('@/shared/lib/quotaService')
+      vi.mocked(quotaService.checkQuota).mockResolvedValueOnce({ allowed: false, reason: 'AI quota limit reached' })
+      await expect(sendMessage(baseParams())).rejects.toMatchObject({
+        userMessage: expect.objectContaining({ role: 'user' }),
+      })
+    })
+
+    it('categorizes ARRIYIA quota denial as quota_exceeded, distinct from a transport/provider failure, via normalizeAiError', async () => {
+      const { quotaService } = await import('@/shared/lib/quotaService')
+      vi.mocked(quotaService.checkQuota).mockResolvedValueOnce({ allowed: false, reason: 'AI quota limit reached' })
+      const { normalizeAiError } = await import('@/modules/ai/orchestration/normalizeAiError')
+
+      let failure: unknown
+      try {
+        await sendMessage(baseParams())
+      } catch (err) {
+        failure = err
+      }
+      const normalized = normalizeAiError(failure)
+      expect(normalized.category).toBe('quota_exceeded')
+      expect(normalized.message).toBe('AI quota limit reached')
+      expect(normalized.isProviderUnavailable).toBe(false)
+    })
+
+    it('does not mistake a genuine transport/provider failure for a quota denial, even when its text happens to mention "quota"', async () => {
+      streamChatCompletionMock.mockRejectedValueOnce(new Error('upstream 502: you exceeded your current quota'))
+      const { normalizeAiError } = await import('@/modules/ai/orchestration/normalizeAiError')
+
+      let failure: unknown
+      try {
+        await sendMessage(baseParams())
+      } catch (err) {
+        failure = err
+      }
+      const normalized = normalizeAiError(failure)
+      expect(normalized.category).not.toBe('quota_exceeded')
+      expect(normalized.category).toBe('rate_limited')
+    })
+
+    it('never calls consumeQuota for a failed send — a failed turn is never billed against the user\'s quota', async () => {
+      streamChatCompletionMock.mockRejectedValueOnce(new Error('upstream 502'))
+      const { quotaService } = await import('@/shared/lib/quotaService')
+      vi.mocked(quotaService.consumeQuota).mockClear()
+      await expect(sendMessage(baseParams())).rejects.toThrow()
+      expect(quotaService.consumeQuota).not.toHaveBeenCalled()
     })
   })
 })

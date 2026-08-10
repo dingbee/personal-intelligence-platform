@@ -10,6 +10,7 @@ import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
 import type { Reference } from '@/modules/intelligence/references/referenceTypes'
 import type { ReasoningPlan } from '@/modules/intelligence/planner/plannerTypes'
 import { normalizeAiError } from '@/modules/ai/orchestration/normalizeAiError'
+import { ChatSendFailure } from '@/modules/ai/orchestration/chatSendErrors'
 import { PROVIDER_UNAVAILABLE_MESSAGE } from '@/modules/ai/providers/availability'
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
 import { detectMemoryCandidates } from '@/modules/ai/memory/memoryDetection/detectMemoryCandidates'
@@ -60,11 +61,23 @@ export function useSendMessage(providerId: string | null, documentId?: string) {
   // per send, same as everything else above — this view is only available
   // for the live turn, never reconstructed from persisted data.
   const [artifactPreview, setArtifactPreview] = useState<(ArtifactPreview & { messageId: string }) | null>(null)
+  // The most recent send that failed, kept only so `retry()` can replay it
+  // — `userMessage` is null when nothing was persisted yet (the chain===0
+  // early-return below never reaches AIService at all), and set once
+  // insertMessage has actually run, so retry never inserts a second row for
+  // the same turn (see ChatSendFailure / AIService's existingUserMessage).
+  const [failedSend, setFailedSend] = useState<{
+    conversationId: string
+    text: string
+    history: ChatProviderMessage[]
+    userMessage: Message | null
+  } | null>(null)
 
   async function send(
     conversationId: string,
     text: string,
     history: ChatProviderMessage[],
+    existingUserMessage?: Message,
   ): Promise<Message | undefined> {
     setError(null)
     setSuggestions([])
@@ -84,6 +97,9 @@ export function useSendMessage(providerId: string | null, documentId?: string) {
     // already-open conversation from using it.
     if (chain.length === 0) {
       setError(PROVIDER_UNAVAILABLE_MESSAGE)
+      // Nothing was persisted (this never reaches AIService), so a retry
+      // just re-attempts the plain send — there's no row to reuse.
+      setFailedSend({ conversationId, text, history, userMessage: null })
       return undefined
     }
 
@@ -102,6 +118,7 @@ export function useSendMessage(providerId: string | null, documentId?: string) {
         history,
         text,
         onDelta: setStreamingText,
+        existingUserMessage,
       })
       setSuggestions(result.suggestions)
       setContextTrace(result.contextTrace)
@@ -111,6 +128,7 @@ export function useSendMessage(providerId: string | null, documentId?: string) {
       setReasoningPlan(result.reasoningPlan)
       setMemoryCandidates(detectMemoryCandidates(text, conversationId))
       setArtifactPreview(result.artifactPreview ? { ...result.artifactPreview, messageId: result.message.id } : null)
+      setFailedSend(null)
       await queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
       await queryClient.invalidateQueries({ queryKey: ['conversations'] })
       return result.message
@@ -125,10 +143,26 @@ export function useSendMessage(providerId: string | null, documentId?: string) {
       if (normalized.isProviderUnavailable) {
         void queryClient.invalidateQueries({ queryKey: ['provider-availability'] })
       }
+      // ChatSendFailure carries the user message AIService already
+      // persisted before this failure (see chatSendErrors.ts) — keeping it
+      // here is what lets retry() resend without inserting a duplicate.
+      const persistedUserMessage = err instanceof ChatSendFailure ? err.userMessage : null
+      setFailedSend({ conversationId, text, history, userMessage: persistedUserMessage })
+      if (persistedUserMessage) {
+        // The user's turn is in the DB even though the reply failed —
+        // surface it in the transcript instead of leaving it invisible.
+        void queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
+      }
       return undefined
     } finally {
       setStreamingText(null)
     }
+  }
+
+  /** Replays the most recent failed send with its original text/history, reusing the already-persisted user message (if any) instead of inserting a duplicate. No-op if nothing has failed since the last successful send. */
+  function retry() {
+    if (!failedSend) return
+    void send(failedSend.conversationId, failedSend.text, failedSend.history, failedSend.userMessage ?? undefined)
   }
 
   function dismissMemoryCandidate(candidate: MemoryCandidate) {
@@ -137,6 +171,8 @@ export function useSendMessage(providerId: string | null, documentId?: string) {
 
   return {
     send,
+    retry,
+    canRetry: failedSend !== null,
     streamingText,
     sending: streamingText !== null,
     error,

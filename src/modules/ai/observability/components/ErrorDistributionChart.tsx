@@ -5,6 +5,7 @@ const CATEGORY_LABELS: Record<AiErrorCategory, string> = {
   rate_limited: 'Rate limited',
   timeout: 'Timeout',
   invalid_response: 'Invalid response',
+  quota_exceeded: 'Quota exceeded',
   unknown: 'Unknown',
 }
 

@@ -162,6 +162,8 @@ export function ChatPage() {
   // the new value automatically.
   const {
     send,
+    retry,
+    canRetry,
     streamingText,
     sending,
     error,
@@ -260,8 +262,8 @@ export function ChatPage() {
     setSelectedId(created.id)
   }
 
-  async function handleSend(text: string) {
-    if (!selectedId) return
+  async function handleSend(text: string): Promise<boolean> {
+    if (!selectedId) return false
     // UX-13.5A — fires alongside the send, not after it: title generation
     // only needs the user's own message, not the assistant's response, so
     // there's no reason to make the title wait on a full streamed reply.
@@ -274,7 +276,8 @@ export function ChatPage() {
       })
     }
     const history = buildChatHistory(messages)
-    await send(selectedId, text, history)
+    const result = await send(selectedId, text, history)
+    return result !== undefined
   }
 
   // Fires exactly once per mount: only once messages have loaded (so we
@@ -501,7 +504,16 @@ export function ChatPage() {
                     message={{ role: 'assistant', content: streamingText || '…', context_chunk_ids: [] }}
                   />
                 )}
-                {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
+                {error && (
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm text-[var(--color-danger)]">{error}</p>
+                    {canRetry && (
+                      <Button variant="ghost" className="px-2 py-1 text-xs" onClick={retry}>
+                        Retry
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             {!sending && contextTrace && (
@@ -540,7 +552,7 @@ export function ChatPage() {
                 onDismiss={dismissMemoryCandidate}
               />
             )}
-            <ChatInput disabled={sending} onSend={(text) => void handleSend(text)} />
+            <ChatInput disabled={sending} onSend={handleSend} />
           </>
         )}
       </div>
