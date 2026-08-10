@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '@/shared/lib/supabase'
 import type { PesapalCheckoutOrder, Subscription } from '@/shared/types/database'
 
@@ -49,7 +50,22 @@ export async function startProCheckout(): Promise<{ redirectUrl: string; merchan
   const { data, error } = await supabase.functions.invoke<{ redirectUrl: string; merchantReference: string }>('pesapal-checkout', {
     body: { intent: 'start_pro_subscription' },
   })
-  if (error) throw error
+  if (error) {
+    // supabase-js's FunctionsHttpError.message is always the same generic
+    // "Edge Function returned a non-2xx status code" string — it never
+    // includes the function's own response body. pesapal-checkout/index.ts
+    // already returns a specific, useful `{ error: string }` JSON body on
+    // every failure (e.g. "Pesapal checkout is not configured for this
+    // environment" on a 501), but callers only ever saw the generic
+    // wrapper message. error.context is the raw fetch Response, readable
+    // exactly once — read it here, or lose it, per supabase-js's own
+    // documented pattern for FunctionsHttpError.
+    if (error instanceof FunctionsHttpError) {
+      const body = (await error.context.json().catch(() => null)) as { error?: string } | null
+      throw new Error(body?.error ?? error.message)
+    }
+    throw error
+  }
   if (!data) throw new Error('Checkout did not return a redirect URL')
   return data
 }
