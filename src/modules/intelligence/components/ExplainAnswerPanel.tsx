@@ -1,6 +1,15 @@
 import type { ExplainSummary } from '@/modules/intelligence/explain/computeExplainSummary'
 
-/** UX-7 Phase 5 — native <details>, no new modal/primitive; collapsed by default so it never competes with the answer itself. */
+/**
+ * UX-7 Phase 5 — native <details>, no new modal/primitive; collapsed by
+ * default so it never competes with the answer itself.
+ *
+ * Phase 5A — deliberately does NOT render `summary.model` (the provider's
+ * raw model id, e.g. "claude-sonnet-5"): ARRIYIA users must never see
+ * which AI provider/model answered. `ExplainSummary.model` itself is left
+ * in place (still used by admin-only observability) — this component
+ * just never reads that field.
+ */
 export function ExplainAnswerPanel({ summary }: { summary: ExplainSummary }) {
   return (
     <details className="mt-1.5 text-xs text-[var(--color-ink-muted)]">
@@ -17,7 +26,6 @@ export function ExplainAnswerPanel({ summary }: { summary: ExplainSummary }) {
         <li>Workspace: {summary.workspaceName ?? 'All'}</li>
         <li>Conversation: {summary.isContinuation ? 'Continuing previous topic' : 'New topic'}</li>
         <li>Response style: {summary.responseStyle}</li>
-        <li>Model: {summary.model}</li>
       </ul>
     </details>
   )

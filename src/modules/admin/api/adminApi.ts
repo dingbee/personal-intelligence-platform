@@ -116,3 +116,38 @@ export async function adminRemoveUserQuotaOverride(params: { userId: string; quo
   })
   if (error) throw error
 }
+
+/**
+ * Phase 5A — sets a plan's allocation for one AI provider (active + admin-
+ * configured priority/order). Provider identity is never hardcoded into
+ * any plan-entitlement logic — this just writes a (plan_id, provider_id)
+ * row; the caller supplies whichever provider_id the client-side registry
+ * currently knows about.
+ */
+export async function adminSetPlanAiProvider(params: { planId: string; providerId: string; active: boolean; priority: number }) {
+  const { error } = await supabase.rpc('admin_set_plan_ai_provider', {
+    p_plan_id: params.planId,
+    p_provider_id: params.providerId,
+    p_active: params.active,
+    p_priority: params.priority,
+  })
+  if (error) throw error
+}
+
+/** Phase 5A — pricing metadata + active flag on `plans`. Configuration/data only; never read by entitlement or quota logic. */
+export async function adminUpdatePlanCommercial(params: {
+  planId: string
+  monthlyPriceCents: number | null
+  annualPriceCents: number | null
+  currency: string
+  active: boolean
+}) {
+  const { error } = await supabase.rpc('admin_update_plan_commercial', {
+    p_plan_id: params.planId,
+    p_monthly_price_cents: params.monthlyPriceCents,
+    p_annual_price_cents: params.annualPriceCents,
+    p_currency: params.currency,
+    p_active: params.active,
+  })
+  if (error) throw error
+}

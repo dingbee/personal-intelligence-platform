@@ -26,21 +26,40 @@ if (!HTMLDialogElement.prototype.close) {
  * confirmation before saving; a failed save must never look like an
  * unchanged, silently-reverted screen.
  */
-const { useAdminPlansAndQuotasMock, useAdminUpdatePlanQuotaMock, useAdminUsersMock } = vi.hoisted(() => ({
+const {
+  useAdminPlansAndQuotasMock,
+  useAdminUpdatePlanQuotaMock,
+  useAdminUsersMock,
+  useAdminSetPlanAiProviderMock,
+  useAdminUpdatePlanCommercialMock,
+} = vi.hoisted(() => ({
   useAdminPlansAndQuotasMock: vi.fn(),
   useAdminUpdatePlanQuotaMock: vi.fn(),
   useAdminUsersMock: vi.fn(),
+  useAdminSetPlanAiProviderMock: vi.fn(),
+  useAdminUpdatePlanCommercialMock: vi.fn(),
 }))
 
 vi.mock('@/modules/admin/hooks/useAdminData', () => ({
   useAdminPlansAndQuotas: useAdminPlansAndQuotasMock,
   useAdminUpdatePlanQuota: useAdminUpdatePlanQuotaMock,
   useAdminUsers: useAdminUsersMock,
+  useAdminSetPlanAiProvider: useAdminSetPlanAiProviderMock,
+  useAdminUpdatePlanCommercial: useAdminUpdatePlanCommercialMock,
 }))
 
 import { AdminPlansPage } from '@/modules/admin/pages/AdminPlansPage'
 
-const betaPlan = { id: 'plan-beta', code: 'beta', name: 'Beta', description: null, active: true }
+const betaPlan = {
+  id: 'plan-beta',
+  code: 'beta',
+  name: 'Beta',
+  description: null,
+  active: true,
+  monthly_price_cents: null,
+  annual_price_cents: null,
+  currency: 'USD',
+}
 const betaQuota = { id: 'quota-1', plan_id: 'plan-beta', quota_key: 'ai_messages', quota_limit: 100, quota_period: 'monthly' }
 const betaUsers = [
   { id: 'u1', plan_code: 'beta' },
@@ -61,9 +80,11 @@ describe('AdminPlansPage', () => {
     vi.clearAllMocks()
     updateQuotaMock = vi.fn()
 
-    useAdminPlansAndQuotasMock.mockReturnValue({ data: { plans: [betaPlan], quotas: [betaQuota] }, isLoading: false })
+    useAdminPlansAndQuotasMock.mockReturnValue({ data: { plans: [betaPlan], quotas: [betaQuota], aiProviders: [] }, isLoading: false })
     useAdminUsersMock.mockReturnValue({ data: betaUsers })
     useAdminUpdatePlanQuotaMock.mockReturnValue({ mutateAsync: updateQuotaMock, isPending: false })
+    useAdminSetPlanAiProviderMock.mockReturnValue({ mutate: vi.fn(), isPending: false })
+    useAdminUpdatePlanCommercialMock.mockReturnValue({ mutateAsync: vi.fn(), isPending: false })
   })
 
   it('shows the number of users currently on the plan', () => {

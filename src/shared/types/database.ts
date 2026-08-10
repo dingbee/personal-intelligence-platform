@@ -565,6 +565,29 @@ export type Plan = {
   description: string | null
   active: boolean
   created_at: string
+  /** Phase 5A (0049_plan_commercial_control.sql) — configuration/data only, never read by entitlement or quota logic. Null until a real price is decided (no payment provider is selected yet). */
+  monthly_price_cents: number | null
+  annual_price_cents: number | null
+  currency: string
+}
+
+/**
+ * Phase 5A — the plan -> allowed-AI-provider matrix. `provider_id` is a
+ * bare string key (e.g. "anthropic") matching `providerRegistry`'s ids
+ * and `platform_provider_settings.provider_id` — never a display label or
+ * model name. RLS: authenticated-read-all (resolveProviderChain reads a
+ * user's own plan's allowed set client-side); all writes go through
+ * `admin_set_plan_ai_provider` (SECURITY DEFINER, is_platform_admin()-
+ * gated).
+ */
+export type PlanAiProvider = {
+  id: string
+  plan_id: string
+  provider_id: string
+  priority: number
+  active: boolean
+  updated_by: string | null
+  updated_at: string
 }
 
 export type PlanQuota = {
@@ -972,6 +995,12 @@ export type Database = {
         Update: Partial<SubscriptionEvent>
         Relationships: []
       }
+      plan_ai_providers: {
+        Row: PlanAiProvider
+        Insert: Partial<PlanAiProvider> & { plan_id: string; provider_id: string }
+        Update: Partial<PlanAiProvider>
+        Relationships: []
+      }
       user_quota_overrides: {
         Row: UserQuotaOverride
         Insert: Partial<UserQuotaOverride> & { user_id: string; quota_key: string; quota_limit: number }
@@ -1150,6 +1179,20 @@ export type Database = {
       }
       admin_update_plan_quota: {
         Args: { p_plan_id: string; p_quota_key: string; p_quota_limit: number }
+        Returns: void
+      }
+      admin_set_plan_ai_provider: {
+        Args: { p_plan_id: string; p_provider_id: string; p_active: boolean; p_priority: number }
+        Returns: void
+      }
+      admin_update_plan_commercial: {
+        Args: {
+          p_plan_id: string
+          p_monthly_price_cents: number | null
+          p_annual_price_cents: number | null
+          p_currency: string
+          p_active: boolean
+        }
         Returns: void
       }
       has_feature: {

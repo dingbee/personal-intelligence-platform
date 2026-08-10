@@ -10,9 +10,11 @@ import {
   adminRemoveUserQuotaOverride,
   adminResetUserQuota,
   adminRevokeBetaInvite,
+  adminSetPlanAiProvider,
   adminSetPlatformProviderSetting,
   adminSetUserDisabled,
   adminSetUserQuotaOverride,
+  adminUpdatePlanCommercial,
   adminUpdatePlanQuota,
   sendBetaInvitationEmail,
 } from '@/modules/admin/api/adminApi'
@@ -124,16 +126,29 @@ export function useAdminPlatformCounts() {
   return useQuery({ queryKey: ['admin-platform-counts'], queryFn: adminPlatformCounts })
 }
 
-/** `plans`/`plan_quotas` are authenticated-read-all (0034), so this is a direct table read like any other client query — no RPC needed for reading, only for the write below. Shared by AdminDashboardPage (Overview) and AdminPlansPage (management). */
+/**
+ * `plans`/`plan_quotas`/`plan_ai_providers` are all authenticated-read-all,
+ * so this is a direct table read like any other client query — no RPC
+ * needed for reading, only for the writes below. Shared by
+ * AdminDashboardPage (Overview) and AdminPlansPage (the Plans &
+ * Commercial control centre). Phase 5A extended this with pricing
+ * metadata and the AI provider allocation matrix rather than adding a
+ * second combined query, since every consumer of the plan catalog wants
+ * the same joined shape.
+ */
 export function useAdminPlansAndQuotas() {
   return useQuery({
     queryKey: ['admin-plans-quotas'],
     queryFn: async () => {
-      const [{ data: plans }, { data: quotas }] = await Promise.all([
-        supabase.from('plans').select('id, code, name, description, active').order('created_at'),
+      const [{ data: plans }, { data: quotas }, { data: aiProviders }] = await Promise.all([
+        supabase
+          .from('plans')
+          .select('id, code, name, description, active, monthly_price_cents, annual_price_cents, currency')
+          .order('created_at'),
         supabase.from('plan_quotas').select('id, plan_id, quota_key, quota_limit, quota_period'),
+        supabase.from('plan_ai_providers').select('id, plan_id, provider_id, priority, active'),
       ])
-      return { plans: plans ?? [], quotas: quotas ?? [] }
+      return { plans: plans ?? [], quotas: quotas ?? [], aiProviders: aiProviders ?? [] }
     },
   })
 }
@@ -142,6 +157,30 @@ export function useAdminUpdatePlanQuota() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: adminUpdatePlanQuota,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-plans-quotas'] })
+    },
+  })
+}
+
+export function useAdminSetPlanAiProvider() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: adminSetPlanAiProvider,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-plans-quotas'] })
+      // The caller's own live provider chain reads plan_ai_providers too
+      // (usePlanAllowedProviders) — invalidate it so an admin editing
+      // their own plan's allocation sees the effect immediately.
+      void queryClient.invalidateQueries({ queryKey: ['plan-ai-providers'] })
+    },
+  })
+}
+
+export function useAdminUpdatePlanCommercial() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: adminUpdatePlanCommercial,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-plans-quotas'] })
     },

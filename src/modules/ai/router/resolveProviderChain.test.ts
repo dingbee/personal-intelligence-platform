@@ -187,4 +187,64 @@ describe('resolveProviderChain', () => {
       expect(chain).toEqual([])
     })
   })
+
+  describe('planAllowedProviderIds (Phase 5A commercial control)', () => {
+    it('mirrors a Free plan: exactly one allowed provider survives filtering even when every provider is otherwise eligible', () => {
+      const chain = resolveProviderChain({
+        preferredProviderId: null,
+        chatProviders,
+        availability: allAvailable,
+        planAllowedProviderIds: ['anthropic'],
+      })
+      expect(chain).toEqual(['anthropic'])
+    })
+
+    it('mirrors a Pro/Founding Pro plan: multiple allowed providers all survive filtering', () => {
+      const chain = resolveProviderChain({
+        preferredProviderId: null,
+        chatProviders,
+        availability: allAvailable,
+        planAllowedProviderIds: ['anthropic', 'openai', 'google'],
+      })
+      expect(chain).toHaveLength(3)
+    })
+
+    it('excludes even the preferred provider when the plan does not allow it', () => {
+      const chain = resolveProviderChain({
+        preferredProviderId: 'openai',
+        chatProviders,
+        availability: allAvailable,
+        planAllowedProviderIds: ['anthropic'],
+      })
+      expect(chain).toEqual(['anthropic'])
+    })
+
+    it('an empty allowed-provider list blocks everything — this is how useProviderChain fails closed while the plan/allocation query is still loading', () => {
+      const chain = resolveProviderChain({
+        preferredProviderId: 'openai',
+        chatProviders,
+        availability: allAvailable,
+        planAllowedProviderIds: [],
+      })
+      expect(chain).toEqual([])
+    })
+
+    it('omitting planAllowedProviderIds entirely (undefined) preserves every existing caller\'s unrestricted behavior', () => {
+      const chain = resolveProviderChain({ preferredProviderId: 'openai', chatProviders, availability: allAvailable })
+      expect(chain).toHaveLength(3)
+    })
+
+    it('planProviderPriority orders the remainder ahead of platformSettings priority and health score', () => {
+      const chain = resolveProviderChain({
+        preferredProviderId: null,
+        chatProviders,
+        availability: allAvailable,
+        planAllowedProviderIds: ['anthropic', 'openai', 'google'],
+        planProviderPriority: { anthropic: 2, openai: 1, google: 0 },
+        healthScores: { anthropic: 10, openai: 20, google: 99 },
+        platformSettings: { google: { enabled: true, priority: 50 } },
+      })
+      expect(chain).toEqual(['anthropic', 'openai', 'google'])
+    })
+  })
 })

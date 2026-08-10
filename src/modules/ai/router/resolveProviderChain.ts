@@ -37,6 +37,21 @@ export interface ResolveProviderChainParams {
    * sites (useAnalyzeImage) pass this.
    */
   requireVision?: boolean
+  /**
+   * Phase 5A — the caller's plan's allowed-provider set
+   * (`plan_ai_providers`, active rows). `undefined` means "no plan
+   * restriction" and preserves every existing caller's behavior exactly
+   * (this is what makes the parameter additive, not breaking) — but
+   * `useProviderChain`, the one hook every real request path actually
+   * uses, never passes `undefined` in production: it resolves to `[]`
+   * while the plan/allocation query is loading, so the commercial
+   * restriction (Free = exactly one provider) can never be bypassed by a
+   * race with an unloaded query. An empty array here means "nothing is
+   * eligible," not "no restriction."
+   */
+  planAllowedProviderIds?: string[]
+  /** Admin-configured per-plan ordering (`plan_ai_providers.priority`) — sorted ahead of `platformSettings`' platform-wide priority, which remains a secondary tiebreaker. */
+  planProviderPriority?: Record<string, number>
 }
 
 /**
@@ -53,21 +68,34 @@ export interface ResolveProviderChainParams {
  * sole candidacy gate — no parallel eligibility check.
  */
 export function resolveProviderChain(params: ResolveProviderChainParams): string[] {
-  const { preferredProviderId, chatProviders, availability, overrides, healthScores, platformSettings, requireVision } = params
+  const {
+    preferredProviderId,
+    chatProviders,
+    availability,
+    overrides,
+    healthScores,
+    platformSettings,
+    requireVision,
+    planAllowedProviderIds,
+    planProviderPriority,
+  } = params
 
   const eligibleIds = chatProviders
     .filter((provider) => provider.kind === 'chat' && provider.status === 'available')
     .filter((provider) => isProviderAvailable(provider.id, availability, overrides))
     .filter((provider) => platformSettings?.[provider.id]?.enabled !== false)
     .filter((provider) => !requireVision || provider.supportsVision !== false)
+    .filter((provider) => !planAllowedProviderIds || planAllowedProviderIds.includes(provider.id))
     .map((provider) => provider.id)
 
   if (eligibleIds.length === 0) return []
 
   const rest = eligibleIds.filter((id) => id !== preferredProviderId)
   const orderedRest =
-    healthScores || platformSettings
+    healthScores || platformSettings || planProviderPriority
       ? [...rest].sort((a, b) => {
+          const planPriorityDiff = (planProviderPriority?.[b] ?? 0) - (planProviderPriority?.[a] ?? 0)
+          if (planPriorityDiff !== 0) return planPriorityDiff
           const priorityDiff = (platformSettings?.[b]?.priority ?? 0) - (platformSettings?.[a]?.priority ?? 0)
           return priorityDiff !== 0 ? priorityDiff : (healthScores?.[b] ?? 0) - (healthScores?.[a] ?? 0)
         })

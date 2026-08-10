@@ -34,9 +34,10 @@ export async function getCurrentUserPlan(userId: string): Promise<CurrentUserPla
 /**
  * Phase 4 Commercial Architecture — thin client wrapper over the
  * `has_feature` RPC (0046_feature_entitlements_and_storage_quota.sql).
- * Unlike `canSelectProvider` (a hardcoded plan-code check, safe only
- * because it gates no real privilege), collaboration IS a real,
- * server-enforced boundary — `invite_to_workspace` independently re-checks
+ * Unlike a hardcoded plan-code check (safe only when it gates no real
+ * privilege — see AI provider selection, which is admin-only entirely as
+ * of Phase 5A rather than gated by plan code at all), collaboration IS a
+ * real, server-enforced boundary — `invite_to_workspace` independently re-checks
  * this same `has_feature` resolution before granting an invite, so a
  * client-side hardcoded guess here could drift from what the database
  * would actually allow (e.g. an admin-adjusted plan_quotas row). This

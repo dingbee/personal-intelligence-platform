@@ -1,8 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useProfile } from '@/modules/settings/hooks/useProfile'
-import { useCurrentPlan } from '@/modules/plans/hooks/useCurrentPlan'
-import { canSelectProvider } from '@/modules/plans/entitlements'
 import { usePlatformAdmin } from '@/modules/admin/hooks/usePlatformAdmin'
 import { BillingCard } from '@/modules/billing/components/BillingCard'
 import { ProfileCard } from '@/modules/settings/components/ProfileCard'
@@ -13,9 +11,11 @@ import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 export function SettingsPage() {
   const { user } = useAuth()
   const { data: profile, isLoading: profileLoading } = useProfile()
-  const { data: plan } = useCurrentPlan()
+  // Phase 5A — AI provider selection is an admin-only capability now, not
+  // a Pro/Enterprise plan perk (see AdvancedSettingsPage's own doc
+  // comment). No plan code ever grants this link anymore.
   const { data: isAdmin } = usePlatformAdmin()
-  const showAdvancedSettings = isAdmin || canSelectProvider(plan?.planCode)
+  const showAdvancedSettings = isAdmin
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,13 +54,10 @@ export function SettingsPage() {
         </p>
       </SurfaceCard>
 
-      {/* Provider identity/configuration is invisible to Free/Beta entirely
-          (see the Beta / Admin / AI Governance Foundation discovery doc) —
-          ARRIYIA picks a provider automatically. Pro/Enterprise (and
-          founders) get a single link to a dedicated page with just the
-          one provider-preference control; the richer control center
-          (health/test/enable-disable) moved to the founder-only Admin
-          Dashboard. */}
+      {/* Phase 5A — AI provider identity/configuration is invisible to
+          every ordinary user, on every plan; ARRIYIA always picks a
+          provider automatically. This link (and the preference control
+          behind it) is admin-only now. */}
       {showAdvancedSettings && (
         <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
           <div className="flex items-center justify-between">
@@ -69,7 +66,7 @@ export function SettingsPage() {
               Open →
             </Link>
           </div>
-          <p className="mt-1 text-xs text-[var(--color-ink-muted)]">Choose which AI provider ARRIYIA uses, available on your plan.</p>
+          <p className="mt-1 text-xs text-[var(--color-ink-muted)]">Admin-only AI provider preference.</p>
         </div>
       )}
 
