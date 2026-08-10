@@ -170,8 +170,9 @@ export function AdminPlansPage() {
           <Link to="/admin/users" className="text-[var(--color-accent)] hover:underline">
             Users
           </Link>
-          . No payment processing happens on this page — pricing fields are informational until a payment provider is
-          wired up.
+          . No payment processing happens on this page. Pricing set here also determines the amount charged by the
+          Pesapal sandbox checkout on /pricing (still sandbox-only — see Settings/Billing for a plan's live subscription
+          status).
         </p>
       </div>
 

@@ -6,6 +6,20 @@ export interface CurrentUserPlan {
   planName: string
 }
 
+export interface PublicPlanTier {
+  planId: string
+  code: string
+  name: string
+  description: string | null
+  active: boolean
+  monthlyPriceCents: number | null
+  annualPriceCents: number | null
+  currency: string
+  aiMessagesPerMonth: number | null
+  storageBytes: number | null
+  collaboration: boolean
+}
+
 /**
  * Resolves the caller's own active plan code/name — quotaService.ts only
  * ever needed `plan_id` (to join into plan_quotas for a limit), so this is
@@ -73,4 +87,56 @@ export async function getStorageUsage(userId: string): Promise<{ used: number; l
   if (usedError) console.error('getStorageUsage: usage calculation failed:', usedError)
   if (limitError) console.error('getStorageUsage: limit resolution failed:', limitError)
   return { used: used ?? 0, limit: limit ?? null }
+}
+
+/**
+ * Phase 5C — the plan catalog for /pricing, driven entirely by `plans` +
+ * `plan_quotas` (both authenticated-read-all, same tables
+ * useAdminPlansAndQuotas reads for the admin control surface — this is
+ * the read-only, non-admin-scoped counterpart). Never reads
+ * `plan_ai_providers`: /pricing must never surface provider identity or
+ * even provider *count*, per the locked "AI provider invisibility"
+ * product decision. AI message/storage numbers shown to users always
+ * come from here, not from copy hardcoded in PricingPage, so an admin
+ * editing a plan's quota in Admin -> Plans & Commercial is immediately
+ * reflected in what users see on /pricing.
+ */
+export async function getPublicPlanCatalog(codes: string[]): Promise<PublicPlanTier[]> {
+  const { data: plans, error: plansError } = await supabase
+    .from('plans')
+    .select('id, code, name, description, active, monthly_price_cents, annual_price_cents, currency')
+    .in('code', codes)
+  if (plansError || !plans) {
+    console.error('getPublicPlanCatalog: plans query failed:', plansError)
+    return []
+  }
+
+  const { data: quotas, error: quotasError } = await supabase
+    .from('plan_quotas')
+    .select('plan_id, quota_key, quota_limit')
+    .in(
+      'plan_id',
+      plans.map((p) => p.id),
+    )
+  if (quotasError) console.error('getPublicPlanCatalog: quotas query failed:', quotasError)
+
+  return plans.map((plan) => {
+    const planQuotas = (quotas ?? []).filter((q) => q.plan_id === plan.id)
+    const aiMessages = planQuotas.find((q) => q.quota_key === 'ai_messages')
+    const storage = planQuotas.find((q) => q.quota_key === 'storage_bytes')
+    const collaboration = planQuotas.find((q) => q.quota_key === 'feature:collaboration')
+    return {
+      planId: plan.id,
+      code: plan.code,
+      name: plan.name,
+      description: plan.description,
+      active: plan.active,
+      monthlyPriceCents: plan.monthly_price_cents,
+      annualPriceCents: plan.annual_price_cents,
+      currency: plan.currency,
+      aiMessagesPerMonth: aiMessages?.quota_limit ?? null,
+      storageBytes: storage?.quota_limit ?? null,
+      collaboration: (collaboration?.quota_limit ?? 0) > 0,
+    }
+  })
 }

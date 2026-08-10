@@ -1,4 +1,5 @@
 import { useRef, useState, type DragEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useDocumentMutations } from '@/modules/library/hooks/useDocumentMutations'
 import {
   ACCEPTED_FILE_EXTENSIONS,
@@ -13,7 +14,17 @@ interface UploadItem {
   fileName: string
   status: 'uploading' | 'done' | 'error'
   error?: string
+  isStorageQuotaError?: boolean
 }
+
+// Phase 5C Task 6 — the server-side storage-quota trigger
+// (enforce_storage_quota(), 0046_feature_entitlements_and_storage_quota.sql)
+// raises a plain Postgres exception on a blocked upload; before this
+// phase that raw message was the only thing a Free user ever saw, with no
+// path to an upgrade. This only changes what's DISPLAYED for that one
+// known message shape — the trigger itself, the actual enforcement
+// boundary, is untouched.
+const STORAGE_QUOTA_ERROR_MARKER = 'Storage quota exceeded'
 
 export function UploadDropzone({ collectionId }: { collectionId: string | null }) {
   const { upload } = useDocumentMutations()
@@ -52,10 +63,17 @@ export function UploadDropzone({ collectionId }: { collectionId: string | null }
         await upload.mutateAsync({ file, collectionId })
         setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status: 'done' } : item)))
       } catch (err) {
+        const message = err instanceof Error ? err.message : 'Upload failed'
+        const isStorageQuotaError = message.includes(STORAGE_QUOTA_ERROR_MARKER)
         setItems((prev) =>
           prev.map((item) =>
             item.id === id
-              ? { ...item, status: 'error', error: err instanceof Error ? err.message : 'Upload failed' }
+              ? {
+                  ...item,
+                  status: 'error',
+                  error: isStorageQuotaError ? "You've reached your storage limit." : message,
+                  isStorageQuotaError,
+                }
               : item,
           ),
         )
@@ -114,18 +132,25 @@ export function UploadDropzone({ collectionId }: { collectionId: string | null }
               className="flex items-center justify-between rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm"
             >
               <span className="truncate text-[var(--color-ink)]">{item.fileName}</span>
-              <span
-                className={
-                  item.status === 'error'
-                    ? 'text-[var(--color-danger)]'
-                    : item.status === 'done'
-                      ? 'text-[var(--color-success)]'
-                      : 'text-[var(--color-ink-muted)]'
-                }
-              >
-                {item.status === 'uploading' && 'Uploading…'}
-                {item.status === 'done' && 'Uploaded'}
-                {item.status === 'error' && item.error}
+              <span className="flex items-center gap-2">
+                <span
+                  className={
+                    item.status === 'error'
+                      ? 'text-[var(--color-danger)]'
+                      : item.status === 'done'
+                        ? 'text-[var(--color-success)]'
+                        : 'text-[var(--color-ink-muted)]'
+                  }
+                >
+                  {item.status === 'uploading' && 'Uploading…'}
+                  {item.status === 'done' && 'Uploaded'}
+                  {item.status === 'error' && item.error}
+                </span>
+                {item.isStorageQuotaError && (
+                  <Link to="/pricing" className="font-medium text-[var(--color-accent)] hover:underline">
+                    Upgrade to Pro →
+                  </Link>
+                )}
               </span>
             </li>
           ))}

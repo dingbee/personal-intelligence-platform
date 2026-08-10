@@ -18,6 +18,13 @@ const navItems = [
   { to: '/notes', label: 'Notes' },
   { to: '/search', label: 'Search' },
   { to: '/chat', label: 'Chat' },
+  // Phase 5C — the only reachable path to /pricing was previously typing
+  // the URL directly; nothing in primary nav, Settings, or anywhere else
+  // linked to it. This is the single, minimal nav entry point Task 10
+  // requires — not duplicated as a second "Upgrade" item, since the
+  // existing quota/collaboration-denial CTAs and BillingCard's "View
+  // plans" link already cover the in-context upgrade moments.
+  { to: '/pricing', label: 'Pricing' },
   { to: '/settings', label: 'Settings' },
 ]
 

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useCurrentPlan } from '@/modules/plans/hooks/useCurrentPlan'
 import { useStorageUsage } from '@/modules/plans/hooks/useStorageUsage'
+import { useAiMessageUsage } from '@/modules/plans/hooks/useAiMessageUsage'
 import { useSubscription } from '@/modules/billing/hooks/useSubscription'
 import { UsageIndicator } from '@/modules/billing/components/UsageIndicator'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
@@ -27,8 +28,15 @@ export function BillingCard() {
   const { data: plan } = useCurrentPlan()
   const { data: subscription } = useSubscription()
   const { data: storage } = useStorageUsage()
+  const { data: aiUsage } = useAiMessageUsage()
 
   const statusInfo = subscription ? STATUS_BADGE[subscription.status] : null
+  // Phase 5C Task 9 — a Free user approaching or at their storage limit
+  // needs an upgrade path, not just a color change on the bar. Never
+  // shown for a plan that's already Pro/Founding Pro/Enterprise — there's
+  // nothing to upgrade to from here.
+  const isNearStorageLimit = storage && storage.limit !== null && storage.limit > 0 && storage.used / storage.limit >= 0.9
+  const canUpgrade = plan && !['pro', 'founding_pro', 'enterprise'].includes(plan.planCode)
 
   return (
     <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
@@ -67,9 +75,26 @@ export function BillingCard() {
         <p className="mt-2 text-xs text-[var(--color-ink-muted)]">Billed via Pesapal (Sandbox — no real charges).</p>
       )}
 
+      {aiUsage && (
+        <div className="mt-4">
+          <UsageIndicator label="AI messages this month" used={aiUsage.used} limit={aiUsage.limit} />
+        </div>
+      )}
+
       {storage && (
         <div className="mt-4">
           <UsageIndicator label="Storage" used={storage.used} limit={storage.limit} formatValue={formatFileSize} />
+        </div>
+      )}
+
+      {isNearStorageLimit && canUpgrade && (
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-md bg-[var(--color-warning-bg)] p-2">
+          <p className="text-xs text-[var(--color-warning-strong)]">
+            {storage!.used >= storage!.limit! ? "You've reached your storage limit." : 'Approaching your storage limit.'}
+          </p>
+          <Link to="/pricing" className="shrink-0 text-xs font-medium text-[var(--color-accent)] hover:underline">
+            Upgrade to Pro →
+          </Link>
         </div>
       )}
     </div>

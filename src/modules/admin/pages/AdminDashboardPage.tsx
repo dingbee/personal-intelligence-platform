@@ -111,7 +111,7 @@ export function AdminDashboardPage() {
           Users →
         </Link>
         <Link to="/admin/plans" className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-ink)] hover:bg-[var(--surface-inset)]">
-          Plans & Quotas →
+          Plans & Commercial →
         </Link>
         <Link to="/admin/ai" className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-ink)] hover:bg-[var(--surface-inset)]">
           AI Governance →
