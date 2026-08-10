@@ -113,7 +113,7 @@ export function ChatPage() {
   }, [conversations, selectedId])
 
 
-  const { data: messages = [], isLoading: messagesLoading } = useMessages(selectedId)
+  const { data: messages = [], isLoading: messagesLoading, hasOlder, loadOlder, loadingOlder } = useMessages(selectedId)
 
   useEffect(() => {
     if (!deepLinkMessageId || deepLinkHandledRef.current) return
@@ -487,17 +487,26 @@ export function ChatPage() {
                 {messagesLoading ? (
                   <Spinner />
                 ) : (
-                  messages.map((message) => (
-                    <MessageBubble
-                      key={message.id}
-                      message={message}
-                      highlighted={message.id === highlightedMessageId}
-                      onSave={() => saveMessage.save(message)}
-                      saved={saveMessage.isSaved(message.id)}
-                      saving={saveMessage.isSaving(message.id)}
-                      artifactPreview={artifactPreview?.messageId === message.id ? artifactPreview : undefined}
-                    />
-                  ))
+                  <>
+                    {hasOlder && (
+                      <div className="flex justify-center">
+                        <Button variant="ghost" onClick={() => void loadOlder()} disabled={loadingOlder}>
+                          {loadingOlder ? 'Loading…' : 'Load older messages'}
+                        </Button>
+                      </div>
+                    )}
+                    {messages.map((message) => (
+                      <MessageBubble
+                        key={message.id}
+                        message={message}
+                        highlighted={message.id === highlightedMessageId}
+                        onSave={() => saveMessage.save(message)}
+                        saved={saveMessage.isSaved(message.id)}
+                        saving={saveMessage.isSaving(message.id)}
+                        artifactPreview={artifactPreview?.messageId === message.id ? artifactPreview : undefined}
+                      />
+                    ))}
+                  </>
                 )}
                 {streamingText !== null && (
                   <MessageBubble

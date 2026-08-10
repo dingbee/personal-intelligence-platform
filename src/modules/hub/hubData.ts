@@ -22,6 +22,17 @@ import { computeWorkspaceHealth, type WorkspaceHealthIndicator } from '@/modules
 const RECENT_LIST_LIMIT = 5
 
 /**
+ * ARRIYIA Product Completion Phase 2 — a workspace counts as "zero-data"
+ * only when every one of its three primary content types is empty.
+ * Extracted as its own pure function (rather than inlined at the
+ * buildWorkspaceHubState call site) purely so it's unit-testable without
+ * mocking the half-dozen API calls that function makes.
+ */
+export function computeIsZeroData(documentCount: number, noteCount: number, conversationCount: number): boolean {
+  return documentCount === 0 && noteCount === 0 && conversationCount === 0
+}
+
+/**
  * AI Experience Intelligence v1 — the most-recently-updated conversation
  * (among the already-fetched activeConversations, so no extra fan-out
  * beyond the one listLastMessageRoles query) whose last message role is
@@ -48,6 +59,15 @@ export interface WorkspaceHubState {
   activeConversations: Conversation[]
   intelligenceItems: IntelligenceItem[]
   health: WorkspaceHealthIndicator[]
+  /**
+   * ARRIYIA Product Completion Phase 2 — the workspace's overall first-use
+   * condition (no documents, no notes, no conversations at all), not
+   * "some individual section happens to be empty." Deliberately doesn't
+   * factor in assets/memory: those are only ever created by acting on a
+   * document, note, or conversation first, so an established user can
+   * never have either while genuinely having zero of these three.
+   */
+  isZeroData: boolean
 }
 
 /**
@@ -143,5 +163,6 @@ export async function buildWorkspaceHubState(workspaceId: string, commandContext
     activeConversations,
     intelligenceItems,
     health,
+    isZeroData: computeIsZeroData(documents.length, allNotes.length, conversations.length),
   }
 }

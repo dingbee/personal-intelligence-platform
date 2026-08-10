@@ -26,6 +26,7 @@ import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { StatCard } from '@/shared/components/ui/surface/StatCard'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Spinner } from '@/shared/components/ui/Spinner'
+import { HubOnboarding } from '@/modules/hub/components/HubOnboarding'
 
 /** A zone eyebrow — the small uppercase label that gives the page's stack of sections a sense of grouping instead of one undifferentiated list. */
 function ZoneLabel({ children }: { children: string }) {
@@ -128,7 +129,16 @@ export function WorkspaceIntelligenceHubPage() {
         <div className="flex justify-center py-16">
           <Spinner />
         </div>
-      ) : !data ? null : (
+      ) : !data ? null : data.isZeroData ? (
+        // ARRIYIA Product Completion Phase 2 — a genuinely zero-data
+        // workspace (see computeIsZeroData: no documents, notes, or
+        // conversations at all) gets the first-run narrative instead of
+        // the full dashboard below, which would otherwise be a page of
+        // mostly-empty sections. Established users never see this, even
+        // with one empty section — isZeroData reflects the workspace's
+        // overall content, not any single list.
+        <HubOnboarding workspaceName={workspaceName} />
+      ) : (
         <>
           <SurfaceCard className="flex flex-col gap-2">
             <SectionHeader level="section" title="Executive Summary" action={<MaturityBadge stage={data.report.maturity.stage} label={data.report.maturity.label} />} />

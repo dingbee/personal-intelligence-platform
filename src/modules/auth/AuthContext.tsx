@@ -64,7 +64,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: 'This email is not approved for beta access.' }
   }
 
-  const { error } = await supabase.auth.signUp({ email, password })
+  // ARRIYIA Product Completion Phase 2 — previously called with no
+  // options at all, so the confirmation email's redirect fell back
+  // entirely to Supabase's dashboard-configured Site URL rather than
+  // this app's own canonical-domain logic. Same helper and same
+  // reasoning as sendPasswordReset below (Phase 5.2): pin it to
+  // VITE_SITE_URL when configured instead of leaving it to whichever
+  // domain happens to be set server-side.
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: canonicalSiteUrl() },
+  })
 
   return { error: error?.message ?? null }
 },
@@ -77,9 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return { error: error?.message ?? null }
 },
       async signInWithMagicLink(email) {
+        // ARRIYIA Product Completion Phase 2 — same canonical-domain fix as
+        // sendPasswordReset (Phase 5.2): window.location.origin alone
+        // means this link could resolve through whichever domain served
+        // the page, not necessarily the canonical ARRIYIA app.
         const { error } = await supabase.auth.signInWithOtp({
           email,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: canonicalSiteUrl() },
         })
         return { error: error?.message ?? null }
       },

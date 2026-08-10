@@ -90,7 +90,7 @@ export function ReaderChatPanel({
     if (!conversationId && conversations.length > 0) setConversationId(conversations[0]!.id)
   }, [conversations, conversationId])
 
-  const { data: messages = [], isLoading: messagesLoading } = useMessages(conversationId)
+  const { data: messages = [], isLoading: messagesLoading, hasOlder, loadOlder, loadingOlder } = useMessages(conversationId)
   const conversation = conversations.find((c) => c.id === conversationId)
   const {
     send,
@@ -223,16 +223,25 @@ export function ReaderChatPanel({
             {messagesLoading ? (
               <Spinner size="sm" />
             ) : (
-              messages.map((message) => (
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  onSave={() => saveMessage.save(message)}
-                  saved={saveMessage.isSaved(message.id)}
-                  saving={saveMessage.isSaving(message.id)}
-                  artifactPreview={artifactPreview?.messageId === message.id ? artifactPreview : undefined}
-                />
-              ))
+              <>
+                {hasOlder && (
+                  <div className="flex justify-center">
+                    <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => void loadOlder()} disabled={loadingOlder}>
+                      {loadingOlder ? 'Loading…' : 'Load older messages'}
+                    </Button>
+                  </div>
+                )}
+                {messages.map((message) => (
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    onSave={() => saveMessage.save(message)}
+                    saved={saveMessage.isSaved(message.id)}
+                    saving={saveMessage.isSaving(message.id)}
+                    artifactPreview={artifactPreview?.messageId === message.id ? artifactPreview : undefined}
+                  />
+                ))}
+              </>
             )}
             {streamingText !== null && (
               <MessageBubble message={{ role: 'assistant', content: streamingText || '…', context_chunk_ids: [] }} />

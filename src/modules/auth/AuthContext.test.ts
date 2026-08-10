@@ -31,10 +31,11 @@ const { rpcMock, signUpMock, getSessionMock, onAuthStateChangeMock, capturedAuth
   }
 })
 
-const { signOutMock, resetPasswordForEmailMock, updateUserMock } = vi.hoisted(() => ({
+const { signOutMock, resetPasswordForEmailMock, updateUserMock, signInWithOtpMock } = vi.hoisted(() => ({
   signOutMock: vi.fn(async () => ({ error: null })),
   resetPasswordForEmailMock: vi.fn(async () => ({ error: null })),
   updateUserMock: vi.fn().mockResolvedValue({ error: null }),
+  signInWithOtpMock: vi.fn(async () => ({ error: null })),
 }))
 
 vi.mock('@/shared/lib/supabase', () => ({
@@ -46,6 +47,7 @@ vi.mock('@/shared/lib/supabase', () => ({
       signOut: signOutMock,
       resetPasswordForEmail: resetPasswordForEmailMock,
       updateUser: updateUserMock,
+      signInWithOtp: signInWithOtpMock,
     },
     rpc: rpcMock,
   },
@@ -64,7 +66,7 @@ describe('AuthContext.signUpWithPassword', () => {
   })
 
 
-  it('proceeds to auth.signUp for an invited email', async () => {
+  it('proceeds to auth.signUp for an invited email, redirecting the confirmation link to the current origin by default', async () => {
     rpcMock.mockResolvedValueOnce({ data: true, error: null })
     signUpMock.mockResolvedValueOnce({ error: null })
     const { result } = renderHook(() => useAuth(), { wrapper })
@@ -72,8 +74,32 @@ describe('AuthContext.signUpWithPassword', () => {
     const outcome = await result.current.signUpWithPassword('invited@example.com', 'password123')
 
     expect(rpcMock).toHaveBeenCalledWith('is_beta_invited', { check_email: 'invited@example.com' })
-    expect(signUpMock).toHaveBeenCalledWith({ email: 'invited@example.com', password: 'password123' })
+    expect(signUpMock).toHaveBeenCalledWith({
+      email: 'invited@example.com',
+      password: 'password123',
+      options: { emailRedirectTo: window.location.origin },
+    })
     expect(outcome).toEqual({ error: null })
+  })
+
+  // ARRIYIA Product Completion Phase 2 — the fix for the signup
+  // confirmation link resolving through whichever domain served the page
+  // (previously no emailRedirectTo was set at all, so Supabase fell back
+  // entirely to its own dashboard-configured Site URL).
+  it('prefers VITE_SITE_URL over window.location.origin for the confirmation redirect when configured', async () => {
+    vi.stubEnv('VITE_SITE_URL', 'https://app.nolmark.co/')
+    rpcMock.mockResolvedValueOnce({ data: true, error: null })
+    signUpMock.mockResolvedValueOnce({ error: null })
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    await result.current.signUpWithPassword('invited@example.com', 'password123')
+
+    expect(signUpMock).toHaveBeenCalledWith({
+      email: 'invited@example.com',
+      password: 'password123',
+      options: { emailRedirectTo: 'https://app.nolmark.co' },
+    })
+    vi.unstubAllEnvs()
   })
 
   it('blocks a non-invited email without ever calling auth.signUp', async () => {
@@ -117,6 +143,48 @@ describe('AuthContext.signOut', () => {
 
     expect(signOutMock).toHaveBeenCalledTimes(1)
     expect(queryClient.getQueryData(['notes'])).toBeUndefined()
+  })
+})
+
+/**
+ * ARRIYIA Product Completion Phase 2 — magic-link sign-in previously
+ * pinned emailRedirectTo to window.location.origin directly, so the link
+ * could resolve through whichever domain served the page rather than the
+ * canonical ARRIYIA app. Same canonicalSiteUrl() helper and fallback
+ * behavior as sendPasswordReset below — password recovery itself is
+ * untouched by this change.
+ */
+describe('AuthContext.signInWithMagicLink', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    queryClient = new QueryClient()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('redirects to the current origin by default when VITE_SITE_URL is not configured', async () => {
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    await result.current.signInWithMagicLink('user@example.com')
+
+    expect(signInWithOtpMock).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      options: { emailRedirectTo: window.location.origin },
+    })
+  })
+
+  it('prefers VITE_SITE_URL over window.location.origin when configured', async () => {
+    vi.stubEnv('VITE_SITE_URL', 'https://app.nolmark.co/')
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    await result.current.signInWithMagicLink('user@example.com')
+
+    expect(signInWithOtpMock).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      options: { emailRedirectTo: 'https://app.nolmark.co' },
+    })
   })
 })
 
