@@ -1,27 +1,40 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '@/modules/auth/useAuth'
 import { useCurrentPlan } from '@/modules/plans/hooks/useCurrentPlan'
 import { usePublicPlanCatalog } from '@/modules/plans/hooks/usePublicPlanCatalog'
 import { startProCheckout } from '@/modules/billing/api/billing'
 import type { PublicPlanTier } from '@/modules/plans/api/plans'
 import { formatFileSize } from '@/modules/library/utils/fileTypes'
+import { appConfig } from '@/app/appConfig'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 
-// Phase 5C Commercial UX Exposure — plan/quota numbers shown here always
-// come from live `plans`/`plan_quotas` data (usePublicPlanCatalog), never
-// hardcoded copy — an admin editing a plan's quota in Admin -> Plans &
-// Commercial is reflected here immediately. Only plan-independent
-// marketing copy (what ARRIYIA *is*) stays static.
+// Phase 5C fix — this is a genuinely PUBLIC route (see router.tsx: it is
+// deliberately NOT nested under the ProtectedRoute-wrapped '/' subtree,
+// and therefore does not render inside AppShell/Sidebar). It must work
+// for a completely anonymous visitor typing the URL directly, so this
+// page supplies its own minimal header rather than relying on app chrome
+// — and, since AuthProvider/WorkspaceProvider both wrap the whole router
+// in App.tsx regardless of route nesting, useAuth()/useCurrentPlan() are
+// still safe to call here for a signed-in visitor.
+//
+// Plan/quota numbers shown here always come from live `plans`/
+// `plan_quotas` data (usePublicPlanCatalog), never hardcoded copy — an
+// admin editing a plan's quota in Admin -> Plans & Commercial is
+// reflected here immediately. Only plan-independent marketing copy (what
+// ARRIYIA *is*) stays static. Both tables are readable by `anon` as of
+// this same fix (0051_public_pricing_page_access.sql) — read-only,
+// catalog/config data only, never user data; `plan_ai_providers` is
+// deliberately NOT granted to anon (or selected by this page) — AI
+// provider identity must never be visible to anyone but an admin.
 //
 // LOCKED PRODUCT DECISION — AI provider invisibility: this page must
 // never name an AI provider, mention "provider selection," or imply a
-// user chooses which model answers them. That bullet existed here before
-// this phase (a Phase 4 leftover predating the Phase 5A decision) and has
-// been removed — ARRIYIA picks a provider automatically, always, on
-// every plan.
+// user chooses which model answers them. ARRIYIA picks a provider
+// automatically, always, on every plan.
 const CORE_FEATURES = ['Documents, notes, knowledge graph & conversations', 'AI memory & personalization']
 
 function formatPrice(cents: number | null, currency: string): string | null {
@@ -29,24 +42,17 @@ function formatPrice(cents: number | null, currency: string): string | null {
   return `${(cents / 100).toLocaleString(undefined, { style: 'currency', currency })}`
 }
 
-function PlanCard({
-  tier,
-  isCurrent,
-  isEligibleToUpgrade,
-  onUpgradeClick,
-  isStartingCheckout,
-  checkoutError,
-}: {
-  tier: PublicPlanTier
-  isCurrent: boolean
-  isEligibleToUpgrade: boolean
-  onUpgradeClick: () => void
-  isStartingCheckout: boolean
-  checkoutError: string | null
-}) {
+type ProCta =
+  | { kind: 'none' }
+  | { kind: 'manage-billing' }
+  | { kind: 'sign-up' }
+  | { kind: 'upgrade'; onClick: () => void; isStarting: boolean; error: string | null }
+
+function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent: boolean; proCta: ProCta }) {
   const monthly = formatPrice(tier.monthlyPriceCents, tier.currency)
   const annual = formatPrice(tier.annualPriceCents, tier.currency)
   const isFree = tier.code === 'free'
+  const isPro = tier.code === 'pro'
   const isFoundingPro = tier.code === 'founding_pro'
 
   return (
@@ -104,19 +110,30 @@ function PlanCard({
         )}
       </ul>
 
-      {tier.code === 'pro' && isCurrent && (
+      {isPro && proCta.kind === 'manage-billing' && (
         <Link to="/settings">
           <Button variant="secondary">Manage billing</Button>
         </Link>
       )}
 
-      {tier.code === 'pro' && !isCurrent && isEligibleToUpgrade && (
+      {isPro && proCta.kind === 'sign-up' && (
         <div className="flex flex-col gap-2">
-          <Button onClick={onUpgradeClick} disabled={isStartingCheckout}>
-            {isStartingCheckout ? 'Starting checkout…' : 'Upgrade to Pro (sandbox)'}
+          <Link to="/signup">
+            <Button className="w-full">Sign up to get started</Button>
+          </Link>
+          <p className="text-xs text-[var(--color-ink-muted)]">
+            Already have an account? <Link to="/login" className="text-[var(--color-accent)] hover:underline">Log in</Link>
+          </p>
+        </div>
+      )}
+
+      {isPro && proCta.kind === 'upgrade' && (
+        <div className="flex flex-col gap-2">
+          <Button onClick={proCta.onClick} disabled={proCta.isStarting}>
+            {proCta.isStarting ? 'Starting checkout…' : 'Upgrade to Pro (sandbox)'}
           </Button>
           <p className="text-xs text-[var(--color-ink-muted)]">Pesapal sandbox checkout — no real payment is processed.</p>
-          {checkoutError && <p className="text-xs text-[var(--color-danger-strong)]">{checkoutError}</p>}
+          {proCta.error && <p className="text-xs text-[var(--color-danger-strong)]">{proCta.error}</p>}
         </div>
       )}
 
@@ -130,6 +147,7 @@ function PlanCard({
 }
 
 export function PricingPage() {
+  const { user, session } = useAuth()
   const { data: currentPlan, isLoading: planLoading } = useCurrentPlan()
   const { data: catalog, isLoading: catalogLoading } = usePublicPlanCatalog()
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
@@ -152,47 +170,61 @@ export function PricingPage() {
     }
   }
 
-  if (catalogLoading || !catalog) {
-    return (
-      <div className="flex justify-center py-12">
-        <Spinner />
-      </div>
-    )
+  // What the Pro card's CTA should be, resolved once, in the exact order
+  // that avoids ever offering an upgrade that doesn't make sense:
+  // anonymous -> sign up; already Pro -> manage billing; a plan that
+  // can't (yet) become Pro (Founding Pro/Enterprise) or still loading ->
+  // nothing; anything else (Free/Beta) -> the real checkout button.
+  function resolveProCta(): ProCta {
+    if (!user) return { kind: 'sign-up' }
+    if (planLoading) return { kind: 'none' }
+    if (currentPlan?.planCode === 'pro') return { kind: 'manage-billing' }
+    if (!currentPlan || ['founding_pro', 'enterprise'].includes(currentPlan.planCode)) return { kind: 'none' }
+    return { kind: 'upgrade', onClick: handleUpgradeClick, isStarting: isStartingCheckout, error: checkoutError }
   }
-
-  // Founding Pro must never present as an ordinary public checkout
-  // option — only shown here when it's the viewer's own plan, so they
-  // can see their current terms. No accidental upgrade/downgrade path
-  // out of Founding Pro exists anywhere on this page.
-  const visibleTiers = catalog.filter((tier) => tier.code !== 'founding_pro' || currentPlan?.planCode === 'founding_pro')
-
-  // A Pro upgrade CTA is only offered once we know for certain the viewer
-  // isn't already on Pro, Founding Pro, or Enterprise — never while the
-  // plan is still loading, and never for a plan this page doesn't
-  // recognize as "eligible to become Pro."
-  const isEligibleToUpgrade = !planLoading && !!currentPlan && !['pro', 'founding_pro', 'enterprise'].includes(currentPlan.planCode)
+  const proCta = resolveProCta()
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-[var(--color-ink)]">Plans</h1>
-        <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
-          Free is useful on its own. Pro adds capacity and collaboration when you need it.
-        </p>
-      </div>
+    <div className="min-h-screen min-h-dvh bg-[var(--color-canvas)]">
+      <header className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-4 md:px-8">
+        <span className="text-sm font-semibold tracking-tight text-[var(--color-ink)]">{appConfig.productName}</span>
+        {session ? (
+          <Link to="/hub" className="text-sm text-[var(--color-accent)] hover:underline">
+            ← Back to ARRIYIA
+          </Link>
+        ) : (
+          <Link to="/login" className="text-sm text-[var(--color-accent)] hover:underline">
+            Log in
+          </Link>
+        )}
+      </header>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {visibleTiers.map((tier) => (
-          <PlanCard
-            key={tier.code}
-            tier={tier}
-            isCurrent={currentPlan?.planCode === tier.code}
-            isEligibleToUpgrade={isEligibleToUpgrade}
-            onUpgradeClick={handleUpgradeClick}
-            isStartingCheckout={isStartingCheckout}
-            checkoutError={checkoutError}
-          />
-        ))}
+      <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8 md:px-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-[var(--color-ink)]">Plans</h1>
+          <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
+            Free is useful on its own. Pro adds capacity and collaboration when you need it.
+          </p>
+        </div>
+
+        {catalogLoading || !catalog ? (
+          <div className="flex justify-center py-12">
+            <Spinner />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {catalog
+              // Founding Pro must never present as an ordinary public
+              // checkout option — only shown here when it's the viewer's
+              // own plan, so they can see their current terms. No
+              // accidental upgrade/downgrade path out of Founding Pro
+              // exists anywhere on this page.
+              .filter((tier) => tier.code !== 'founding_pro' || currentPlan?.planCode === 'founding_pro')
+              .map((tier) => (
+                <PlanCard key={tier.code} tier={tier} isCurrent={currentPlan?.planCode === tier.code} proCta={tier.code === 'pro' ? proCta : { kind: 'none' }} />
+              ))}
+          </div>
+        )}
       </div>
     </div>
   )

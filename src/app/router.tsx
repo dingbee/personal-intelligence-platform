@@ -55,6 +55,17 @@ export const router = createBrowserRouter([
       { path: '/signup', element: <SignUpPage /> },
       { path: '/forgot-password', element: <ForgotPasswordPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },
+      // Phase 5C fix — /pricing must be reachable by typing the URL
+      // directly, whether or not the visitor is signed in (confirmed
+      // broken: nested under the ProtectedRoute-wrapped '/' subtree
+      // below, it redirected every logged-out visitor to /login before
+      // ever rendering). PricingPage itself already degrades gracefully
+      // with no session (useCurrentPlan/useAuth both handle a null user),
+      // and AuthProvider/WorkspaceProvider wrap the whole router in
+      // App.tsx, so this route still has everything it needs outside
+      // AppShell. Not nested under '/' on purpose — it must never depend
+      // on ProtectedRoute's auth gate.
+      { path: '/pricing', element: <PricingPage /> },
       {
         path: '/library/:documentId/read',
         element: (
@@ -97,7 +108,6 @@ export const router = createBrowserRouter([
           { path: 'knowledge/export', element: <ExportCenterPage /> },
           { path: 'search', element: <SearchPage /> },
           { path: 'chat', element: <ChatPage /> },
-          { path: 'pricing', element: <PricingPage /> },
           { path: 'billing/return', element: <BillingReturnPage /> },
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/advanced', element: <AdvancedSettingsPage /> },
