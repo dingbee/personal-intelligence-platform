@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createElement } from 'react'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 /**
@@ -29,6 +29,7 @@ vi.mock('@/modules/plans/hooks/usePublicPlanCatalog', () => ({ usePublicPlanCata
 vi.mock('@/modules/billing/api/billing', () => ({ startProCheckout: vi.fn() }))
 
 import { PricingPage } from '@/modules/billing/pages/PricingPage'
+import { startProCheckout } from '@/modules/billing/api/billing'
 
 const freeTier = {
   planId: 'plan-free',
@@ -99,6 +100,35 @@ describe('PricingPage', () => {
 
     expect(screen.getByText('Upgrade to Pro (sandbox)')).not.toBeNull()
     expect(screen.queryByText('Sign up to get started')).toBeNull()
+  })
+
+  it('shows "Upgrade to Pro" and marks Free as current for a signed-in user with no explicit plan assignment row', () => {
+    // Regression: getCurrentUserPlan() returns null for a user with no
+    // active user_plan_assignments row — the real shape of a Free user in
+    // this system (assign_default_plan() only ever assigns 'beta' on
+    // signup, or nothing for pre-Phase-4 accounts; 'free' is never
+    // actually assigned). Confirmed live in production: 2 of 5 real users
+    // are in exactly this state. Previously `!currentPlan` was treated
+    // the same as Founding Pro/Enterprise and hid the CTA entirely.
+    useAuthMock.mockReturnValue({ user: { id: 'u1' }, session: { user: { id: 'u1' } } })
+    useCurrentPlanMock.mockReturnValue({ data: null, isLoading: false })
+
+    renderPage()
+
+    expect(screen.getByText('Upgrade to Pro (sandbox)')).not.toBeNull()
+    expect(screen.queryByText('Sign up to get started')).toBeNull()
+    expect(screen.getByText('Current plan')).not.toBeNull()
+  })
+
+  it('invokes the existing Pesapal sandbox checkout path when a Free user clicks "Upgrade to Pro"', async () => {
+    vi.mocked(startProCheckout).mockResolvedValue({ redirectUrl: 'https://pesapal.example/checkout', merchantReference: 'ref-1' })
+    useAuthMock.mockReturnValue({ user: { id: 'u1' }, session: { user: { id: 'u1' } } })
+    useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-free', planCode: 'free', planName: 'Free' }, isLoading: false })
+
+    renderPage()
+    fireEvent.click(screen.getByText('Upgrade to Pro (sandbox)'))
+
+    expect(startProCheckout).toHaveBeenCalledTimes(1)
   })
 
   it('shows "Manage billing" instead of another checkout button for a signed-in Pro user', () => {

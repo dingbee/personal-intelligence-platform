@@ -170,6 +170,19 @@ export function PricingPage() {
     }
   }
 
+  // A real "Free" user is never actually assigned plans.code = 'free' —
+  // assign_default_plan() (0044_commercial_schema_reconciliation.sql)
+  // only ever assigns 'beta' on signup, or nothing at all for accounts
+  // that predate that trigger (confirmed live: 2 of 5 users have no
+  // active user_plan_assignments row). getCurrentUserPlan() correctly
+  // returns null for those users — null means "no explicit assignment,"
+  // which this page must treat as the implicit Free default, not as an
+  // unknown/excluded state. Previously `!currentPlan` was bundled into
+  // the same branch as Founding Pro/Enterprise, which hid the Pro CTA
+  // entirely for exactly this cohort. effectivePlanCode disambiguates:
+  // only a *known* non-upgradable code suppresses the CTA now.
+  const effectivePlanCode = currentPlan?.planCode ?? (user ? 'free' : null)
+
   // What the Pro card's CTA should be, resolved once, in the exact order
   // that avoids ever offering an upgrade that doesn't make sense:
   // anonymous -> sign up; already Pro -> manage billing; a plan that
@@ -178,8 +191,8 @@ export function PricingPage() {
   function resolveProCta(): ProCta {
     if (!user) return { kind: 'sign-up' }
     if (planLoading) return { kind: 'none' }
-    if (currentPlan?.planCode === 'pro') return { kind: 'manage-billing' }
-    if (!currentPlan || ['founding_pro', 'enterprise'].includes(currentPlan.planCode)) return { kind: 'none' }
+    if (effectivePlanCode === 'pro') return { kind: 'manage-billing' }
+    if (effectivePlanCode && ['founding_pro', 'enterprise'].includes(effectivePlanCode)) return { kind: 'none' }
     return { kind: 'upgrade', onClick: handleUpgradeClick, isStarting: isStartingCheckout, error: checkoutError }
   }
   const proCta = resolveProCta()
@@ -221,7 +234,7 @@ export function PricingPage() {
               // exists anywhere on this page.
               .filter((tier) => tier.code !== 'founding_pro' || currentPlan?.planCode === 'founding_pro')
               .map((tier) => (
-                <PlanCard key={tier.code} tier={tier} isCurrent={currentPlan?.planCode === tier.code} proCta={tier.code === 'pro' ? proCta : { kind: 'none' }} />
+                <PlanCard key={tier.code} tier={tier} isCurrent={effectivePlanCode === tier.code} proCta={tier.code === 'pro' ? proCta : { kind: 'none' }} />
               ))}
           </div>
         )}
