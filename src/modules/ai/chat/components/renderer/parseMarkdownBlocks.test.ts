@@ -26,9 +26,9 @@ describe('parseMarkdownBlocks', () => {
         type: 'list',
         ordered: false,
         items: [
-          [{ type: 'text', content: 'one' }],
-          [{ type: 'text', content: 'two' }],
-          [{ type: 'text', content: 'three' }],
+          { inline: [{ type: 'text', content: 'one' }], children: null },
+          { inline: [{ type: 'text', content: 'two' }], children: null },
+          { inline: [{ type: 'text', content: 'three' }], children: null },
         ],
       },
     ])
@@ -40,9 +40,122 @@ describe('parseMarkdownBlocks', () => {
       {
         type: 'list',
         ordered: true,
-        items: [[{ type: 'text', content: 'first' }], [{ type: 'text', content: 'second' }]],
+        items: [
+          { inline: [{ type: 'text', content: 'first' }], children: null },
+          { inline: [{ type: 'text', content: 'second' }], children: null },
+        ],
       },
     ])
+  })
+
+  it('parses a nested unordered list as a child of the preceding item', () => {
+    const blocks = parseMarkdownBlocks('- one\n  - one-a\n  - one-b\n- two')
+    expect(blocks).toEqual([
+      {
+        type: 'list',
+        ordered: false,
+        items: [
+          {
+            inline: [{ type: 'text', content: 'one' }],
+            children: {
+              ordered: false,
+              items: [
+                { inline: [{ type: 'text', content: 'one-a' }], children: null },
+                { inline: [{ type: 'text', content: 'one-b' }], children: null },
+              ],
+            },
+          },
+          { inline: [{ type: 'text', content: 'two' }], children: null },
+        ],
+      },
+    ])
+  })
+
+  it('parses a nested ordered list as a child of the preceding item', () => {
+    const blocks = parseMarkdownBlocks('1. first\n   1. first-a\n   2. first-b\n2. second')
+    expect(blocks).toEqual([
+      {
+        type: 'list',
+        ordered: true,
+        items: [
+          {
+            inline: [{ type: 'text', content: 'first' }],
+            children: {
+              ordered: true,
+              items: [
+                { inline: [{ type: 'text', content: 'first-a' }], children: null },
+                { inline: [{ type: 'text', content: 'first-b' }], children: null },
+              ],
+            },
+          },
+          { inline: [{ type: 'text', content: 'second' }], children: null },
+        ],
+      },
+    ])
+  })
+
+  it('parses a nested ordered sub-list under an unordered parent item', () => {
+    const blocks = parseMarkdownBlocks('- item\n  1. sub one\n  2. sub two')
+    expect(blocks).toEqual([
+      {
+        type: 'list',
+        ordered: false,
+        items: [
+          {
+            inline: [{ type: 'text', content: 'item' }],
+            children: {
+              ordered: true,
+              items: [
+                { inline: [{ type: 'text', content: 'sub one' }], children: null },
+                { inline: [{ type: 'text', content: 'sub two' }], children: null },
+              ],
+            },
+          },
+        ],
+      },
+    ])
+  })
+
+  it('parses three levels of nesting', () => {
+    const blocks = parseMarkdownBlocks('- level1\n  - level2\n    - level3')
+    expect(blocks).toEqual([
+      {
+        type: 'list',
+        ordered: false,
+        items: [
+          {
+            inline: [{ type: 'text', content: 'level1' }],
+            children: {
+              ordered: false,
+              items: [
+                {
+                  inline: [{ type: 'text', content: 'level2' }],
+                  children: {
+                    ordered: false,
+                    items: [{ inline: [{ type: 'text', content: 'level3' }], children: null }],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ])
+  })
+
+  it('ends the current list when the marker type changes at the same depth, producing two sibling list blocks', () => {
+    const blocks = parseMarkdownBlocks('- bullet one\n1. ordered one')
+    expect(blocks).toEqual([
+      { type: 'list', ordered: false, items: [{ inline: [{ type: 'text', content: 'bullet one' }], children: null }] },
+      { type: 'list', ordered: true, items: [{ inline: [{ type: 'text', content: 'ordered one' }], children: null }] },
+    ])
+  })
+
+  it('never throws while a nested list is streaming in incrementally, one character at a time', () => {
+    const full = '- one\n  - two\n  - three\n- four'
+    for (let end = 1; end <= full.length; end++) {
+      expect(() => parseMarkdownBlocks(full.slice(0, end))).not.toThrow()
+    }
   })
 
   it('parses a blockquote', () => {
