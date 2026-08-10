@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useGreeting } from '@/modules/greeting/hooks/useGreeting'
 import { WorkspacePresence } from '@/modules/workspaces/components/WorkspacePresence'
 import { ProfileMenu } from '@/shared/components/layout/ProfileMenu'
+import { PlanIdentityBadge } from '@/modules/plans/components/PlanIdentityBadge'
 
 /**
  * The personal header (Phase UX-3) — replaces the old email + Sign out row
@@ -65,6 +66,7 @@ export function TopBar({
           >
             ⚙️
           </Link>
+          <PlanIdentityBadge />
           <ProfileMenu />
         </div>
       </div>
