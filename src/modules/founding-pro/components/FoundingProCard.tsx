@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useFoundingProCapacity } from '@/modules/founding-pro/hooks/useFoundingProCapacity'
-import { useMyFoundingProMembership, useMyLatestFoundingProApplication } from '@/modules/founding-pro/hooks/useMyFoundingProStatus'
+import {
+  useMyFoundingProMembership,
+  useMyLatestFoundingProApplication,
+  useMyPendingFoundingProInvitation,
+} from '@/modules/founding-pro/hooks/useMyFoundingProStatus'
 import { resolveFoundingProDisplayState, type FoundingProDisplayState } from '@/modules/founding-pro/foundingProState'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
@@ -27,12 +31,14 @@ export function FoundingProCard() {
   const { data: capacity, isLoading: capacityLoading } = useFoundingProCapacity()
   const { data: membership, isLoading: membershipLoading } = useMyFoundingProMembership()
   const { data: latestApplication, isLoading: applicationLoading } = useMyLatestFoundingProApplication()
+  const { data: pendingInvitation, isLoading: invitationLoading } = useMyPendingFoundingProInvitation()
 
   const state = resolveFoundingProDisplayState({
     isAuthenticated: Boolean(user),
-    isLoading: Boolean(user) && (membershipLoading || applicationLoading),
+    isLoading: Boolean(user) && (membershipLoading || applicationLoading || invitationLoading),
     membership: membership ?? null,
     latestApplication: latestApplication ?? null,
+    pendingInvitation: pendingInvitation ?? null,
     remainingPublicSlots: capacity?.remainingPublicSlots ?? null,
   })
 
@@ -100,6 +106,12 @@ function FoundingProCta({ state }: { state: FoundingProDisplayState }) {
           : 'Founding Pro member'
       return <p className="text-sm font-medium text-[var(--color-ink)]">{label}</p>
     }
+    case 'invited':
+      return (
+        <Link to="/founding-pro/invitation">
+          <Button className="w-full">Accept your Founding Pro invitation</Button>
+        </Link>
+      )
     case 'application-pending':
       return (
         <StatusBadge

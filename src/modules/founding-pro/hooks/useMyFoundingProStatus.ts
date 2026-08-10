@@ -1,6 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/modules/auth/useAuth'
-import { getMyFoundingProMembership, getMyLatestFoundingProApplication } from '@/modules/founding-pro/api/foundingPro'
+import {
+  getMyFoundingProMembership,
+  getMyLatestFoundingProApplication,
+  getMyPendingFoundingProInvitation,
+} from '@/modules/founding-pro/api/foundingPro'
 
 /** The caller's own Founding Pro membership row, if any. `data` is `null` for anyone who isn't a Founding Pro member. */
 export function useMyFoundingProMembership() {
@@ -19,6 +23,17 @@ export function useMyLatestFoundingProApplication() {
   return useQuery({
     queryKey: ['my-latest-founding-pro-application', user?.id],
     queryFn: () => getMyLatestFoundingProApplication(user!.id),
+    enabled: Boolean(user),
+    staleTime: 30 * 1000,
+  })
+}
+
+/** Founding Pro Programme Phase 4 — the caller's own pending invitation, if any. `data` is `null` for anyone with no active invitation. */
+export function useMyPendingFoundingProInvitation() {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: ['my-pending-founding-pro-invitation', user?.id],
+    queryFn: () => getMyPendingFoundingProInvitation(user!.id),
     enabled: Boolean(user),
     staleTime: 30 * 1000,
   })

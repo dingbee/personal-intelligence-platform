@@ -35,6 +35,7 @@ import { ExportCenterPage } from '@/modules/export/pages/ExportCenterPage'
 import { PricingPage } from '@/modules/billing/pages/PricingPage'
 import { BillingReturnPage } from '@/modules/billing/pages/BillingReturnPage'
 import { FoundingProApplyPage } from '@/modules/founding-pro/pages/FoundingProApplyPage'
+import { FoundingProInvitationPage } from '@/modules/founding-pro/pages/FoundingProInvitationPage'
 import { HomeRedirect } from '@/app/HomeRedirect'
 import { AdminDashboardPage } from '@/modules/admin/pages/AdminDashboardPage'
 import { AdminUsersPage } from '@/modules/admin/pages/AdminUsersPage'
@@ -112,6 +113,7 @@ export const router = createBrowserRouter([
           { path: 'chat', element: <ChatPage /> },
           { path: 'billing/return', element: <BillingReturnPage /> },
           { path: 'founding-pro/apply', element: <FoundingProApplyPage /> },
+          { path: 'founding-pro/invitation', element: <FoundingProInvitationPage /> },
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/advanced', element: <AdvancedSettingsPage /> },
           { path: 'settings/workspaces', element: <WorkspaceManagementPage /> },

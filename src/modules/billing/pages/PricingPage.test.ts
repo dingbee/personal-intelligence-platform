@@ -24,6 +24,7 @@ const {
   useFoundingProCapacityMock,
   useMyFoundingProMembershipMock,
   useMyLatestFoundingProApplicationMock,
+  useMyPendingFoundingProInvitationMock,
 } = vi.hoisted(() => ({
   useAuthMock: vi.fn(),
   useCurrentPlanMock: vi.fn(),
@@ -31,6 +32,7 @@ const {
   useFoundingProCapacityMock: vi.fn(),
   useMyFoundingProMembershipMock: vi.fn(),
   useMyLatestFoundingProApplicationMock: vi.fn(),
+  useMyPendingFoundingProInvitationMock: vi.fn(),
 }))
 
 vi.mock('@/modules/auth/useAuth', () => ({ useAuth: useAuthMock }))
@@ -41,6 +43,7 @@ vi.mock('@/modules/founding-pro/hooks/useFoundingProCapacity', () => ({ useFound
 vi.mock('@/modules/founding-pro/hooks/useMyFoundingProStatus', () => ({
   useMyFoundingProMembership: useMyFoundingProMembershipMock,
   useMyLatestFoundingProApplication: useMyLatestFoundingProApplicationMock,
+  useMyPendingFoundingProInvitation: useMyPendingFoundingProInvitationMock,
 }))
 
 import { PricingPage } from '@/modules/billing/pages/PricingPage'
@@ -87,6 +90,7 @@ describe('PricingPage', () => {
     useFoundingProCapacityMock.mockReturnValue({ data: { maxPublicSlots: 100, enrolledPublicCount: 40, remainingPublicSlots: 60 }, isLoading: false })
     useMyFoundingProMembershipMock.mockReturnValue({ data: null, isLoading: false })
     useMyLatestFoundingProApplicationMock.mockReturnValue({ data: null, isLoading: false })
+    useMyPendingFoundingProInvitationMock.mockReturnValue({ data: null, isLoading: false })
   })
 
   it('renders Free and Pro for a fully anonymous visitor (no session), with a sign-up CTA instead of checkout', () => {

@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase'
-import type { FoundingProApplication } from '@/shared/types/database'
+import type { FoundingProApplication, FoundingProInvitation } from '@/shared/types/database'
 
 /** Every function here calls a SECURITY DEFINER RPC that re-checks is_platform_admin() itself and raises if the caller isn't one — the authorization is enforced by the database, this file is a thin, unprivileged wrapper. */
 
@@ -196,4 +196,37 @@ export async function adminRejectFoundingProApplication(params: { applicationId:
   })
   if (error) throw error
   return data as FoundingProApplication
+}
+
+/**
+ * Founding Pro Programme Phase 4 — sends a Founding Pro invitation for an
+ * approved application. The admin-supplied price/currency here is the
+ * one and only place the founding price is ever decided (never invented,
+ * never re-derived at acceptance) — see 0055's own comment.
+ */
+export async function adminInviteFoundingProMember(params: {
+  applicationId: string
+  foundingPriceCents: number
+  currency: string
+}): Promise<FoundingProInvitation> {
+  const { data, error } = await supabase.rpc('admin_invite_founding_pro_member', {
+    p_application_id: params.applicationId,
+    p_founding_price_cents: params.foundingPriceCents,
+    p_currency: params.currency,
+  })
+  if (error) throw error
+  return data as FoundingProInvitation
+}
+
+/**
+ * Founding Pro Programme Phase 4 — invokes the send-founding-pro-
+ * invitation edge function, mirroring sendBetaInvitationEmail's own
+ * shape exactly: takes only the invitation id, never email/price, so the
+ * function re-resolves everything itself from the database. Returns
+ * `{ error }` rather than throwing so "invitation created" and
+ * "email sent/failed" stay two distinct, honestly-reported outcomes.
+ */
+export async function sendFoundingProInvitationEmail(invitationId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.functions.invoke('send-founding-pro-invitation', { body: { invitationId } })
+  return { error: error ? error.message : null }
 }

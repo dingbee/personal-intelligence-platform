@@ -5,7 +5,9 @@ import {
   useAdminFoundingProApplications,
   useAdminFoundingProEvents,
   useAdminFoundingProMembers,
+  useAdminInviteFoundingProMember,
   useAdminRejectFoundingProApplication,
+  useAdminSendFoundingProInvitationEmail,
 } from '@/modules/admin/hooks/useAdminData'
 import { useFoundingProCapacity } from '@/modules/founding-pro/hooks/useFoundingProCapacity'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
@@ -27,16 +29,32 @@ function formatPrice(cents: number, currency: string): string {
   return (cents / 100).toLocaleString(undefined, { style: 'currency', currency })
 }
 
-const STATUS_CLASSES: Record<string, string> = {
-  pending: 'text-[var(--color-warning-strong)]',
-  approved: 'text-[var(--color-accent)]',
-  rejected: 'text-[var(--color-danger)]',
-  withdrawn: 'text-[var(--color-ink-muted)]',
-  enrolled: 'text-[var(--color-success-strong)]',
+/**
+ * Founding Pro Programme Phase 4 — the Application → Approved →
+ * Invitation Sent → Accepted → Enrolled lifecycle is a derived display
+ * concept only; it is never a stored column (see 0055's own comment on
+ * why application.status is not extended with 'invited'/'accepted').
+ * 'Accepted' has no distinct visible window of its own: the moment an
+ * invitation is accepted, application.status is already 'enrolled' in
+ * the same transaction — the accepted timestamp is shown alongside the
+ * Enrolled stage instead of as a separate pipeline stop.
+ */
+function resolveLifecycleStage(app: { status: string; invitation_status: string | null }): string {
+  if (app.status === 'pending') return 'Applied'
+  if (app.status === 'rejected') return 'Rejected'
+  if (app.status === 'withdrawn') return 'Withdrawn'
+  if (app.status === 'enrolled') return 'Enrolled'
+  if (app.invitation_status === 'pending') return 'Invitation Sent'
+  return 'Approved'
 }
 
-function StatusBadge({ status }: { status: string }) {
-  return <span className={`capitalize ${STATUS_CLASSES[status] ?? 'text-[var(--color-ink-muted)]'}`}>{status}</span>
+const LIFECYCLE_CLASSES: Record<string, string> = {
+  Applied: 'text-[var(--color-warning-strong)]',
+  Approved: 'text-[var(--color-accent)]',
+  'Invitation Sent': 'text-[var(--color-accent)]',
+  Rejected: 'text-[var(--color-danger)]',
+  Withdrawn: 'text-[var(--color-ink-muted)]',
+  Enrolled: 'text-[var(--color-success-strong)]',
 }
 
 /**
@@ -64,12 +82,59 @@ export function AdminFoundingProPage() {
   const { data: events = [], isLoading: eventsLoading } = useAdminFoundingProEvents()
   const approve = useAdminApproveFoundingProApplication()
   const reject = useAdminRejectFoundingProApplication()
+  const invite = useAdminInviteFoundingProMember()
+  const sendInviteEmail = useAdminSendFoundingProInvitationEmail()
 
   const [confirming, setConfirming] = useState<{ id: string; applicant: string; action: 'approve' | 'reject' } | null>(null)
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [inviteTargetId, setInviteTargetId] = useState<string | null>(null)
+  const [invitePriceDraft, setInvitePriceDraft] = useState('')
+  const [inviteCurrencyDraft, setInviteCurrencyDraft] = useState('USD')
 
   const pendingApplications = applications.filter((a) => a.status === 'pending')
   const grandfatheredMembers = members.filter((m) => m.slot_type === 'grandfathered')
+
+  function openInvitePanel(applicationId: string) {
+    setInviteTargetId(applicationId)
+    setInvitePriceDraft('')
+    setInviteCurrencyDraft('USD')
+    setStatus(null)
+  }
+
+  async function handleSendInvite(applicationId: string, applicant: string) {
+    const parsed = Number(invitePriceDraft)
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setStatus({ type: 'error', message: 'Enter a founding price greater than zero.' })
+      return
+    }
+    const currency = inviteCurrencyDraft.trim().toUpperCase()
+    if (!currency) {
+      setStatus({ type: 'error', message: 'Enter a currency.' })
+      return
+    }
+    setStatus(null)
+    try {
+      const invitation = await invite.mutateAsync({
+        applicationId,
+        foundingPriceCents: Math.round(parsed * 100),
+        currency,
+      })
+      setInviteTargetId(null)
+      setStatus({ type: 'success', message: `Invitation created for ${applicant}. Sending invitation email…` })
+      const { error } = await sendInviteEmail.mutateAsync(invitation.id)
+      if (error) {
+        setStatus({ type: 'error', message: `Invitation created for ${applicant}, but the invitation email failed to send: ${error}` })
+      } else {
+        setStatus({ type: 'success', message: `Invitation created and invitation email sent to ${applicant}.` })
+      }
+    } catch (err) {
+      // Deliberately does not close the panel on failure — the in-progress
+      // price/currency draft stays visible, not an apparently-unchanged
+      // screen with no explanation (same discipline AdminUsersPage's
+      // plan-change picker already establishes).
+      setStatus({ type: 'error', message: errorMessage(err, `Failed to send an invitation to ${applicant}. Please try again.`) })
+    }
+  }
 
   function handleConfirm() {
     if (!confirming) return
@@ -156,56 +221,114 @@ export function AdminFoundingProPage() {
                 <tr className="text-[var(--color-ink-muted)]">
                   <th className="pb-2 pr-4 font-medium">Applicant</th>
                   <th className="pb-2 pr-4 font-medium">Email</th>
-                  <th className="pb-2 pr-4 font-medium">Status</th>
+                  <th className="pb-2 pr-4 font-medium">Lifecycle</th>
                   <th className="pb-2 pr-4 font-medium">Submitted</th>
                   <th className="pb-2 pr-4 font-medium">Reviewed</th>
                   <th className="pb-2 pr-4 font-medium">Reviewer</th>
+                  <th className="pb-2 pr-4 font-medium">Invited</th>
+                  <th className="pb-2 pr-4 font-medium">Accepted</th>
                   <th className="pb-2 pr-4 font-medium">Membership</th>
                   <th className="pb-2 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {applications.map((app) => (
-                  <tr key={app.id} className="border-t border-[var(--color-border)] align-top">
-                    <td className="py-2 pr-4 text-[var(--color-ink)]">{app.applicant_name ?? '—'}</td>
-                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{app.applicant_email ?? '—'}</td>
-                    <td className="py-2 pr-4">
-                      <StatusBadge status={app.status} />
-                    </td>
-                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{formatDate(app.submitted_at)}</td>
-                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{formatDate(app.reviewed_at)}</td>
-                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{app.reviewer_email ?? '—'}</td>
-                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">
-                      {app.member_number != null
-                        ? `Founding Member #${app.member_number}`
-                        : app.member_id
-                          ? 'Grandfathered'
-                          : '—'}
-                    </td>
-                    <td className="py-2">
-                      {app.status === 'pending' ? (
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setConfirming({ id: app.id, applicant: app.applicant_email ?? app.applicant_name ?? 'this applicant', action: 'approve' })}
-                            className="text-[var(--color-accent)] hover:underline"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirming({ id: app.id, applicant: app.applicant_email ?? app.applicant_name ?? 'this applicant', action: 'reject' })}
-                            className="text-[var(--color-danger)] hover:underline"
-                          >
-                            Reject
-                          </button>
+                {applications.map((app) => {
+                  const applicantLabel = app.applicant_email ?? app.applicant_name ?? 'this applicant'
+                  const canInvite = app.status === 'approved' && app.invitation_status !== 'pending'
+                  return (
+                    <tr key={app.id} className="border-t border-[var(--color-border)] align-top">
+                      <td className="py-2 pr-4 text-[var(--color-ink)]">{app.applicant_name ?? '—'}</td>
+                      <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{app.applicant_email ?? '—'}</td>
+                      <td className="py-2 pr-4">
+                        <span className={LIFECYCLE_CLASSES[resolveLifecycleStage(app)] ?? 'text-[var(--color-ink-muted)]'}>
+                          {resolveLifecycleStage(app)}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{formatDate(app.submitted_at)}</td>
+                      <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{formatDate(app.reviewed_at)}</td>
+                      <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{app.reviewer_email ?? '—'}</td>
+                      <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{formatDate(app.invited_at)}</td>
+                      <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{formatDate(app.invitation_accepted_at)}</td>
+                      <td className="py-2 pr-4 text-[var(--color-ink-muted)]">
+                        {app.member_number != null
+                          ? `Founding Member #${app.member_number}`
+                          : app.member_id
+                            ? 'Grandfathered'
+                            : '—'}
+                      </td>
+                      <td className="py-2">
+                        <div className="flex flex-col gap-1">
+                          {app.status === 'pending' && (
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setConfirming({ id: app.id, applicant: applicantLabel, action: 'approve' })}
+                                className="text-[var(--color-accent)] hover:underline"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirming({ id: app.id, applicant: applicantLabel, action: 'reject' })}
+                                className="text-[var(--color-danger)] hover:underline"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
+                          {canInvite && inviteTargetId !== app.id && (
+                            <button type="button" onClick={() => openInvitePanel(app.id)} className="text-left text-[var(--color-accent)] hover:underline">
+                              Send Invitation
+                            </button>
+                          )}
+                          {inviteTargetId === app.id && (
+                            <div className="mt-1 flex flex-col gap-1 rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] p-2">
+                              <label className="text-[10px] text-[var(--color-ink-muted)]">
+                                Founding price
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  value={invitePriceDraft}
+                                  onChange={(e) => setInvitePriceDraft(e.target.value)}
+                                  placeholder="19.99"
+                                  aria-label="Founding price"
+                                  className="mt-0.5 w-24 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-1 text-xs text-[var(--color-ink)]"
+                                />
+                              </label>
+                              <label className="text-[10px] text-[var(--color-ink-muted)]">
+                                Currency
+                                <input
+                                  type="text"
+                                  value={inviteCurrencyDraft}
+                                  onChange={(e) => setInviteCurrencyDraft(e.target.value)}
+                                  aria-label="Currency"
+                                  className="mt-0.5 w-24 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-1 text-xs text-[var(--color-ink)]"
+                                />
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  disabled={invite.isPending || sendInviteEmail.isPending}
+                                  onClick={() => handleSendInvite(app.id, applicantLabel)}
+                                  className="text-[var(--color-accent)] hover:underline disabled:opacity-50"
+                                >
+                                  Confirm &amp; Send
+                                </button>
+                                <button type="button" onClick={() => setInviteTargetId(null)} className="text-[var(--color-ink-muted)] hover:underline">
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {!canInvite && app.status !== 'pending' && (
+                            <span className="text-[var(--color-ink-muted)]">—</span>
+                          )}
                         </div>
-                      ) : (
-                        <span className="text-[var(--color-ink-muted)]">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

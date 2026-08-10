@@ -5,6 +5,7 @@ import {
   adminApproveFoundingProApplication,
   adminChangeUserPlan,
   adminCreateBetaInvite,
+  adminInviteFoundingProMember,
   adminListBetaInvites,
   adminListFoundingProApplications,
   adminListFoundingProEvents,
@@ -22,6 +23,7 @@ import {
   adminUpdatePlanCommercial,
   adminUpdatePlanQuota,
   sendBetaInvitationEmail,
+  sendFoundingProInvitationEmail,
 } from '@/modules/admin/api/adminApi'
 import { listPlatformProviderSettings } from '@/modules/ai/providers/api/platformProviderSettings'
 
@@ -231,4 +233,27 @@ export function useAdminRejectFoundingProApplication() {
       void queryClient.invalidateQueries({ queryKey: ['admin-founding-pro-events'] })
     },
   })
+}
+
+/**
+ * Founding Pro Programme Phase 4 — sending an invitation only ever
+ * writes founding_pro_invitations + an audit event, never
+ * founding_pro_members/_capacity, so only those two lists are
+ * invalidated (same "invalidate exactly what changed" discipline as
+ * approve/reject above).
+ */
+export function useAdminInviteFoundingProMember() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: adminInviteFoundingProMember,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-founding-pro-applications'] })
+      void queryClient.invalidateQueries({ queryKey: ['admin-founding-pro-events'] })
+    },
+  })
+}
+
+/** Founding Pro Programme Phase 4 — deliberately not wired to invalidate any query: sending the email never changes invitation state, only its delivery. Mirrors useAdminSendBetaInvitationEmail's own reasoning exactly. */
+export function useAdminSendFoundingProInvitationEmail() {
+  return useMutation({ mutationFn: sendFoundingProInvitationEmail })
 }

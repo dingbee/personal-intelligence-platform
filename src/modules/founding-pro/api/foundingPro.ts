@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase'
-import type { FoundingProApplication, FoundingProMember } from '@/shared/types/database'
+import type { FoundingProApplication, FoundingProInvitation, FoundingProMember } from '@/shared/types/database'
 
 export interface FoundingProPublicCapacity {
   maxPublicSlots: number
@@ -83,4 +83,46 @@ export async function submitFoundingProApplication(): Promise<{ applicationId: s
     throw new Error('Application submission returned an unexpected result')
   }
   return { applicationId, status }
+}
+
+/**
+ * Founding Pro Programme Phase 4 — the caller's own pending invitation,
+ * if any. RLS on founding_pro_invitations is own-row SELECT only (0055),
+ * so `.eq('user_id', ...)` here is redundant with the policy, matching
+ * the same defensive style getMyFoundingProMembership already uses.
+ * `null` means "no active invitation" — a normal state, not an error.
+ */
+export async function getMyPendingFoundingProInvitation(userId: string): Promise<FoundingProInvitation | null> {
+  const { data, error } = await supabase
+    .from('founding_pro_invitations')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .maybeSingle()
+  if (error) {
+    console.error('getMyPendingFoundingProInvitation: query failed:', error)
+    return null
+  }
+  return data
+}
+
+/**
+ * Accepts the caller's own pending Founding Pro invitation via
+ * accept_founding_pro_invitation (SECURITY DEFINER, 0055). Takes no
+ * arguments client-side — the RPC resolves the invitation from auth.uid()
+ * itself, so there is nothing here for a caller to manipulate (no
+ * invitation id, price, or slot type is ever sent). Throws on failure
+ * (no pending invitation, application no longer approved, capacity full)
+ * so the acceptance page can surface the server's own message.
+ */
+export async function acceptFoundingProInvitation(): Promise<{ memberId: string; foundingMemberNumber: number | null }> {
+  const { data, error } = await supabase.rpc('accept_founding_pro_invitation')
+  if (error) throw error
+  if (!data) throw new Error('Invitation acceptance did not return a result')
+  const memberId = data.member_id
+  if (typeof memberId !== 'string') {
+    throw new Error('Invitation acceptance returned an unexpected result')
+  }
+  const foundingMemberNumber = typeof data.founding_member_number === 'number' ? data.founding_member_number : null
+  return { memberId, foundingMemberNumber }
 }

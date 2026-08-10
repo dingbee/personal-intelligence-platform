@@ -34,6 +34,8 @@ const {
   useAdminFoundingProEventsMock,
   useAdminApproveFoundingProApplicationMock,
   useAdminRejectFoundingProApplicationMock,
+  useAdminInviteFoundingProMemberMock,
+  useAdminSendFoundingProInvitationEmailMock,
 } = vi.hoisted(() => ({
   useFoundingProCapacityMock: vi.fn(),
   useAdminFoundingProApplicationsMock: vi.fn(),
@@ -41,6 +43,8 @@ const {
   useAdminFoundingProEventsMock: vi.fn(),
   useAdminApproveFoundingProApplicationMock: vi.fn(),
   useAdminRejectFoundingProApplicationMock: vi.fn(),
+  useAdminInviteFoundingProMemberMock: vi.fn(),
+  useAdminSendFoundingProInvitationEmailMock: vi.fn(),
 }))
 
 vi.mock('@/modules/founding-pro/hooks/useFoundingProCapacity', () => ({
@@ -53,6 +57,8 @@ vi.mock('@/modules/admin/hooks/useAdminData', () => ({
   useAdminFoundingProEvents: useAdminFoundingProEventsMock,
   useAdminApproveFoundingProApplication: useAdminApproveFoundingProApplicationMock,
   useAdminRejectFoundingProApplication: useAdminRejectFoundingProApplicationMock,
+  useAdminInviteFoundingProMember: useAdminInviteFoundingProMemberMock,
+  useAdminSendFoundingProInvitationEmail: useAdminSendFoundingProInvitationEmailMock,
 }))
 
 import { AdminFoundingProPage } from '@/modules/admin/pages/AdminFoundingProPage'
@@ -73,6 +79,12 @@ const pendingApp = {
   member_id: null,
   member_number: null,
   member_slot_type: null,
+  invitation_id: null,
+  invitation_status: null,
+  invitation_founding_price_cents: null,
+  invitation_currency: null,
+  invited_at: null,
+  invitation_accepted_at: null,
 }
 
 const approvedApp = {
@@ -84,6 +96,18 @@ const approvedApp = {
   reviewed_at: '2026-08-02T00:00:00Z',
   reviewed_by: 'admin-1',
   reviewer_email: 'admin@example.com',
+}
+
+const invitedApp = {
+  ...approvedApp,
+  id: 'app-3',
+  applicant_email: 'invited@example.com',
+  applicant_name: 'Invited Applicant',
+  invitation_id: 'invitation-1',
+  invitation_status: 'pending',
+  invitation_founding_price_cents: 1999,
+  invitation_currency: 'USD',
+  invited_at: '2026-08-03T00:00:00Z',
 }
 
 const publicMember = {
@@ -123,11 +147,15 @@ afterEach(cleanup)
 describe('AdminFoundingProPage', () => {
   let approveMock: ReturnType<typeof vi.fn>
   let rejectMock: ReturnType<typeof vi.fn>
+  let inviteMock: ReturnType<typeof vi.fn>
+  let sendInviteEmailMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     vi.clearAllMocks()
     approveMock = vi.fn()
     rejectMock = vi.fn()
+    inviteMock = vi.fn()
+    sendInviteEmailMock = vi.fn()
 
     useFoundingProCapacityMock.mockReturnValue({
       data: { maxPublicSlots: 100, enrolledPublicCount: 37, remainingPublicSlots: 63 },
@@ -137,6 +165,8 @@ describe('AdminFoundingProPage', () => {
     useAdminFoundingProEventsMock.mockReturnValue({ data: [], isLoading: false })
     useAdminApproveFoundingProApplicationMock.mockReturnValue({ mutate: approveMock, isPending: false })
     useAdminRejectFoundingProApplicationMock.mockReturnValue({ mutate: rejectMock, isPending: false })
+    useAdminInviteFoundingProMemberMock.mockReturnValue({ mutateAsync: inviteMock, isPending: false })
+    useAdminSendFoundingProInvitationEmailMock.mockReturnValue({ mutateAsync: sendInviteEmailMock, isPending: false })
   })
 
   it('renders the authoritative public capacity figure, not a frontend-derived count', () => {
@@ -205,5 +235,50 @@ describe('AdminFoundingProPage', () => {
 
     const totalLabel = screen.getByText('Total Founding Pro members')
     expect(totalLabel.parentElement?.parentElement?.textContent).toContain('2')
+  })
+
+  it('shows Send Invitation only for an approved application with no active invitation', () => {
+    useAdminFoundingProApplicationsMock.mockReturnValue({ data: [approvedApp], isLoading: false })
+
+    renderPage()
+
+    expect(screen.getByRole('button', { name: 'Send Invitation' })).not.toBeNull()
+  })
+
+  it('does not show Send Invitation for a pending application or one with an active invitation', () => {
+    useAdminFoundingProApplicationsMock.mockReturnValue({ data: [pendingApp, invitedApp], isLoading: false })
+
+    renderPage()
+
+    expect(screen.queryByRole('button', { name: 'Send Invitation' })).toBeNull()
+  })
+
+  it('shows the Invitation Sent lifecycle stage and invited timestamp for an application with a pending invitation', () => {
+    useAdminFoundingProApplicationsMock.mockReturnValue({ data: [invitedApp], isLoading: false })
+
+    renderPage()
+
+    expect(screen.getByText('Invitation Sent')).not.toBeNull()
+  })
+
+  it('sending an invitation requires a positive price, then calls the invite RPC and the send-email RPC with the created invitation id', async () => {
+    useAdminFoundingProApplicationsMock.mockReturnValue({ data: [approvedApp], isLoading: false })
+    inviteMock.mockResolvedValueOnce({ id: 'invitation-1' })
+    sendInviteEmailMock.mockResolvedValueOnce({ error: null })
+
+    renderPage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Invitation' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm & Send' }))
+
+    expect(screen.getByText('Enter a founding price greater than zero.')).not.toBeNull()
+    expect(inviteMock).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText('Founding price'), { target: { value: '19.99' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm & Send' }))
+
+    expect(inviteMock).toHaveBeenCalledWith({ applicationId: 'app-2', foundingPriceCents: 1999, currency: 'USD' })
+    expect(await screen.findByText(/invitation email sent to approved@example.com/i)).not.toBeNull()
+    expect(sendInviteEmailMock).toHaveBeenCalledWith('invitation-1')
   })
 })

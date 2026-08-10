@@ -1,13 +1,31 @@
 import { describe, expect, it } from 'vitest'
 import { resolveFoundingProDisplayState } from '@/modules/founding-pro/foundingProState'
-import type { FoundingProApplication, FoundingProMember } from '@/shared/types/database'
+import type { FoundingProApplication, FoundingProInvitation, FoundingProMember } from '@/shared/types/database'
 
 const BASE_INPUT = {
   isAuthenticated: true,
   isLoading: false,
   membership: null,
   latestApplication: null,
+  pendingInvitation: null,
   remainingPublicSlots: 50,
+}
+
+function invitation(overrides: Partial<FoundingProInvitation> = {}): FoundingProInvitation {
+  return {
+    id: 'invitation-1',
+    application_id: 'app-1',
+    user_id: 'user-1',
+    status: 'pending',
+    founding_price_cents: 1999,
+    currency: 'USD',
+    invited_at: '2026-01-01T00:00:00Z',
+    invited_by: 'admin-1',
+    accepted_at: null,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    ...overrides,
+  }
 }
 
 function member(overrides: Partial<FoundingProMember> = {}): FoundingProMember {
@@ -60,6 +78,26 @@ describe('resolveFoundingProDisplayState', () => {
       ...BASE_INPUT,
       membership: m,
       latestApplication: application({ status: 'enrolled' }),
+    })
+    expect(state).toEqual({ kind: 'member', member: m })
+  })
+
+  it('returns invited when a pending invitation exists, even alongside an approved application', () => {
+    const inv = invitation()
+    const state = resolveFoundingProDisplayState({
+      ...BASE_INPUT,
+      latestApplication: application({ status: 'approved' }),
+      pendingInvitation: inv,
+    })
+    expect(state).toEqual({ kind: 'invited', invitation: inv })
+  })
+
+  it('prefers member over invited when both are somehow present', () => {
+    const m = member()
+    const state = resolveFoundingProDisplayState({
+      ...BASE_INPUT,
+      membership: m,
+      pendingInvitation: invitation(),
     })
     expect(state).toEqual({ kind: 'member', member: m })
   })

@@ -2,7 +2,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useFoundingProCapacity } from '@/modules/founding-pro/hooks/useFoundingProCapacity'
-import { useMyFoundingProMembership, useMyLatestFoundingProApplication } from '@/modules/founding-pro/hooks/useMyFoundingProStatus'
+import {
+  useMyFoundingProMembership,
+  useMyLatestFoundingProApplication,
+  useMyPendingFoundingProInvitation,
+} from '@/modules/founding-pro/hooks/useMyFoundingProStatus'
 import { useSubmitFoundingProApplication } from '@/modules/founding-pro/hooks/useSubmitFoundingProApplication'
 import { resolveFoundingProDisplayState } from '@/modules/founding-pro/foundingProState'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
@@ -29,15 +33,17 @@ export function FoundingProApplyPage() {
   const { data: capacity, isLoading: capacityLoading } = useFoundingProCapacity()
   const { data: membership, isLoading: membershipLoading } = useMyFoundingProMembership()
   const { data: latestApplication, isLoading: applicationLoading } = useMyLatestFoundingProApplication()
+  const { data: pendingInvitation, isLoading: invitationLoading } = useMyPendingFoundingProInvitation()
   const submitMutation = useSubmitFoundingProApplication()
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const isLoading = capacityLoading || membershipLoading || applicationLoading
+  const isLoading = capacityLoading || membershipLoading || applicationLoading || invitationLoading
   const state = resolveFoundingProDisplayState({
     isAuthenticated: Boolean(user),
     isLoading,
     membership: membership ?? null,
     latestApplication: latestApplication ?? null,
+    pendingInvitation: pendingInvitation ?? null,
     remainingPublicSlots: capacity?.remainingPublicSlots ?? null,
   })
 
@@ -66,6 +72,15 @@ export function FoundingProApplyPage() {
           </div>
         ) : state.kind === 'member' ? (
           <p className="text-sm text-[var(--color-ink)]">You're already a Founding Pro member — no application needed.</p>
+        ) : state.kind === 'invited' ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-[var(--color-ink)]">
+              Your Founding Pro application has been approved and you have an invitation waiting.
+            </p>
+            <Link to="/founding-pro/invitation">
+              <Button className="w-full">Accept your Founding Pro invitation</Button>
+            </Link>
+          </div>
         ) : state.kind === 'application-pending' ? (
           <p className="text-sm text-[var(--color-ink)]">
             {state.status === 'approved'

@@ -13,9 +13,11 @@ const { rpcMock, fromMock } = vi.hoisted(() => ({
 vi.mock('@/shared/lib/supabase', () => ({ supabase: { rpc: rpcMock, from: fromMock } }))
 
 import {
+  acceptFoundingProInvitation,
   getFoundingProPublicCapacity,
   getMyFoundingProMembership,
   getMyLatestFoundingProApplication,
+  getMyPendingFoundingProInvitation,
   submitFoundingProApplication,
 } from '@/modules/founding-pro/api/foundingPro'
 
@@ -103,5 +105,61 @@ describe('submitFoundingProApplication', () => {
   it('throws if the RPC returns an unexpected shape', async () => {
     rpcMock.mockResolvedValueOnce({ data: { unexpected: true }, error: null })
     await expect(submitFoundingProApplication()).rejects.toThrow('unexpected result')
+  })
+})
+
+describe('getMyPendingFoundingProInvitation', () => {
+  it('reads the caller-scoped pending founding_pro_invitations row', async () => {
+    const row = { id: 'invitation-1', user_id: 'user-1', status: 'pending', founding_price_cents: 1999, currency: 'USD' }
+    const eqStatusMock = vi.fn(() => ({ maybeSingle: () => Promise.resolve({ data: row, error: null }) }))
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'founding_pro_invitations') {
+        return { select: () => ({ eq: () => ({ eq: eqStatusMock }) }) }
+      }
+      throw new Error(`unexpected table: ${table}`)
+    })
+
+    expect(await getMyPendingFoundingProInvitation('user-1')).toEqual(row)
+    expect(eqStatusMock).toHaveBeenCalledWith('status', 'pending')
+  })
+
+  it('returns null (not throw) on a query error', async () => {
+    fromMock.mockImplementation(() => ({ select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: new Error('boom') }) }) }) }) }))
+    expect(await getMyPendingFoundingProInvitation('user-1')).toBeNull()
+  })
+})
+
+describe('acceptFoundingProInvitation', () => {
+  it('calls the acceptance RPC with no arguments and normalizes the result', async () => {
+    rpcMock.mockResolvedValueOnce({ data: { outcome: 'enrolled', member_id: 'member-1', founding_member_number: 7 }, error: null })
+
+    const result = await acceptFoundingProInvitation()
+
+    expect(rpcMock).toHaveBeenCalledWith('accept_founding_pro_invitation')
+    expect(result).toEqual({ memberId: 'member-1', foundingMemberNumber: 7 })
+  })
+
+  it('normalizes a grandfathered-shaped result (no member number) to null, not undefined', async () => {
+    rpcMock.mockResolvedValueOnce({ data: { outcome: 'enrolled', member_id: 'member-1', founding_member_number: null }, error: null })
+
+    const result = await acceptFoundingProInvitation()
+
+    expect(result).toEqual({ memberId: 'member-1', foundingMemberNumber: null })
+  })
+
+  it('throws the server error rather than swallowing it, so the acceptance page can surface the real reason', async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: new Error('No pending Founding Pro invitation found for this account') })
+
+    await expect(acceptFoundingProInvitation()).rejects.toThrow('No pending Founding Pro invitation found for this account')
+  })
+
+  it('throws if the RPC returns no data', async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: null })
+    await expect(acceptFoundingProInvitation()).rejects.toThrow('did not return a result')
+  })
+
+  it('throws if the RPC returns an unexpected shape', async () => {
+    rpcMock.mockResolvedValueOnce({ data: { unexpected: true }, error: null })
+    await expect(acceptFoundingProInvitation()).rejects.toThrow('unexpected result')
   })
 })

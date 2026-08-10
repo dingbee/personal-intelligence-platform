@@ -804,6 +804,34 @@ export type FoundingProEvent = {
   created_at: string
 }
 
+export type FoundingProInvitationStatus = 'pending' | 'accepted' | 'revoked'
+
+/**
+ * Founding Pro Programme Phase 4 (0055_founding_pro_invitation_and_-
+ * enrollment.sql). Deliberately a separate table from
+ * founding_pro_applications rather than an extra application.status
+ * value — see that migration's header. founding_price_cents/currency are
+ * fixed by the admin at invite time and never mutated afterward;
+ * acceptance reads them back unchanged. RLS: a user can SELECT their own
+ * row only; all writes go through admin_invite_founding_pro_member /
+ * accept_founding_pro_invitation. No secret/token field exists — see
+ * this migration's own comment on why acceptance is identity-authorized
+ * (`user_id = auth.uid()`) rather than token-authorized.
+ */
+export type FoundingProInvitation = {
+  id: string
+  application_id: string
+  user_id: string
+  status: FoundingProInvitationStatus
+  founding_price_cents: number
+  currency: string
+  invited_at: string
+  invited_by: string | null
+  accepted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -1167,6 +1195,12 @@ export type Database = {
         Update: Partial<FoundingProEvent>
         Relationships: []
       }
+      founding_pro_invitations: {
+        Row: FoundingProInvitation
+        Insert: Partial<FoundingProInvitation> & { application_id: string; user_id: string; founding_price_cents: number }
+        Update: Partial<FoundingProInvitation>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -1402,6 +1436,12 @@ export type Database = {
           member_id: string | null
           member_number: number | null
           member_slot_type: FoundingProMemberSlotType | null
+          invitation_id: string | null
+          invitation_status: FoundingProInvitationStatus | null
+          invitation_founding_price_cents: number | null
+          invitation_currency: string | null
+          invited_at: string | null
+          invitation_accepted_at: string | null
         }[]
       }
       admin_list_founding_pro_members: {
@@ -1453,6 +1493,28 @@ export type Database = {
       admin_reject_founding_pro_application: {
         Args: { p_application_id: string; p_review_notes?: string | null }
         Returns: FoundingProApplication
+      }
+      /**
+       * Founding Pro Programme Phase 4 — sends a Founding Pro invitation
+       * for an approved application. Admin must supply the founding price
+       * here (never invented/defaulted) — it's stored immutably on the
+       * invitation row and carried through unchanged to enrollment when
+       * the applicant accepts.
+       */
+      admin_invite_founding_pro_member: {
+        Args: { p_application_id: string; p_founding_price_cents: number; p_currency: string }
+        Returns: FoundingProInvitation
+      }
+      /**
+       * Founding Pro Programme Phase 4 — the sole client-reachable
+       * acceptance path. No arguments: resolves the caller's own pending
+       * invitation via auth.uid(), then delegates to the same atomic
+       * enrollment core admin_enroll_founding_pro_member uses. Always
+       * enrolls as slot_type 'public'.
+       */
+      accept_founding_pro_invitation: {
+        Args: Record<string, never>
+        Returns: Record<string, unknown>
       }
       has_feature: {
         Args: { p_user_id: string; p_feature_key: string }
