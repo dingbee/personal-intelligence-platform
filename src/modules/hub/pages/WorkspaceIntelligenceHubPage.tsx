@@ -16,6 +16,7 @@ import { ActiveConversationsSection } from '@/modules/hub/components/ActiveConve
 import { ContinueWorkingCard } from '@/modules/hub/components/ContinueWorkingCard'
 import { RecentActivityList } from '@/modules/hub/components/RecentActivityList'
 import { WorkspaceHealthPanel } from '@/modules/hub/components/WorkspaceHealthPanel'
+import { WorkspaceBriefingCard } from '@/modules/workspace-intelligence/components/WorkspaceBriefingCard'
 import type { IntelligenceItem, IntelligenceZone } from '@/modules/hub/workspaceIntelligence'
 import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
 import { useCommandActions } from '@/modules/commands/hooks/useCommandActions'
@@ -144,6 +145,9 @@ export function WorkspaceIntelligenceHubPage() {
             <SectionHeader level="section" title="Executive Summary" action={<MaturityBadge stage={data.report.maturity.stage} label={data.report.maturity.label} />} />
             <p className="text-sm text-[var(--color-ink)]">{summary}</p>
           </SurfaceCard>
+
+          {/* Phase P1 Advanced AI Workspace — the first real Pro Intelligence capability, placed right under the Executive Summary so it reads as the workspace's headline "more than a folder" moment. */}
+          <WorkspaceBriefingCard />
 
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard label="Knowledge Health" value={data.report.health.score} />
