@@ -1379,6 +1379,81 @@ export type Database = {
         Args: Record<string, never>
         Returns: Record<string, unknown>
       }
+      /**
+       * Founding Pro Programme Phase 3 — admin operational reads. Each
+       * re-checks is_platform_admin() and resolves applicant/reviewer
+       * identity via profiles, the same pattern admin_list_users uses.
+       */
+      admin_list_founding_pro_applications: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          user_id: string
+          applicant_email: string | null
+          applicant_name: string | null
+          status: FoundingProApplicationStatus
+          submitted_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_email: string | null
+          review_notes: string | null
+          created_at: string
+          updated_at: string
+          member_id: string | null
+          member_number: number | null
+          member_slot_type: FoundingProMemberSlotType | null
+        }[]
+      }
+      admin_list_founding_pro_members: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          user_id: string
+          applicant_email: string | null
+          applicant_name: string | null
+          application_id: string | null
+          slot_type: FoundingProMemberSlotType
+          founding_member_number: number | null
+          founding_price_cents: number
+          currency: string
+          founding_started_at: string
+          founding_expires_at: string
+          transition_status: FoundingProMemberTransitionStatus
+          transitioned_at: string | null
+          created_at: string
+          current_plan_code: string | null
+        }[]
+      }
+      admin_list_founding_pro_events: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          event_type: FoundingProEventType
+          application_id: string | null
+          member_id: string | null
+          actor_user_id: string | null
+          actor_email: string | null
+          target_user_id: string | null
+          target_email: string | null
+          metadata: Record<string, unknown>
+          created_at: string
+        }[]
+      }
+      /**
+       * Founding Pro Programme Phase 3 — moves a pending application to
+       * approved. Never assigns founding_pro, never consumes a public slot,
+       * never creates a founding_pro_members row — enrollment stays a
+       * separate, later operation via admin_enroll_founding_pro_member.
+       */
+      admin_approve_founding_pro_application: {
+        Args: { p_application_id: string; p_review_notes?: string | null }
+        Returns: FoundingProApplication
+      }
+      /** Founding Pro Programme Phase 3 — moves a pending application to rejected. */
+      admin_reject_founding_pro_application: {
+        Args: { p_application_id: string; p_review_notes?: string | null }
+        Returns: FoundingProApplication
+      }
       has_feature: {
         Args: { p_user_id: string; p_feature_key: string }
         Returns: boolean

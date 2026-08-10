@@ -2,11 +2,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import {
   adminAiUsageSummary,
+  adminApproveFoundingProApplication,
   adminChangeUserPlan,
   adminCreateBetaInvite,
   adminListBetaInvites,
+  adminListFoundingProApplications,
+  adminListFoundingProEvents,
+  adminListFoundingProMembers,
   adminListUsers,
   adminPlatformCounts,
+  adminRejectFoundingProApplication,
   adminRemoveUserQuotaOverride,
   adminResetUserQuota,
   adminRevokeBetaInvite,
@@ -183,6 +188,47 @@ export function useAdminUpdatePlanCommercial() {
     mutationFn: adminUpdatePlanCommercial,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-plans-quotas'] })
+    },
+  })
+}
+
+/**
+ * Founding Pro Programme Phase 3 — admin operational surface reads/writes.
+ * Approve/reject only invalidate the applications and audit-history lists:
+ * neither RPC touches founding_pro_members or founding_pro_capacity (see
+ * adminApproveFoundingProApplication/adminRejectFoundingProApplication),
+ * so there is nothing in those queries to refresh.
+ */
+export function useAdminFoundingProApplications() {
+  return useQuery({ queryKey: ['admin-founding-pro-applications'], queryFn: adminListFoundingProApplications })
+}
+
+export function useAdminFoundingProMembers() {
+  return useQuery({ queryKey: ['admin-founding-pro-members'], queryFn: adminListFoundingProMembers })
+}
+
+export function useAdminFoundingProEvents() {
+  return useQuery({ queryKey: ['admin-founding-pro-events'], queryFn: adminListFoundingProEvents })
+}
+
+export function useAdminApproveFoundingProApplication() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: adminApproveFoundingProApplication,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-founding-pro-applications'] })
+      void queryClient.invalidateQueries({ queryKey: ['admin-founding-pro-events'] })
+    },
+  })
+}
+
+export function useAdminRejectFoundingProApplication() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: adminRejectFoundingProApplication,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-founding-pro-applications'] })
+      void queryClient.invalidateQueries({ queryKey: ['admin-founding-pro-events'] })
     },
   })
 }

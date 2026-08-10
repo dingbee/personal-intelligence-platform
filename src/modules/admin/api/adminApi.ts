@@ -1,4 +1,5 @@
 import { supabase } from '@/shared/lib/supabase'
+import type { FoundingProApplication } from '@/shared/types/database'
 
 /** Every function here calls a SECURITY DEFINER RPC that re-checks is_platform_admin() itself and raises if the caller isn't one — the authorization is enforced by the database, this file is a thin, unprivileged wrapper. */
 
@@ -150,4 +151,49 @@ export async function adminUpdatePlanCommercial(params: {
     p_active: params.active,
   })
   if (error) throw error
+}
+
+/**
+ * Founding Pro Programme Phase 3 — admin operational reads/mutations. Every
+ * RPC here re-checks is_platform_admin() itself; this file is a thin
+ * unprivileged wrapper, same as every other admin_* function above.
+ * Approval/rejection only ever move an application between 'pending' and
+ * 'approved'/'rejected' — they never assign founding_pro, consume a public
+ * slot, or create a founding_pro_members row (that stays a separate,
+ * later enrollment operation via admin_enroll_founding_pro_member).
+ */
+export async function adminListFoundingProApplications() {
+  const { data, error } = await supabase.rpc('admin_list_founding_pro_applications')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function adminListFoundingProMembers() {
+  const { data, error } = await supabase.rpc('admin_list_founding_pro_members')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function adminListFoundingProEvents() {
+  const { data, error } = await supabase.rpc('admin_list_founding_pro_events')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function adminApproveFoundingProApplication(params: { applicationId: string; reviewNotes?: string | null }): Promise<FoundingProApplication> {
+  const { data, error } = await supabase.rpc('admin_approve_founding_pro_application', {
+    p_application_id: params.applicationId,
+    p_review_notes: params.reviewNotes ?? null,
+  })
+  if (error) throw error
+  return data as FoundingProApplication
+}
+
+export async function adminRejectFoundingProApplication(params: { applicationId: string; reviewNotes?: string | null }): Promise<FoundingProApplication> {
+  const { data, error } = await supabase.rpc('admin_reject_founding_pro_application', {
+    p_application_id: params.applicationId,
+    p_review_notes: params.reviewNotes ?? null,
+  })
+  if (error) throw error
+  return data as FoundingProApplication
 }

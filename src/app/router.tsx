@@ -40,6 +40,7 @@ import { AdminDashboardPage } from '@/modules/admin/pages/AdminDashboardPage'
 import { AdminUsersPage } from '@/modules/admin/pages/AdminUsersPage'
 import { AdminPlansPage } from '@/modules/admin/pages/AdminPlansPage'
 import { AdminAiGovernancePage } from '@/modules/admin/pages/AdminAiGovernancePage'
+import { AdminFoundingProPage } from '@/modules/admin/pages/AdminFoundingProPage'
 import { RequireAdmin } from '@/modules/admin/RequireAdmin'
 
 export const router = createBrowserRouter([
@@ -161,6 +162,14 @@ export const router = createBrowserRouter([
             element: (
               <RequireAdmin>
                 <AdminAiGovernancePage />
+              </RequireAdmin>
+            ),
+          },
+          {
+            path: 'admin/founding-pro',
+            element: (
+              <RequireAdmin>
+                <AdminFoundingProPage />
               </RequireAdmin>
             ),
           },
