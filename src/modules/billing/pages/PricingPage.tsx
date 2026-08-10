@@ -6,6 +6,7 @@ import { usePublicPlanCatalog } from '@/modules/plans/hooks/usePublicPlanCatalog
 import { startProCheckout } from '@/modules/billing/api/billing'
 import type { PublicPlanTier } from '@/modules/plans/api/plans'
 import { formatFileSize } from '@/modules/library/utils/fileTypes'
+import { FoundingProCard } from '@/modules/founding-pro/components/FoundingProCard'
 import { appConfig } from '@/app/appConfig'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
@@ -53,7 +54,6 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
   const annual = formatPrice(tier.annualPriceCents, tier.currency)
   const isFree = tier.code === 'free'
   const isPro = tier.code === 'pro'
-  const isFoundingPro = tier.code === 'founding_pro'
 
   return (
     <SurfaceCard className="flex flex-col gap-4">
@@ -69,8 +69,6 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
             <p className="text-2xl font-semibold text-[var(--color-ink)]">{monthly}/mo</p>
             {annual && <p className="text-xs text-[var(--color-ink-muted)]">or {annual}/yr</p>}
           </div>
-        ) : isFoundingPro ? (
-          <p className="mt-1 text-lg font-semibold text-[var(--color-ink)]">Invite only</p>
         ) : (
           <p className="mt-1 text-lg font-semibold text-[var(--color-ink)]">Pricing to be announced</p>
         )}
@@ -102,12 +100,6 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
           <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
           {tier.collaboration ? 'Invite teammates to your workspace' : 'Single-owner workspace'}
         </li>
-        {isFoundingPro && (
-          <li className="flex items-start gap-2">
-            <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
-            Terms locked in independently of future Pro changes
-          </li>
-        )}
       </ul>
 
       {isPro && proCta.kind === 'manage-billing' && (
@@ -135,12 +127,6 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
           <p className="text-xs text-[var(--color-ink-muted)]">Pesapal sandbox checkout — no real payment is processed.</p>
           {proCta.error && <p className="text-xs text-[var(--color-danger-strong)]">{proCta.error}</p>}
         </div>
-      )}
-
-      {isFoundingPro && (
-        <p className="text-xs text-[var(--color-ink-muted)]">
-          Founding Pro is assigned to early ARRIYIA members and isn't available through self-serve checkout.
-        </p>
       )}
     </SurfaceCard>
   )
@@ -226,13 +212,20 @@ export function PricingPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {/*
+              Founding Pro Programme Phase 2 — Founding Pro now has its own
+              dedicated card (live capacity, application state, no invented
+              price, no AI provider mentions) rather than reusing the
+              generic PlanCard used for ordinary self-serve tiers. It never
+              comes from the plans catalog fetch here — founding_pro is
+              excluded from PublicPlanTier rendering entirely, since its
+              price/capacity/eligibility all come from Founding-Pro-specific
+              reads (get_founding_pro_public_capacity, the caller's own
+              application/membership rows), not from plans/plan_quotas.
+            */}
+            <FoundingProCard />
             {catalog
-              // Founding Pro must never present as an ordinary public
-              // checkout option — only shown here when it's the viewer's
-              // own plan, so they can see their current terms. No
-              // accidental upgrade/downgrade path out of Founding Pro
-              // exists anywhere on this page.
-              .filter((tier) => tier.code !== 'founding_pro' || currentPlan?.planCode === 'founding_pro')
+              .filter((tier) => tier.code !== 'founding_pro')
               .map((tier) => (
                 <PlanCard key={tier.code} tier={tier} isCurrent={effectivePlanCode === tier.code} proCta={tier.code === 'pro' ? proCta : { kind: 'none' }} />
               ))}

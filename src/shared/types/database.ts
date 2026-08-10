@@ -1369,6 +1369,16 @@ export type Database = {
         }
         Returns: Record<string, unknown>
       }
+      /**
+       * Founding Pro Programme Phase 2 — the sole client-reachable write
+       * path for founding_pro_applications. Takes no arguments; user_id is
+       * always auth.uid(), status is always hardcoded to 'pending'. Cannot
+       * assign a slot, grant entitlement, or approve itself.
+       */
+      submit_founding_pro_application: {
+        Args: Record<string, never>
+        Returns: Record<string, unknown>
+      }
       has_feature: {
         Args: { p_user_id: string; p_feature_key: string }
         Returns: boolean

@@ -17,16 +17,31 @@ import { MemoryRouter } from 'react-router-dom'
  * Phase 5A.
  */
 
-const { useAuthMock, useCurrentPlanMock, usePublicPlanCatalogMock } = vi.hoisted(() => ({
+const {
+  useAuthMock,
+  useCurrentPlanMock,
+  usePublicPlanCatalogMock,
+  useFoundingProCapacityMock,
+  useMyFoundingProMembershipMock,
+  useMyLatestFoundingProApplicationMock,
+} = vi.hoisted(() => ({
   useAuthMock: vi.fn(),
   useCurrentPlanMock: vi.fn(),
   usePublicPlanCatalogMock: vi.fn(),
+  useFoundingProCapacityMock: vi.fn(),
+  useMyFoundingProMembershipMock: vi.fn(),
+  useMyLatestFoundingProApplicationMock: vi.fn(),
 }))
 
 vi.mock('@/modules/auth/useAuth', () => ({ useAuth: useAuthMock }))
 vi.mock('@/modules/plans/hooks/useCurrentPlan', () => ({ useCurrentPlan: useCurrentPlanMock }))
 vi.mock('@/modules/plans/hooks/usePublicPlanCatalog', () => ({ usePublicPlanCatalog: usePublicPlanCatalogMock }))
 vi.mock('@/modules/billing/api/billing', () => ({ startProCheckout: vi.fn() }))
+vi.mock('@/modules/founding-pro/hooks/useFoundingProCapacity', () => ({ useFoundingProCapacity: useFoundingProCapacityMock }))
+vi.mock('@/modules/founding-pro/hooks/useMyFoundingProStatus', () => ({
+  useMyFoundingProMembership: useMyFoundingProMembershipMock,
+  useMyLatestFoundingProApplication: useMyLatestFoundingProApplicationMock,
+}))
 
 import { PricingPage } from '@/modules/billing/pages/PricingPage'
 import { startProCheckout } from '@/modules/billing/api/billing'
@@ -69,6 +84,9 @@ describe('PricingPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     usePublicPlanCatalogMock.mockReturnValue({ data: [freeTier, proTier, foundingProTier], isLoading: false })
+    useFoundingProCapacityMock.mockReturnValue({ data: { maxPublicSlots: 100, enrolledPublicCount: 40, remainingPublicSlots: 60 }, isLoading: false })
+    useMyFoundingProMembershipMock.mockReturnValue({ data: null, isLoading: false })
+    useMyLatestFoundingProApplicationMock.mockReturnValue({ data: null, isLoading: false })
   })
 
   it('renders Free and Pro for a fully anonymous visitor (no session), with a sign-up CTA instead of checkout', () => {
@@ -83,13 +101,16 @@ describe('PricingPage', () => {
     expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
   })
 
-  it('never shows Founding Pro to an anonymous visitor', () => {
+  it('shows the Founding Pro card publicly to an anonymous visitor, with live capacity and a sign-up CTA (Phase 2)', () => {
     useAuthMock.mockReturnValue({ user: null, session: null })
     useCurrentPlanMock.mockReturnValue({ data: undefined, isLoading: false })
 
     renderPage()
 
-    expect(screen.queryByText('Founding Pro')).toBeNull()
+    expect(screen.getByText('Founding Pro')).not.toBeNull()
+    expect(screen.getByText('60')).not.toBeNull()
+    expect(screen.getByText('Sign up to apply')).not.toBeNull()
+    expect(screen.queryByText('Apply for Founding Pro')).toBeNull()
   })
 
   it('shows the real sandbox checkout CTA for a signed-in Free user', () => {
@@ -141,16 +162,58 @@ describe('PricingPage', () => {
     expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
   })
 
-  it('offers no Pro upgrade path at all for a Founding Pro viewer, and shows their own Founding Pro card instead', () => {
-    useAuthMock.mockReturnValue({ user: { id: 'u1' }, session: { user: { id: 'u1' } } })
+  it('offers no Pro upgrade path at all for a Founding Pro viewer, and shows their own membership status instead of an application CTA', () => {
+    useAuthMock.mockReturnValue({ user: { id: 'u1', email: 'founder@example.com' }, session: { user: { id: 'u1' } } })
     useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-founding', planCode: 'founding_pro', planName: 'Founding Pro' }, isLoading: false })
+    useMyFoundingProMembershipMock.mockReturnValue({
+      data: {
+        id: 'member-1',
+        user_id: 'u1',
+        application_id: null,
+        slot_type: 'public',
+        founding_member_number: 42,
+        founding_price_cents: 1999,
+        currency: 'USD',
+        founding_started_at: '2026-01-01T00:00:00Z',
+        founding_expires_at: '2026-04-01T00:00:00Z',
+        transition_status: 'active',
+        transitioned_at: null,
+        created_at: '2026-01-01T00:00:00Z',
+      },
+      isLoading: false,
+    })
 
     renderPage()
 
     expect(screen.getByText('Founding Pro')).not.toBeNull()
+    expect(screen.getByText('Founding member #42')).not.toBeNull()
     expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
     expect(screen.queryByText('Manage billing')).toBeNull()
     expect(screen.queryByText('Sign up to get started')).toBeNull()
+    expect(screen.queryByText('Apply for Founding Pro')).toBeNull()
+  })
+
+  it('shows an Apply for Founding Pro CTA for an ordinary signed-in user with no application or membership yet', () => {
+    useAuthMock.mockReturnValue({ user: { id: 'u2' }, session: { user: { id: 'u2' } } })
+    useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-free', planCode: 'free', planName: 'Free' }, isLoading: false })
+
+    renderPage()
+
+    expect(screen.getByText('Apply for Founding Pro')).not.toBeNull()
+  })
+
+  it('shows "Application pending" instead of a CTA for a signed-in user with a pending application', () => {
+    useAuthMock.mockReturnValue({ user: { id: 'u2' }, session: { user: { id: 'u2' } } })
+    useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-free', planCode: 'free', planName: 'Free' }, isLoading: false })
+    useMyLatestFoundingProApplicationMock.mockReturnValue({
+      data: { id: 'app-1', user_id: 'u2', status: 'pending', submitted_at: '2026-01-01T00:00:00Z', reviewed_at: null, reviewed_by: null, review_notes: null, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
+      isLoading: false,
+    })
+
+    renderPage()
+
+    expect(screen.getByText('Application pending')).not.toBeNull()
+    expect(screen.queryByText('Apply for Founding Pro')).toBeNull()
   })
 
   it('never mentions AI provider selection or shows a Pro CTA while the viewer\'s plan is still loading', () => {
