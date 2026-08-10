@@ -4,6 +4,7 @@ import { useProfile } from '@/modules/settings/hooks/useProfile'
 import { useCurrentPlan } from '@/modules/plans/hooks/useCurrentPlan'
 import { canSelectProvider } from '@/modules/plans/entitlements'
 import { usePlatformAdmin } from '@/modules/admin/hooks/usePlatformAdmin'
+import { BillingCard } from '@/modules/billing/components/BillingCard'
 import { ProfileCard } from '@/modules/settings/components/ProfileCard'
 import { ChangePasswordCard } from '@/modules/settings/components/ChangePasswordCard'
 import { DeleteAccountCard } from '@/modules/settings/components/DeleteAccountCard'
@@ -26,6 +27,8 @@ export function SettingsPage() {
       <ProfileCard email={user?.email ?? ''} userId={user?.id ?? ''} profile={profile} loading={profileLoading} />
 
       <ChangePasswordCard />
+
+      <BillingCard />
 
       <div className="max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
         <div className="flex items-center justify-between">

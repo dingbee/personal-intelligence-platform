@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useConversations } from '@/modules/ai/chat/hooks/useConversations'
 import { useArchivedConversations } from '@/modules/ai/chat/hooks/useArchivedConversations'
 import { useConversationSearch } from '@/modules/ai/chat/hooks/useConversationSearch'
@@ -49,6 +49,7 @@ import { buildChatHistory } from '@/modules/ai/chat/api/buildChatHistory'
 
 export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const documentId = searchParams.get('documentId') ?? undefined
   // Set by the Command Bar's "Ask NOVA: <query>" — a brand-new conversation
   // deep-linked here with a question already chosen. Sent once below via
@@ -167,6 +168,7 @@ export function ChatPage() {
     streamingText,
     sending,
     error,
+    errorCategory,
     suggestions,
     contextTrace,
     references,
@@ -516,10 +518,20 @@ export function ChatPage() {
                 {error && (
                   <div className="flex items-center gap-3">
                     <p className="text-sm text-[var(--color-danger)]">{error}</p>
-                    {canRetry && (
-                      <Button variant="ghost" className="px-2 py-1 text-xs" onClick={retry}>
-                        Retry
+                    {errorCategory === 'quota_exceeded' ? (
+                      // Phase 4 Commercial Architecture — the quota-exhaustion
+                      // conversion moment: an Upgrade CTA in place of Retry,
+                      // since retrying a still-exhausted quota would just fail
+                      // again identically.
+                      <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => navigate('/pricing')}>
+                        Upgrade to Pro
                       </Button>
+                    ) : (
+                      canRetry && (
+                        <Button variant="ghost" className="px-2 py-1 text-xs" onClick={retry}>
+                          Retry
+                        </Button>
+                      )
                     )}
                   </div>
                 )}

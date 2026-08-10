@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspaceRole } from '@/modules/workspaces/hooks/useWorkspaceRole'
 import { useWorkspaceMembers } from '@/modules/workspaces/hooks/useWorkspaceMembers'
 import { useWorkspaceInvitations } from '@/modules/workspaces/hooks/useWorkspaceInvitations'
+import { useHasFeature } from '@/modules/plans/hooks/useHasFeature'
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -46,12 +48,21 @@ const ASSIGNABLE_ROLES: Exclude<WorkspaceMemberRole, 'owner'>[] = ['editor', 'vi
  * surfaces as a distinct dismissible warning (`emailWarning`) rather
  * than `invite.isError`/a failed resend: the invitation is already
  * correctly pending in the database either way, and can be resent.
+ *
+ * Phase 4 Commercial Architecture — collaboration is Pro-only. The
+ * database (`invite_to_workspace`'s `has_feature('collaboration')` check)
+ * is the actual enforcement boundary; this component's `useHasFeature`
+ * read is purely a UX improvement so a Free-plan owner sees an upgrade
+ * prompt in place of a form that would just fail server-side, rather than
+ * discovering the restriction only after submitting it.
  */
 export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { data: role } = useWorkspaceRole(workspaceId)
   const { data: members = [], isLoading, invite, changeRole, remove } = useWorkspaceMembers(workspaceId)
   const { data: invitations = [], isLoading: invitationsLoading, cancel, resend } = useWorkspaceInvitations(workspaceId)
+  const { data: canCollaborate, isLoading: collaborationLoading } = useHasFeature('collaboration')
 
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<Exclude<WorkspaceMemberRole, 'owner'>>('editor')
@@ -63,7 +74,21 @@ export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) 
 
   return (
     <div className="flex flex-col gap-4">
-      {isOwner && (
+      {isOwner && !collaborationLoading && !canCollaborate && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-[var(--color-border)] bg-[var(--surface-raised)] p-4">
+          <div>
+            <p className="text-sm font-medium text-[var(--color-ink)]">Inviting teammates requires Pro</p>
+            <p className="text-xs text-[var(--color-ink-muted)]">
+              Free workspaces are single-owner. Upgrade to invite editors and viewers.
+            </p>
+          </div>
+          <Button variant="secondary" onClick={() => navigate('/pricing')}>
+            Upgrade to Pro
+          </Button>
+        </div>
+      )}
+
+      {isOwner && canCollaborate && (
         <form
           className="flex flex-wrap items-end gap-2 rounded-card border border-[var(--color-border)] bg-[var(--surface-raised)] p-4"
           onSubmit={(e) => {

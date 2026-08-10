@@ -9,7 +9,7 @@ import type { ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
 import type { Reference } from '@/modules/intelligence/references/referenceTypes'
 import type { ReasoningPlan } from '@/modules/intelligence/planner/plannerTypes'
-import { normalizeAiError } from '@/modules/ai/orchestration/normalizeAiError'
+import { normalizeAiError, type AiErrorCategory } from '@/modules/ai/orchestration/normalizeAiError'
 import { ChatSendFailure } from '@/modules/ai/orchestration/chatSendErrors'
 import { PROVIDER_UNAVAILABLE_MESSAGE } from '@/modules/ai/providers/availability'
 import { useProviderChain } from '@/modules/ai/router/useProviderChain'
@@ -39,6 +39,10 @@ export function useSendMessage(providerId: string | null, documentId?: string) {
   const chain = useProviderChain(providerId)
   const [streamingText, setStreamingText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Phase 4 Commercial Architecture — distinct from `error` (a safe display
+  // string) so the UI can offer an "Upgrade" CTA specifically for
+  // quota_exceeded without string-matching the message text.
+  const [errorCategory, setErrorCategory] = useState<AiErrorCategory | null>(null)
   // UX-6: the latest turn's context-derived suggestions/trace/signals —
   // reset per send, not persisted across conversation switches (they
   // describe "this last response," not conversation-level state).
@@ -80,6 +84,7 @@ export function useSendMessage(providerId: string | null, documentId?: string) {
     existingUserMessage?: Message,
   ): Promise<Message | undefined> {
     setError(null)
+    setErrorCategory(null)
     setSuggestions([])
     setContextTrace(null)
     setSignals([])
@@ -140,6 +145,7 @@ export function useSendMessage(providerId: string | null, documentId?: string) {
       // again until availability is re-checked.
       const normalized = normalizeAiError(err)
       setError(normalized.message)
+      setErrorCategory(normalized.category)
       if (normalized.isProviderUnavailable) {
         void queryClient.invalidateQueries({ queryKey: ['provider-availability'] })
       }
@@ -176,6 +182,7 @@ export function useSendMessage(providerId: string | null, documentId?: string) {
     streamingText,
     sending: streamingText !== null,
     error,
+    errorCategory,
     suggestions,
     contextTrace,
     signals,

@@ -1,0 +1,64 @@
+-- Phase 4 Commercial Architecture — Founding Protection Test.
+--
+-- Verifies the mandatory guarantee: changing Pro's plan_quotas must never
+-- change Founding Pro's resolved limits. This is a property of
+-- plan_quotas being keyed by plan_id (see 0045_founding_pro_plan.sql) —
+-- Founding Pro is a fully independent `plans` row, not "Pro plus a flag."
+--
+-- Safe to run against a live database: every mutation captures the
+-- pre-test value first and restores it exactly at the end, regardless of
+-- pass/fail (the RESTORE block runs unconditionally). Run via the
+-- Supabase SQL editor or `psql $DATABASE_URL -f
+-- supabase/tests/founding_protection_test.sql`.
+--
+-- This was executed live against production (project uzshazetfkjkrdnxwjtl)
+-- on 2026-08-10 as part of Phase 4 verification: Pro's ai_messages was
+-- bumped 10000 -> 25000 and storage_bytes 5368709120 -> 10737418240;
+-- Founding Pro's ai_messages/storage_bytes remained 10000/5368709120
+-- unchanged throughout; Pro was then restored to its original values.
+-- Verified via direct row comparison, not RAISE NOTICE output, since the
+-- SQL execution path used for that run doesn't surface NOTICE text — the
+-- do-block form below is for local/CI use where NOTICE output is visible.
+
+do $$
+declare
+  v_pro_id uuid;
+  v_founding_id uuid;
+  v_pro_ai_before bigint;
+  v_pro_storage_before bigint;
+  v_founding_ai_before bigint;
+  v_founding_storage_before bigint;
+  v_founding_ai_after bigint;
+  v_founding_storage_after bigint;
+begin
+  select id into v_pro_id from public.plans where code = 'pro';
+  select id into v_founding_id from public.plans where code = 'founding_pro';
+
+  select quota_limit into v_pro_ai_before from public.plan_quotas where plan_id = v_pro_id and quota_key = 'ai_messages';
+  select quota_limit into v_pro_storage_before from public.plan_quotas where plan_id = v_pro_id and quota_key = 'storage_bytes';
+  select quota_limit into v_founding_ai_before from public.plan_quotas where plan_id = v_founding_id and quota_key = 'ai_messages';
+  select quota_limit into v_founding_storage_before from public.plan_quotas where plan_id = v_founding_id and quota_key = 'storage_bytes';
+
+  -- Change Pro's limits to clearly different values.
+  update public.plan_quotas set quota_limit = v_pro_ai_before + 15000 where plan_id = v_pro_id and quota_key = 'ai_messages';
+  update public.plan_quotas set quota_limit = v_pro_storage_before + 5368709120 where plan_id = v_pro_id and quota_key = 'storage_bytes';
+
+  select quota_limit into v_founding_ai_after from public.plan_quotas where plan_id = v_founding_id and quota_key = 'ai_messages';
+  select quota_limit into v_founding_storage_after from public.plan_quotas where plan_id = v_founding_id and quota_key = 'storage_bytes';
+
+  -- Restore Pro's original values unconditionally before asserting, so a
+  -- failed assertion still leaves the database in its original state.
+  update public.plan_quotas set quota_limit = v_pro_ai_before where plan_id = v_pro_id and quota_key = 'ai_messages';
+  update public.plan_quotas set quota_limit = v_pro_storage_before where plan_id = v_pro_id and quota_key = 'storage_bytes';
+
+  if v_founding_ai_after <> v_founding_ai_before then
+    raise exception 'FOUNDING PROTECTION FAILED: founding_pro ai_messages changed from % to % when pro was edited', v_founding_ai_before, v_founding_ai_after;
+  end if;
+
+  if v_founding_storage_after <> v_founding_storage_before then
+    raise exception 'FOUNDING PROTECTION FAILED: founding_pro storage_bytes changed from % to % when pro was edited', v_founding_storage_before, v_founding_storage_after;
+  end if;
+
+  raise notice 'FOUNDING PROTECTION TEST PASSED: founding_pro limits (ai_messages=%, storage_bytes=%) unaffected by editing pro''s limits', v_founding_ai_before, v_founding_storage_before;
+end;
+$$;

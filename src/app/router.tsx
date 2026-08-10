@@ -32,6 +32,7 @@ import { ExecutiveDashboardPage } from '@/modules/intelligence/dashboard/pages/E
 import { WorkspaceEvolutionPage } from '@/modules/evolution/pages/WorkspaceEvolutionPage'
 import { WorkspaceIntelligenceHubPage } from '@/modules/hub/pages/WorkspaceIntelligenceHubPage'
 import { ExportCenterPage } from '@/modules/export/pages/ExportCenterPage'
+import { PricingPage } from '@/modules/billing/pages/PricingPage'
 import { HomeRedirect } from '@/app/HomeRedirect'
 import { AdminDashboardPage } from '@/modules/admin/pages/AdminDashboardPage'
 import { AdminUsersPage } from '@/modules/admin/pages/AdminUsersPage'
@@ -95,6 +96,7 @@ export const router = createBrowserRouter([
           { path: 'knowledge/export', element: <ExportCenterPage /> },
           { path: 'search', element: <SearchPage /> },
           { path: 'chat', element: <ChatPage /> },
+          { path: 'pricing', element: <PricingPage /> },
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/advanced', element: <AdvancedSettingsPage /> },
           { path: 'settings/workspaces', element: <WorkspaceManagementPage /> },

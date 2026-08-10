@@ -610,6 +610,59 @@ export type QuotaUsage = {
   updated_at: string
 }
 
+/**
+ * Phase 4 Commercial Architecture (0047_billing_tables_and_subscription_-
+ * event_function.sql). RLS: a user can SELECT their own row only. All
+ * writes go through `apply_subscription_event` (SECURITY DEFINER, granted
+ * to `service_role` only — never `anon`/`authenticated`), called from the
+ * billing webhook Edge Function after signature verification. This is the
+ * billing *relationship* record, not the entitlement itself —
+ * `user_plan_assignments` (unchanged) remains the only table that actually
+ * grants plan access.
+ */
+export type BillingCustomer = {
+  id: string
+  user_id: string
+  provider: string
+  provider_customer_id: string
+  created_at: string
+  updated_at: string
+}
+
+export type SubscriptionStatus = 'active' | 'past_due' | 'cancelled' | 'expired'
+
+/** RLS: a user can SELECT their own row only. All writes go through `apply_subscription_event`, same as `BillingCustomer` above. */
+export type Subscription = {
+  id: string
+  user_id: string
+  plan_id: string
+  provider: string
+  provider_subscription_id: string
+  provider_price_id: string | null
+  status: SubscriptionStatus
+  current_period_start: string | null
+  current_period_end: string | null
+  cancel_at_period_end: boolean
+  last_event_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SubscriptionEventProcessingStatus = 'pending' | 'processed' | 'ignored_stale' | 'failed'
+
+/** RLS: zero client policies (matches `BetaInvite`'s pattern) — the only access paths are `apply_subscription_event` (service-role only) and `admin_get_user_subscription`. Not exposed through any client `.from('subscription_events')` call site; included here purely so `apply_subscription_event`'s server-side effects are fully typed. */
+export type SubscriptionEvent = {
+  id: string
+  provider: string
+  provider_event_id: string
+  event_type: string
+  subscription_id: string | null
+  processing_status: SubscriptionEventProcessingStatus
+  raw_payload: Record<string, unknown> | null
+  received_at: string
+  processed_at: string | null
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -895,6 +948,30 @@ export type Database = {
         Update: Partial<QuotaUsage>
         Relationships: []
       }
+      billing_customers: {
+        Row: BillingCustomer
+        Insert: Partial<BillingCustomer> & { user_id: string; provider: string; provider_customer_id: string }
+        Update: Partial<BillingCustomer>
+        Relationships: []
+      }
+      subscriptions: {
+        Row: Subscription
+        Insert: Partial<Subscription> & {
+          user_id: string
+          plan_id: string
+          provider: string
+          provider_subscription_id: string
+          status: SubscriptionStatus
+        }
+        Update: Partial<Subscription>
+        Relationships: []
+      }
+      subscription_events: {
+        Row: SubscriptionEvent
+        Insert: Partial<SubscriptionEvent> & { provider: string; provider_event_id: string; event_type: string }
+        Update: Partial<SubscriptionEvent>
+        Relationships: []
+      }
       user_quota_overrides: {
         Row: UserQuotaOverride
         Insert: Partial<UserQuotaOverride> & { user_id: string; quota_key: string; quota_limit: number }
@@ -1074,6 +1151,37 @@ export type Database = {
       admin_update_plan_quota: {
         Args: { p_plan_id: string; p_quota_key: string; p_quota_limit: number }
         Returns: void
+      }
+      has_feature: {
+        Args: { p_user_id: string; p_feature_key: string }
+        Returns: boolean
+      }
+      calculate_user_storage_usage: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
+      /**
+       * Phase 4 — `apply_subscription_event` is intentionally NOT typed
+       * here: it's granted to `service_role` only (never `anon`/
+       * `authenticated`), so no client code has a legitimate call site for
+       * it, and typing it would invite exactly the kind of client-side
+       * `supabase.rpc('apply_subscription_event', ...)` call this
+       * function's grants are designed to make impossible. It's called
+       * exclusively from the billing webhook Edge Function using the
+       * service-role client.
+       */
+      admin_get_user_subscription: {
+        Args: { p_user_id: string }
+        Returns: {
+          provider: string
+          provider_subscription_id: string
+          plan_code: string
+          status: SubscriptionStatus
+          current_period_start: string | null
+          current_period_end: string | null
+          cancel_at_period_end: boolean
+          updated_at: string
+        }[]
       }
     }
     Enums: {
