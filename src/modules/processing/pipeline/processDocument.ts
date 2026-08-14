@@ -7,6 +7,7 @@ import { replaceDocumentChunks } from '@/modules/processing/api/chunks'
 import { getDocumentProcessor } from '@/modules/processing/extractors/registry'
 import { getChunker } from '@/modules/processing/chunking/registry'
 import { downloadDocumentFile } from '@/modules/processing/pipeline/downloadFile'
+import { getErrorMessage } from '@/modules/processing/pipeline/getErrorMessage'
 import { OpenAIEmbeddingProvider } from '@/modules/ai/embeddings/OpenAIEmbeddingProvider'
 import { supabaseVectorStore } from '@/modules/ai/retrieval/SupabaseVectorStore'
 import type { DocumentChunk } from '@/shared/types/database'
@@ -130,7 +131,16 @@ export async function processDocument(documentId: string, userId: string): Promi
     await updateProcessingJob(job.id, { status: 'completed', completed_at: new Date().toISOString() })
     await updateDocumentStatus(documentId, 'ready')
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Processing failed'
+    // Processing failure observability fix (docs/excel-processing-failure-
+    // diagnostic.md) — the diagnostic confirmed the previous `err
+    // instanceof Error ? err.message : 'Processing failed'` check was
+    // collapsing real diagnostic information (a PostgREST error's
+    // code/details/hint, an Error-like object that failed `instanceof`,
+    // a thrown string) into a useless generic string. getErrorMessage
+    // extracts whatever real information the thrown value actually
+    // carries, redacting anything credential-shaped, instead of assuming
+    // its shape.
+    const message = getErrorMessage(err)
     console.error(`Document processing failed for ${documentId}:`, err)
     await updateProcessingJob(job.id, {
       status: 'failed',

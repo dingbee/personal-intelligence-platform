@@ -4,6 +4,10 @@ import type { DocumentChunk } from '@/shared/types/database'
 
 const embedMock = vi.fn()
 const upsertMock = vi.fn()
+const getDocumentMock = vi.fn()
+const updateDocumentStatusMock = vi.fn()
+const createProcessingJobMock = vi.fn()
+const updateProcessingJobMock = vi.fn()
 
 // processDocument.ts transitively imports the real Supabase client (via the
 // library/processing api modules) purely for its module-level side effects
@@ -22,7 +26,20 @@ vi.mock('@/modules/ai/retrieval/SupabaseVectorStore', () => ({
   supabaseVectorStore: { upsert: upsertMock, query: vi.fn() },
 }))
 
-const { embedBatchWithRetry, isRateLimitError } = await import('@/modules/processing/pipeline/processDocument')
+// Processing failure observability fix — mocked only for the
+// processDocument() catch-path regression test below; every other test in
+// this file exercises embedBatchWithRetry/isRateLimitError directly and
+// never reaches these.
+vi.mock('@/modules/library/api/documents', () => ({
+  getDocument: getDocumentMock,
+  updateDocumentStatus: updateDocumentStatusMock,
+}))
+vi.mock('@/modules/processing/api/jobs', () => ({
+  createProcessingJob: createProcessingJobMock,
+  updateProcessingJob: updateProcessingJobMock,
+}))
+
+const { processDocument, embedBatchWithRetry, isRateLimitError } = await import('@/modules/processing/pipeline/processDocument')
 
 function rateLimitError(): FunctionsHttpError {
   return new FunctionsHttpError({
@@ -121,5 +138,56 @@ describe('embedBatchWithRetry', () => {
     // 1 initial attempt + 5 retries = 6 total calls, then it gives up.
     expect(embedMock).toHaveBeenCalledTimes(6)
     expect(upsertMock).not.toHaveBeenCalled()
+  })
+})
+
+// Processing failure observability fix (docs/excel-processing-failure-
+// diagnostic.md) — regression coverage for the catch-path change itself,
+// independent of getErrorMessage.test.ts's own unit coverage: proves
+// processDocument()'s catch block no longer collapses an Error-like
+// value that fails `instanceof Error` into the generic "Processing
+// failed" string. Does NOT assert anything about structured_datasets or
+// any specific production root cause — the diagnostic explicitly found
+// that unconfirmed, and this sprint is observability-only.
+describe('processDocument catch path', () => {
+  beforeEach(() => {
+    getDocumentMock.mockReset()
+    updateDocumentStatusMock.mockReset().mockResolvedValue(undefined)
+    createProcessingJobMock.mockReset().mockResolvedValue({ id: 'job-1' })
+    updateProcessingJobMock.mockReset().mockResolvedValue(undefined)
+  })
+
+  it('preserves message/code/details/hint from a thrown Error-like object that fails instanceof Error, instead of recording the generic fallback', async () => {
+    // A generic, illustrative PostgREST-shaped rejection — not a claim
+    // about the actual production root cause, which remains unconfirmed
+    // per docs/excel-processing-failure-diagnostic.md. Any pipeline step
+    // could plausibly reject with a value shaped like this.
+    getDocumentMock.mockRejectedValueOnce({
+      message: 'a database operation failed',
+      code: '99999',
+      details: 'some diagnostic detail',
+      hint: null,
+    })
+
+    await processDocument('doc-1', 'user-1')
+
+    // The job creation call, then 'extracting', then the terminal 'failed' update.
+    const failedCall = updateProcessingJobMock.mock.calls.find((call) => call[1]?.status === 'failed')
+    expect(failedCall).toBeDefined()
+    const errorMessage = failedCall![1].error_message as string
+    expect(errorMessage).not.toBe('Processing failed')
+    expect(errorMessage).toContain('a database operation failed')
+    expect(errorMessage).toContain('99999')
+    expect(errorMessage).toContain('some diagnostic detail')
+    expect(updateDocumentStatusMock).toHaveBeenCalledWith('doc-1', 'error')
+  })
+
+  it('still records a real message for a genuine Error instance (no regression to the previous behavior)', async () => {
+    getDocumentMock.mockRejectedValueOnce(new Error('document not found'))
+
+    await processDocument('doc-1', 'user-1')
+
+    const failedCall = updateProcessingJobMock.mock.calls.find((call) => call[1]?.status === 'failed')
+    expect(failedCall![1].error_message).toBe('document not found')
   })
 })
