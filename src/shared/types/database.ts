@@ -490,6 +490,68 @@ export type WorkspaceObjective = {
   updated_at: string
 }
 
+export type ExecutionRequestStatus = 'proposed' | 'awaiting_approval' | 'approved' | 'rejected' | 'executing' | 'succeeded' | 'failed' | 'cancelled' | 'expired'
+export type ExecutionRiskClassification = 'low' | 'medium' | 'high'
+
+export type ExecutionRequestRow = {
+  id: string
+  user_id: string
+  workspace_id: string | null
+  capability: string
+  status: ExecutionRequestStatus
+  action_snapshot: Record<string, unknown> | null
+  source: Record<string, unknown>
+  target: Record<string, unknown>
+  input_payload: Record<string, unknown>
+  expected_effect: string
+  risk_classification: ExecutionRiskClassification
+  external_side_effects: boolean
+  idempotency_key: string
+  contract_hash: string
+  created_at: string
+  updated_at: string
+  expires_at: string
+}
+
+export type ExecutionAuthorizationDecision = 'approved' | 'rejected'
+
+export type ExecutionAuthorizationRow = {
+  id: string
+  execution_request_id: string
+  approving_user_id: string
+  decision: ExecutionAuthorizationDecision
+  capability: string
+  target: Record<string, unknown>
+  scope: Record<string, unknown>
+  contract_hash_at_approval: string
+  expires_at: string | null
+  created_at: string
+}
+
+export type ExecutionAttemptOutcomeValue = 'succeeded' | 'failed'
+export type ExecutionFailureKind = 'validation' | 'authorization' | 'capability_unavailable' | 'dependency' | 'timeout' | 'transient' | 'permanent' | 'external_rejection' | 'unknown'
+
+export type ExecutionAttemptRow = {
+  id: string
+  execution_request_id: string
+  attempt_number: number
+  started_at: string
+  completed_at: string | null
+  outcome: ExecutionAttemptOutcomeValue | null
+  failure_kind: ExecutionFailureKind | null
+  failure_message: string | null
+  result: Record<string, unknown> | null
+}
+
+export type ExecutionAuditEventRow = {
+  id: string
+  execution_request_id: string
+  event_type: string
+  actor_user_id: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
 /** AI Experience Intelligence v1 — a user's dismissal of one proactive-intelligence item (a Hub IntelligenceItem or a dashboard-scope Recommendation), keyed by the caller-derived item_key. See 0037_dismissed_suggestions.sql. */
 export type DismissedSuggestion = {
   id: string
@@ -1245,9 +1307,82 @@ export type Database = {
         Update: Partial<FoundingProInvitation>
         Relationships: []
       }
+      execution_requests: {
+        Row: ExecutionRequestRow
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      execution_authorizations: {
+        Row: ExecutionAuthorizationRow
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      execution_attempts: {
+        Row: ExecutionAttemptRow
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      execution_audit_events: {
+        Row: ExecutionAuditEventRow
+        Insert: never
+        Update: never
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
+      create_execution_request: {
+        Args: {
+          p_workspace_id: string | null
+          p_capability: string
+          p_action_snapshot: Record<string, unknown> | null
+          p_source: Record<string, unknown>
+          p_target: Record<string, unknown>
+          p_input_payload: Record<string, unknown>
+          p_expected_effect: string
+          p_risk_classification: ExecutionRiskClassification
+          p_external_side_effects: boolean
+          p_idempotency_key: string
+          p_contract_hash: string
+          p_ttl_seconds?: number
+        }
+        Returns: ExecutionRequestRow
+      }
+      authorize_execution_request: {
+        Args: {
+          p_execution_request_id: string
+          p_decision: ExecutionAuthorizationDecision
+          p_scope?: Record<string, unknown>
+          p_expires_at?: string | null
+        }
+        Returns: ExecutionAuthorizationRow
+      }
+      start_execution: {
+        Args: { p_execution_request_id: string }
+        Returns: ExecutionRequestRow
+      }
+      record_execution_attempt: {
+        Args: {
+          p_execution_request_id: string
+          p_outcome: ExecutionAttemptOutcomeValue
+          p_failure_kind?: ExecutionFailureKind | null
+          p_failure_message?: string | null
+          p_result?: Record<string, unknown> | null
+          p_is_final?: boolean
+        }
+        Returns: ExecutionAttemptRow
+      }
+      cancel_execution: {
+        Args: { p_execution_request_id: string; p_reason?: string | null }
+        Returns: ExecutionRequestRow
+      }
+      expire_execution: {
+        Args: { p_execution_request_id: string }
+        Returns: ExecutionRequestRow
+      }
       match_document_chunks: {
         Args: {
           query_embedding: number[]
@@ -1601,6 +1736,11 @@ export type Database = {
       ai_memory_type: AiMemoryType
       workspace_objective_status: WorkspaceObjectiveStatus
       workspace_invitation_status: WorkspaceInvitationStatus
+      execution_request_status: ExecutionRequestStatus
+      execution_risk_classification: ExecutionRiskClassification
+      execution_authorization_decision: ExecutionAuthorizationDecision
+      execution_attempt_outcome: ExecutionAttemptOutcomeValue
+      execution_failure_kind: ExecutionFailureKind
     }
   }
 }

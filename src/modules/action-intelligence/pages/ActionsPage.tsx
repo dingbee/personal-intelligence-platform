@@ -8,6 +8,8 @@ import { useAddActionAsWorkspaceObjective } from '@/modules/action-intelligence/
 import { useLinkActionToWorkspaceObjective } from '@/modules/action-intelligence/hooks/useLinkActionToWorkspaceObjective'
 import { useWorkspaceObjectives } from '@/modules/hub/hooks/useWorkspaceObjectives'
 import { formatActionSetAsNoteContent, formatActionAsText } from '@/modules/action-intelligence/api/formatActionSetAsNoteContent'
+import { useCreateExecutionRequest } from '@/modules/execution-foundation/hooks/useCreateExecutionRequest'
+import type { SafeInternalCapability } from '@/modules/execution-foundation/api/buildExecutionContract'
 import type { Action, ActionReadinessState, ActionSet, ActionType } from '@/modules/action-intelligence/action'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
@@ -48,7 +50,9 @@ function ActionCard({
   workspaceId: string | null
 }) {
   const [copied, setCopied] = useState(false)
+  const [requestCapability, setRequestCapability] = useState<SafeInternalCapability>('save_action_to_notes')
   const addObjectiveMutation = useAddActionAsWorkspaceObjective(workspaceId)
+  const createExecutionRequestMutation = useCreateExecutionRequest(workspaceId)
   const readinessBadge = READINESS_BADGE[action.readiness.state]
   const actorLabel = action.actor.type === 'unassigned' ? 'Unassigned' : (action.actor.label ?? action.actor.type)
 
@@ -131,6 +135,35 @@ function ActionCard({
       {addObjectiveMutation.isError && (
         <p role="alert" className="mt-1 text-[10px] text-[var(--color-danger)]">
           {errorMessage(addObjectiveMutation.error, 'Failed to add.')}
+        </p>
+      )}
+
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-[var(--color-border)] pt-2">
+        <select
+          value={requestCapability}
+          onChange={(e) => setRequestCapability(e.target.value as SafeInternalCapability)}
+          className="rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] px-1.5 py-1 text-[10px]"
+        >
+          <option value="save_action_to_notes">Save to Notes</option>
+          <option value="add_action_as_workspace_objective">Add as Workspace Objective</option>
+        </select>
+        <button
+          type="button"
+          onClick={() => createExecutionRequestMutation.mutate({ action, capability: requestCapability })}
+          disabled={createExecutionRequestMutation.isPending}
+          className="rounded-control border border-[var(--color-border)] px-2 py-1 text-[10px] font-medium text-[var(--color-ink-muted)] disabled:opacity-50"
+        >
+          {createExecutionRequestMutation.isPending ? 'Requesting…' : 'Request execution'}
+        </button>
+        {createExecutionRequestMutation.isSuccess && (
+          <Link to="/executions" className="text-[10px] text-[var(--color-accent)] hover:underline">
+            Review in Executions →
+          </Link>
+        )}
+      </div>
+      {createExecutionRequestMutation.isError && (
+        <p role="alert" className="mt-1 text-[10px] text-[var(--color-danger)]">
+          {errorMessage(createExecutionRequestMutation.error, 'Failed to create execution request.')}
         </p>
       )}
     </li>

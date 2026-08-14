@@ -11,6 +11,13 @@ export async function listWorkspaceObjectives(workspaceId: string): Promise<Work
   return data
 }
 
+/** Single-row fetch — used by Execution Foundation's executeCapability.ts to load the real objective a link_action_to_workspace_objective request names, so it can call linkActionToWorkspaceObjective's own existing hook rather than duplicating its logic. RLS scopes this to the caller's own objectives exactly like every other query here. */
+export async function getWorkspaceObjective(id: string): Promise<WorkspaceObjective> {
+  const { data, error } = await supabase.from('workspace_objectives').select('*').eq('id', id).single()
+  if (error) throw error
+  return data
+}
+
 export async function createWorkspaceObjective(params: {
   userId: string
   workspaceId: string
