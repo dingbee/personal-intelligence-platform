@@ -16,6 +16,15 @@ vi.mock('@/modules/data-intelligence/api/structuredDatasets', () => ({ getStruct
 vi.mock('@/modules/ai/providers/registry', () => ({ getChatProvider: getChatProviderMock, DEFAULT_CHAT_PROVIDER_ID: 'anthropic' }))
 vi.mock('@/modules/ai/orchestration/streamChatCompletion', () => ({ streamChatCompletion: streamChatCompletionMock }))
 vi.mock('@/modules/plans/api/plans', () => ({ hasFeature: hasFeatureMock }))
+// Operation Budget Foundation — beginIntelligenceOperation/runOperationAiCall
+// talk to quotaService, which talks to Supabase directly; mock it the same
+// way AIService.test.ts does so this suite doesn't hit the real project.
+vi.mock('@/shared/lib/quotaService', () => ({
+  quotaService: {
+    checkQuota: vi.fn(async () => ({ allowed: true, used: 0, limit: 1000 })),
+    consumeQuota: vi.fn(async () => true),
+  },
+}))
 
 import { runAnalysisInvestigation } from '@/modules/analysis-intelligence/api/runAnalysisInvestigation'
 import { analysisInvestigationToProvenance } from '@/shared/provenance/adapters/analysisIntelligenceAdapter'

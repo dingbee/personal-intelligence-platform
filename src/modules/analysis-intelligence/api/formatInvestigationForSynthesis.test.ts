@@ -19,6 +19,7 @@ function baseInvestigation(overrides: Partial<AnalysisInvestigation> = {}): Anal
     synthesis: null,
     status: 'in_progress',
     stepLimitReached: false,
+    budgetExhausted: false,
     declineReason: null,
     ...overrides,
   }

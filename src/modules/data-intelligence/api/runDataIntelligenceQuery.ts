@@ -8,12 +8,12 @@ import { executeAnalyticalPlan } from '@/modules/data-intelligence/executeAnalyt
 import { formatAnalyticalResultForInterpretation } from '@/modules/data-intelligence/api/formatAnalyticalResultForInterpretation'
 import { streamChatCompletion } from '@/modules/ai/orchestration/streamChatCompletion'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
-import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { getChatProvider } from '@/modules/ai/providers/registry'
+import { beginIntelligenceOperation, runOperationAiCall, OperationBudgetExhaustedError } from '@/shared/lib/intelligenceOperations'
 import type { AnalyticalResult } from '@/modules/data-intelligence/analyticalPlan'
 
 export interface DataIntelligenceQueryOutcome {
-  status: 'answered' | 'declined' | 'invalid_plan'
+  status: 'answered' | 'declined' | 'invalid_plan' | 'budget_exhausted'
   question: string
   /** Populated only when status:'answered'. */
   answer: string | null
@@ -56,6 +56,13 @@ export async function runDataIntelligenceQuery(params: {
     throw new Error('Data Intelligence Query requires an upgraded plan.')
   }
 
+  // Operation Budget Foundation — one bounded operation per query,
+  // reusing the existing quota_usage/plan_quotas mechanism exactly like
+  // AIService.sendMessage already does for 'ai_messages'. Denies the
+  // operation outright (before any AI call) if the caller's monthly
+  // data_intelligence_operations quota is already exhausted.
+  const operation = await beginIntelligenceOperation({ operationType: 'data_intelligence', userId, workspaceId })
+
   const dataset = await getStructuredDataset(datasetId)
   // RLS already scopes getStructuredDataset to the caller's own rows; this
   // check is defense-in-depth, not the actual boundary — see
@@ -65,17 +72,27 @@ export async function runDataIntelligenceQuery(params: {
   const schemaDescription = buildDatasetSchemaDescription(dataset.sheetName, dataset.columns)
   const plannerSystem = buildPlannerSystemPrompt(schemaDescription)
 
-  const { result: planCall } = await runWithFallback(chain, (candidateId) =>
-    streamChatCompletion({
-      provider: getChatProvider(candidateId),
-      messages: [{ role: 'user', content: question }],
-      system: plannerSystem,
-      userId,
-      workspaceId,
-      feature: 'data-intelligence-plan',
-      requestedProvider: chain[0],
-    }),
-  )
+  let planCall
+  try {
+    ;({ result: planCall } = await runOperationAiCall(operation, chain, (candidateId) =>
+      streamChatCompletion({
+        provider: getChatProvider(candidateId),
+        messages: [{ role: 'user', content: question }],
+        system: plannerSystem,
+        userId,
+        workspaceId,
+        feature: 'data-intelligence-plan',
+        requestedProvider: chain[0],
+        operationId: operation.operationId,
+        operationType: operation.operationType,
+      }),
+    ))
+  } catch (err) {
+    if (err instanceof OperationBudgetExhaustedError) {
+      return { status: 'budget_exhausted', question, answer: null, reason: 'The operation budget was reached before a plan could be produced.', result: null }
+    }
+    throw err
+  }
 
   const parsed = parseAnalyticalPlanResponse(planCall.content, datasetId)
   if (parsed.status !== 'ok') {
@@ -91,16 +108,28 @@ export async function runDataIntelligenceQuery(params: {
   const result = executeAnalyticalPlan(dataset, parsed.plan)
   const resultSummary = formatAnalyticalResultForInterpretation(result)
 
-  const { result: interpretation } = await runWithFallback(chain, (candidateId) =>
-    runCapability({
-      capabilityId: 'data-intelligence-query',
-      variables: { question, resultSummary },
-      userId,
-      workspaceId,
-      providerId: candidateId,
-      requestedProviderId: chain[0],
-    }),
-  )
+  let interpretation
+  try {
+    ;({ result: interpretation } = await runOperationAiCall(operation, chain, (candidateId) =>
+      runCapability({
+        capabilityId: 'data-intelligence-query',
+        variables: { question, resultSummary },
+        userId,
+        workspaceId,
+        providerId: candidateId,
+        requestedProviderId: chain[0],
+        operationId: operation.operationId,
+        operationType: operation.operationType,
+      }),
+    ))
+  } catch (err) {
+    if (err instanceof OperationBudgetExhaustedError) {
+      return { status: 'budget_exhausted', question, answer: null, reason: 'The deterministic result was computed, but the operation budget was reached before it could be interpreted.', result }
+    }
+    throw err
+  }
+
+  operation.status = 'completed'
 
   return {
     status: 'answered',

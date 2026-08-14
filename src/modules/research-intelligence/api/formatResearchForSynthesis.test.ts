@@ -20,6 +20,7 @@ function baseInvestigation(overrides: Partial<ResearchInvestigation> = {}): Rese
     followUpQuestions: [],
     status: 'in_progress',
     stepLimitReached: false,
+    budgetExhausted: false,
     synthesisFailed: false,
     declineReason: null,
     ...overrides,

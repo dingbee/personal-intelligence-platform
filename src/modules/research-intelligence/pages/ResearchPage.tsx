@@ -219,7 +219,13 @@ export function ResearchPage() {
                 </div>
               )}
 
-              {investigation.status === 'complete' && (investigation.synthesis || investigation.synthesisFailed) && (
+              {investigation.status === 'complete' && investigation.budgetExhausted && (
+                <div className="rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] p-3 text-sm text-[var(--color-ink-muted)]">
+                  The operation budget was reached before a final synthesis could be produced. The evidence and observations above are real and complete as shown.
+                </div>
+              )}
+
+              {investigation.status === 'complete' && !investigation.budgetExhausted && (investigation.synthesis || investigation.synthesisFailed) && (
                 <div className="rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] p-3 text-sm text-[var(--color-ink)]">
                   {investigation.synthesisFailed ? (
                     <p className="text-[var(--color-ink-muted)]">

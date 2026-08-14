@@ -44,4 +44,40 @@ describe('runWithFallback', () => {
     await runWithFallback(['openai', 'anthropic', 'google'], run)
     expect(attempted).toEqual(['openai', 'anthropic', 'google'])
   })
+
+  // Operation Budget Foundation — shouldAbort lets a budget-aware caller
+  // (intelligenceOperations.ts's runOperationAiCall) stop the fallback
+  // chain early without this generic function knowing anything about
+  // quotas or operations.
+  describe('shouldAbort option', () => {
+    it('never calls run at all when shouldAbort is already true before the first candidate', async () => {
+      const run = vi.fn(async () => 'unreachable')
+      await expect(runWithFallback(['openai', 'anthropic'], run, { shouldAbort: () => true })).rejects.toThrow()
+      expect(run).not.toHaveBeenCalled()
+    })
+
+    it('stops trying further candidates once shouldAbort flips true mid-chain', async () => {
+      let attempts = 0
+      const run = vi.fn(async () => {
+        attempts += 1
+        throw new Error(`down ${attempts}`)
+      })
+      // Aborts after the first attempt has already failed.
+      const shouldAbort = () => attempts >= 1
+      await expect(runWithFallback(['openai', 'anthropic', 'google'], run, { shouldAbort })).rejects.toThrow('down 1')
+      expect(run).toHaveBeenCalledTimes(1)
+    })
+
+    it('is backward compatible: a caller that never passes shouldAbort behaves exactly as before', async () => {
+      const run = vi.fn(async (providerId: string) => `ok:${providerId}`)
+      const { result } = await runWithFallback(['openai'], run)
+      expect(result).toBe('ok:openai')
+    })
+
+    it('still returns a successful result even with shouldAbort present, as long as it never returns true before success', async () => {
+      const run = vi.fn(async (providerId: string) => `ok:${providerId}`)
+      const { result } = await runWithFallback(['openai'], run, { shouldAbort: () => false })
+      expect(result).toBe('ok:openai')
+    })
+  })
 })

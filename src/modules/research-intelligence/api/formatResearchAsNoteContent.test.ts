@@ -6,7 +6,7 @@ function baseInvestigation(overrides: Partial<ResearchInvestigation> = {}): Rese
   return {
     id: 'inv-1', question: 'Q', scope: null, context: null, workspaceId: null, documentId: null,
     steps: [], hypotheses: [], comparisons: [], gaps: [], keyFindings: [], synthesis: null, limitations: null,
-    followUpQuestions: [], status: 'in_progress', stepLimitReached: false, synthesisFailed: false, declineReason: null,
+    followUpQuestions: [], status: 'in_progress', stepLimitReached: false, budgetExhausted: false, synthesisFailed: false, declineReason: null,
     ...overrides,
   }
 }

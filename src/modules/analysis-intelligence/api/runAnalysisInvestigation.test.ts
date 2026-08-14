@@ -12,8 +12,19 @@ vi.mock('@/modules/data-intelligence/api/structuredDatasets', () => ({ getStruct
 vi.mock('@/modules/ai/providers/registry', () => ({ getChatProvider: getChatProviderMock, DEFAULT_CHAT_PROVIDER_ID: 'anthropic' }))
 vi.mock('@/modules/ai/orchestration/streamChatCompletion', () => ({ streamChatCompletion: streamChatCompletionMock }))
 vi.mock('@/modules/plans/api/plans', () => ({ hasFeature: hasFeatureMock }))
+// Operation Budget Foundation — beginIntelligenceOperation/runOperationAiCall
+// talk to quotaService, which talks to Supabase directly; mock it the same
+// way AIService.test.ts does so this suite doesn't hit the real project.
+const { checkQuotaMock, consumeQuotaMock } = vi.hoisted(() => ({
+  checkQuotaMock: vi.fn(),
+  consumeQuotaMock: vi.fn(),
+}))
+vi.mock('@/shared/lib/quotaService', () => ({
+  quotaService: { checkQuota: checkQuotaMock, consumeQuota: consumeQuotaMock },
+}))
 
 import { runAnalysisInvestigation } from '@/modules/analysis-intelligence/api/runAnalysisInvestigation'
+import { beginIntelligenceOperation } from '@/shared/lib/intelligenceOperations'
 
 const dataset = {
   id: 'dataset-1',
@@ -66,6 +77,8 @@ describe('runAnalysisInvestigation', () => {
     vi.resetAllMocks()
     getStructuredDatasetMock.mockResolvedValue(dataset)
     getChatProviderMock.mockReturnValue({ id: 'anthropic' })
+    checkQuotaMock.mockResolvedValue({ allowed: true, used: 0, limit: 1000 })
+    consumeQuotaMock.mockResolvedValue(true)
   })
 
   it('denies a Free user before any AI call', async () => {
@@ -215,5 +228,134 @@ describe('runAnalysisInvestigation', () => {
     for (const call of streamChatCompletionMock.mock.calls) {
       expect((call[0] as { workspaceId: string }).workspaceId).toBe('workspace-42')
     }
+  })
+
+  // Operation Budget Foundation
+  describe('operation budget', () => {
+    it('denies the investigation before any AI call when the monthly analysis_intelligence_operations quota is exhausted', async () => {
+      hasFeatureMock.mockResolvedValue(true)
+      checkQuotaMock.mockResolvedValueOnce({ allowed: false, reason: 'Monthly limit reached.' })
+
+      await expect(
+        runAnalysisInvestigation({ datasetId: 'dataset-1', question: 'Why is South high?', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] }),
+      ).rejects.toThrow('Monthly limit reached.')
+
+      expect(streamChatCompletionMock).not.toHaveBeenCalled()
+      expect(checkQuotaMock).toHaveBeenCalledWith('pro-user', 'analysis_intelligence_operations')
+    })
+
+    it('marks the investigation budgetExhausted (never fabricating synthesis) when the budget runs out before the first step completes', async () => {
+      hasFeatureMock.mockResolvedValue(true)
+      streamChatCompletionMock.mockRejectedValue(new Error('provider down'))
+      // analysis_intelligence's hard ceiling is 18 — an 18-candidate chain
+      // that fails on every candidate exhausts the whole budget on step 0.
+      const chain = Array.from({ length: 18 }, (_, i) => `p${i}`)
+
+      const { investigation } = await runAnalysisInvestigation({ datasetId: 'dataset-1', question: 'Why is South high?', userId: 'pro-user', workspaceId: 'workspace-1', chain })
+
+      expect(investigation.status).toBe('failed')
+      expect(investigation.synthesis).toBeNull()
+      expect(streamChatCompletionMock).toHaveBeenCalledTimes(18)
+    })
+
+    it('preserves real steps already gathered and skips synthesis when the budget runs out mid-investigation', async () => {
+      hasFeatureMock.mockResolvedValue(true)
+      // analysis_intelligence's hard ceiling is 18. Step 0 succeeds on the
+      // first candidate (consumes 1 of the 18-call budget). Every call
+      // after that fails, so the step-planner call for step 1, retrying all
+      // 17 remaining candidates, exhausts the budget exactly at call 18 —
+      // synthesis is never attempted.
+      streamChatCompletionMock.mockResolvedValueOnce(jsonResponse(returnRateByRegionPlan)).mockRejectedValue(new Error('provider down'))
+      const seventeenProviderChain = Array.from({ length: 17 }, (_, i) => `p${i}`)
+
+      const { investigation } = await runAnalysisInvestigation({
+        datasetId: 'dataset-1',
+        question: 'Why is South high?',
+        userId: 'pro-user',
+        workspaceId: 'workspace-1',
+        chain: seventeenProviderChain,
+        maxSteps: 5,
+      })
+
+      expect(investigation.status).toBe('complete')
+      expect(investigation.budgetExhausted).toBe(true)
+      expect(investigation.synthesis).toBeNull()
+      // The one real step already gathered is preserved, not discarded.
+      expect(investigation.steps).toHaveLength(1)
+      expect(investigation.stepLimitReached).toBe(false)
+      expect(streamChatCompletionMock).toHaveBeenCalledTimes(18)
+    })
+
+    it('threads operationId and operationType into every AI call', async () => {
+      hasFeatureMock.mockResolvedValue(true)
+      streamChatCompletionMock
+        .mockResolvedValueOnce(jsonResponse(returnRateByRegionPlan))
+        .mockResolvedValueOnce(jsonResponse({ stop: true, reason: 'done' }))
+        .mockResolvedValueOnce({ content: 'Findings.', model: 'm' })
+
+      await runAnalysisInvestigation({ datasetId: 'dataset-1', question: 'Why is South high?', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
+
+      const operationIds = streamChatCompletionMock.mock.calls.map((call) => (call[0] as { operationId?: string }).operationId)
+      const operationTypes = streamChatCompletionMock.mock.calls.map((call) => (call[0] as { operationType?: string }).operationType)
+      expect(operationTypes.every((t) => t === 'analysis_intelligence')).toBe(true)
+      // All three AI calls (2 steps + synthesis) share the SAME operation.
+      expect(new Set(operationIds).size).toBe(1)
+    })
+
+    it('reuses a supplied parentOperation instead of opening a new one — delegated AI calls consume the CALLER\'s budget, never a second independent operation', async () => {
+      hasFeatureMock.mockResolvedValue(true)
+      streamChatCompletionMock
+        .mockResolvedValueOnce(jsonResponse(returnRateByRegionPlan))
+        .mockResolvedValueOnce(jsonResponse({ stop: true, reason: 'done' }))
+        .mockResolvedValueOnce({ content: 'Findings.', model: 'm' })
+
+      const parentOperation = await beginIntelligenceOperation({ operationType: 'research_intelligence', userId: 'pro-user', workspaceId: 'workspace-1' })
+      checkQuotaMock.mockClear() // beginIntelligenceOperation above already called checkQuota once — isolate what happens next.
+
+      const { investigation } = await runAnalysisInvestigation({
+        datasetId: 'dataset-1',
+        question: 'Why is South high?',
+        userId: 'pro-user',
+        workspaceId: 'workspace-1',
+        chain: ['anthropic'],
+        parentOperation,
+      })
+
+      // No second beginIntelligenceOperation call happened — checkQuota was
+      // never called again for a fresh operation.
+      expect(checkQuotaMock).not.toHaveBeenCalled()
+      // All 3 AI calls this delegated investigation made consumed the
+      // PARENT's budget and quota key (research_intelligence_operations),
+      // not a new analysis_intelligence_operations one.
+      expect(parentOperation.callsConsumed).toBe(3)
+      expect(consumeQuotaMock).toHaveBeenCalledTimes(3)
+      for (const call of consumeQuotaMock.mock.calls) {
+        expect(call[1]).toBe('research_intelligence_operations')
+      }
+      expect(investigation.status).toBe('complete')
+      // A delegated investigation never marks the shared parent operation
+      // 'completed' itself — only the top-level caller that owns it does.
+      expect(parentOperation.status).not.toBe('completed')
+    })
+
+    it('a delegated investigation still honestly reports budgetExhausted when the shared parent operation runs out mid-delegation', async () => {
+      hasFeatureMock.mockResolvedValue(true)
+      streamChatCompletionMock.mockResolvedValueOnce(jsonResponse(returnRateByRegionPlan)).mockRejectedValue(new Error('provider down'))
+
+      const parentOperation = await beginIntelligenceOperation({ operationType: 'research_intelligence', userId: 'pro-user', workspaceId: 'workspace-1', requestedBudget: 2 })
+
+      const { investigation } = await runAnalysisInvestigation({
+        datasetId: 'dataset-1',
+        question: 'Why is South high?',
+        userId: 'pro-user',
+        workspaceId: 'workspace-1',
+        chain: ['p1', 'p2'],
+        parentOperation,
+      })
+
+      expect(investigation.budgetExhausted).toBe(true)
+      expect(investigation.synthesis).toBeNull()
+      expect(parentOperation.callsConsumed).toBe(2)
+    })
   })
 })

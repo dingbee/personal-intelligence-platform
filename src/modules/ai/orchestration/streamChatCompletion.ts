@@ -11,6 +11,9 @@ export interface StreamChatCompletionParams {
   feature: string
   /** Phase 8C: the router's chain[0] for this call — pass it any time a caller resolved a provider chain, even when `provider` matches it (see logAiRequest). */
   requestedProvider?: string
+  /** Operation Budget Foundation — groups this request with every other AI call belonging to the same intelligence operation (see intelligenceOperations.ts). Omit for calls with no operation context (ordinary chat, one-shot capabilities outside Data/Analysis/Research). */
+  operationId?: string | null
+  operationType?: string | null
   onDelta?: (textSoFar: string) => void
 }
 
@@ -28,7 +31,7 @@ export interface StreamChatCompletionResult {
 export async function streamChatCompletion(
   params: StreamChatCompletionParams,
 ): Promise<StreamChatCompletionResult> {
-  const { provider, messages, system, userId, workspaceId, feature, requestedProvider } = params
+  const { provider, messages, system, userId, workspaceId, feature, requestedProvider, operationId, operationType } = params
   const start = performance.now()
   let accumulated = ''
   let usageModel: string | null = null
@@ -67,6 +70,8 @@ export async function streamChatCompletion(
       errorMessage: err instanceof Error ? err.message : 'Unknown error',
       requestedProvider,
       fallbackReason,
+      operationId,
+      operationType,
     })
     throw err
   }
@@ -83,6 +88,8 @@ export async function streamChatCompletion(
     status: 'success',
     requestedProvider,
     fallbackReason,
+    operationId,
+    operationType,
   })
 
   return { content: accumulated, model: usageModel }

@@ -11,8 +11,8 @@ import { formatResearchForSynthesis, collectDistinctSources } from '@/modules/re
 import { parseResearchSynthesisResponse } from '@/modules/research-intelligence/api/parseResearchSynthesisResponse'
 import { streamChatCompletion } from '@/modules/ai/orchestration/streamChatCompletion'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
-import { runWithFallback } from '@/modules/ai/router/runWithFallback'
 import { getChatProvider } from '@/modules/ai/providers/registry'
+import { beginIntelligenceOperation, runOperationAiCall, isOperationBudgetExhausted, OperationBudgetExhaustedError } from '@/shared/lib/intelligenceOperations'
 import type { ResearchInvestigation, ResearchStep, ResearchHypothesis, ResearchEvidence } from '@/modules/research-intelligence/researchInvestigation'
 
 /**
@@ -64,6 +64,17 @@ function priorStepsSummary(steps: ResearchStep[]) {
  * synchronously with a fresh (immutable) snapshot after each step
  * actually completes — the UI's only source of "investigation
  * progress," never a simulated timer.
+ *
+ * Operation Budget Foundation — opens exactly ONE IntelligenceOperation
+ * for the whole investigation and passes it as `parentOperation` into
+ * any delegated Analysis Intelligence call, so every AI call this
+ * investigation causes — its own step-planner/evidence-interpreter/
+ * synthesis calls AND every call the delegated Analysis investigation
+ * makes, including every individual provider-fallback attempt — consumes
+ * the SAME operation budget and the SAME research_intelligence_operations
+ * quota. This is deliberate: "one Research operation must have Research
+ * AI calls + Analysis delegation AI calls + synthesis AI calls, not two
+ * separate operations with separate budgets" (sprint brief §14).
  */
 export async function runResearchInvestigation(params: {
   question: string
@@ -81,6 +92,8 @@ export async function runResearchInvestigation(params: {
   if (!(await hasFeature(userId, RESEARCH_INTELLIGENCE_FEATURE_KEY))) {
     throw new Error('Research Investigation requires an upgraded plan.')
   }
+
+  const operation = await beginIntelligenceOperation({ operationType: 'research_intelligence', userId, workspaceId })
 
   let datasetId: string | null = null
   if (documentId) {
@@ -106,12 +119,14 @@ export async function runResearchInvestigation(params: {
     followUpQuestions: [],
     status: 'in_progress',
     stepLimitReached: false,
+    budgetExhausted: false,
     synthesisFailed: false,
     declineReason: null,
   }
 
   let stoppedNaturally = false
   let hadFatalFailure = false
+  let budgetExhaustedMidLoop = false
 
   for (let stepIndex = 0; stepIndex < maxSteps; stepIndex++) {
     const priorStep = investigation.steps.at(-1) ?? null
@@ -127,17 +142,32 @@ export async function runResearchInvestigation(params: {
       datasetUsed,
     })
 
-    const { result: stepCall } = await runWithFallback(chain, (candidateId) =>
-      streamChatCompletion({
-        provider: getChatProvider(candidateId),
-        messages: [{ role: 'user', content: question }],
-        system: stepSystemPrompt,
-        userId,
-        workspaceId,
-        feature: 'research-investigation-step',
-        requestedProvider: chain[0],
-      }),
-    )
+    let stepCall
+    try {
+      ;({ result: stepCall } = await runOperationAiCall(operation, chain, (candidateId) =>
+        streamChatCompletion({
+          provider: getChatProvider(candidateId),
+          messages: [{ role: 'user', content: question }],
+          system: stepSystemPrompt,
+          userId,
+          workspaceId,
+          feature: 'research-investigation-step',
+          requestedProvider: chain[0],
+          operationId: operation.operationId,
+          operationType: operation.operationType,
+        }),
+      ))
+    } catch (err) {
+      if (err instanceof OperationBudgetExhaustedError) {
+        if (stepIndex === 0) {
+          investigation = { ...investigation, status: 'failed', declineReason: 'Operation budget exhausted before any step could complete.' }
+          return { investigation }
+        }
+        budgetExhaustedMidLoop = true
+        break
+      }
+      throw err
+    }
 
     const parsed = parseResearchStepResponse(stepCall.content)
 
@@ -170,12 +200,17 @@ export async function runResearchInvestigation(params: {
 
     if (parsed.status === 'analyze_dataset' && datasetId && !datasetUsed) {
       datasetUsed = true
+      // Operation Budget Foundation — parentOperation makes every AI call
+      // this delegated investigation makes (including its own step
+      // planning and synthesis) consume THIS Research operation's budget
+      // and quota, never a second independent one (sprint brief §14).
       const { investigation: analysisInvestigation } = await runAnalysisInvestigation({
         datasetId,
         question: parsed.subQuestion,
         userId,
         workspaceId,
         chain,
+        parentOperation: operation,
       })
 
       const evidence: ResearchEvidence[] =
@@ -223,18 +258,29 @@ export async function runResearchInvestigation(params: {
 
       let observations: ResearchStep['observations'] = []
       if (evidence.length > 0) {
-        const { result: interpretCall } = await runWithFallback(chain, (candidateId) =>
-          streamChatCompletion({
-            provider: getChatProvider(candidateId),
-            messages: [{ role: 'user', content: question }],
-            system: buildEvidenceInterpreterSystemPrompt({ question, evidence }),
-            userId,
-            workspaceId,
-            feature: 'research-evidence-interpretation',
-            requestedProvider: chain[0],
-          }),
-        )
-        observations = parseResearchObservationsResponse(interpretCall.content, stepId, evidence)
+        try {
+          const { result: interpretCall } = await runOperationAiCall(operation, chain, (candidateId) =>
+            streamChatCompletion({
+              provider: getChatProvider(candidateId),
+              messages: [{ role: 'user', content: question }],
+              system: buildEvidenceInterpreterSystemPrompt({ question, evidence }),
+              userId,
+              workspaceId,
+              feature: 'research-evidence-interpretation',
+              requestedProvider: chain[0],
+              operationId: operation.operationId,
+              operationType: operation.operationType,
+            }),
+          )
+          observations = parseResearchObservationsResponse(interpretCall.content, stepId, evidence)
+        } catch (err) {
+          if (!(err instanceof OperationBudgetExhaustedError)) throw err
+          // Budget ran out while interpreting — the real, deterministically
+          // retrieved evidence is still preserved on the step below; only
+          // the (uncompleted) interpretation into observations is skipped,
+          // never fabricated. The outer budget check after this step is
+          // pushed will stop the investigation from continuing further.
+        }
       }
 
       newStep = {
@@ -252,9 +298,22 @@ export async function runResearchInvestigation(params: {
 
     investigation = { ...investigation, steps: [...investigation.steps, newStep], hypotheses: [...investigation.hypotheses, ...newHypotheses] }
     onStepComplete?.(investigation)
+
+    // Operation Budget Foundation — the dataset_investigation branch above
+    // delegates to runAnalysisInvestigation with parentOperation:operation,
+    // so a budget exhaustion caused entirely by the DELEGATED Analysis
+    // calls never throws OperationBudgetExhaustedError here (Analysis
+    // catches it internally and returns budgetExhausted:true on its own
+    // investigation instead). Polling the shared operation object after
+    // every step is therefore the only way this loop can observe
+    // delegation-caused exhaustion, not just its own direct AI calls.
+    if (isOperationBudgetExhausted(operation)) {
+      budgetExhaustedMidLoop = true
+      break
+    }
   }
 
-  const stepLimitReached = !stoppedNaturally && !hadFatalFailure && investigation.steps.length === maxSteps
+  const stepLimitReached = !stoppedNaturally && !hadFatalFailure && !budgetExhaustedMidLoop && investigation.steps.length === maxSteps
 
   if (investigation.steps.length === 0) {
     investigation = { ...investigation, status: 'failed', declineReason: 'No investigation step could be established.' }
@@ -263,19 +322,44 @@ export async function runResearchInvestigation(params: {
 
   investigation = { ...investigation, stepLimitReached }
 
+  // Operation Budget Foundation — a budget-exhausted investigation never
+  // attempts synthesis: the real steps/evidence/observations gathered so
+  // far (including anything a delegated Analysis investigation itself
+  // produced before its own budget ran out) are preserved and returned
+  // as-is, exactly like Analysis Intelligence's own precedent.
+  if (budgetExhaustedMidLoop) {
+    investigation = { ...investigation, status: 'complete', budgetExhausted: true, synthesis: null }
+    onStepComplete?.(investigation)
+    return { investigation }
+  }
+
   const sources = collectDistinctSources(investigation)
   const researchSummary = formatResearchForSynthesis(investigation)
 
-  const { result: synthesisCall } = await runWithFallback(chain, (candidateId) =>
-    runCapability({
-      capabilityId: 'research-synthesis',
-      variables: { researchSummary },
-      userId,
-      workspaceId,
-      providerId: candidateId,
-      requestedProviderId: chain[0],
-    }),
-  )
+  let synthesisCall
+  try {
+    ;({ result: synthesisCall } = await runOperationAiCall(operation, chain, (candidateId) =>
+      runCapability({
+        capabilityId: 'research-synthesis',
+        variables: { researchSummary },
+        userId,
+        workspaceId,
+        providerId: candidateId,
+        requestedProviderId: chain[0],
+        operationId: operation.operationId,
+        operationType: operation.operationType,
+      }),
+    ))
+  } catch (err) {
+    if (err instanceof OperationBudgetExhaustedError) {
+      investigation = { ...investigation, status: 'complete', budgetExhausted: true, synthesis: null }
+      onStepComplete?.(investigation)
+      return { investigation }
+    }
+    throw err
+  }
+
+  operation.status = 'completed'
 
   const parsedSynthesis = parseResearchSynthesisResponse(synthesisCall.content, sources)
 

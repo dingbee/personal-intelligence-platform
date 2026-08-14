@@ -27,6 +27,7 @@ function investigation(overrides: Partial<AnalysisInvestigation> = {}): Analysis
     synthesis: 'South shows a higher observed rate.',
     status: 'complete',
     stepLimitReached: false,
+    budgetExhausted: false,
     declineReason: null,
     ...overrides,
   }

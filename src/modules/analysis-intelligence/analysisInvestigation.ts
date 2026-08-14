@@ -87,6 +87,16 @@ export interface AnalysisInvestigation {
   status: InvestigationStatus
   /** True when the step loop stopped because MAX_INVESTIGATION_STEPS was reached, not because the planner chose to stop naturally. Synthesis is still produced — see runAnalysisInvestigation.ts. */
   stepLimitReached: boolean
+  /**
+   * Operation Budget Foundation — true when the investigation stopped
+   * because its (or, for a delegated investigation, its parent Research
+   * operation's) AI-call budget was reached, distinct from
+   * stepLimitReached: this is an outer safety boundary on top of the
+   * step ceiling, not the step ceiling itself. When true and steps
+   * exist, `synthesis` stays null — a budget-exhausted investigation
+   * never fabricates a synthesis it didn't actually run.
+   */
+  budgetExhausted: boolean
   /** Populated only when status is 'declined' or 'failed' — why no investigation (or no further investigation) happened. */
   declineReason: string | null
 }

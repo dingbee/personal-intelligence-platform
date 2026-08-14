@@ -159,6 +159,16 @@ export interface ResearchInvestigation {
   /** True when the step loop stopped because MAX_RESEARCH_STEPS was reached, not because the planner chose to stop naturally. Synthesis is still attempted — see runResearchInvestigation.ts. */
   stepLimitReached: boolean
   /**
+   * Operation Budget Foundation — true when the investigation stopped
+   * because its AI-call operation budget was reached (an outer safety
+   * boundary distinct from stepLimitReached, which counts steps, not
+   * individual AI calls/fallback attempts). When true, `synthesis` stays
+   * null — a budget-exhausted investigation never fabricates a synthesis
+   * it didn't actually run; the real evidence/observations gathered so
+   * far are preserved as-is.
+   */
+  budgetExhausted: boolean
+  /**
    * True when the investigation itself completed (real evidence was
    * gathered) but the final research-synthesis capability's response
    * could not be parsed — the P2 brief's explicit "AI synthesis

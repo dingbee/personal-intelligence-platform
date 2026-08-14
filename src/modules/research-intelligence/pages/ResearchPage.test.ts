@@ -66,7 +66,7 @@ describe('ResearchPage', () => {
       steps: [{ id: 's1', index: 0, kind: 'evidence_gathering', purpose: 'baseline', triggeredBy: null, query: 'return policy', evidence: [evidence], observations: [{ id: 'o1', stepId: 's1', statement: 'A 30-day window applies.', evidenceIds: ['e1'] }], datasetInvestigation: null }],
       hypotheses: [], comparisons: [], gaps: [], keyFindings: ['A 30-day window applies.'],
       synthesis: 'South shows a higher observed return rate in this dataset.', limitations: 'Only one quarter of data.',
-      followUpQuestions: ['What else could explain it?'], status: 'complete', stepLimitReached: false, synthesisFailed: false, declineReason: null,
+      followUpQuestions: ['What else could explain it?'], status: 'complete', stepLimitReached: false, budgetExhausted: false, synthesisFailed: false, declineReason: null,
     }
     mutateAsyncMock.mockResolvedValueOnce({ investigation: completed })
 
@@ -90,7 +90,7 @@ describe('ResearchPage', () => {
       steps: [{ id: 's1', index: 0, kind: 'evidence_gathering', purpose: 'baseline', triggeredBy: null, query: 'dashboard', evidence: [docEvidence, assetEvidence], observations: [{ id: 'o1', stepId: 's1', statement: 'Revenue trended upward.', evidenceIds: ['e2'] }], datasetInvestigation: null }],
       hypotheses: [], comparisons: [], gaps: [], keyFindings: ['Revenue trended upward.'],
       synthesis: 'Revenue trended upward per the dashboard screenshot.', limitations: null,
-      followUpQuestions: [], status: 'complete', stepLimitReached: false, synthesisFailed: false, declineReason: null,
+      followUpQuestions: [], status: 'complete', stepLimitReached: false, budgetExhausted: false, synthesisFailed: false, declineReason: null,
     }
     mutateAsyncMock.mockResolvedValueOnce({ investigation: completed })
 
@@ -109,7 +109,7 @@ describe('ResearchPage', () => {
     const declined: ResearchInvestigation = {
       id: 'inv-1', question: 'q', scope: null, context: null, workspaceId: 'workspace-1', documentId: null,
       steps: [], hypotheses: [], comparisons: [], gaps: [], keyFindings: [], synthesis: null, limitations: null,
-      followUpQuestions: [], status: 'declined', stepLimitReached: false, synthesisFailed: false, declineReason: 'This library has no content about live competitor pricing.',
+      followUpQuestions: [], status: 'declined', stepLimitReached: false, budgetExhausted: false, synthesisFailed: false, declineReason: 'This library has no content about live competitor pricing.',
     }
     mutateAsyncMock.mockResolvedValueOnce({ investigation: declined })
 

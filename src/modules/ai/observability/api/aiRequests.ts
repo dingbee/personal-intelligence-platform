@@ -16,6 +16,9 @@ export interface LogAiRequestParams {
   requestedProvider?: string | null
   /** Set only when `provider` differs from `requestedProvider`. */
   fallbackReason?: string | null
+  /** Operation Budget Foundation — groups this row with every other AI call belonging to the same intelligence operation (see src/shared/lib/intelligenceOperations.ts). Null for calls with no operation context. */
+  operationId?: string | null
+  operationType?: string | null
 }
 
 /** Best-effort: a logging failure should never break the feature that triggered it. */
@@ -33,6 +36,8 @@ export async function logAiRequest(params: LogAiRequestParams): Promise<void> {
     error_message: params.errorMessage ?? null,
     requested_provider: params.requestedProvider ?? null,
     fallback_reason: params.fallbackReason ?? null,
+    operation_id: params.operationId ?? null,
+    operation_type: params.operationType ?? null,
   })
   if (error) console.error('Failed to log AI request:', error)
 }

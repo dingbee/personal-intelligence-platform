@@ -31,6 +31,9 @@ export interface RunCapabilityParams {
    * independent interpretations of the same sheet.
    */
   spreadsheetContext?: string | null
+  /** Operation Budget Foundation — passed straight through to streamChatCompletion so this call's ai_requests row is grouped with the rest of its intelligence operation. */
+  operationId?: string | null
+  operationType?: string | null
 }
 
 /**
@@ -50,7 +53,7 @@ export interface RunCapabilityParams {
  * existing behavior.
  */
 export async function runCapability(params: RunCapabilityParams): Promise<StreamChatCompletionResult> {
-  const { capabilityId, variables, userId, workspaceId, providerId = DEFAULT_CHAT_PROVIDER_ID, requestedProviderId, knowledgeContext, spreadsheetContext } = params
+  const { capabilityId, variables, userId, workspaceId, providerId = DEFAULT_CHAT_PROVIDER_ID, requestedProviderId, knowledgeContext, spreadsheetContext, operationId, operationType } = params
 
   const capability = capabilityRegistry.get(capabilityId)
   if (capability?.requiredFeature && !(await hasFeature(userId, capability.requiredFeature))) {
@@ -76,5 +79,7 @@ export async function runCapability(params: RunCapabilityParams): Promise<Stream
     workspaceId,
     feature: capabilityId,
     requestedProvider: requestedProviderId,
+    operationId,
+    operationType,
   })
 }

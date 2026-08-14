@@ -472,6 +472,9 @@ export type AiRequest = {
   requested_provider: string | null
   /** Set only on the row where `provider` differs from `requested_provider` — the one that succeeded after an earlier candidate failed. */
   fallback_reason: string | null
+  /** Operation Budget Foundation — groups this row with every other AI call belonging to the same bounded intelligence operation (Data/Analysis/Research Intelligence), including every individual provider-fallback attempt. Null for requests with no operation context (ordinary chat, capabilities outside Data/Analysis/Research) or logged before this phase. */
+  operation_id: string | null
+  operation_type: string | null
   created_at: string
 }
 

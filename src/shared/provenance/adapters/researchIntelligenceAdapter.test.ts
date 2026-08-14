@@ -27,6 +27,7 @@ const nestedAnalysis: AnalysisInvestigation = {
   synthesis: 'South has the highest observed return rate.',
   status: 'complete',
   stepLimitReached: false,
+  budgetExhausted: false,
   declineReason: null,
 }
 
@@ -71,6 +72,7 @@ function investigation(overrides: Partial<ResearchInvestigation> = {}): Research
     followUpQuestions: [],
     status: 'complete',
     stepLimitReached: false,
+    budgetExhausted: false,
     synthesisFailed: false,
     declineReason: null,
     ...overrides,

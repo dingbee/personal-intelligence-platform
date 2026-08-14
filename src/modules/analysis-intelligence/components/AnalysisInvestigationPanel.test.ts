@@ -90,6 +90,7 @@ describe('AnalysisInvestigationPanel', () => {
       synthesis: 'South shows a higher observed return rate than other regions in this dataset.',
       status: 'complete',
       stepLimitReached: false,
+      budgetExhausted: false,
       declineReason: null,
     }
     mutateAsyncMock.mockResolvedValueOnce({ investigation: completedInvestigation })
@@ -108,7 +109,7 @@ describe('AnalysisInvestigationPanel', () => {
     useStructuredDatasetsMock.mockReturnValue({ data: oneDataset, isLoading: false })
     const declined: AnalysisInvestigation = {
       id: 'inv-1', question: 'What is customer sentiment?', datasetId: 'ds-1', steps: [], hypotheses: [], contradictions: [],
-      synthesis: null, status: 'declined', stepLimitReached: false, declineReason: 'No column relates to customer sentiment.',
+      synthesis: null, status: 'declined', stepLimitReached: false, budgetExhausted: false, declineReason: 'No column relates to customer sentiment.',
     }
     mutateAsyncMock.mockResolvedValueOnce({ investigation: declined })
 

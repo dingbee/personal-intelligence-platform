@@ -9,7 +9,7 @@ import type { ResearchInvestigation } from '@/modules/research-intelligence/rese
 const investigation: ResearchInvestigation = {
   id: 'inv-1', question: 'Why are regional returns different?', scope: null, context: null, workspaceId: 'workspace-1', documentId: 'doc-1',
   steps: [], hypotheses: [], comparisons: [], gaps: [], keyFindings: [], synthesis: 'South is higher.', limitations: null,
-  followUpQuestions: [], status: 'complete', stepLimitReached: false, synthesisFailed: false, declineReason: null,
+  followUpQuestions: [], status: 'complete', stepLimitReached: false, budgetExhausted: false, synthesisFailed: false, declineReason: null,
 }
 
 describe('saveResearchToNote', () => {

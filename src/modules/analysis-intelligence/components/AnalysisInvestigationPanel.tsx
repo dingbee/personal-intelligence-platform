@@ -137,6 +137,12 @@ export function AnalysisInvestigationPanel({ documentId, workspaceId }: { docume
                     </div>
                   )}
 
+                  {investigation.status === 'complete' && investigation.budgetExhausted && (
+                    <div className="rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] p-3 text-sm text-[var(--color-ink-muted)]">
+                      The operation budget was reached before a final synthesis could be produced. The steps and observations above are real and complete as shown.
+                    </div>
+                  )}
+
                   {investigation.status === 'in_progress' && (
                     <div className="flex items-center gap-2 text-xs text-[var(--color-ink-muted)]">
                       <Spinner size="sm" />
