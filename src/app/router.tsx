@@ -35,6 +35,7 @@ import { ExportCenterPage } from '@/modules/export/pages/ExportCenterPage'
 import { ResearchPage } from '@/modules/research-intelligence/pages/ResearchPage'
 import { PlanningPage } from '@/modules/planning-intelligence/pages/PlanningPage'
 import { DecisionPage } from '@/modules/decision-intelligence/pages/DecisionPage'
+import { ActionsPage } from '@/modules/action-intelligence/pages/ActionsPage'
 import { PricingPage } from '@/modules/billing/pages/PricingPage'
 import { BillingReturnPage } from '@/modules/billing/pages/BillingReturnPage'
 import { FoundingProApplyPage } from '@/modules/founding-pro/pages/FoundingProApplyPage'
@@ -116,6 +117,7 @@ export const router = createBrowserRouter([
           { path: 'research', element: <ResearchPage /> },
           { path: 'planning', element: <PlanningPage /> },
           { path: 'decisions', element: <DecisionPage /> },
+          { path: 'actions', element: <ActionsPage /> },
           { path: 'chat', element: <ChatPage /> },
           { path: 'billing/return', element: <BillingReturnPage /> },
           { path: 'founding-pro/apply', element: <FoundingProApplyPage /> },

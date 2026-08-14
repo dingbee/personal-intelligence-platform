@@ -24,7 +24,7 @@ import { runWithFallback, type FallbackResult } from '@/modules/ai/router/runWit
  * real AI call this operation made remains individually auditable and
  * groupable after the fact.
  */
-export type IntelligenceOperationType = 'data_intelligence' | 'analysis_intelligence' | 'research_intelligence' | 'planning_intelligence' | 'decision_intelligence'
+export type IntelligenceOperationType = 'data_intelligence' | 'analysis_intelligence' | 'research_intelligence' | 'planning_intelligence' | 'decision_intelligence' | 'action_intelligence'
 
 /**
  * The hard, per-operation AI-call ceiling — a safety backstop, not an
@@ -41,6 +41,8 @@ export type IntelligenceOperationType = 'data_intelligence' | 'analysis_intellig
  *                             runResearchInvestigation.ts's doc comment.
  *   decision_intelligence: 1 AI call (single-pass structured decision analysis, no
  *                           step loop — see runDecisionIntelligence.ts)     × 3 = 3
+ *   action_intelligence:   1 AI call (single-pass structured action-set generation, no
+ *                           step loop — see runActionIntelligence.ts)       × 3 = 3
  *   planning_intelligence: 1 AI call (single-pass structured plan generation, no
  *                           step loop — see runPlanningIntelligence.ts)     × 3 = 3
  *
@@ -57,6 +59,7 @@ const INTELLIGENCE_OPERATION_HARD_CEILINGS: Record<IntelligenceOperationType, nu
   research_intelligence: 45,
   planning_intelligence: 3,
   decision_intelligence: 3,
+  action_intelligence: 3,
 }
 
 /**
@@ -75,6 +78,7 @@ const INTELLIGENCE_OPERATION_QUOTA_KEYS: Record<IntelligenceOperationType, strin
   research_intelligence: 'research_intelligence_operations',
   planning_intelligence: 'planning_intelligence_operations',
   decision_intelligence: 'decision_intelligence_operations',
+  action_intelligence: 'action_intelligence_operations',
 }
 
 export type IntelligenceOperationStatus = 'ready' | 'running' | 'completed' | 'failed' | 'budget_exhausted'

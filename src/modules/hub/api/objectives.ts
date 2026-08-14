@@ -43,3 +43,10 @@ export async function deleteWorkspaceObjective(id: string): Promise<void> {
   const { error } = await supabase.from('workspace_objectives').delete().eq('id', id)
   if (error) throw error
 }
+
+/** Generic content update — used by Action Intelligence's "Link action to existing objective" hook (see action-intelligence/api/linkActionToWorkspaceObjective.ts) to append a reference onto an objective already loaded by the caller, without adding a dedicated linking table. */
+export async function updateWorkspaceObjectiveContent(id: string, content: string): Promise<WorkspaceObjective> {
+  const { data, error } = await supabase.from('workspace_objectives').update({ content }).eq('id', id).select().single()
+  if (error) throw error
+  return data
+}

@@ -20,6 +20,7 @@ const navItems = [
   { to: '/research', label: 'Research' },
   { to: '/planning', label: 'Planning' },
   { to: '/decisions', label: 'Decisions' },
+  { to: '/actions', label: 'Actions' },
   { to: '/chat', label: 'Chat' },
   // Phase 5C — the only reachable path to /pricing was previously typing
   // the URL directly; nothing in primary nav, Settings, or anywhere else
