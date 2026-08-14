@@ -18,6 +18,8 @@ vi.mock('@/modules/ai/orchestration/streamChatCompletion', () => ({ streamChatCo
 vi.mock('@/modules/plans/api/plans', () => ({ hasFeature: hasFeatureMock }))
 
 import { runAnalysisInvestigation } from '@/modules/analysis-intelligence/api/runAnalysisInvestigation'
+import { analysisInvestigationToProvenance } from '@/shared/provenance/adapters/analysisIntelligenceAdapter'
+import { resolveEvidenceChain, toLookup } from '@/shared/provenance/resolveEvidenceChain'
 
 /**
  * Analysis Intelligence — benchmark acceptance test, run against the SAME
@@ -128,6 +130,15 @@ describe('Analysis Intelligence benchmark — Product Sales investigation scenar
         expect(observation.provenance.sheetName).toBe('Sales')
         expect(observation.provenance.documentId).toBe('benchmark-document')
       }
+    }
+
+    // Provenance Foundation — the same observations remain traceable through the shared model, all the way back to the real dataset, without changing any of the numbers above.
+    const chain = analysisInvestigationToProvenance(investigation)
+    const synthesisDerivation = chain.derivations.find((d) => d.kind === 'synthesis')!
+    const resolved = resolveEvidenceChain(synthesisDerivation.id, toLookup(chain))!
+    expect(resolved.priorDerivations.length).toBeGreaterThan(0)
+    for (const observationNode of resolved.priorDerivations) {
+      expect(observationNode.priorDerivations[0]!.evidence[0]!.source).toEqual({ type: 'dataset', id: 'benchmark-document', title: 'Sales' })
     }
 
     // Synthesis is grounded in the computed numbers and explicitly declines to assert causation.

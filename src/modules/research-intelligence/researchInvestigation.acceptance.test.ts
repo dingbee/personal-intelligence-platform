@@ -25,6 +25,8 @@ vi.mock('@/modules/plans/api/plans', () => ({ hasFeature: hasFeatureMock }))
 vi.mock('@/modules/research-intelligence/gatherEvidence', () => ({ gatherEvidence: gatherEvidenceMock }))
 
 import { runResearchInvestigation } from '@/modules/research-intelligence/api/runResearchInvestigation'
+import { researchInvestigationToProvenance } from '@/shared/provenance/adapters/researchIntelligenceAdapter'
+import { resolveEvidenceChain, toLookup } from '@/shared/provenance/resolveEvidenceChain'
 
 /**
  * Research Intelligence — benchmark acceptance test, per the P2 brief's
@@ -139,6 +141,17 @@ describe('Research Intelligence benchmark scenarios', () => {
     expect(investigation.gaps).toHaveLength(1)
     expect(investigation.gaps[0]!.reason).toBe('unanswered_question')
     expect(investigation.followUpQuestions).toHaveLength(1)
+
+    // Provenance Foundation — the research conclusion remains traceable, through the shared model, all the way down through the nested Analysis Investigation to the real Data Intelligence result — three engines, one chain.
+    const chain = researchInvestigationToProvenance(investigation)
+    const researchSynthesis = chain.derivations.find((d) => d.kind === 'synthesis')!
+    const resolved = resolveEvidenceChain(researchSynthesis.id, toLookup(chain))!
+    const sourceTypesInChain = new Set<string>()
+    ;(function collect(node: typeof resolved) {
+      for (const e of node.evidence) sourceTypesInChain.add(e.source.type)
+      for (const p of node.priorDerivations) collect(p)
+    })(resolved)
+    expect(sourceTypesInChain.has('dataset')).toBe(true)
   })
 
   it('multi-source scenario: two controlled internal sources (a document and a note) are compared honestly, with source identity preserved and no fabricated citation', async () => {

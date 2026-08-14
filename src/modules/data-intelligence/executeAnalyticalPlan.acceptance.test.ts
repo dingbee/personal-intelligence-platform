@@ -6,6 +6,7 @@ import type { StructuredDataset } from '@/modules/data-intelligence/api/structur
 import type { CellValue } from '@/modules/processing/spreadsheet/types'
 import type { AnalyticalPlan, AnalyticalResult } from '@/modules/data-intelligence/analyticalPlan'
 import { EXPECTED, PRODUCT_SALES_DATA_ROWS, PRODUCT_SALES_ROWS } from '@/modules/data-intelligence/__fixtures__/productSalesWorkbook'
+import { analyticalResultToProvenance } from '@/shared/provenance/adapters/dataIntelligenceAdapter'
 
 /**
  * ARRIYIA Professional Intelligence — Data Intelligence Foundation
@@ -78,6 +79,22 @@ describe('Data Intelligence Foundation — Product Sales benchmark acceptance', 
       executeAnalyticalPlan(dataset, { datasetId: dataset.id, dimensions: [{ column: 'Salesperson' }], measures: [{ as: 'totalSales', aggregation: 'sum', column: 'Total Price' }] }),
     )
     expect(measureByDimension(unlimited, 'Salesperson', 'totalSales')).toEqual(EXPECTED.totalSalesBySalesperson)
+  })
+
+  it('Provenance Foundation — Row 1\'s result identifies its originating dataset/sheet via the shared provenance model, without changing the computed answer', () => {
+    const result = executeAnalyticalPlan(dataset, {
+      datasetId: dataset.id,
+      dimensions: [{ column: 'Salesperson' }],
+      measures: [{ as: 'totalSales', aggregation: 'sum', column: 'Total Price' }],
+      sort: { by: 'totalSales', direction: 'desc' },
+      limit: 1,
+    })
+    const provenance = analyticalResultToProvenance(result)
+    expect(provenance).not.toBeNull()
+    expect(provenance!.evidence.source).toEqual({ type: 'dataset', id: 'document-1', title: 'Sales' })
+    expect(provenance!.evidence.location).toEqual({ kind: 'rows', sheetName: 'Sales', sheetIndex: 0, rowCount: 30 })
+    // The adapter never recomputes — the underlying answer is unchanged.
+    expect(ok(result).rows[0]!.measures.totalSales).toBe(EXPECTED.totalSalesBySalesperson.Alice)
   })
 
   it('Row 2 — return rate by region', () => {
