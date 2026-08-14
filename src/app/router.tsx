@@ -32,6 +32,7 @@ import { ExecutiveDashboardPage } from '@/modules/intelligence/dashboard/pages/E
 import { WorkspaceEvolutionPage } from '@/modules/evolution/pages/WorkspaceEvolutionPage'
 import { WorkspaceIntelligenceHubPage } from '@/modules/hub/pages/WorkspaceIntelligenceHubPage'
 import { ExportCenterPage } from '@/modules/export/pages/ExportCenterPage'
+import { ResearchPage } from '@/modules/research-intelligence/pages/ResearchPage'
 import { PricingPage } from '@/modules/billing/pages/PricingPage'
 import { BillingReturnPage } from '@/modules/billing/pages/BillingReturnPage'
 import { FoundingProApplyPage } from '@/modules/founding-pro/pages/FoundingProApplyPage'
@@ -110,6 +111,7 @@ export const router = createBrowserRouter([
           { path: 'knowledge/collections/:collectionId', element: <KnowledgeCollectionDetailPage /> },
           { path: 'knowledge/export', element: <ExportCenterPage /> },
           { path: 'search', element: <SearchPage /> },
+          { path: 'research', element: <ResearchPage /> },
           { path: 'chat', element: <ChatPage /> },
           { path: 'billing/return', element: <BillingReturnPage /> },
           { path: 'founding-pro/apply', element: <FoundingProApplyPage /> },

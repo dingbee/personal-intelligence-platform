@@ -17,6 +17,7 @@ const navItems = [
   { to: '/knowledge/export', label: 'Export Center' },
   { to: '/notes', label: 'Notes' },
   { to: '/search', label: 'Search' },
+  { to: '/research', label: 'Research' },
   { to: '/chat', label: 'Chat' },
   // Phase 5C — the only reachable path to /pricing was previously typing
   // the URL directly; nothing in primary nav, Settings, or anywhere else
