@@ -80,6 +80,30 @@ describe('ResearchPage', () => {
     expect(mutateAsyncMock).toHaveBeenCalledWith(expect.objectContaining({ question: 'Why is South high?' }))
   })
 
+  it('Multimodal Evidence Integration: distinguishes image evidence from document evidence in the Sources consulted list', async () => {
+    useHasResearchIntelligenceMock.mockReturnValue({ data: true, isLoading: false })
+
+    const docEvidence = { id: 'e1', source: { type: 'document' as const, id: 'doc-1', title: 'Returns Policy' }, excerpt: 'x', similarity: 0.9 }
+    const assetEvidence = { id: 'e2', source: { type: 'asset' as const, id: 'asset-1', title: 'Q3 dashboard screenshot' }, excerpt: 'y', similarity: 0.8 }
+    const completed: ResearchInvestigation = {
+      id: 'inv-1', question: 'What does the dashboard show?', scope: null, context: null, workspaceId: 'workspace-1', documentId: null,
+      steps: [{ id: 's1', index: 0, kind: 'evidence_gathering', purpose: 'baseline', triggeredBy: null, query: 'dashboard', evidence: [docEvidence, assetEvidence], observations: [{ id: 'o1', stepId: 's1', statement: 'Revenue trended upward.', evidenceIds: ['e2'] }], datasetInvestigation: null }],
+      hypotheses: [], comparisons: [], gaps: [], keyFindings: ['Revenue trended upward.'],
+      synthesis: 'Revenue trended upward per the dashboard screenshot.', limitations: null,
+      followUpQuestions: [], status: 'complete', stepLimitReached: false, synthesisFailed: false, declineReason: null,
+    }
+    mutateAsyncMock.mockResolvedValueOnce({ investigation: completed })
+
+    renderPage()
+    fireEvent.change(screen.getByPlaceholderText(/associated with higher return rates/i), { target: { value: 'What does the dashboard show?' } })
+    fireEvent.click(screen.getByRole('button', { name: /investigate/i }))
+
+    expect(await screen.findByText('Returns Policy')).not.toBeNull()
+    expect(screen.getByText('Q3 dashboard screenshot')).not.toBeNull()
+    expect(screen.getByText('[Document]')).not.toBeNull()
+    expect(screen.getByText('[Image]')).not.toBeNull()
+  })
+
   it('shows the decline reason plainly for a declined investigation, never a fabricated synthesis', async () => {
     useHasResearchIntelligenceMock.mockReturnValue({ data: true, isLoading: false })
     const declined: ResearchInvestigation = {

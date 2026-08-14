@@ -12,12 +12,20 @@ import type { EvidenceReference } from '@/shared/provenance/types'
  * function never performs its own Supabase read. `retrievedAt` is the
  * current time: unlike a stored provenance record, a chat retrieval
  * match is inherently a "this just happened" fact, not a persisted one.
+ *
+ * `locationLabel` is optional (Multimodal Evidence Integration sprint,
+ * closing a gap the multimodal-evidence-abstraction-audit identified):
+ * the real page/chapter label resolveChunkProvenance.ts already computes
+ * from document_chunks.chapter_title (e.g. "Page 4" for a PDF) can be
+ * passed straight through into EvidenceLocation.chunk.label rather than
+ * being discarded — additive only, never fabricated when the caller has
+ * no label to supply.
  */
-export function chunkMatchToEvidence(match: VectorMatch, documentTitle: string): EvidenceReference {
+export function chunkMatchToEvidence(match: VectorMatch, documentTitle: string, locationLabel?: string): EvidenceReference {
   return {
     id: match.chunkId,
     source: { type: 'document', id: match.documentId, title: documentTitle },
-    location: { kind: 'chunk', chunkId: match.chunkId },
+    location: locationLabel ? { kind: 'chunk', chunkId: match.chunkId, label: locationLabel } : { kind: 'chunk', chunkId: match.chunkId },
     excerpt: match.content,
     retrievedAt: new Date().toISOString(),
   }

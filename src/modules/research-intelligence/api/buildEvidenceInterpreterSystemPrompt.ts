@@ -11,11 +11,13 @@ import type { ResearchEvidence } from '@/modules/research-intelligence/researchI
  * defensively drops any observation that cites an out-of-range index,
  * so a hallucinated citation can never survive into the investigation.
  */
+const SOURCE_TYPE_LABELS: Record<string, string> = { document: 'Document', note: 'Note', asset: 'Image' }
+
 export function buildEvidenceInterpreterSystemPrompt(params: { question: string; evidence: ResearchEvidence[] }): string {
   const { question, evidence } = params
 
   const evidenceList = evidence
-    .map((item, i) => `[${i + 1}] (${item.source.type === 'document' ? 'Document' : 'Note'}: "${item.source.title}") ${item.excerpt}`)
+    .map((item, i) => `[${i + 1}] (${SOURCE_TYPE_LABELS[item.source.type] ?? 'Source'}: "${item.source.title}") ${item.excerpt}`)
     .join('\n\n')
 
   return (

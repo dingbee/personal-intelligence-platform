@@ -57,7 +57,7 @@ export function buildResearchStepPlannerSystemPrompt(params: {
     `Context: ${context ?? '(not specified)'}\n\n` +
     `Steps so far:\n${priorStepsSummary}\n\n` +
     'Respond with ONLY one of these JSON shapes (no markdown code fences, no other text):\n\n' +
-    '1. To search the researcher\'s own library (documents and notes) for relevant evidence:\n' +
+    '1. To search the researcher\'s own library (documents, notes, and analyzed images) for relevant evidence:\n' +
     '{ "action": "search", "purpose": "<short reason, e.g. \'baseline evidence\' or \'follow-up: methodology details\'>", "query": "<a focused search query — a few keywords or a short phrase, not the whole question verbatim>" }\n' +
     datasetOption +
     `${nextOptionNumber}. To stop because enough evidence has been gathered, or because further searching is unlikely to add anything new:\n` +

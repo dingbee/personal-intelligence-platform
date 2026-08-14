@@ -11,9 +11,16 @@
  * only ever names something that genuinely exists in the caller's own
  * library/notes/dataset — 'document' and 'note' ids come straight from
  * retrieveContext/retrieveNoteContext's real query results (see
- * gatherEvidence.ts), never invented. 'dataset_investigation' wraps an
- * actual, unmodified Analysis Intelligence AnalysisInvestigation. There
- * is currently no external web/URL source mechanism anywhere in this
+ * gatherEvidence.ts), never invented. 'asset' (Multimodal Evidence
+ * Integration sprint) comes identically from retrieveAssetContext's own
+ * real, already-analyzed matches — never a filename, URL, page number,
+ * region, or OCR confidence invented on its behalf; if the underlying
+ * asset has no analysis yet, retrieveAssetContext simply excludes it
+ * (see that function's own "never fabricates content for an unanalyzed
+ * image" contract), so gatherEvidence.ts has nothing further to guard
+ * here. 'dataset_investigation' wraps an actual, unmodified Analysis
+ * Intelligence AnalysisInvestigation. There is currently no external
+ * web/URL source mechanism anywhere in this
  * codebase (architecture audit, P2) — a 'web' source type is
  * deliberately absent from this union rather than added and left unable
  * to ever be populated honestly. See BACKLOG in the final report.
@@ -21,7 +28,7 @@
 
 import type { AnalysisInvestigation } from '@/modules/analysis-intelligence/analysisInvestigation'
 
-export type ResearchSourceType = 'document' | 'note' | 'dataset_investigation'
+export type ResearchSourceType = 'document' | 'note' | 'asset' | 'dataset_investigation'
 
 export interface ResearchSource {
   type: ResearchSourceType

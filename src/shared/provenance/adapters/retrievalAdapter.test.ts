@@ -12,6 +12,16 @@ describe('chunkMatchToEvidence', () => {
     expect(evidence.location).toEqual({ kind: 'chunk', chunkId: 'chunk-1' })
     expect(evidence.excerpt).toBe('Returns must be processed within 30 days.')
   })
+
+  it('Multimodal Evidence Integration: threads a real page/chapter label through into EvidenceLocation.chunk.label when supplied — closes the audit-identified gap without fabricating one when absent', () => {
+    const match: VectorMatch = { chunkId: 'chunk-1', documentId: 'doc-1', content: 'x', similarity: 0.5 }
+    const withLabel = chunkMatchToEvidence(match, 'Annual Report', 'Page 4')
+    expect(withLabel.location).toEqual({ kind: 'chunk', chunkId: 'chunk-1', label: 'Page 4' })
+
+    const withoutLabel = chunkMatchToEvidence(match, 'Annual Report')
+    expect(withoutLabel.location).toEqual({ kind: 'chunk', chunkId: 'chunk-1' })
+    expect('label' in withoutLabel.location).toBe(false)
+  })
 })
 
 describe('noteMatchToEvidence', () => {

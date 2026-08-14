@@ -54,4 +54,21 @@ describe('parseResearchObservationsResponse', () => {
     const observations = parseResearchObservationsResponse(JSON.stringify({ observations: [{ statement: 'x', evidenceIndexes: [1] }] }), 'step-1', [])
     expect(observations).toEqual([])
   })
+
+  it('Multimodal Evidence Integration: resolves a valid citation of image evidence exactly like document/note evidence — the parser is source-agnostic', () => {
+    const mixedEvidence: ResearchEvidence[] = [...evidence, { id: 'ev-asset-1', source: { type: 'asset', id: 'asset-1', title: 'Dashboard screenshot' }, excerpt: 'Q3 revenue trending upward.', similarity: 0.85 }]
+    const observations = parseResearchObservationsResponse(
+      JSON.stringify({ observations: [{ statement: 'The dashboard shows Q3 revenue trending upward.', evidenceIndexes: [3] }] }),
+      'step-1',
+      mixedEvidence,
+    )
+    expect(observations).toHaveLength(1)
+    expect(observations[0]!.evidenceIds).toEqual(['ev-asset-1'])
+  })
+
+  it('Multimodal Evidence Integration: an observation citing only an out-of-range index alongside real image evidence is still dropped — never keeps a partially-hallucinated citation', () => {
+    const mixedEvidence: ResearchEvidence[] = [{ id: 'ev-asset-1', source: { type: 'asset', id: 'asset-1', title: 'Dashboard screenshot' }, excerpt: 'Q3 revenue trending upward.', similarity: 0.85 }]
+    const observations = parseResearchObservationsResponse(JSON.stringify({ observations: [{ statement: 'invented claim about the image', evidenceIndexes: [99] }] }), 'step-1', mixedEvidence)
+    expect(observations).toEqual([])
+  })
 })

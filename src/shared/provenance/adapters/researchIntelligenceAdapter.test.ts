@@ -111,4 +111,58 @@ describe('researchInvestigationToProvenance', () => {
     expect(chain.evidence).toEqual([])
     expect(chain.derivations).toEqual([])
   })
+
+  describe('Multimodal Evidence Integration — asset (image) evidence', () => {
+    it('maps a step\'s real image evidence to a SourceReference of type "asset", preserving the real assets.id and the verbatim analyzed-image excerpt', () => {
+      const inv = investigation({
+        steps: [
+          {
+            id: 'r-step-3',
+            index: 0,
+            kind: 'evidence_gathering',
+            purpose: 'visual evidence',
+            triggeredBy: null,
+            query: 'dashboard screenshot',
+            evidence: [{ id: 'asset-1', source: { type: 'asset', id: 'asset-1', title: 'Q3 dashboard screenshot' }, excerpt: 'Q3 revenue trending upward.', similarity: 0.85 }],
+            observations: [{ id: 'r-obs-3', stepId: 'r-step-3', statement: 'Q3 revenue trended upward per the screenshot.', evidenceIds: ['asset-1'] }],
+            datasetInvestigation: null,
+          },
+        ],
+      })
+
+      const chain = researchInvestigationToProvenance(inv)
+      const assetEvidence = chain.evidence.find((e) => e.id === 'asset-1')!
+      expect(assetEvidence.source).toEqual({ type: 'asset', id: 'asset-1', title: 'Q3 dashboard screenshot' })
+      expect(assetEvidence.location).toEqual({ kind: 'whole' })
+      expect(assetEvidence.excerpt).toBe('Q3 revenue trending upward.')
+
+      const derivation = chain.derivations.find((d) => d.id === 'research:r-obs-3')!
+      expect(derivation.evidenceIds).toEqual(['asset-1'])
+    })
+
+    it('an observation resolving through resolveEvidenceChain from an image-derived observation reaches the real asset source, never a fabricated one', () => {
+      const inv = investigation({
+        steps: [
+          {
+            id: 'r-step-3',
+            index: 0,
+            kind: 'evidence_gathering',
+            purpose: 'visual evidence',
+            triggeredBy: null,
+            query: 'dashboard screenshot',
+            evidence: [{ id: 'asset-1', source: { type: 'asset', id: 'asset-1', title: 'Q3 dashboard screenshot' }, excerpt: 'Q3 revenue trending upward.', similarity: 0.85 }],
+            observations: [{ id: 'r-obs-3', stepId: 'r-step-3', statement: 'Q3 revenue trended upward per the screenshot.', evidenceIds: ['asset-1'] }],
+            datasetInvestigation: null,
+          },
+        ],
+        synthesis: 'Q3 revenue trended upward, as shown in the uploaded dashboard screenshot.',
+      })
+
+      const chain = researchInvestigationToProvenance(inv)
+      const synthesisDerivation = chain.derivations.find((d) => d.id === `research:${inv.id}:synthesis`)!
+      const resolved = resolveEvidenceChain(synthesisDerivation.id, toLookup(chain))!
+      const assetObservation = resolved.priorDerivations.find((d) => d.derivation.id === 'research:r-obs-3')!
+      expect(assetObservation.evidence[0]!.source).toEqual({ type: 'asset', id: 'asset-1', title: 'Q3 dashboard screenshot' })
+    })
+  })
 })

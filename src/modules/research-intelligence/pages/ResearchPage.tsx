@@ -38,6 +38,8 @@ function stepStatusLabel(step: ResearchInvestigation['steps'][number]): string {
   return `Searched: "${step.query}"`
 }
 
+const SOURCE_TYPE_LABELS: Record<string, string> = { document: 'Document', note: 'Note', asset: 'Image', dataset_investigation: 'Dataset analysis' }
+
 /**
  * Research Intelligence — the minimum professional UI necessary to
  * exercise a bounded, multi-step research investigation, distinct from
@@ -196,7 +198,7 @@ export function ResearchPage() {
                   <ul className="mt-1 flex flex-col gap-0.5">
                     {sources.map((s) => (
                       <li key={`${s.type}:${s.id}`}>
-                        <span>[{s.type === 'document' ? 'Document' : s.type === 'note' ? 'Note' : 'Dataset analysis'}]</span> <span>{s.title}</span>
+                        <span>[{SOURCE_TYPE_LABELS[s.type] ?? 'Source'}]</span> <span>{s.title}</span>
                       </li>
                     ))}
                   </ul>

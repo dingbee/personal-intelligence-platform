@@ -2,17 +2,21 @@ import type { ResearchInvestigation, ResearchSource, ResearchSourceType } from '
 import { analysisInvestigationToProvenance } from '@/shared/provenance/adapters/analysisIntelligenceAdapter'
 import type { DerivationReference, EvidenceReference, ProvenanceChain, SourceReference, SourceType } from '@/shared/provenance/types'
 
-// Research Intelligence's own ResearchSourceType ('document'|'note'|'dataset_investigation')
-// is a specialized subset of the shared SourceType — 'dataset_investigation' has no
-// direct shared-model equivalent (it names an *investigation*, not a stored source),
-// so it maps to 'dataset', the same tag Data Intelligence's own adapter uses for the
-// structured_datasets sheet the delegated investigation ultimately read from. This is
-// Option C from the sprint brief ("remain specialized views over the shared model") —
-// ResearchSource/ResearchEvidence are NOT changed or aliased away; this file only adds
-// a one-way mapping outward.
+// Research Intelligence's own ResearchSourceType ('document'|'note'|'asset'|
+// 'dataset_investigation') is a specialized subset of the shared SourceType —
+// 'dataset_investigation' has no direct shared-model equivalent (it names an
+// *investigation*, not a stored source), so it maps to 'dataset', the same tag
+// Data Intelligence's own adapter uses for the structured_datasets sheet the
+// delegated investigation ultimately read from. 'asset' (Multimodal Evidence
+// Integration sprint) maps 1:1 onto the shared model's own pre-existing 'asset'
+// SourceType — no new tag was needed. This is Option C from the sprint brief
+// ("remain specialized views over the shared model") — ResearchSource/
+// ResearchEvidence are NOT changed or aliased away; this file only adds a
+// one-way mapping outward.
 const SOURCE_TYPE_MAP: Record<ResearchSourceType, SourceType> = {
   document: 'document',
   note: 'note',
+  asset: 'asset',
   dataset_investigation: 'dataset',
 }
 
@@ -55,6 +59,17 @@ export function researchInvestigationToProvenance(investigation: ResearchInvesti
       if (!derivations.some((d) => d.id === nestedSynthesisDerivationId)) nestedSynthesisDerivationId = null
     }
 
+    // For an 'asset' source, this deliberately does NOT call
+    // assetAnalysisToProvenance (assetAdapter.ts) a second time: gatherEvidence.ts
+    // never receives the raw AssetAnalysis back from retrieveAssetContext (only
+    // its already-serialized excerpt text — see gatherEvidence.ts's own doc
+    // comment on why a second fetch is avoided), so there is nothing to
+    // reconstruct it from without duplicating asset retrieval. The shape
+    // produced below — {source:{type:'asset',...}, location:{kind:'whole'},
+    // excerpt} — is intentionally identical to assetAnalysisToProvenance's own
+    // `evidence` field, so this is not a second/different asset provenance
+    // shape, just the same generic per-item mapping every other Research
+    // source (document/note) already goes through here.
     for (const item of step.evidence) {
       evidence.push({
         id: item.id,

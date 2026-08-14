@@ -72,7 +72,7 @@ export interface SourceReference {
  * shape is representable (see adapters/README notes in each adapter file).
  */
 export type EvidenceLocation =
-  | { kind: 'chunk'; chunkId: string }
+  | { kind: 'chunk'; chunkId: string; /** Optional human-readable location within the document (e.g. "Page 4", from document_chunks.chapter_title) — see resolveChunkProvenance.ts. Additive: absent when the source has no chapter/page data (docx/txt, or a document with no per-page extraction). */ label?: string }
   | { kind: 'rows'; sheetName: string; sheetIndex: number; rowCount: number }
   | { kind: 'region'; description: string }
   | { kind: 'segment'; startMs: number | null; endMs: number | null }
