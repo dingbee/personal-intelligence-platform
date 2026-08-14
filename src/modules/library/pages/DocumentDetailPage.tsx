@@ -19,6 +19,7 @@ import { DocumentTagEditor } from '@/modules/library/components/DocumentTagEdito
 import { CollectionMoveSelect } from '@/modules/library/components/CollectionMoveSelect'
 import { SpreadsheetSummaryCard } from '@/modules/library/components/SpreadsheetSummaryCard'
 import { DataIntelligenceQueryPanel } from '@/modules/data-intelligence/components/DataIntelligenceQueryPanel'
+import { AnalysisInvestigationPanel } from '@/modules/analysis-intelligence/components/AnalysisInvestigationPanel'
 import { fileTypeLabel, formatFileSize } from '@/modules/library/utils/fileTypes'
 import { exportDocumentPackage } from '@/modules/knowledge-exchange/documents/exportDocumentPackage'
 import { buildDocumentPackageZip, fetchDocumentOriginalFile } from '@/modules/knowledge-exchange/documents/documentPackageArchive'
@@ -220,6 +221,9 @@ export function DocumentDetailPage() {
             </div>
             <div className="mt-3">
               <DataIntelligenceQueryPanel documentId={document.id} workspaceId={document.workspace_id} />
+            </div>
+            <div className="mt-3">
+              <AnalysisInvestigationPanel documentId={document.id} workspaceId={document.workspace_id} />
             </div>
           </div>
         )}
