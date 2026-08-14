@@ -69,3 +69,29 @@ export interface SheetAnalysis {
   dateRange: { start: string; end: string } | null
   aggregates: SheetAggregates
 }
+
+/**
+ * Data Intelligence Foundation — a single cell's value after extraction,
+ * normalized to a JSON-safe primitive so a sheet's full grid can be
+ * persisted verbatim (no Date objects, no functions — SheetJS never
+ * produces either here since `spreadsheet.ts` reads cells without the
+ * `cellDates` option; a date cell arrives as its Excel serial number,
+ * parseable via `excelSerialToIsoDate`/`parseDateValue`).
+ */
+export type CellValue = string | number | boolean | null
+
+/**
+ * Data Intelligence Foundation — the complete row/column grid for one
+ * sheet, built from the exact same typed `rows` array `analyzeSheet`
+ * already computes `SheetAnalysis` from (see spreadsheet.ts's `extract`),
+ * so the schema (`columns`) and the deterministic-query substrate
+ * (`rows`) can never disagree about what a column means. `rows` excludes
+ * the header row and is in the same column order as `columns`.
+ */
+export interface StructuredSheet {
+  sheetIndex: number
+  sheetName: string
+  columns: ColumnAnalysis[]
+  rows: CellValue[][]
+  rowCount: number
+}

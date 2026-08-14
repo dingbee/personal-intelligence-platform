@@ -37,6 +37,20 @@ describe('xlsxProcessor.extract', () => {
     expect(analysis.rowCount).toBe(6)
     const revenueStats = analysis.aggregates.columnStats.find((s) => s.column === 'Revenue')
     expect(revenueStats?.sum).toBe(57000)
+
+    // Data Intelligence Foundation — structuredData is built from the
+    // exact same rows/columns spreadsheetAnalysis is, so they can never
+    // disagree about row count or column identity.
+    expect(result.structuredData).toHaveLength(1)
+    const structured = result.structuredData![0]!
+    expect(structured.sheetName).toBe('Sales')
+    expect(structured.rowCount).toBe(6)
+    expect(structured.columns).toBe(analysis.columns)
+    expect(structured.rows).toHaveLength(6)
+    const revenueColumnIndex = structured.columns.findIndex((c) => c.name === 'Revenue')
+    expect(structured.rows[0]![revenueColumnIndex]).toBe(10000)
+    // Every cell is a JSON-safe primitive — never undefined.
+    expect(structured.rows.flat().every((v) => v === null || ['string', 'number', 'boolean'].includes(typeof v))).toBe(true)
   })
 
   it('extracts one chapter and one SheetAnalysis per sheet across multiple sheets, in order', async () => {
@@ -71,6 +85,12 @@ describe('xlsxProcessor.extract', () => {
     expect(totalColumn?.hasFormulas).toBe(true)
     const priceColumn = result.spreadsheetAnalysis![0]!.columns.find((c) => c.name === 'Price')
     expect(priceColumn?.hasFormulas).toBe(false)
+  })
+
+  it('pads a ragged row (fewer populated cells than the header) with null rather than shifting columns', async () => {
+    const blob = workbookBlob([{ name: 'Ragged', rows: [['A', 'B', 'C'], ['x', 'y']] }])
+    const result = await xlsxProcessor.extract(blob)
+    expect(result.structuredData![0]!.rows[0]).toEqual(['x', 'y', null])
   })
 
   it('handles a header-only sheet without throwing', async () => {

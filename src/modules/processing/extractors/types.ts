@@ -1,5 +1,5 @@
 import type { DocumentFileType, ExtractionChapterSummary } from '@/shared/types/database'
-import type { SheetAnalysis } from '@/modules/processing/spreadsheet/types'
+import type { SheetAnalysis, StructuredSheet } from '@/modules/processing/spreadsheet/types'
 
 export interface ExtractedChapter {
   index: number
@@ -19,6 +19,18 @@ export interface ExtractionResult {
   chapters: ExtractedChapter[] | null
   /** UX-13.10 — populated only by the spreadsheet extractor, computed from the same typed cell grid SheetJS produces before it's serialized to markdown for `chapters`/`text`. Null for every other format. */
   spreadsheetAnalysis?: SheetAnalysis[]
+  /**
+   * Data Intelligence Foundation — the complete row/column grid per sheet,
+   * built from the exact same typed `rows` array `spreadsheetAnalysis` is
+   * derived from (not a re-parse). Additive to `spreadsheetAnalysis` (the
+   * fixed upload-time statistics battery) and `chapters` (the markdown-
+   * table RAG text) — both of those stay exactly as they are; this is a
+   * third, parallel representation persisted separately so a deterministic
+   * query engine can execute arbitrary filter/group/aggregate operations
+   * the fixed statistics battery didn't anticipate. Populated only by the
+   * spreadsheet extractor, null for every other format.
+   */
+  structuredData?: StructuredSheet[]
 }
 
 /**

@@ -211,6 +211,32 @@ export type Embedding = {
   created_at: string
 }
 
+/**
+ * Data Intelligence Foundation — one row per (document, sheet): the
+ * complete row/column grid a spreadsheet document's extractor already
+ * parses, persisted in queryable form instead of being discarded after
+ * serialization to markdown/summary-stats. `columns`/`rows` are kept as
+ * `unknown` here (same convention as ExtractionMetadata.metadata.spreadsheet)
+ * so shared/types doesn't depend on a feature module — readers should go
+ * through `getStructuredDataset` in `@/modules/data-intelligence/api/structuredDatasets`,
+ * which casts `columns` to `ColumnAnalysis[]` (from
+ * `@/modules/processing/spreadsheet/types`) and `rows` to `CellValue[][]`.
+ */
+export type StructuredDataset = {
+  id: string
+  document_id: string
+  user_id: string
+  workspace_id: string | null
+  sheet_index: number
+  sheet_name: string
+  columns: unknown
+  rows: unknown
+  row_count: number
+  column_count: number
+  created_at: string
+  updated_at: string
+}
+
 export type MessageRole = 'user' | 'assistant' | 'system'
 
 export type Conversation = {
@@ -914,6 +940,21 @@ export type Database = {
           token_count: number
         }
         Update: Partial<DocumentChunk>
+        Relationships: []
+      }
+      structured_datasets: {
+        Row: StructuredDataset
+        Insert: Partial<StructuredDataset> & {
+          document_id: string
+          user_id: string
+          sheet_index: number
+          sheet_name: string
+          columns: unknown
+          rows: unknown
+          row_count: number
+          column_count: number
+        }
+        Update: Partial<StructuredDataset>
         Relationships: []
       }
       embeddings: {

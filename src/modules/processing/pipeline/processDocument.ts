@@ -2,6 +2,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { getDocument, updateDocumentStatus } from '@/modules/library/api/documents'
 import { createProcessingJob, updateProcessingJob } from '@/modules/processing/api/jobs'
 import { saveExtractionMetadata } from '@/modules/processing/api/extractionMetadata'
+import { saveStructuredDatasets } from '@/modules/data-intelligence/api/structuredDatasets'
 import { replaceDocumentChunks } from '@/modules/processing/api/chunks'
 import { getDocumentProcessor } from '@/modules/processing/extractors/registry'
 import { getChunker } from '@/modules/processing/chunking/registry'
@@ -100,6 +101,14 @@ export async function processDocument(documentId: string, userId: string): Promi
     const processor = await getDocumentProcessor(document.file_type)
     const extraction = await processor.extract(file)
     await saveExtractionMetadata({ documentId, userId, extraction })
+    if (extraction.structuredData && extraction.structuredData.length > 0) {
+      await saveStructuredDatasets({
+        documentId,
+        userId,
+        workspaceId: document.workspace_id,
+        structuredData: extraction.structuredData,
+      })
+    }
 
     await updateProcessingJob(job.id, { status: 'chunking' })
     const strategy = extraction.chapters && extraction.chapters.length > 0 ? 'chapter-aware' : 'paragraph'

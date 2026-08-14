@@ -4,6 +4,7 @@ import type { DocumentFileType } from '@/shared/types/database'
 import type { DocumentProcessor, ExtractionResult } from '@/modules/processing/extractors/types'
 import { countWords, normalizeText } from '@/modules/processing/extractors/textStats'
 import { analyzeSheet } from '@/modules/processing/spreadsheet/workbookAnalysis'
+import type { CellValue, StructuredSheet } from '@/modules/processing/spreadsheet/types'
 
 /**
  * UX-13 Phase B (Spreadsheet Intelligence) — one chapter per sheet, same
@@ -47,6 +48,40 @@ function formulaColumnIndexes(sheet: WorkSheet): Set<number> {
   return columns
 }
 
+/**
+ * Data Intelligence Foundation — normalizes one SheetJS cell value to a
+ * JSON-safe primitive so the full grid can be persisted verbatim.
+ * `spreadsheet.ts` never passes `cellDates` to SheetJS (confirmed by
+ * `cellParsing.ts`'s own doc comment), so a date cell always arrives as
+ * its Excel serial number here, not a Date object — no Date branch needed.
+ */
+function toCellValue(cell: unknown): CellValue {
+  if (cell === undefined || cell === null) return null
+  if (typeof cell === 'string' || typeof cell === 'number' || typeof cell === 'boolean') return cell
+  return String(cell)
+}
+
+/**
+ * Data Intelligence Foundation — builds the persisted structured
+ * representation from the exact same typed `rows` grid `analyzeSheet`
+ * already computed `columns` from (not a re-parse), so schema and rows
+ * can never disagree about what a column means. `rows[0]` is the header
+ * and is excluded; every data row is padded/truncated to `columns.length`
+ * so `rows[i][j]` always lines up with `columns[j]`, even for a ragged
+ * sheet where a trailing row has fewer populated cells than the header.
+ */
+function buildStructuredSheet(rows: unknown[][], analysis: NonNullable<ReturnType<typeof analyzeSheet>>): StructuredSheet {
+  const columnCount = analysis.columns.length
+  const dataRows = rows.slice(1).map((row) => Array.from({ length: columnCount }, (_, i) => toCellValue(row[i])))
+  return {
+    sheetIndex: analysis.sheetIndex,
+    sheetName: analysis.sheetName,
+    columns: analysis.columns,
+    rows: dataRows,
+    rowCount: dataRows.length,
+  }
+}
+
 async function extract(file: Blob): Promise<ExtractionResult> {
   const arrayBuffer = await file.arrayBuffer()
   const workbook = XLSX.read(arrayBuffer, { type: 'array' })
@@ -56,11 +91,13 @@ async function extract(file: Blob): Promise<ExtractionResult> {
     const rows = sheet ? XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, blankrows: false }) : []
     const chapter = { index, title: name, text: normalizeText(serializeSheetAsMarkdownTable(rows)) }
     const analysis = sheet ? analyzeSheet(rows, index, name, formulaColumnIndexes(sheet)) : null
-    return { chapter, analysis }
+    const structuredSheet = analysis ? buildStructuredSheet(rows, analysis) : null
+    return { chapter, analysis, structuredSheet }
   }).filter((result) => result.chapter.text.trim().length > 0)
 
   const chapters = sheetResults.map((result) => result.chapter)
   const spreadsheetAnalysis = sheetResults.map((result) => result.analysis).filter((a): a is NonNullable<typeof a> => a !== null)
+  const structuredData = sheetResults.map((result) => result.structuredSheet).filter((s): s is NonNullable<typeof s> => s !== null)
   const text = chapters.map((chapter) => `## ${chapter.title}\n\n${chapter.text}`).join('\n\n')
 
   return {
@@ -73,6 +110,7 @@ async function extract(file: Blob): Promise<ExtractionResult> {
     charCount: text.length,
     chapters,
     spreadsheetAnalysis,
+    structuredData,
   }
 }
 
