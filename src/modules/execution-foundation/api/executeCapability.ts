@@ -3,10 +3,11 @@ import { addActionAsWorkspaceObjective } from '@/modules/action-intelligence/api
 import { linkActionToWorkspaceObjective } from '@/modules/action-intelligence/api/linkActionToWorkspaceObjective'
 import { saveActionSetToNote } from '@/modules/action-intelligence/api/saveActionSetToNote'
 import { isCapabilityAvailable } from '@/modules/execution-foundation/api/capabilityRegistry'
-import { getExecutionRequest } from '@/modules/execution-foundation/api/executionQueries'
+import { getExecutionRequest, listExecutionAttempts, listExecutionAuthorizations } from '@/modules/execution-foundation/api/executionQueries'
 import { recordExecutionAttempt } from '@/modules/execution-foundation/api/recordExecutionAttempt'
 import { decideRetry } from '@/modules/execution-foundation/api/retryPolicy'
 import { startExecution } from '@/modules/execution-foundation/api/startExecution'
+import { recordExecutionIntelligenceRecord } from '@/modules/intelligence-ledger/api/recordExecutionIntelligenceRecord'
 import type { ExecutionOutcome, ExecutionRequest } from '@/modules/execution-foundation/execution'
 import type { Action, ActionSet } from '@/modules/action-intelligence/action'
 
@@ -84,6 +85,29 @@ async function runSafeCapability(request: ExecutionRequest, userId: string): Pro
  * never going to run (sprint brief Phase 13's own CAPABILITY_UNAVAILABLE
  * requirement).
  */
+/**
+ * Intelligence Ledger — best-effort, never throws, never alters
+ * executeCapability's own return value (see writeIntelligenceRecord.ts's
+ * own doc comment). Called at both real exit points below (a genuine
+ * success and a final, non-retryable failure) — unlike the other six
+ * engines' single success-only hook, Execution Foundation already
+ * records honest succeeded/failed status on the request itself, so
+ * there is no risk of a failed execution being written as
+ * status:'completed'.
+ */
+async function recordExecutionLedgerEvent(executionRequestId: string): Promise<void> {
+  try {
+    const [request, authorizations, attempts] = await Promise.all([
+      getExecutionRequest(executionRequestId),
+      listExecutionAuthorizations(executionRequestId),
+      listExecutionAttempts(executionRequestId),
+    ])
+    await recordExecutionIntelligenceRecord({ request, authorizations, attempts })
+  } catch (err) {
+    console.error('[intelligence-ledger] failed to persist an execution intelligence record', err)
+  }
+}
+
 export async function executeCapability(params: { executionRequestId: string; userId: string }): Promise<ExecutionRequest> {
   const { executionRequestId, userId } = params
   const initial = await getExecutionRequest(executionRequestId)
@@ -106,11 +130,15 @@ export async function executeCapability(params: { executionRequestId: string; us
 
     if (outcome.outcome === 'succeeded') {
       await recordExecutionAttempt({ executionRequestId, outcome: 'succeeded', result: outcome.result, isFinal: true })
+      await recordExecutionLedgerEvent(executionRequestId)
       return getExecutionRequest(executionRequestId)
     }
 
     const retry = decideRetry(outcome.failureKind, attemptNumber)
     await recordExecutionAttempt({ executionRequestId, outcome: 'failed', failureKind: outcome.failureKind, failureMessage: outcome.message, isFinal: retry.isFinal })
-    if (!retry.shouldRetry) return getExecutionRequest(executionRequestId)
+    if (!retry.shouldRetry) {
+      await recordExecutionLedgerEvent(executionRequestId)
+      return getExecutionRequest(executionRequestId)
+    }
   }
 }

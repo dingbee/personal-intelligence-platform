@@ -9,6 +9,7 @@ import { computeActionPriorities } from '@/modules/action-intelligence/api/compu
 import { validateAction } from '@/modules/action-intelligence/api/validateAction'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { beginIntelligenceOperation, runOperationAiCall, OperationBudgetExhaustedError, IntelligenceOperationQuotaDeniedError } from '@/shared/lib/intelligenceOperations'
+import { recordActionIntelligenceRecord } from '@/modules/intelligence-ledger/api/recordActionIntelligenceRecord'
 import type { PlanDerivedActionContext } from '@/modules/action-intelligence/api/adaptPlanForActionContext'
 import type { DecisionDerivedActionContext } from '@/modules/action-intelligence/api/adaptDecisionForActionContext'
 import type { Action, ActionSet, ActionSetStatus, ActionSource } from '@/modules/action-intelligence/action'
@@ -92,8 +93,9 @@ export async function runActionIntelligence(params: {
   const actionSummary = formatActionContextForPrompt(context)
 
   let call
+  let providerId: string
   try {
-    ;({ result: call } = await runOperationAiCall(operation, chain, (candidateId) =>
+    ;({ result: call, providerId } = await runOperationAiCall(operation, chain, (candidateId) =>
       runCapability({
         capabilityId: 'action-generate-action-set',
         variables: { actionSummary },
@@ -152,6 +154,10 @@ export async function runActionIntelligence(params: {
     workspaceId,
     createdAt: new Date().toISOString(),
   }
+
+  // Intelligence Ledger — best-effort, never throws, never alters this
+  // function's own action set (see recordActionIntelligenceRecord.ts).
+  await recordActionIntelligenceRecord({ actionSet, workspaceId, operationId: operation.operationId, providerId })
 
   return { actionSet }
 }

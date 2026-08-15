@@ -552,6 +552,41 @@ export type ExecutionAuditEventRow = {
   created_at: string
 }
 
+export type IntelligenceJourneyRow = {
+  id: string
+  workspace_id: string | null
+  user_id: string
+  objective_id: string | null
+  title: string
+  created_at: string
+  updated_at: string
+}
+
+export type IntelligenceRecordType = 'data' | 'analysis' | 'research' | 'planning' | 'decision' | 'action' | 'execution'
+export type IntelligenceRecordStatus = 'created' | 'running' | 'completed' | 'failed' | 'superseded' | 'archived'
+
+export type IntelligenceRecordRow = {
+  id: string
+  workspace_id: string | null
+  user_id: string
+  journey_id: string | null
+  record_type: IntelligenceRecordType
+  status: IntelligenceRecordStatus
+  summary: string
+  structured_output: Record<string, unknown>
+  provenance: Record<string, unknown> | null
+  operation_id: string | null
+  provider_id: string | null
+  conversation_id: string | null
+  execution_request_id: string | null
+  parent_record_id: string | null
+  expected_outcome: string | null
+  actual_outcome: string | null
+  outcome_evaluated_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 /** AI Experience Intelligence v1 — a user's dismissal of one proactive-intelligence item (a Hub IntelligenceItem or a dashboard-scope Recommendation), keyed by the caller-derived item_key. See 0037_dismissed_suggestions.sql. */
 export type DismissedSuggestion = {
   id: string
@@ -1331,6 +1366,18 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      intelligence_journeys: {
+        Row: IntelligenceJourneyRow
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      intelligence_records: {
+        Row: IntelligenceRecordRow
+        Insert: never
+        Update: never
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -1382,6 +1429,32 @@ export type Database = {
       expire_execution: {
         Args: { p_execution_request_id: string }
         Returns: ExecutionRequestRow
+      }
+      create_intelligence_journey: {
+        Args: {
+          p_workspace_id: string | null
+          p_objective_id: string | null
+          p_title: string
+        }
+        Returns: IntelligenceJourneyRow
+      }
+      create_intelligence_record: {
+        Args: {
+          p_workspace_id: string | null
+          p_journey_id: string | null
+          p_record_type: IntelligenceRecordType
+          p_summary: string
+          p_structured_output: Record<string, unknown>
+          p_status?: IntelligenceRecordStatus
+          p_provenance?: Record<string, unknown> | null
+          p_operation_id?: string | null
+          p_provider_id?: string | null
+          p_conversation_id?: string | null
+          p_execution_request_id?: string | null
+          p_parent_record_id?: string | null
+          p_expected_outcome?: string | null
+        }
+        Returns: IntelligenceRecordRow
       }
       match_document_chunks: {
         Args: {
@@ -1741,6 +1814,8 @@ export type Database = {
       execution_authorization_decision: ExecutionAuthorizationDecision
       execution_attempt_outcome: ExecutionAttemptOutcomeValue
       execution_failure_kind: ExecutionFailureKind
+      intelligence_record_type: IntelligenceRecordType
+      intelligence_record_status: IntelligenceRecordStatus
     }
   }
 }

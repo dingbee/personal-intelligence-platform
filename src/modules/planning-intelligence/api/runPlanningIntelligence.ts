@@ -6,6 +6,7 @@ import { parsePlanningResponse } from '@/modules/planning-intelligence/api/parse
 import { validatePlan } from '@/modules/planning-intelligence/api/validatePlan'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { beginIntelligenceOperation, runOperationAiCall, OperationBudgetExhaustedError, IntelligenceOperationQuotaDeniedError } from '@/shared/lib/intelligenceOperations'
+import { recordPlanningIntelligenceRecord } from '@/modules/intelligence-ledger/api/recordPlanningIntelligenceRecord'
 import type { Plan, PlanStatus } from '@/modules/planning-intelligence/plan'
 
 export interface PlanningOutcome {
@@ -87,8 +88,9 @@ export async function runPlanningIntelligence(params: {
   const planningSummary = formatPlanningContextForPrompt(context)
 
   let call
+  let providerId: string
   try {
-    ;({ result: call } = await runOperationAiCall(operation, chain, (candidateId) =>
+    ;({ result: call, providerId } = await runOperationAiCall(operation, chain, (candidateId) =>
       runCapability({
         capabilityId: 'planning-generate-plan',
         variables: { planningSummary },
@@ -145,6 +147,10 @@ export async function runPlanningIntelligence(params: {
     generationFailed: false,
     declineReason: null,
   }
+
+  // Intelligence Ledger — best-effort, never throws, never alters this
+  // function's own plan (see recordPlanningIntelligenceRecord.ts).
+  await recordPlanningIntelligenceRecord({ plan, workspaceId, operationId: operation.operationId, providerId })
 
   return { plan }
 }

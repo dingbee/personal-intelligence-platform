@@ -1,25 +1,44 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { getWorkspaceObjectiveMock, addActionAsWorkspaceObjectiveMock, linkActionToWorkspaceObjectiveMock, saveActionSetToNoteMock, isCapabilityAvailableMock, getExecutionRequestMock, recordExecutionAttemptMock, startExecutionMock } =
-  vi.hoisted(() => ({
-    getWorkspaceObjectiveMock: vi.fn(),
-    addActionAsWorkspaceObjectiveMock: vi.fn(),
-    linkActionToWorkspaceObjectiveMock: vi.fn(),
-    saveActionSetToNoteMock: vi.fn(),
-    isCapabilityAvailableMock: vi.fn(),
-    getExecutionRequestMock: vi.fn(),
-    recordExecutionAttemptMock: vi.fn(),
-    startExecutionMock: vi.fn(),
-  }))
+const {
+  getWorkspaceObjectiveMock,
+  addActionAsWorkspaceObjectiveMock,
+  linkActionToWorkspaceObjectiveMock,
+  saveActionSetToNoteMock,
+  isCapabilityAvailableMock,
+  getExecutionRequestMock,
+  listExecutionAuthorizationsMock,
+  listExecutionAttemptsMock,
+  recordExecutionAttemptMock,
+  startExecutionMock,
+  recordExecutionIntelligenceRecordMock,
+} = vi.hoisted(() => ({
+  getWorkspaceObjectiveMock: vi.fn(),
+  addActionAsWorkspaceObjectiveMock: vi.fn(),
+  linkActionToWorkspaceObjectiveMock: vi.fn(),
+  saveActionSetToNoteMock: vi.fn(),
+  isCapabilityAvailableMock: vi.fn(),
+  getExecutionRequestMock: vi.fn(),
+  listExecutionAuthorizationsMock: vi.fn(),
+  listExecutionAttemptsMock: vi.fn(),
+  recordExecutionAttemptMock: vi.fn(),
+  startExecutionMock: vi.fn(),
+  recordExecutionIntelligenceRecordMock: vi.fn(),
+}))
 
 vi.mock('@/modules/hub/api/objectives', () => ({ getWorkspaceObjective: getWorkspaceObjectiveMock }))
 vi.mock('@/modules/action-intelligence/api/addActionAsWorkspaceObjective', () => ({ addActionAsWorkspaceObjective: addActionAsWorkspaceObjectiveMock }))
 vi.mock('@/modules/action-intelligence/api/linkActionToWorkspaceObjective', () => ({ linkActionToWorkspaceObjective: linkActionToWorkspaceObjectiveMock }))
 vi.mock('@/modules/action-intelligence/api/saveActionSetToNote', () => ({ saveActionSetToNote: saveActionSetToNoteMock }))
 vi.mock('@/modules/execution-foundation/api/capabilityRegistry', () => ({ isCapabilityAvailable: isCapabilityAvailableMock }))
-vi.mock('@/modules/execution-foundation/api/executionQueries', () => ({ getExecutionRequest: getExecutionRequestMock }))
+vi.mock('@/modules/execution-foundation/api/executionQueries', () => ({
+  getExecutionRequest: getExecutionRequestMock,
+  listExecutionAuthorizations: listExecutionAuthorizationsMock,
+  listExecutionAttempts: listExecutionAttemptsMock,
+}))
 vi.mock('@/modules/execution-foundation/api/recordExecutionAttempt', () => ({ recordExecutionAttempt: recordExecutionAttemptMock }))
 vi.mock('@/modules/execution-foundation/api/startExecution', () => ({ startExecution: startExecutionMock }))
+vi.mock('@/modules/intelligence-ledger/api/recordExecutionIntelligenceRecord', () => ({ recordExecutionIntelligenceRecord: recordExecutionIntelligenceRecordMock }))
 
 import { CapabilityUnavailableError, executeCapability } from '@/modules/execution-foundation/api/executeCapability'
 import type { Action } from '@/modules/action-intelligence/action'
@@ -69,6 +88,9 @@ beforeEach(() => {
   vi.clearAllMocks()
   isCapabilityAvailableMock.mockReturnValue(true)
   recordExecutionAttemptMock.mockResolvedValue({})
+  listExecutionAuthorizationsMock.mockResolvedValue([])
+  listExecutionAttemptsMock.mockResolvedValue([])
+  recordExecutionIntelligenceRecordMock.mockResolvedValue(undefined)
 })
 
 describe('executeCapability', () => {
@@ -80,11 +102,12 @@ describe('executeCapability', () => {
 
     expect(startExecutionMock).not.toHaveBeenCalled()
     expect(recordExecutionAttemptMock).not.toHaveBeenCalled()
+    expect(recordExecutionIntelligenceRecordMock).not.toHaveBeenCalled()
   })
 
   it('save_action_to_notes: wraps the action in a throwaway ActionSet and reuses saveActionSetToNote unmodified', async () => {
     const request = makeRequest()
-    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValueOnce({ ...request, status: 'succeeded' })
+    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValue({ ...request, status: 'succeeded' })
     startExecutionMock.mockResolvedValue({ ...request, status: 'executing' })
     saveActionSetToNoteMock.mockResolvedValue({ id: 'note-1' })
 
@@ -96,11 +119,14 @@ describe('executeCapability', () => {
     expect(call.userId).toBe('user-1')
     expect(recordExecutionAttemptMock).toHaveBeenCalledWith({ executionRequestId: 'req-1', outcome: 'succeeded', result: { noteId: 'note-1' }, isFinal: true })
     expect(result.status).toBe('succeeded')
+    expect(recordExecutionIntelligenceRecordMock).toHaveBeenCalledWith(
+      expect.objectContaining({ request: expect.objectContaining({ status: 'succeeded' }) }),
+    )
   })
 
   it('add_action_as_workspace_objective: fails validation (not capability_unavailable) when workspaceId is missing', async () => {
     const request = makeRequest({ capability: 'add_action_as_workspace_objective', workspaceId: null })
-    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValueOnce({ ...request, status: 'failed' })
+    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValue({ ...request, status: 'failed' })
     startExecutionMock.mockResolvedValue({ ...request, status: 'executing' })
 
     await executeCapability({ executionRequestId: 'req-1', userId: 'user-1' })
@@ -109,11 +135,17 @@ describe('executeCapability', () => {
     expect(recordExecutionAttemptMock).toHaveBeenCalledWith(
       expect.objectContaining({ outcome: 'failed', failureKind: 'validation', isFinal: true }),
     )
+    // A failed execution must never be persisted to the Ledger as
+    // status:'completed' — recordExecutionLedgerEvent reads the
+    // just-fetched (honestly 'failed') request, never assumes success.
+    expect(recordExecutionIntelligenceRecordMock).toHaveBeenCalledWith(
+      expect.objectContaining({ request: expect.objectContaining({ status: 'failed' }) }),
+    )
   })
 
   it('link_action_to_workspace_objective: fails validation when no target objectiveId is present', async () => {
     const request = makeRequest({ capability: 'link_action_to_workspace_objective', target: {} })
-    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValueOnce({ ...request, status: 'failed' })
+    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValue({ ...request, status: 'failed' })
     startExecutionMock.mockResolvedValue({ ...request, status: 'executing' })
 
     await executeCapability({ executionRequestId: 'req-1', userId: 'user-1' })
@@ -125,7 +157,7 @@ describe('executeCapability', () => {
 
   it('link_action_to_workspace_objective: resolves the objective and links on success', async () => {
     const request = makeRequest({ capability: 'link_action_to_workspace_objective', target: { objectiveId: 'obj-1' } })
-    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValueOnce({ ...request, status: 'succeeded' })
+    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValue({ ...request, status: 'succeeded' })
     startExecutionMock.mockResolvedValue({ ...request, status: 'executing' })
     const objective = { id: 'obj-1', content: 'Existing objective' }
     getWorkspaceObjectiveMock.mockResolvedValue(objective)
@@ -141,7 +173,7 @@ describe('executeCapability', () => {
   it('an unknown/unregistered capability id fails as capability_unavailable, never reaching a mutation path', async () => {
     isCapabilityAvailableMock.mockReturnValue(true)
     const request = makeRequest({ capability: 'send_calendar_invite' })
-    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValueOnce({ ...request, status: 'failed' })
+    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValue({ ...request, status: 'failed' })
     startExecutionMock.mockResolvedValue({ ...request, status: 'executing' })
 
     await executeCapability({ executionRequestId: 'req-1', userId: 'user-1' })
@@ -154,7 +186,7 @@ describe('executeCapability', () => {
 
   it('retries a transient failure and eventually succeeds within the retry bound', async () => {
     const request = makeRequest()
-    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValueOnce({ ...request, status: 'succeeded' })
+    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValue({ ...request, status: 'succeeded' })
     startExecutionMock.mockResolvedValue({ ...request, status: 'executing' })
     saveActionSetToNoteMock.mockRejectedValueOnce(new Error('network blip')).mockResolvedValueOnce({ id: 'note-1' })
 
@@ -168,7 +200,7 @@ describe('executeCapability', () => {
 
   it('stops retrying once MAX_EXECUTION_ATTEMPTS is reached and records a final failure', async () => {
     const request = makeRequest()
-    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValueOnce({ ...request, status: 'failed' })
+    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValue({ ...request, status: 'failed' })
     startExecutionMock.mockResolvedValue({ ...request, status: 'executing' })
     saveActionSetToNoteMock.mockRejectedValue(new Error('still failing'))
 
@@ -181,7 +213,7 @@ describe('executeCapability', () => {
 
   it('a permanent failure is never retried, regardless of attempt number', async () => {
     const request = makeRequest({ capability: 'add_action_as_workspace_objective', workspaceId: null })
-    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValueOnce({ ...request, status: 'failed' })
+    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValue({ ...request, status: 'failed' })
     startExecutionMock.mockResolvedValue({ ...request, status: 'executing' })
 
     await executeCapability({ executionRequestId: 'req-1', userId: 'user-1' })

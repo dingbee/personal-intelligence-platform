@@ -12,6 +12,7 @@ import { streamChatCompletion } from '@/modules/ai/orchestration/streamChatCompl
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { getChatProvider } from '@/modules/ai/providers/registry'
 import { beginIntelligenceOperation, runOperationAiCall, OperationBudgetExhaustedError, type IntelligenceOperation } from '@/shared/lib/intelligenceOperations'
+import { recordAnalysisIntelligenceRecord } from '@/modules/intelligence-ledger/api/recordAnalysisIntelligenceRecord'
 import type { AnalysisInvestigation, AnalysisStep, Hypothesis } from '@/modules/analysis-intelligence/analysisInvestigation'
 
 /**
@@ -243,8 +244,9 @@ export async function runAnalysisInvestigation(params: {
   const investigationSummary = formatInvestigationForSynthesis(investigation)
 
   let synthesisCall
+  let synthesisProviderId: string
   try {
-    ;({ result: synthesisCall } = await runOperationAiCall(operation, chain, (candidateId) =>
+    ;({ result: synthesisCall, providerId: synthesisProviderId } = await runOperationAiCall(operation, chain, (candidateId) =>
     runCapability({
       capabilityId: 'analysis-investigation-synthesis',
       variables: { investigationSummary },
@@ -269,6 +271,16 @@ export async function runAnalysisInvestigation(params: {
 
   investigation = { ...investigation, synthesis: synthesisCall.content.trim(), status: 'complete' }
   onStepComplete?.(investigation)
+
+  // Intelligence Ledger — best-effort, never throws, never alters this
+  // investigation's own result (see recordAnalysisIntelligenceRecord.ts).
+  // Skipped for a delegated (parentOperation) investigation — Research
+  // Intelligence's own ledger write already covers the whole chain it
+  // delegates into; a delegated Analysis sub-investigation is not its own
+  // top-level intelligence event.
+  if (!parentOperation) {
+    await recordAnalysisIntelligenceRecord({ investigation, workspaceId, operationId: operation.operationId, providerId: synthesisProviderId })
+  }
 
   return { investigation }
 }

@@ -10,6 +10,7 @@ import { streamChatCompletion } from '@/modules/ai/orchestration/streamChatCompl
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { getChatProvider } from '@/modules/ai/providers/registry'
 import { beginIntelligenceOperation, runOperationAiCall, OperationBudgetExhaustedError } from '@/shared/lib/intelligenceOperations'
+import { recordDataIntelligenceRecord } from '@/modules/intelligence-ledger/api/recordDataIntelligenceRecord'
 import type { AnalyticalResult } from '@/modules/data-intelligence/analyticalPlan'
 
 export interface DataIntelligenceQueryOutcome {
@@ -109,8 +110,9 @@ export async function runDataIntelligenceQuery(params: {
   const resultSummary = formatAnalyticalResultForInterpretation(result)
 
   let interpretation
+  let interpretationProviderId: string
   try {
-    ;({ result: interpretation } = await runOperationAiCall(operation, chain, (candidateId) =>
+    ;({ result: interpretation, providerId: interpretationProviderId } = await runOperationAiCall(operation, chain, (candidateId) =>
       runCapability({
         capabilityId: 'data-intelligence-query',
         variables: { question, resultSummary },
@@ -131,10 +133,16 @@ export async function runDataIntelligenceQuery(params: {
 
   operation.status = 'completed'
 
+  const answer = interpretation.content.trim()
+
+  // Intelligence Ledger — best-effort, never throws, never alters this
+  // function's own answer (see recordDataIntelligenceRecord.ts).
+  await recordDataIntelligenceRecord({ question, answer, result, workspaceId, operationId: operation.operationId, providerId: interpretationProviderId })
+
   return {
     status: 'answered',
     question,
-    answer: interpretation.content.trim(),
+    answer,
     reason: null,
     result,
   }

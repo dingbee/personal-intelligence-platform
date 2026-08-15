@@ -9,6 +9,7 @@ import { computeSensitivity } from '@/modules/decision-intelligence/api/computeS
 import { computeConfidence } from '@/modules/decision-intelligence/api/computeConfidence'
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { beginIntelligenceOperation, runOperationAiCall, OperationBudgetExhaustedError, IntelligenceOperationQuotaDeniedError } from '@/shared/lib/intelligenceOperations'
+import { recordDecisionIntelligenceRecord } from '@/modules/intelligence-ledger/api/recordDecisionIntelligenceRecord'
 import type { PlanDerivedDecisionContext } from '@/modules/decision-intelligence/api/adaptPlanForDecisionContext'
 import type { Decision, DecisionStatus } from '@/modules/decision-intelligence/decision'
 
@@ -98,8 +99,9 @@ export async function runDecisionIntelligence(params: {
   const decisionSummary = formatDecisionContextForPrompt(context)
 
   let call
+  let providerId: string
   try {
-    ;({ result: call } = await runOperationAiCall(operation, chain, (candidateId) =>
+    ;({ result: call, providerId } = await runOperationAiCall(operation, chain, (candidateId) =>
       runCapability({
         capabilityId: 'decision-generate-recommendation',
         variables: { decisionSummary },
@@ -172,6 +174,10 @@ export async function runDecisionIntelligence(params: {
     workspaceId,
     createdAt: new Date().toISOString(),
   }
+
+  // Intelligence Ledger — best-effort, never throws, never alters this
+  // function's own decision (see recordDecisionIntelligenceRecord.ts).
+  await recordDecisionIntelligenceRecord({ decision, workspaceId, operationId: operation.operationId, providerId })
 
   return { decision }
 }

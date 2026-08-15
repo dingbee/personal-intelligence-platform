@@ -13,6 +13,7 @@ import { streamChatCompletion } from '@/modules/ai/orchestration/streamChatCompl
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { getChatProvider } from '@/modules/ai/providers/registry'
 import { beginIntelligenceOperation, runOperationAiCall, isOperationBudgetExhausted, OperationBudgetExhaustedError } from '@/shared/lib/intelligenceOperations'
+import { recordResearchIntelligenceRecord } from '@/modules/intelligence-ledger/api/recordResearchIntelligenceRecord'
 import type { ResearchInvestigation, ResearchStep, ResearchHypothesis, ResearchEvidence } from '@/modules/research-intelligence/researchInvestigation'
 
 /**
@@ -337,8 +338,9 @@ export async function runResearchInvestigation(params: {
   const researchSummary = formatResearchForSynthesis(investigation)
 
   let synthesisCall
+  let synthesisProviderId: string
   try {
-    ;({ result: synthesisCall } = await runOperationAiCall(operation, chain, (candidateId) =>
+    ;({ result: synthesisCall, providerId: synthesisProviderId } = await runOperationAiCall(operation, chain, (candidateId) =>
       runCapability({
         capabilityId: 'research-synthesis',
         variables: { researchSummary },
@@ -379,6 +381,14 @@ export async function runResearchInvestigation(params: {
         }
 
   onStepComplete?.(investigation)
+
+  // Intelligence Ledger — best-effort, never throws, never alters this
+  // investigation's own result (see recordResearchIntelligenceRecord.ts).
+  // Written even when synthesisFailed:true — the real steps/evidence
+  // gathered are still a genuine completed intelligence event worth a
+  // durable record, honestly reflecting parsedSynthesis === null via the
+  // investigation object itself.
+  await recordResearchIntelligenceRecord({ investigation, workspaceId, operationId: operation.operationId, providerId: synthesisProviderId })
 
   return { investigation }
 }
