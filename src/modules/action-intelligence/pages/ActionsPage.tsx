@@ -11,6 +11,7 @@ import { formatActionSetAsNoteContent, formatActionAsText } from '@/modules/acti
 import { useCreateExecutionRequest } from '@/modules/execution-foundation/hooks/useCreateExecutionRequest'
 import type { SafeInternalCapability } from '@/modules/execution-foundation/api/buildExecutionContract'
 import type { Action, ActionReadinessState, ActionSet, ActionType } from '@/modules/action-intelligence/action'
+import type { WorkspaceObjective } from '@/shared/types/database'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -45,12 +46,15 @@ async function copyText(text: string): Promise<void> {
 function ActionCard({
   action,
   workspaceId,
+  objectives,
 }: {
   action: Action
   workspaceId: string | null
+  objectives: WorkspaceObjective[] | undefined
 }) {
   const [copied, setCopied] = useState(false)
   const [requestCapability, setRequestCapability] = useState<SafeInternalCapability>('save_action_to_notes')
+  const [requestTargetObjectiveId, setRequestTargetObjectiveId] = useState('')
   const addObjectiveMutation = useAddActionAsWorkspaceObjective(workspaceId)
   const createExecutionRequestMutation = useCreateExecutionRequest(workspaceId)
   const readinessBadge = READINESS_BADGE[action.readiness.state]
@@ -146,11 +150,35 @@ function ActionCard({
         >
           <option value="save_action_to_notes">Save to Notes</option>
           <option value="add_action_as_workspace_objective">Add as Workspace Objective</option>
+          <option value="link_action_to_workspace_objective">Link to Existing Objective</option>
         </select>
+        {requestCapability === 'link_action_to_workspace_objective' && (
+          <select
+            value={requestTargetObjectiveId}
+            onChange={(e) => setRequestTargetObjectiveId(e.target.value)}
+            className="rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] px-1.5 py-1 text-[10px]"
+          >
+            <option value="">Select objective…</option>
+            {objectives?.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.content.slice(0, 40)}
+              </option>
+            ))}
+          </select>
+        )}
         <button
           type="button"
-          onClick={() => createExecutionRequestMutation.mutate({ action, capability: requestCapability })}
-          disabled={createExecutionRequestMutation.isPending}
+          onClick={() =>
+            createExecutionRequestMutation.mutate({
+              action,
+              capability: requestCapability,
+              targetObjectiveId: requestCapability === 'link_action_to_workspace_objective' ? requestTargetObjectiveId : undefined,
+            })
+          }
+          disabled={
+            createExecutionRequestMutation.isPending ||
+            (requestCapability === 'link_action_to_workspace_objective' && !requestTargetObjectiveId)
+          }
           className="rounded-control border border-[var(--color-border)] px-2 py-1 text-[10px] font-medium text-[var(--color-ink-muted)] disabled:opacity-50"
         >
           {createExecutionRequestMutation.isPending ? 'Requesting…' : 'Request execution'}
@@ -337,7 +365,7 @@ export function ActionsPage() {
               <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-muted)]">Actions</h3>
               <ul className="flex flex-col gap-1.5">
                 {sortedActions.map((action) => (
-                  <ActionCard key={action.id} action={action} workspaceId={currentWorkspaceId} />
+                  <ActionCard key={action.id} action={action} workspaceId={currentWorkspaceId} objectives={objectives} />
                 ))}
               </ul>
             </section>
