@@ -37,6 +37,9 @@ import { PlanningPage } from '@/modules/planning-intelligence/pages/PlanningPage
 import { DecisionPage } from '@/modules/decision-intelligence/pages/DecisionPage'
 import { ActionsPage } from '@/modules/action-intelligence/pages/ActionsPage'
 import { ExecutionsPage } from '@/modules/execution-foundation/pages/ExecutionsPage'
+import { HistoryPage } from '@/modules/intelligence-ledger/pages/HistoryPage'
+import { IntelligenceRecordDetailPage } from '@/modules/intelligence-ledger/pages/IntelligenceRecordDetailPage'
+import { IntelligenceJourneyDetailPage } from '@/modules/intelligence-ledger/pages/IntelligenceJourneyDetailPage'
 import { PricingPage } from '@/modules/billing/pages/PricingPage'
 import { BillingReturnPage } from '@/modules/billing/pages/BillingReturnPage'
 import { FoundingProApplyPage } from '@/modules/founding-pro/pages/FoundingProApplyPage'
@@ -120,6 +123,9 @@ export const router = createBrowserRouter([
           { path: 'decisions', element: <DecisionPage /> },
           { path: 'actions', element: <ActionsPage /> },
           { path: 'executions', element: <ExecutionsPage /> },
+          { path: 'history', element: <HistoryPage /> },
+          { path: 'history/records/:recordId', element: <IntelligenceRecordDetailPage /> },
+          { path: 'history/journeys/:journeyId', element: <IntelligenceJourneyDetailPage /> },
           { path: 'chat', element: <ChatPage /> },
           { path: 'billing/return', element: <BillingReturnPage /> },
           { path: 'founding-pro/apply', element: <FoundingProApplyPage /> },
