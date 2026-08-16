@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useGreeting } from '@/modules/greeting/hooks/useGreeting'
+import { NotificationBell } from '@/modules/notifications/components/NotificationBell'
 import { WorkspacePresence } from '@/modules/workspaces/components/WorkspacePresence'
 import { ProfileMenu } from '@/shared/components/layout/ProfileMenu'
 import { PlanIdentityBadge } from '@/modules/plans/components/PlanIdentityBadge'
@@ -50,15 +51,7 @@ export function TopBar({
           >
             ✨
           </button>
-          <button
-            type="button"
-            disabled
-            title="No notifications yet"
-            aria-label="Notifications"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-sm text-[var(--color-ink-muted)]/60 transition-colors"
-          >
-            🔔
-          </button>
+          <NotificationBell />
           <Link
             to="/settings"
             aria-label="Settings"

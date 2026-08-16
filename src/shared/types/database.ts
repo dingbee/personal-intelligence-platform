@@ -104,6 +104,30 @@ export type WorkspaceInvitation = {
   accepted_by: string | null
 }
 
+/**
+ * Notification Foundation Phase 1 — a durable, per-recipient signal.
+ * `type` is free-form (currently only `'collaboration_invitation'` is
+ * produced) and `payload` is an unstructured jsonb bag shaped per `type`,
+ * so future producers (workspace events, AI-generated insights, scheduled
+ * digests) can reuse this table without a schema rewrite. `read_at: null`
+ * is the sole unread signal — there is no separate `is_read` boolean.
+ */
+export type Notification = {
+  id: string
+  recipient_user_id: string
+  type: string
+  payload: Record<string, unknown>
+  read_at: string | null
+  created_at: string
+}
+
+export type CollaborationInvitationPayload = {
+  workspace_id: string
+  workspace_name: string | null
+  inviter_user_id: string
+  inviter_name: string | null
+}
+
 export type Collection = {
   id: string
   user_id: string
@@ -985,6 +1009,12 @@ export type Database = {
         Update: Partial<WorkspaceInvitation>
         Relationships: []
       }
+      notifications: {
+        Row: Notification
+        Insert: Partial<Notification> & { recipient_user_id: string; type: string }
+        Update: Partial<Notification>
+        Relationships: []
+      }
       collections: {
         Row: Collection
         Insert: Partial<Collection> & { user_id: string; name: string }
@@ -1513,6 +1543,14 @@ export type Database = {
           accept: boolean
         }
         Returns: WorkspaceMember
+      }
+      mark_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: void
+      }
+      mark_all_notifications_read: {
+        Args: Record<string, never>
+        Returns: void
       }
       list_workspace_members: {
         Args: {

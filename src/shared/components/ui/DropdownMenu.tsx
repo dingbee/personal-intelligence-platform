@@ -3,9 +3,11 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 interface DropdownMenuProps {
   trigger: ReactNode
   children: ReactNode
+  /** Overrides the panel's width class (default `w-40`) for consumers that need a wider panel, e.g. the notification bell. */
+  panelClassName?: string
 }
 
-export function DropdownMenu({ trigger, children }: DropdownMenuProps) {
+export function DropdownMenu({ trigger, children, panelClassName }: DropdownMenuProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -35,7 +37,7 @@ export function DropdownMenu({ trigger, children }: DropdownMenuProps) {
         <div
           role="menu"
           onClick={() => setOpen(false)}
-          className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] py-1 shadow-floating"
+          className={`absolute right-0 z-10 mt-1 ${panelClassName ?? 'w-40'} overflow-hidden rounded-panel border border-[var(--color-border)] bg-[var(--surface-floating)] py-1 shadow-floating`}
         >
           {children}
         </div>
