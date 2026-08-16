@@ -76,6 +76,19 @@ const proTier = {
   collaboration: true,
 }
 const foundingProTier = { ...proTier, planId: 'plan-founding', code: 'founding_pro', name: 'Founding Pro' }
+const studentTier = {
+  planId: 'plan-student',
+  code: 'student',
+  name: 'Student',
+  description: 'For students, researchers and academic users.',
+  active: true,
+  monthlyPriceCents: null,
+  annualPriceCents: null,
+  currency: 'USD',
+  aiMessagesPerMonth: null,
+  storageBytes: 524288000,
+  collaboration: false,
+}
 
 function renderPage() {
   return render(createElement(MemoryRouter, null, createElement(PricingPage)))
@@ -258,5 +271,18 @@ describe('PricingPage', () => {
     renderPage()
 
     expect(screen.getByText('10,000 AI messages / month')).not.toBeNull()
+  })
+
+  it('renders the Student card whenever the catalog includes it, with its value proposition and "pricing to be announced" (regression: Student plan invisible in production because it never reached the fetched catalog, not because of a rendering filter)', () => {
+    useAuthMock.mockReturnValue({ user: null, session: null })
+    useCurrentPlanMock.mockReturnValue({ data: undefined, isLoading: false })
+    usePublicPlanCatalogMock.mockReturnValue({ data: [freeTier, studentTier, proTier, foundingProTier], isLoading: false })
+
+    renderPage()
+
+    const cards = within(screen.getByTestId('plan-cards'))
+    expect(cards.getByRole('heading', { name: 'Student' })).not.toBeNull()
+    expect(cards.getByText('For students, researchers and academic users.')).not.toBeNull()
+    expect(cards.getByText('Pricing to be announced')).not.toBeNull()
   })
 })
