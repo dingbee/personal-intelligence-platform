@@ -46,6 +46,33 @@ export async function getCurrentUserPlan(userId: string): Promise<CurrentUserPla
 }
 
 /**
+ * Thrown by hasFeature() when the has_feature RPC itself fails (network,
+ * infra, an unexpected schema/permission error) — distinct from a
+ * resolved `false`, which means the check succeeded and the caller is
+ * genuinely not entitled. Every call site that gates on hasFeature()
+ * already aborts if the awaited call doesn't resolve truthy; a thrown
+ * EntitlementCheckFailedError propagates through that same guard, so
+ * "fails closed" (see the RPC-error test in plans.test.ts) is unchanged
+ * for every existing caller — nothing is ever granted on an unverifiable
+ * check, before or after this type existed. What changes is that the
+ * failure is no longer indistinguishable from a genuine denial: a
+ * `useHasFeature` consumer can inspect `isError`/`error` on the query
+ * result to tell "you're not on this plan" apart from "we couldn't check
+ * right now," and every server-side capability guard (runCapability.ts,
+ * each run*Intelligence.ts) now throws this instead of a generic
+ * "requires an upgraded plan" message when the real cause was an
+ * infrastructure failure, not a denial. Message is deliberately generic —
+ * never includes the underlying Supabase error, which is logged
+ * separately via console.error for diagnosis.
+ */
+export class EntitlementCheckFailedError extends Error {
+  constructor() {
+    super('We couldn’t verify your plan. Please try again.')
+    this.name = 'EntitlementCheckFailedError'
+  }
+}
+
+/**
  * Phase 4 Commercial Architecture — thin client wrapper over the
  * `has_feature` RPC (0046_feature_entitlements_and_storage_quota.sql).
  * Unlike a hardcoded plan-code check (safe only when it gates no real
@@ -63,7 +90,7 @@ export async function hasFeature(userId: string, featureKey: string): Promise<bo
   const { data, error } = await supabase.rpc('has_feature', { p_user_id: userId, p_feature_key: featureKey })
   if (error) {
     console.error('hasFeature: resolution failed:', error)
-    return false
+    throw new EntitlementCheckFailedError()
   }
   return data ?? false
 }

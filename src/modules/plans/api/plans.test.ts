@@ -12,7 +12,7 @@ const { rpcMock, fromMock } = vi.hoisted(() => ({
 
 vi.mock('@/shared/lib/supabase', () => ({ supabase: { rpc: rpcMock, from: fromMock } }))
 
-import { getPublicPlanCatalog, getStorageUsage, hasFeature } from '@/modules/plans/api/plans'
+import { EntitlementCheckFailedError, getPublicPlanCatalog, getStorageUsage, hasFeature } from '@/modules/plans/api/plans'
 
 describe('hasFeature', () => {
   it('calls the has_feature RPC with the user id and feature key', async () => {
@@ -31,10 +31,16 @@ describe('hasFeature', () => {
     expect(await hasFeature('user-1', 'collaboration')).toBe(false)
   })
 
-  it('fails closed (false) on an RPC error, never granting a feature on an unverifiable check', async () => {
+  it('fails closed on an RPC error — throws rather than resolving true, never granting a feature on an unverifiable check', async () => {
     rpcMock.mockResolvedValueOnce({ data: null, error: new Error('boom') })
 
-    expect(await hasFeature('user-1', 'collaboration')).toBe(false)
+    await expect(hasFeature('user-1', 'collaboration')).rejects.toThrow(EntitlementCheckFailedError)
+  })
+
+  it('the thrown error never exposes the underlying Supabase error text', async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: new Error('relation "plan_quotas" does not exist') })
+
+    await expect(hasFeature('user-1', 'collaboration')).rejects.toThrow('We couldn’t verify your plan. Please try again.')
   })
 })
 
