@@ -4,6 +4,7 @@ import {
   useAdminAiUsageSummary,
   useAdminBetaInvites,
   useAdminCreateBetaInvite,
+  useAdminPlansAndQuotas,
   useAdminPlatformCounts,
   useAdminRevokeBetaInvite,
   useAdminSendBetaInvitationEmail,
@@ -44,6 +45,7 @@ function StatTile({ label, value }: { label: string; value: number | string }) {
 export function AdminDashboardPage() {
   const { data: users = [], isLoading: usersLoading } = useAdminUsers()
   const { data: invites = [], isLoading: invitesLoading } = useAdminBetaInvites()
+  const { data: plansAndQuotas } = useAdminPlansAndQuotas()
   const createInvite = useAdminCreateBetaInvite()
   const sendInviteEmail = useAdminSendBetaInvitationEmail()
   const revokeInvite = useAdminRevokeBetaInvite()
@@ -53,6 +55,7 @@ export function AdminDashboardPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteName, setInviteName] = useState('')
   const [inviteOrg, setInviteOrg] = useState('')
+  const [invitePlanId, setInvitePlanId] = useState('')
   const [inviteFeedback, setInviteFeedback] = useState<string | null>(null)
   const [confirmingRevokeId, setConfirmingRevokeId] = useState<string | null>(null)
 
@@ -68,11 +71,23 @@ export function AdminDashboardPage() {
   async function handleCreateInvite(event: React.FormEvent) {
     event.preventDefault()
     setInviteFeedback(null)
+    // A deliberately required choice, not an optional one defaulting to
+    // null: assign_default_plan() (0044_commercial_schema_reconciliation.sql)
+    // falls back to the literal `beta` plan when an invite carries no
+    // plan_id — a pre-existing DB function this workstream leaves
+    // untouched (unnecessary migration, and beta's own quotas must stay
+    // intact for existing Beta users). Requiring an explicit choice here
+    // is what actually stops this form from ever creating a new
+    // Beta-plan customer, without altering that function.
+    if (!invitePlanId) {
+      setInviteFeedback('Choose a plan for this invite.')
+      return
+    }
     const result = await createInvite.mutateAsync({
       email: inviteEmail,
       fullName: inviteName || null,
       organization: inviteOrg || null,
-      planId: null,
+      planId: invitePlanId,
     })
     if (result.outcome === 'duplicate') {
       setInviteFeedback(`${inviteEmail} already has an invite on file.`)
@@ -81,6 +96,7 @@ export function AdminDashboardPage() {
     setInviteEmail('')
     setInviteName('')
     setInviteOrg('')
+    setInvitePlanId('')
     // PIP Stabilization v1 (P1) — invite-row creation and email delivery are
     // reported as two distinct facts: a database row existing was never
     // proof the invitee was told anything. If invite_id is missing (should
@@ -128,7 +144,7 @@ export function AdminDashboardPage() {
           <p className="mb-2 text-xs font-medium text-[var(--color-ink-muted)]">Users</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatTile label="Total users" value={users.length} />
-            <StatTile label="Beta plan" value={planCounts.beta ?? 0} />
+            <StatTile label="Legacy Beta" value={planCounts.beta ?? 0} />
             <StatTile label="Pro plan" value={planCounts.pro ?? 0} />
             <StatTile label="Enterprise plan" value={planCounts.enterprise ?? 0} />
           </div>
@@ -153,16 +169,40 @@ export function AdminDashboardPage() {
         <div>
           <p className="mb-2 text-xs font-medium text-[var(--color-ink-muted)]">System</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <StatTile label="Pending beta invites" value={pendingInvites.length} />
+            <StatTile label="Pending access invites" value={pendingInvites.length} />
             <StatTile label="Database reachable" value={!usersLoading ? 'Yes' : 'Checking…'} />
             <StatTile label="Auth session" value="Active" />
           </div>
         </div>
       </SurfaceCard>
 
-      {/* Beta Invites */}
+      {/*
+        Access Invites — this is the platform's signup-access gate
+        (is_beta_invited(), checked by AuthContext.signUpWithPassword
+        before every account creation), not a Founding-Pro-specific tool.
+        It predates and is architecturally distinct from the dedicated
+        Founding Pro Programme application/review/enrollment flow at
+        /admin/founding-pro (self-service application -> admin approval
+        -> priced invitation -> acceptance), which already implements
+        Founding Pro's own request/review/grant pipeline in full and is
+        not duplicated here. Renamed away from "Beta Invites" (Beta is
+        retired as a customer-facing plan) and no longer silently
+        defaults a new invite to the Beta plan (beta_invites.plan_id has
+        always supported an explicit target plan — admin_create_beta_invite
+        already accepted it; only this form never exposed it). An admin
+        can still grant Founding Pro directly through an invite here when
+        that's the right tool (e.g. a person already agreed with outside
+        the public application flow); the applications queue on the
+        Founding Pro Programme page remains the primary path for
+        self-service applicants.
+      */}
       <SurfaceCard className="flex flex-col gap-4">
-        <SectionHeading>Beta Invites</SectionHeading>
+        <div className="flex items-center justify-between">
+          <SectionHeading>Access Invites</SectionHeading>
+          <Link to="/admin/founding-pro" className="text-xs text-[var(--color-accent)] hover:underline">
+            Founding Pro Programme →
+          </Link>
+        </div>
 
         <form onSubmit={handleCreateInvite} className="flex flex-wrap items-end gap-3">
           <div className="w-56">
@@ -174,17 +214,37 @@ export function AdminDashboardPage() {
           <div className="w-44">
             <Input label="Organization" value={inviteOrg} onChange={(e) => setInviteOrg(e.target.value)} />
           </div>
+          <label className="flex flex-col gap-1 text-xs text-[var(--color-ink-muted)]">
+            Plan on signup
+            <select
+              required
+              value={invitePlanId}
+              onChange={(e) => setInvitePlanId(e.target.value)}
+              className="rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-1.5 text-sm text-[var(--color-ink)]"
+            >
+              <option value="">Choose plan…</option>
+              {plansAndQuotas?.plans
+                .filter((plan) => plan.code !== 'beta')
+                .map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.name}
+                  </option>
+                ))}
+            </select>
+          </label>
           <Button type="submit" loading={createInvite.isPending}>
             Create invite
           </Button>
         </form>
         {inviteFeedback && <p className="text-xs text-[var(--color-ink-muted)]">{inviteFeedback}</p>}
-        <p className="text-xs text-[var(--color-ink-muted)]">New invites default to the Beta plan — assign Pro/Enterprise from Users after signup.</p>
+        <p className="text-xs text-[var(--color-ink-muted)]">
+          Grants access to sign up and assigns the chosen plan. Beta is retired — no invite created here assigns it.
+        </p>
 
         {invitesLoading ? (
           <Spinner size="sm" />
         ) : invites.length === 0 ? (
-          <EmptyState title="No invites yet" description="Create the first beta invite above." />
+          <EmptyState title="No invites yet" description="Create the first invite above." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createElement } from 'react'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 /**
@@ -99,8 +99,16 @@ describe('PricingPage', () => {
 
     renderPage()
 
-    expect(screen.getByText('Free')).not.toBeNull()
-    expect(screen.getByText('Pro')).not.toBeNull()
+    // Plan names appear more than once on the page now — once as each
+    // card's <h2> heading and again in the "Compare plans" full-capability
+    // table (and, for Free specifically, a second time as the price
+    // itself, since a Free card's price line also reads "Free" rather
+    // than "$0"). Querying by heading role is what actually pins this
+    // down to "the card titled X exists," not just "the word X appears
+    // somewhere."
+    const cards = within(screen.getByTestId('plan-cards'))
+    expect(cards.getByRole('heading', { name: 'Free' })).not.toBeNull()
+    expect(cards.getByRole('heading', { name: 'Pro' })).not.toBeNull()
     expect(screen.getByText('Sign up to get started')).not.toBeNull()
     expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
   })
@@ -111,7 +119,7 @@ describe('PricingPage', () => {
 
     renderPage()
 
-    expect(screen.getByText('Founding Pro')).not.toBeNull()
+    expect(within(screen.getByTestId('plan-cards')).getByText('Founding Pro')).not.toBeNull()
     expect(screen.getByText('60')).not.toBeNull()
     expect(screen.getByText('Sign up to apply')).not.toBeNull()
     expect(screen.queryByText('Apply for Founding Pro')).toBeNull()
@@ -189,7 +197,7 @@ describe('PricingPage', () => {
 
     renderPage()
 
-    expect(screen.getByText('Founding Pro')).not.toBeNull()
+    expect(within(screen.getByTestId('plan-cards')).getByText('Founding Pro')).not.toBeNull()
     expect(screen.getByText('Founding member #42')).not.toBeNull()
     expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
     expect(screen.queryByText('Manage billing')).toBeNull()

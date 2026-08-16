@@ -36,7 +36,17 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 // never name an AI provider, mention "provider selection," or imply a
 // user chooses which model answers them. ARRIYIA picks a provider
 // automatically, always, on every plan.
+// Front-end-only presentational copy — never persisted, never a business
+// decision baked into the database. Mirrors the pre-existing pattern
+// CORE_FEATURES already established (marketing copy lives here; every
+// number shown anywhere on this page still comes from usePublicPlanCatalog).
 const CORE_FEATURES = ['Documents, notes, knowledge graph & conversations', 'AI memory & personalization']
+
+const VALUE_PROP: Record<string, string> = {
+  free: 'Get started with your own knowledge base.',
+  student: 'For students, researchers and academic users.',
+  pro: 'More capacity and collaboration when you need it.',
+}
 
 function formatPrice(cents: number | null, currency: string): string | null {
   if (cents === null) return null
@@ -49,6 +59,15 @@ type ProCta =
   | { kind: 'sign-up' }
   | { kind: 'upgrade'; onClick: () => void; isStarting: boolean; error: string | null }
 
+/**
+ * Card hierarchy (Phase: Pricing/Founding Pro/Beta Consolidation):
+ * name -> price -> value proposition -> key capabilities (short,
+ * scannable) -> CTA. The exhaustive spec comparison (exact AI-message
+ * counts, exact storage, collaboration) moves to the "Compare plans"
+ * section below so a card never has to choose between being readable
+ * and being complete — it's readable, and complete detail is one click
+ * away.
+ */
 function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent: boolean; proCta: ProCta }) {
   const monthly = formatPrice(tier.monthlyPriceCents, tier.currency)
   const annual = formatPrice(tier.annualPriceCents, tier.currency)
@@ -63,7 +82,7 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
           {isCurrent && <StatusBadge label="Current plan" variant="info" />}
         </div>
         {isFree ? (
-          <p className="mt-1 text-2xl font-semibold text-[var(--color-ink)]">$0</p>
+          <p className="mt-1 text-2xl font-semibold text-[var(--color-ink)]">Free</p>
         ) : monthly ? (
           <div className="mt-1">
             <p className="text-2xl font-semibold text-[var(--color-ink)]">{monthly}/mo</p>
@@ -72,7 +91,7 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
         ) : (
           <p className="mt-1 text-lg font-semibold text-[var(--color-ink)]">Pricing to be announced</p>
         )}
-        {tier.description && <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{tier.description}</p>}
+        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{VALUE_PROP[tier.code] ?? tier.description}</p>
       </div>
 
       <ul className="flex flex-1 flex-col gap-2 text-sm text-[var(--color-ink)]">
@@ -211,7 +230,7 @@ export function PricingPage() {
             <Spinner />
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div data-testid="plan-cards" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/*
               Founding Pro Programme Phase 2 — Founding Pro now has its own
               dedicated card (live capacity, application state, no invented
@@ -230,6 +249,45 @@ export function PricingPage() {
                 <PlanCard key={tier.code} tier={tier} isCurrent={effectivePlanCode === tier.code} proCta={tier.code === 'pro' ? proCta : { kind: 'none' }} />
               ))}
           </div>
+        )}
+
+        {!catalogLoading && catalog && (
+          <details className="rounded-card border border-[var(--color-border)] bg-[var(--surface-inset)] p-4">
+            <summary className="cursor-pointer text-sm font-medium text-[var(--color-ink)]">Compare plans / full capabilities</summary>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="text-[var(--color-ink-muted)]">
+                    <th className="pb-2 pr-4 font-medium">Plan</th>
+                    <th className="pb-2 pr-4 font-medium">Price</th>
+                    <th className="pb-2 pr-4 font-medium">AI messages / month</th>
+                    <th className="pb-2 pr-4 font-medium">Storage</th>
+                    <th className="pb-2 font-medium">Collaboration</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {catalog.map((tier) => {
+                    const monthly = formatPrice(tier.monthlyPriceCents, tier.currency)
+                    return (
+                      <tr key={tier.code} className="border-t border-[var(--color-border)]">
+                        <td className="py-2 pr-4 text-[var(--color-ink)]">{tier.name}</td>
+                        <td className="py-2 pr-4 text-[var(--color-ink-muted)]">
+                          {tier.code === 'free' ? 'Free' : tier.code === 'founding_pro' ? 'By application' : monthly ? `${monthly}/mo` : 'To be announced'}
+                        </td>
+                        <td className="py-2 pr-4 text-[var(--color-ink-muted)]">
+                          {tier.aiMessagesPerMonth !== null ? tier.aiMessagesPerMonth.toLocaleString() : '—'}
+                        </td>
+                        <td className="py-2 pr-4 text-[var(--color-ink-muted)]">
+                          {tier.storageBytes !== null ? formatFileSize(tier.storageBytes) : '—'}
+                        </td>
+                        <td className="py-2 text-[var(--color-ink-muted)]">{tier.collaboration ? 'Included' : '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </details>
         )}
       </div>
     </div>

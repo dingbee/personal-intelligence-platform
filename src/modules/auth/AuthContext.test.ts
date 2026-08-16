@@ -108,7 +108,7 @@ describe('AuthContext.signUpWithPassword', () => {
 
     const outcome = await result.current.signUpWithPassword('stranger@example.com', 'password123')
 
-    expect(outcome).toEqual({ error: 'This email is not approved for beta access.' })
+    expect(outcome).toEqual({ error: 'This email doesn’t have access yet. Contact us for an invitation.' })
     expect(signUpMock).not.toHaveBeenCalled()
   })
 

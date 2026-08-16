@@ -61,7 +61,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   if (!invited) {
-    return { error: 'This email is not approved for beta access.' }
+    // Pricing/Founding Pro/Beta Consolidation — this gate (is_beta_invited,
+    // backed by the beta_invites table) is the platform's general
+    // signup-access control, not specifically about a "Beta" product
+    // tier — Beta is retired as a customer-facing plan, but this
+    // invite-gated signup mechanism itself is unchanged and still in
+    // active use (now also the entry point for Founding Pro invites).
+    // The message is generic for the same reason.
+    return { error: 'This email doesn’t have access yet. Contact us for an invitation.' }
   }
 
   // ARRIYIA Product Completion Phase 2 — previously called with no
