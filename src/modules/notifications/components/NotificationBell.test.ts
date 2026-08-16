@@ -72,13 +72,66 @@ describe('NotificationBell', () => {
     expect(screen.getByText('9+')).not.toBeNull()
   })
 
-  it('shows a spinner while loading', () => {
+  it('shows a spinner and loading text while loading', () => {
     useNotificationsMock.mockReturnValue({ data: undefined, isLoading: true, unreadCount: 0, markRead: { mutate: markReadMutate } })
 
     renderBell()
     fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
 
     expect(screen.getByRole('status')).not.toBeNull()
+    expect(screen.getByText('Loading notifications…')).not.toBeNull()
+  })
+
+  it('shows a distinct error state, never "No notifications yet.", when the query fails', () => {
+    const refetchMock = vi.fn()
+    useNotificationsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: refetchMock,
+      unreadCount: 0,
+      markRead: { mutate: markReadMutate },
+    })
+
+    renderBell()
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    expect(screen.getByText('Unable to load notifications.')).not.toBeNull()
+    expect(screen.queryByText('No notifications yet.')).toBeNull()
+  })
+
+  it('the error state\'s Retry button calls refetch', () => {
+    const refetchMock = vi.fn()
+    useNotificationsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: refetchMock,
+      unreadCount: 0,
+      markRead: { mutate: markReadMutate },
+    })
+
+    renderBell()
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+
+    expect(refetchMock).toHaveBeenCalled()
+  })
+
+  it('shows the genuine empty state (not the error state) when the query succeeds with zero rows', () => {
+    useNotificationsMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      unreadCount: 0,
+      markRead: { mutate: markReadMutate },
+    })
+
+    renderBell()
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    expect(screen.getByText('No notifications yet.')).not.toBeNull()
+    expect(screen.queryByText('Unable to load notifications.')).toBeNull()
   })
 
   it('renders a Collaboration notification with its message and relative time, distinguished as unread', () => {

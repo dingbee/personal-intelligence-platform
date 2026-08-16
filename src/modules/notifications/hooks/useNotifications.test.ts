@@ -1,12 +1,13 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createElement, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 
-const { listNotificationsMock, markNotificationReadMock, markAllNotificationsReadMock } = vi.hoisted(() => ({
+const { listNotificationsMock, markNotificationReadMock, markAllNotificationsReadMock, useAuthMock } = vi.hoisted(() => ({
   listNotificationsMock: vi.fn(),
   markNotificationReadMock: vi.fn(),
   markAllNotificationsReadMock: vi.fn(),
+  useAuthMock: vi.fn((): { user: { id: string } | null } => ({ user: { id: 'user-1' } })),
 }))
 
 vi.mock('@/modules/notifications/api/notifications', () => ({
@@ -14,7 +15,7 @@ vi.mock('@/modules/notifications/api/notifications', () => ({
   markNotificationRead: markNotificationReadMock,
   markAllNotificationsRead: markAllNotificationsReadMock,
 }))
-vi.mock('@/modules/auth/useAuth', () => ({ useAuth: () => ({ user: { id: 'user-1' } }) }))
+vi.mock('@/modules/auth/useAuth', () => ({ useAuth: useAuthMock }))
 
 import { useNotifications } from '@/modules/notifications/hooks/useNotifications'
 
@@ -36,6 +37,11 @@ function notification(overrides: Partial<{ id: string; read_at: string | null }>
 }
 
 describe('useNotifications', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useAuthMock.mockReturnValue({ user: { id: 'user-1' } })
+  })
+
   it('starts loading, then resolves with the fetched notifications', async () => {
     listNotificationsMock.mockResolvedValueOnce([notification()])
 
@@ -103,5 +109,43 @@ describe('useNotifications', () => {
     await waitFor(() => expect(result.current.markAllRead.isSuccess).toBe(true))
 
     expect(markAllNotificationsReadMock).toHaveBeenCalledWith()
+  })
+
+  it('does not fetch when there is no authenticated user', async () => {
+    useAuthMock.mockReturnValue({ user: null })
+
+    const { result } = renderHook(() => useNotifications(), { wrapper })
+
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(listNotificationsMock).not.toHaveBeenCalled()
+  })
+
+  it('fetches once a user becomes authenticated (auth transition)', async () => {
+    useAuthMock.mockReturnValue({ user: null })
+    listNotificationsMock.mockResolvedValueOnce([notification()])
+
+    const { result, rerender } = renderHook(() => useNotifications(), { wrapper })
+    expect(listNotificationsMock).not.toHaveBeenCalled()
+
+    useAuthMock.mockReturnValue({ user: { id: 'user-1' } })
+    rerender()
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(listNotificationsMock).toHaveBeenCalled()
+    expect(result.current.data).toHaveLength(1)
+  })
+
+  it('refetch recovers from a transient query failure', async () => {
+    listNotificationsMock.mockRejectedValueOnce(new Error('boom'))
+
+    const { result } = renderHook(() => useNotifications(), { wrapper })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+
+    listNotificationsMock.mockResolvedValueOnce([notification()])
+    await result.current.refetch()
+
+    await waitFor(() => expect(result.current.isError).toBe(false))
+    expect(result.current.data).toHaveLength(1)
   })
 })

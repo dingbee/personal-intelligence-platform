@@ -8,7 +8,10 @@ import type { CollaborationInvitationPayload, Notification } from '@/shared/type
 /** Every notification `type` this phase produces routes to a fixed destination and renders a fixed message — a small lookup, not a generic template engine, since there is exactly one type today (Phase 1 scope). */
 function describeNotification(notification: Notification): { icon: string; message: string; to: string } {
   if (notification.type === 'collaboration_invitation') {
-    const payload = notification.payload as unknown as CollaborationInvitationPayload
+    // Payload is DB-guaranteed `not null default '{}'`, but a malformed or
+    // future-shaped row must not crash the whole panel — one bad row falls
+    // back to a generic message instead of taking every other row down with it.
+    const payload = (notification.payload ?? {}) as unknown as Partial<CollaborationInvitationPayload>
     return {
       icon: '🤝',
       message: `${payload.inviter_name ?? 'Someone'} invited you to join ${payload.workspace_name ?? 'a workspace'}`,
@@ -28,7 +31,7 @@ function describeNotification(notification: Notification): { icon: string; messa
  */
 export function NotificationBell() {
   const navigate = useNavigate()
-  const { data: notifications, isLoading, unreadCount, markRead } = useNotifications()
+  const { data: notifications, isLoading, isError, refetch, unreadCount, markRead } = useNotifications()
 
   function handleOpenNotification(notification: Notification) {
     if (notification.read_at === null) markRead.mutate(notification.id)
@@ -55,8 +58,24 @@ export function NotificationBell() {
           Notifications
         </p>
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex flex-col items-center justify-center gap-2 py-8">
             <Spinner size="sm" />
+            <p className="text-xs text-[var(--color-ink-muted)]">Loading notifications…</p>
+          </div>
+        ) : isError ? (
+          // A failed fetch must never look like "there are no notifications" —
+          // that's exactly the failure mode that made a real production gap
+          // (a stale/unapplied notifications table or a query error) silently
+          // indistinguishable from "nothing to show" in this panel before.
+          <div className="flex flex-col items-center gap-2 px-3 py-6 text-center">
+            <p className="text-sm text-[var(--color-ink-muted)]">Unable to load notifications.</p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="rounded-control px-2 py-1 text-xs font-medium text-[var(--color-accent)] hover:underline"
+            >
+              Retry
+            </button>
           </div>
         ) : !notifications || notifications.length === 0 ? (
           <p className="px-3 py-6 text-center text-sm text-[var(--color-ink-muted)]">No notifications yet.</p>
