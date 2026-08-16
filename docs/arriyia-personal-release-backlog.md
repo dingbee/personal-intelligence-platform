@@ -4,6 +4,8 @@ Produced by Sprint 9.5/10 (Backlog, Technical Debt & Release Scope Review); upda
 
 Baseline audited: `dingbee/personal-intelligence-platform`, branch `main`. Sprint 9.5/10 audited HEAD `ca16138` (Sprint 9/10, verified clean and passing before that audit began); Sprint 10/10 audited HEAD `ee06450` (Sprint 9.5/10, verified clean and passing before this validation began).
 
+**Post-freeze note:** this backlog is scoped to the ARRIYIA Personal v1 release definition above and is left as the historical record for that milestone — nothing below is rewritten or removed. The Professional Intelligence tier that shipped after this freeze (Data/Analysis/Research/Planning/Decision/Action Intelligence, Execution Foundation, Intelligence Ledger, History) has its own backlog reconciliation, including a deployment-drift incident where several already-correct capabilities appeared broken because production was behind the repository — see `docs/production/arriyia-production-truth.md`, the current authoritative production-truth source, for that tier's disposition.
+
 ## Release Definition
 
 ARRIYIA Personal v1 is a personal knowledge platform: a user brings in documents, notes, images, and spreadsheets; the platform extracts, indexes, and connects that knowledge into a graph; the user asks questions in natural language and gets answers grounded in their own material, personalized by what the platform has learned about them, with honest handling when it doesn't know something. See `docs/pip-release-scope-v1.md`'s "What ARRIYIA Personal v1 includes" for the full, validated feature list.

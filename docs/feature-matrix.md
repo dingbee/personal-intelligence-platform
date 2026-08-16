@@ -2,6 +2,8 @@
 
 A living engineering inventory — not user documentation. First drafted as part of a Stabilization & Acceptance Sprint, from git history and test coverage. Updated after the user's full acceptance walkthrough of the deployed application. Feature work tracked here belongs to the Knowledge Intelligence initiative.
 
+**Post-Personal-v1 note:** this file's rows stop at the Knowledge Intelligence initiative and predate the Professional Intelligence tier (Data/Analysis/Research/Planning/Decision/Action Intelligence, Execution Foundation, Intelligence Ledger, History) and the deployment-drift incident that delayed its production rollout. That capability set's own status/entitlement/migration state is tracked in `docs/production/arriyia-production-truth.md` — the current authoritative production-truth source — rather than appended here as more ⚙️/✅/🔲 rows, since its release-alignment questions (committed vs. pushed vs. deployed vs. migration-applied) don't fit this file's implemented/accepted/backlog legend.
+
 **Status legend**
 
 | Symbol | Meaning |
