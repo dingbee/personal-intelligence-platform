@@ -102,13 +102,13 @@ describe('AuthContext.signUpWithPassword', () => {
     vi.unstubAllEnvs()
   })
 
-  it('blocks a non-invited email without ever calling auth.signUp', async () => {
+  it('blocks a non-invited email without ever calling auth.signUp, and flags it as a notInvited denial', async () => {
     rpcMock.mockResolvedValueOnce({ data: false, error: null })
     const { result } = renderHook(() => useAuth(), { wrapper })
 
     const outcome = await result.current.signUpWithPassword('stranger@example.com', 'password123')
 
-    expect(outcome).toEqual({ error: 'This email doesn’t have access yet. Contact us for an invitation.' })
+    expect(outcome).toEqual({ error: 'This email doesn’t have access yet. Contact us for an invitation.', notInvited: true })
     expect(signUpMock).not.toHaveBeenCalled()
   })
 

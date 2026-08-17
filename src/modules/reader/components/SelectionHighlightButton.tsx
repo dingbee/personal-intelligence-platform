@@ -1,4 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react'
+import { computeSelectionPopupPosition } from '@/modules/reader/components/selectionPopupPosition'
 
 interface SelectionState {
   text: string
@@ -7,8 +8,24 @@ interface SelectionState {
 }
 
 /**
- * Floating "Highlight" button that appears over a text selection made
- * inside `containerRef`. Uses viewport-relative coordinates (position:
+ * V1 Launch Hardening, Workstream 3 — same inline copy pattern established
+ * in ActionsPage.tsx/MessageBubble.tsx (copyText + a "Copied" flash),
+ * repeated locally rather than extracted into a shared helper: this is the
+ * third occurrence, but the two existing call sites are untouched,
+ * already-tested code that doesn't need touching for this fix.
+ */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Floating Highlight/Copy button pair that appears over a text selection
+ * made inside `containerRef`. Uses viewport-relative coordinates (position:
  * fixed) rather than container-relative + scroll-offset math — simpler
  * and avoids a class of positioning bugs when the reader pane scrolls.
  */
@@ -20,6 +37,7 @@ export function SelectionHighlightButton({
   onHighlight: (quote: string) => void
 }) {
   const [selection, setSelection] = useState<SelectionState | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     function handleSelectionChange() {
@@ -36,7 +54,9 @@ export function SelectionHighlightButton({
         return
       }
       const rect = range.getBoundingClientRect()
-      setSelection({ text, top: rect.top - 44, left: rect.left + rect.width / 2 })
+      const position = computeSelectionPopupPosition(rect, { width: window.innerWidth, height: window.innerHeight })
+      setSelection({ text, top: position.top, left: position.left })
+      setCopied(false)
     }
 
     document.addEventListener('selectionchange', handleSelectionChange)
@@ -45,18 +65,38 @@ export function SelectionHighlightButton({
 
   if (!selection) return null
 
+  async function handleCopy() {
+    const succeeded = await copyText(selection!.text)
+    if (succeeded) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    }
+  }
+
   return (
-    <button
-      type="button"
+    <div
       style={{ position: 'fixed', top: selection.top, left: selection.left, transform: 'translateX(-50%)' }}
-      onClick={() => {
-        onHighlight(selection.text)
-        window.getSelection()?.removeAllRanges()
-        setSelection(null)
-      }}
-      className="z-50 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-canvas)] shadow-md hover:opacity-90"
+      className="z-50 flex items-center gap-1"
     >
-      Highlight
-    </button>
+      <button
+        type="button"
+        onClick={() => {
+          onHighlight(selection.text)
+          window.getSelection()?.removeAllRanges()
+          setSelection(null)
+        }}
+        className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-canvas)] shadow-md hover:opacity-90"
+      >
+        Highlight
+      </button>
+      <button
+        type="button"
+        onClick={() => void handleCopy()}
+        aria-label="Copy selection"
+        className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-canvas)] shadow-md hover:opacity-90"
+      >
+        {copied ? 'Copied' : 'Copy'}
+      </button>
+    </div>
   )
 }

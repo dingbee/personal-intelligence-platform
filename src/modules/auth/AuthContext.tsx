@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // invite-gated signup mechanism itself is unchanged and still in
     // active use (now also the entry point for Founding Pro invites).
     // The message is generic for the same reason.
-    return { error: 'This email doesn’t have access yet. Contact us for an invitation.' }
+    return { error: 'This email doesn’t have access yet. Contact us for an invitation.', notInvited: true }
   }
 
   // ARRIYIA Product Completion Phase 2 — previously called with no

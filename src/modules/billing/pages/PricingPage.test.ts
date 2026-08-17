@@ -122,7 +122,8 @@ describe('PricingPage', () => {
     const cards = within(screen.getByTestId('plan-cards'))
     expect(cards.getByRole('heading', { name: 'Free' })).not.toBeNull()
     expect(cards.getByRole('heading', { name: 'Pro' })).not.toBeNull()
-    expect(screen.getByText('Sign up to get started')).not.toBeNull()
+    expect(screen.getByText('Get early access')).not.toBeNull()
+    expect(screen.getByText("Currently invite-only — you'll be able to request access on the next page.")).not.toBeNull()
     expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
   })
 
@@ -145,7 +146,7 @@ describe('PricingPage', () => {
     renderPage()
 
     expect(screen.getByText('Upgrade to Pro (sandbox)')).not.toBeNull()
-    expect(screen.queryByText('Sign up to get started')).toBeNull()
+    expect(screen.queryByText('Get early access')).toBeNull()
   })
 
   it('shows "Upgrade to Pro" and marks Free as current for a signed-in user with no explicit plan assignment row', () => {
@@ -162,7 +163,7 @@ describe('PricingPage', () => {
     renderPage()
 
     expect(screen.getByText('Upgrade to Pro (sandbox)')).not.toBeNull()
-    expect(screen.queryByText('Sign up to get started')).toBeNull()
+    expect(screen.queryByText('Get early access')).toBeNull()
     expect(screen.getByText('Current plan')).not.toBeNull()
   })
 
@@ -214,7 +215,7 @@ describe('PricingPage', () => {
     expect(screen.getByText('Founding member #42')).not.toBeNull()
     expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
     expect(screen.queryByText('Manage billing')).toBeNull()
-    expect(screen.queryByText('Sign up to get started')).toBeNull()
+    expect(screen.queryByText('Get early access')).toBeNull()
     expect(screen.queryByText('Apply for Founding Pro')).toBeNull()
   })
 
@@ -249,7 +250,7 @@ describe('PricingPage', () => {
 
     expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
     expect(screen.queryByText('Manage billing')).toBeNull()
-    expect(screen.queryByText('Sign up to get started')).toBeNull()
+    expect(screen.queryByText('Get early access')).toBeNull()
   })
 
   it('never renders AI provider names or "provider selection" language anywhere on the page', () => {

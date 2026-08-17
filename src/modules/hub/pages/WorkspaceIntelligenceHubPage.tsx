@@ -27,6 +27,7 @@ import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { StatCard } from '@/shared/components/ui/surface/StatCard'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Spinner } from '@/shared/components/ui/Spinner'
+import { Button } from '@/shared/components/ui/Button'
 import { HubOnboarding } from '@/modules/hub/components/HubOnboarding'
 
 /** A zone eyebrow — the small uppercase label that gives the page's stack of sections a sense of grouping instead of one undifferentiated list. */
@@ -105,7 +106,7 @@ function IntelligenceZoneItems({
  */
 export function WorkspaceIntelligenceHubPage() {
   const { currentWorkspaceId } = useWorkspace()
-  const { data, isLoading, summary, workspaceName } = useWorkspaceHub()
+  const { data, isLoading, isError, refetch, summary, workspaceName } = useWorkspaceHub()
   const greeting = useGreeting()
   const commandContext = useCommandContext()
   const commandActions = useCommandActions()
@@ -130,6 +131,20 @@ export function WorkspaceIntelligenceHubPage() {
         <div className="flex justify-center py-16">
           <Spinner />
         </div>
+      ) : isError ? (
+        // V1 Launch Hardening, Workstream 2 — previously `!data ? null`
+        // covered this same query-failure case (data stays undefined after
+        // retries are exhausted), rendering nothing below the greeting for
+        // the app's default landing page with no explanation or recovery.
+        <EmptyState
+          title="The Hub couldn't load"
+          description="Something went wrong loading your workspace's command center."
+          action={
+            <Button variant="secondary" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        />
       ) : !data ? null : data.isZeroData ? (
         // ARRIYIA Product Completion Phase 2 — a genuinely zero-data
         // workspace (see computeIsZeroData: no documents, notes, or

@@ -1,7 +1,27 @@
+import { useState } from 'react'
 import type { Message } from '@/shared/types/database'
 import { MarkdownRenderer } from '@/modules/ai/chat/components/renderer/MarkdownRenderer'
 import { ArtifactPreviewCard } from '@/modules/ai/chat/components/ArtifactPreviewCard'
 import type { ArtifactPreview } from '@/modules/workspace-actions/types'
+
+/**
+ * V1 Launch Hardening, Workstream 3 — same inline pattern ActionsPage.tsx
+ * already established for its "Copy action"/"Copy action set" buttons
+ * (ActionsPage.tsx's local `copyText` + a `copied` flag that resets after
+ * 1.5s), reused here rather than inventing a different copy interaction
+ * for Chat. Wrapped in try/catch here (ActionsPage's callers don't need
+ * it) because clipboard access can fail — insecure context, denied
+ * permission — and a failed copy shouldn't throw or surface a scary error
+ * for what's a low-stakes convenience action.
+ */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return false
+  }
+}
 
 export function MessageBubble({
   message,
@@ -29,6 +49,15 @@ export function MessageBubble({
   artifactPreview?: ArtifactPreview
 }) {
   const isUser = message.role === 'user'
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopy() {
+    const succeeded = await copyText(message.content)
+    if (succeeded) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    }
+  }
 
   return (
     <div id={message.id ? `message-${message.id}` : undefined} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -56,16 +85,28 @@ export function MessageBubble({
           ) : (
             <span />
           )}
-          {onSave && (
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={saved || saving}
-              className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] disabled:hover:text-[var(--color-ink-muted)]"
-            >
-              {saved ? 'Saved' : saving ? 'Saving…' : 'Save to Notes'}
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {!isUser && !artifactPreview && message.content && (
+              <button
+                type="button"
+                onClick={() => void handleCopy()}
+                aria-label="Copy response"
+                className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-accent)]"
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            )}
+            {onSave && (
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={saved || saving}
+                className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] disabled:hover:text-[var(--color-ink-muted)]"
+              >
+                {saved ? 'Saved' : saving ? 'Saving…' : 'Save to Notes'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

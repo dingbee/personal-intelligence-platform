@@ -15,7 +15,14 @@ export interface AuthContextValue {
    */
   passwordRecovery: boolean
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
-  signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
+  /**
+   * V1 Launch Hardening, Workstream 1 — `notInvited` distinguishes "denied
+   * by the is_beta_invited gate" from any other signup failure (network,
+   * validation, an already-registered email), so the caller can offer a
+   * "request access" affordance specifically for the gate denial rather
+   * than on every error.
+   */
+  signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null; notInvited?: boolean }>
   signInWithMagicLink: (email: string) => Promise<{ error: string | null }>
   sendPasswordReset: (email: string) => Promise<{ error: string | null }>
   updatePassword: (password: string) => Promise<{ error: string | null }>

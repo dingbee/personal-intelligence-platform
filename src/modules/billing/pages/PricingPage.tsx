@@ -189,8 +189,17 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
       {isPro && proCta.kind === 'sign-up' && (
         <div className="flex flex-col gap-2">
           <Link to="/signup">
-            <Button className="w-full">Sign up to get started</Button>
+            <Button className="w-full">Get early access</Button>
           </Link>
+          {/*
+            V1 Launch Hardening, Workstream 1 — ARRIYIA v1 is a controlled
+            invite-only launch, not unrestricted self-serve signup (see
+            AuthContext.signUpWithPassword's is_beta_invited gate, which
+            this intentionally does not weaken). "Sign up to get started"
+            previously implied instant self-serve access; this sets the
+            correct expectation up front instead of only after a denial.
+          */}
+          <p className="text-xs text-[var(--color-ink-muted)]">Currently invite-only — you'll be able to request access on the next page.</p>
           <p className="text-xs text-[var(--color-ink-muted)]">
             Already have an account? <Link to="/login" className="text-[var(--color-accent)] hover:underline">Log in</Link>
           </p>

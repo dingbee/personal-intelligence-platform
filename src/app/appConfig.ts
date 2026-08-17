@@ -9,4 +9,14 @@ export const appConfig = {
   productSubtitle: 'Personal Intelligence Platform',
   logo: null as string | null,
   tagline: "Let's continue building your knowledge.",
+  /**
+   * V1 Launch Hardening, Workstream 1 — the one already-documented, live,
+   * monitored operator address (see docs/founder-command-center-discovery.md,
+   * docs/beta-admin-ai-governance-discovery.md: the platform_admins bootstrap
+   * row and the sole beta_invites row both resolve to this account). Used as
+   * the "request early access" destination for a visitor denied signup by
+   * the is_beta_invited gate, so that destination is a real, reachable
+   * inbox rather than a new, unverified contact channel.
+   */
+  accessRequestEmail: 'dan@nolmark.co',
 }
