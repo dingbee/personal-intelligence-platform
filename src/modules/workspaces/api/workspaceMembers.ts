@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '@/shared/lib/supabase'
 import type {
   WorkspaceInvitation,
@@ -127,6 +128,39 @@ export async function cancelWorkspaceInvitation(invitationId: string): Promise<W
 }
 
 /**
+ * Diagnostic error-surfacing fix — `supabase.functions.invoke()` throws a
+ * `FunctionsHttpError` for any non-2xx response whose `.message` is always
+ * the same hardcoded string ("Edge Function returned a non-2xx status
+ * code"), regardless of what the function actually reported. The real
+ * reason lives in the HTTP response body, reachable via the error's own
+ * `.context` (the raw `Response` object — this is the pattern
+ * `@supabase/supabase-js`'s own docs recommend for `FunctionsHttpError`).
+ * `send-workspace-invitation` always responds with `{ error: string }` on
+ * failure (see that function's `errorResponse` helper), so this reads
+ * exactly that one field and nothing else — never the full body, headers,
+ * or any other property that could carry something sensitive. Any read
+ * failure (non-JSON body, empty body, unexpected shape) falls back to the
+ * original generic `error.message`, so this can only ever add information,
+ * never lose the pre-existing behavior.
+ */
+async function extractEdgeFunctionErrorMessage(error: unknown): Promise<string> {
+  const fallbackMessage = error instanceof Error ? error.message : 'Failed to send invitation email'
+  if (!(error instanceof FunctionsHttpError)) return fallbackMessage
+
+  try {
+    const body: unknown = await error.context.json()
+    if (body && typeof body === 'object' && 'error' in body) {
+      const serverMessage = (body as { error: unknown }).error
+      if (typeof serverMessage === 'string' && serverMessage.trim().length > 0) return serverMessage
+    }
+  } catch {
+    // Response body wasn't valid JSON (or couldn't be read) — use the generic fallback below.
+  }
+
+  return fallbackMessage
+}
+
+/**
  * UX-14.5.8.3 — invokes the `send-workspace-invitation` edge function,
  * this app's first service-role-key trust boundary (see that function's
  * own header comment for the full security rationale). Deliberately takes
@@ -147,7 +181,7 @@ export async function sendWorkspaceInvitationEmail(params: {
   id: string
 }): Promise<{ error: string | null }> {
   const { error } = await supabase.functions.invoke('send-workspace-invitation', { body: params })
-  return { error: error ? error.message : null }
+  return { error: error ? await extractEdgeFunctionErrorMessage(error) : null }
 }
 
 /** Maps `inviteToWorkspace`'s two possible outcomes onto `sendWorkspaceInvitationEmail`'s `kind`/`id` shape, so call sites don't need to know the edge function's request contract. */

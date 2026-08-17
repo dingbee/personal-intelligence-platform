@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { FunctionsHttpError } from '@supabase/supabase-js'
 
 interface FakeMembershipRow {
   id: string
@@ -407,6 +408,20 @@ describe('cancelWorkspaceInvitation', () => {
   })
 })
 
+/**
+ * Diagnostic error-surfacing fix — a real `FunctionsHttpError` (thrown by
+ * `@supabase/functions-js` for any non-2xx response) carries the raw
+ * `Response` on `.context`, not a pre-parsed body. `jsonBody` fakes just
+ * enough of that `Response` shape (`.json()`) for `extractEdgeFunctionErrorMessage`
+ * to read from, without needing a real fetch Response in this test environment.
+ */
+function fakeHttpError(jsonBody: unknown | (() => Promise<unknown>)): FunctionsHttpError {
+  const context = {
+    json: () => (typeof jsonBody === 'function' ? (jsonBody as () => Promise<unknown>)() : Promise.resolve(jsonBody)),
+  }
+  return new FunctionsHttpError(context as unknown as Response)
+}
+
 describe('sendWorkspaceInvitationEmail', () => {
   it('invokes the edge function with the given params and returns no error on success', async () => {
     functionsInvokeMock.mockResolvedValueOnce({ data: { sent: true }, error: null })
@@ -433,6 +448,78 @@ describe('sendWorkspaceInvitationEmail', () => {
     const result = await sendWorkspaceInvitationEmail({ workspaceId: 'workspace-1', kind: 'membership', id: 'member-1' })
 
     expect(result.error).toMatch(/Only a workspace owner/)
+  })
+
+  it('reads the real diagnostic reason out of a structured FunctionsHttpError response body, instead of the generic SDK message', async () => {
+    functionsInvokeMock.mockResolvedValueOnce({
+      data: null,
+      error: fakeHttpError({ error: 'RESEND_API_KEY is not configured' }),
+    })
+
+    const result = await sendWorkspaceInvitationEmail({ workspaceId: 'workspace-1', kind: 'invitation', id: 'invitation-1' })
+
+    expect(result).toEqual({ error: 'RESEND_API_KEY is not configured' })
+  })
+
+  it('surfaces another structured provider error the same way', async () => {
+    functionsInvokeMock.mockResolvedValueOnce({
+      data: null,
+      error: fakeHttpError({ error: 'Email provider error: 502 domain not verified' }),
+    })
+
+    const result = await sendWorkspaceInvitationEmail({ workspaceId: 'workspace-1', kind: 'invitation', id: 'invitation-1' })
+
+    expect(result).toEqual({ error: 'Email provider error: 502 domain not verified' })
+  })
+
+  it('falls back to the generic SDK message when the response body is not valid JSON', async () => {
+    functionsInvokeMock.mockResolvedValueOnce({
+      data: null,
+      error: fakeHttpError(() => Promise.reject(new Error('Unexpected token < in JSON'))),
+    })
+
+    const result = await sendWorkspaceInvitationEmail({ workspaceId: 'workspace-1', kind: 'invitation', id: 'invitation-1' })
+
+    expect(result).toEqual({ error: 'Edge Function returned a non-2xx status code' })
+  })
+
+  it('falls back to the generic SDK message when the JSON body has no usable error field', async () => {
+    functionsInvokeMock.mockResolvedValueOnce({
+      data: null,
+      error: fakeHttpError({ status: 'failed' }),
+    })
+
+    const result = await sendWorkspaceInvitationEmail({ workspaceId: 'workspace-1', kind: 'invitation', id: 'invitation-1' })
+
+    expect(result).toEqual({ error: 'Edge Function returned a non-2xx status code' })
+  })
+
+  it('falls back to the generic SDK message when the error field is present but empty', async () => {
+    functionsInvokeMock.mockResolvedValueOnce({
+      data: null,
+      error: fakeHttpError({ error: '   ' }),
+    })
+
+    const result = await sendWorkspaceInvitationEmail({ workspaceId: 'workspace-1', kind: 'invitation', id: 'invitation-1' })
+
+    expect(result).toEqual({ error: 'Edge Function returned a non-2xx status code' })
+  })
+
+  it('never surfaces secrets or other sensitive fields the response body might carry alongside the error message', async () => {
+    functionsInvokeMock.mockResolvedValueOnce({
+      data: null,
+      error: fakeHttpError({
+        error: 'RESEND_API_KEY is not configured',
+        apiKey: 'sk-live-should-never-appear',
+        authorization: 'Bearer super-secret-jwt',
+      }),
+    })
+
+    const result = await sendWorkspaceInvitationEmail({ workspaceId: 'workspace-1', kind: 'invitation', id: 'invitation-1' })
+
+    expect(result).toEqual({ error: 'RESEND_API_KEY is not configured' })
+    expect(result.error).not.toContain('sk-live-should-never-appear')
+    expect(result.error).not.toContain('super-secret-jwt')
   })
 })
 
