@@ -16,13 +16,23 @@ export interface AuthContextValue {
   passwordRecovery: boolean
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
   /**
-   * V1 Launch Hardening, Workstream 1 — `notInvited` distinguishes "denied
-   * by the is_beta_invited gate" from any other signup failure (network,
-   * validation, an already-registered email), so the caller can offer a
-   * "request access" affordance specifically for the gate denial rather
-   * than on every error.
+   * V1 — Collaboration Invitation Signup Authorization. `denialReason`
+   * distinguishes *why* signup was denied — a stale invitation
+   * ('invitation_expired'), a cancelled one ('invitation_revoked'), or no
+   * invitation of any kind ('not_invited') — from an ordinary, unrelated
+   * signup failure (network, validation, an already-registered email),
+   * which leaves `denialReason` unset. The authorization decision itself
+   * is never made here: this calls `get_signup_access_status()`, a
+   * database function, purely to classify *why* for the UI's benefit
+   * before ever attempting `signUp()`; the actual enforcement is the
+   * `enforce_signup_authorization_before_insert` trigger on `auth.users`
+   * (0069_collaboration_invitation_signup_authorization.sql), which runs
+   * regardless of what this pre-check said.
    */
-  signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null; notInvited?: boolean }>
+  signUpWithPassword: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: string | null; denialReason?: 'invitation_expired' | 'invitation_revoked' | 'not_invited' }>
   signInWithMagicLink: (email: string) => Promise<{ error: string | null }>
   sendPasswordReset: (email: string) => Promise<{ error: string | null }>
   updatePassword: (password: string) => Promise<{ error: string | null }>

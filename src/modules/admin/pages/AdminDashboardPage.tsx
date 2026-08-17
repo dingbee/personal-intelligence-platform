@@ -177,10 +177,13 @@ export function AdminDashboardPage() {
       </SurfaceCard>
 
       {/*
-        Access Invites — this is the platform's signup-access gate
-        (is_beta_invited(), checked by AuthContext.signUpWithPassword
-        before every account creation), not a Founding-Pro-specific tool.
-        It predates and is architecturally distinct from the dedicated
+        Access Invites — this admin-grants a signup authorization
+        (is_beta_invited()), one of two ways a new account can now be
+        created since 0069_collaboration_invitation_signup_authorization.
+        sql — the other is a valid pending workspace invitation, which
+        this panel has no visibility into (see WorkspaceMemberRoster for
+        that). Not a Founding-Pro-specific tool. It predates and is
+        architecturally distinct from the dedicated
         Founding Pro Programme application/review/enrollment flow at
         /admin/founding-pro (self-service application -> admin approval
         -> priced invitation -> acceptance), which already implements

@@ -17,6 +17,27 @@ function canonicalSiteUrl(): string {
   return import.meta.env.VITE_SITE_URL?.replace(/\/$/, '') || window.location.origin
 }
 
+type SignupDenialReason = 'invitation_expired' | 'invitation_revoked' | 'not_invited'
+
+// V1 — Collaboration Invitation Signup Authorization. Distinct, accurate
+// copy per denial reason (Workstream 6) — no wording says "beta" anymore,
+// since a workspace invitation is now an equally valid, non-beta basis
+// for account creation.
+const SIGNUP_DENIAL_MESSAGE: Record<SignupDenialReason, string> = {
+  not_invited:
+    'ARRIYIA access is currently provided through a workspace invitation. If someone has invited you to their workspace, use the link from that invitation email.',
+  invitation_expired: 'Your workspace invitation has expired. Ask the workspace owner to send you a new one.',
+  invitation_revoked: 'This workspace invitation is no longer valid. Ask the workspace owner to send you a new one.',
+}
+
+// Must match enforce_signup_authorization()'s raised exception text
+// exactly (0069_collaboration_invitation_signup_authorization.sql) — this
+// is only ever reached if the client's own pre-check went stale between
+// the check and the actual signUp() call (e.g. the invitation was
+// cancelled in between).
+const SIGNUP_AUTHORIZATION_TRIGGER_MESSAGE =
+  'This email is not authorized to create an account. An admin invitation or a pending workspace invitation is required.'
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -50,25 +71,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       passwordRecovery,
       async signUpWithPassword(email, password) {
-  const { data: invited, error: inviteError } = await supabase.rpc(
-    'is_beta_invited',
-    {
-      check_email: email,
-    },
-  )
-  if (inviteError) {
-    return { error: inviteError.message }
+  // V1 — Collaboration Invitation Signup Authorization. Pre-check only,
+  // for accurate UI messaging before ever attempting signUp() — the
+  // authoritative decision is the enforce_signup_authorization_before_insert
+  // trigger on auth.users (0069_collaboration_invitation_signup_
+  // authorization.sql), which authorizes via EITHER an admin-granted
+  // beta_invites row OR a valid pending workspace_invitations row for
+  // this email, and runs regardless of what this pre-check found.
+  const { data: status, error: statusError } = await supabase.rpc('get_signup_access_status', {
+    check_email: email,
+  })
+  if (statusError) {
+    return { error: statusError.message }
   }
 
-  if (!invited) {
-    // Pricing/Founding Pro/Beta Consolidation — this gate (is_beta_invited,
-    // backed by the beta_invites table) is the platform's general
-    // signup-access control, not specifically about a "Beta" product
-    // tier — Beta is retired as a customer-facing plan, but this
-    // invite-gated signup mechanism itself is unchanged and still in
-    // active use (now also the entry point for Founding Pro invites).
-    // The message is generic for the same reason.
-    return { error: 'This email doesn’t have access yet. Contact us for an invitation.', notInvited: true }
+  if (status !== 'ok') {
+    return { error: SIGNUP_DENIAL_MESSAGE[status as SignupDenialReason] ?? SIGNUP_DENIAL_MESSAGE.not_invited, denialReason: status as SignupDenialReason }
   }
 
   // ARRIYIA Product Completion Phase 2 — previously called with no
@@ -83,6 +101,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password,
     options: { emailRedirectTo: canonicalSiteUrl() },
   })
+
+  // The pre-check above can go stale between the check and this call
+  // (e.g. the invitation was cancelled in between) — the database
+  // trigger is still the real enforcement point and can still reject.
+  // Recognized here by its exact raised message so that race case is
+  // still shown as an access denial, not a generic error.
+  if (error?.message === SIGNUP_AUTHORIZATION_TRIGGER_MESSAGE) {
+    return { error: SIGNUP_DENIAL_MESSAGE.not_invited, denialReason: 'not_invited' }
+  }
 
   return { error: error?.message ?? null }
 },

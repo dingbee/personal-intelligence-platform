@@ -7,17 +7,18 @@ import { Button } from '@/shared/components/ui/Button'
 import { appConfig } from '@/app/appConfig'
 
 /**
- * V1 Launch Hardening, Workstream 1 — a visitor denied by the
- * is_beta_invited gate previously hit a dead end: an honest error message
- * promising "Contact us for an invitation" with no actual contact
- * mechanism anywhere in the product. This builds the one real, working
- * destination for that promise, addressed to the already-documented,
- * live operator inbox (see appConfig.accessRequestEmail) rather than
- * inventing a new, unverified channel or a form with nowhere to send.
+ * V1 — Collaboration Invitation Signup Authorization. A visitor with no
+ * invitation of any kind (not a workspace invitation, not an admin-
+ * granted one) still needs a real, working way to ask for access — this
+ * is that destination, addressed to the already-documented, live
+ * operator inbox (see appConfig.accessRequestEmail). Only shown for the
+ * 'not_invited' denial reason: someone with an expired or revoked
+ * *workspace* invitation has a more specific, correct next step (ask the
+ * workspace owner to re-invite them), so this isn't offered for those.
  */
 function buildAccessRequestMailto(email: string): string {
-  const subject = `${appConfig.productName} early access request`
-  const body = email ? `I'd like to request early access to ${appConfig.productName}.\n\nMy email: ${email}` : `I'd like to request early access to ${appConfig.productName}.`
+  const subject = `${appConfig.productName} access request`
+  const body = email ? `I'd like to request access to ${appConfig.productName}.\n\nMy email: ${email}` : `I'd like to request access to ${appConfig.productName}.`
   return `mailto:${appConfig.accessRequestEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
@@ -35,7 +36,7 @@ export function SignUpPage() {
   const [email, setEmail] = useState(() => searchParams.get('email') ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [notInvited, setNotInvited] = useState(false)
+  const [denialReason, setDenialReason] = useState<'invitation_expired' | 'invitation_revoked' | 'not_invited' | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
@@ -43,11 +44,11 @@ export function SignUpPage() {
     event.preventDefault()
     setSubmitting(true)
     setError(null)
-    setNotInvited(false)
+    setDenialReason(null)
     const result = await signUpWithPassword(email, password)
     if (result.error) {
       setError(result.error)
-      setNotInvited(Boolean(result.notInvited))
+      setDenialReason(result.denialReason ?? null)
     } else {
       setSubmitted(true)
     }
@@ -69,7 +70,7 @@ export function SignUpPage() {
   }
 
   return (
-    <AuthCard title="Create your account" subtitle="ARRIYIA is currently invite-only. If your email hasn't been invited yet, you can request access below.">
+    <AuthCard title="Create your account" subtitle="ARRIYIA access is currently provided through a workspace invitation.">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
           label="Email"
@@ -93,7 +94,7 @@ export function SignUpPage() {
             {error}
           </p>
         )}
-        {notInvited && (
+        {denialReason === 'not_invited' && (
           <a
             href={buildAccessRequestMailto(email)}
             className="text-sm text-[var(--color-accent)] hover:underline"

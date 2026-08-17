@@ -189,17 +189,25 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
       {isPro && proCta.kind === 'sign-up' && (
         <div className="flex flex-col gap-2">
           <Link to="/signup">
-            <Button className="w-full">Get early access</Button>
+            <Button className="w-full">Sign up</Button>
           </Link>
           {/*
-            V1 Launch Hardening, Workstream 1 — ARRIYIA v1 is a controlled
-            invite-only launch, not unrestricted self-serve signup (see
-            AuthContext.signUpWithPassword's is_beta_invited gate, which
-            this intentionally does not weaken). "Sign up to get started"
-            previously implied instant self-serve access; this sets the
-            correct expectation up front instead of only after a denial.
+            V1 — Collaboration Invitation Signup Authorization. ARRIYIA
+            v1 is controlled-access, not unrestricted self-serve signup
+            (AuthContext.signUpWithPassword authorizes via either an
+            admin-granted invite or a valid pending workspace invitation
+            — see 0069_collaboration_invitation_signup_authorization.sql
+            — neither of which this page weakens). Previously this said
+            "Currently invite-only — you'll be able to request access on
+            the next page," which described the old beta-only model and
+            implied every visitor's only path was requesting beta access;
+            the primary path is now a workspace invitation, which this
+            page has no way to reference (an anonymous visitor may not
+            have one) — kept intentionally general rather than steering
+            everyone toward the request-access fallback that only
+            actually applies to visitors with no invitation at all.
           */}
-          <p className="text-xs text-[var(--color-ink-muted)]">Currently invite-only — you'll be able to request access on the next page.</p>
+          <p className="text-xs text-[var(--color-ink-muted)]">Currently available by invitation only.</p>
           <p className="text-xs text-[var(--color-ink-muted)]">
             Already have an account? <Link to="/login" className="text-[var(--color-accent)] hover:underline">Log in</Link>
           </p>

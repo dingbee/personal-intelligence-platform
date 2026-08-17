@@ -1562,6 +1562,11 @@ export type Database = {
         Args: { check_email: string }
         Returns: boolean
       }
+      /** V1 — Collaboration Invitation Signup Authorization (0069). Client-facing pre-check only: 'ok' | 'invitation_expired' | 'invitation_revoked' | 'not_invited'. The authoritative decision is the enforce_signup_authorization_before_insert trigger on auth.users, not this function. */
+      get_signup_access_status: {
+        Args: { check_email: string }
+        Returns: string
+      }
       consume_quota: {
         Args: { p_quota_key: string }
         Returns: { usage_count: number; quota_limit: number; allowed: boolean }[]
