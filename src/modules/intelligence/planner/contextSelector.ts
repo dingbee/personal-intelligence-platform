@@ -31,6 +31,15 @@ export interface ContextSelection {
  * *shown* to the user matches the reasoning *requirement* the planner
  * computed, while the underlying retrieval stays untouched. See the phase
  * report's architecture decisions for the full explanation.
+ *
+ * Retrieval Prerequisite Fix — this function is unchanged: it is generic
+ * over whatever `required` array it receives, so the planner's repaired
+ * requiredContext semantics (an explicit, broader floor for low-confidence
+ * fallback classifications, and continuation-turn broadening — see
+ * planner.ts/planningRules.ts) flow through automatically. `assets` and
+ * `spreadsheet` remain deliberately absent from ALL_CONTEXT_SOURCES (see
+ * ContextRequirement's own doc comment in plannerTypes.ts for why) — this
+ * file still has no opinion on those two sources.
  */
 export function selectContext(required: ContextRequirement[]): ContextSelection {
   const includedSet = new Set(required)

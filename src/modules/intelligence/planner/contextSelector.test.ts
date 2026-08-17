@@ -37,4 +37,16 @@ describe('selectContext', () => {
     ])
     expect(result.skipped).toEqual([])
   })
+
+  // Retrieval Prerequisite Fix — Phase 4/5: documents that asset and
+  // spreadsheet retrieval remain deliberately outside the
+  // ContextRequirement vocabulary (see plannerTypes.ts's doc comment for
+  // why). If this ever fails, someone added a 9th value to the vocabulary
+  // — that's fine, but the decision doc comment needs updating alongside it.
+  it('models exactly these 8 context sources — asset and spreadsheet retrieval are not among them', () => {
+    const result = selectContext([])
+    expect(result.skipped).toEqual([
+      'documents', 'reading_progress', 'notes', 'flashcards', 'memory', 'knowledge_graph', 'recent_conversations', 'workspace_overview',
+    ])
+  })
 })

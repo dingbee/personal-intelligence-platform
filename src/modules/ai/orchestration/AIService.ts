@@ -23,6 +23,7 @@ import { buildNovaContextPrompt } from '@/modules/intelligence/buildNovaContextP
 import { generateFollowUpSuggestions } from '@/modules/intelligence/conversation/generateFollowUpSuggestions'
 import { detectSignals } from '@/modules/intelligence/signals/signalDetector'
 import { buildReasoningPlan } from '@/modules/intelligence/planner/planner'
+import { selectContext } from '@/modules/intelligence/planner/contextSelector'
 import type { ReasoningPlan } from '@/modules/intelligence/planner/plannerTypes'
 import { isContinuationMessage } from '@/modules/intelligence/conversation/detectContinuation'
 import type { IntelligenceSignal } from '@/modules/intelligence/signals/types'
@@ -193,6 +194,40 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   // the result — see each function's own `embedding` param.
   const [queryEmbedding] = await embeddingProvider.embed([text], { userId, workspaceId, feature: 'retrieval' })
 
+  // Retrieval Prerequisite Fix (Workstream 2A) + Workstream 2B — the
+  // planner's requiredContext is now trustworthy enough to preferentially
+  // gate the four modeled retrieval sources (documents/notes/memory/
+  // knowledge_graph), Model B: a preference with a safe fallback, not
+  // strict authorization. `assets`/`spreadsheet` are deliberately never
+  // gated here (see plannerTypes.ts's ContextRequirement doc comment) —
+  // retrieveAssetContext and retrieveSpreadsheetContext below run exactly
+  // as they always have.
+  //
+  // requiredContext depends only on intent classification + continuation
+  // detection (both pure functions of `text` alone) — never on
+  // hasInProgressDocument/hasMemoryContext/hasGraphContext, which aren't
+  // knowable until after retrieval. So calling buildReasoningPlan here
+  // with those three signals stubbed false produces the identical
+  // requiredContext the real post-retrieval call below computes for the
+  // same `text` (see planner.ts: only `isContinuation` feeds
+  // requiredContext broadening, and it's passed the same way here). This
+  // isn't a second, different planner decision — it's the same pure
+  // computation, evaluated early so its result can gate retrieval, then
+  // evaluated again below (as before this workstream) once the real
+  // signals are known, for suggestedCommandIds/strategy refinement and
+  // for the ReasoningPlan returned to the caller. ChatPage's existing
+  // reasoningTrace already recomputes selectContext(reasoningPlan.
+  // requiredContext) from that returned plan (see contextSelector.ts) —
+  // since both computations agree, the Reasoning Trace's included/skipped
+  // now genuinely reflects what this call actually fetched, not just an
+  // aspirational label.
+  const { included } = selectContext(
+    buildReasoningPlan({
+      text,
+      signals: { hasInProgressDocument: false, hasMemoryContext: false, hasGraphContext: false, isContinuation: isContinuationMessage(text) },
+    }).requiredContext,
+  )
+
   // PIP Sprint 9/10 — these six sources are mutually independent (none
   // consumes another's result), so they now run concurrently instead of
   // one blocking the next — previously ~6 sequential network round trips
@@ -204,23 +239,35 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   // retrieveMemoryContext/retrieveSpreadsheetContext already never throw
   // internally (see their own try/catch), unchanged by running them in
   // parallel here instead of in sequence.
+  //
+  // Workstream 2B — documents/notes/memory/knowledge_graph are only
+  // actually invoked when `included` says so; a gated-out source resolves
+  // immediately to the exact "nothing found" shape it would otherwise
+  // return, so every downstream consumer (buildSystemPrompt,
+  // buildContextTrace, the second Promise.all stage below) needs no
+  // changes. retrieveAssetContext/retrieveSpreadsheetContext are
+  // untouched — always invoked, never gated (see the comment above).
   const [matches, assetMatches, noteMatches, namedEntityGraphContext, memoryContext, spreadsheetContext] = await Promise.all([
-    retrieveContext({ query: text, userId, workspaceId, documentId, embedding: queryEmbedding }),
+    included.includes('documents')
+      ? retrieveContext({ query: text, userId, workspaceId, documentId, embedding: queryEmbedding })
+      : Promise.resolve([]),
     retrieveAssetContext({ query: text, userId, workspaceId, embedding: queryEmbedding }).catch((err: unknown) => {
       console.error('retrieveAssetContext failed — chat continues without visual_context:', err)
       return []
     }),
-    retrieveNoteContext({ query: text, userId, workspaceId, embedding: queryEmbedding }).catch((err: unknown) => {
-      console.error('retrieveNoteContext failed — chat continues without note_context:', err)
-      return []
-    }),
+    included.includes('notes')
+      ? retrieveNoteContext({ query: text, userId, workspaceId, embedding: queryEmbedding }).catch((err: unknown) => {
+          console.error('retrieveNoteContext failed — chat continues without note_context:', err)
+          return []
+        })
+      : Promise.resolve([]),
     // PIP Sprint 5/10 — a question naming an entity directly ("What is
     // ARRIYIA connected to?") deserves that entity's real graph evidence
     // even when no chunk search happened to surface the right document.
     // Independent of `matches` (unlike chunkSourcedGraphContext below,
     // which needs it), so it belongs in this first parallel batch.
-    retrieveNamedEntityGraphContext({ text, userId }),
-    retrieveMemoryContext({ userId, workspaceId, text }),
+    included.includes('knowledge_graph') ? retrieveNamedEntityGraphContext({ text, userId }) : Promise.resolve(null),
+    included.includes('memory') ? retrieveMemoryContext({ userId, workspaceId, text }) : Promise.resolve(null),
     // UX-13.10 — scoped to `documentId` specifically (not the matched
     // chunks' documents), so it doesn't depend on `matches` either.
     retrieveSpreadsheetContext(documentId),
@@ -236,12 +283,20 @@ await quotaService.consumeQuota(userId, 'ai_messages')
     // image's own knowledge-graph relationships (concepts/entities
     // extracted from it) were unreachable even when the image itself was
     // found above. Never throws (see its own try/catch).
-    retrieveGraphContext({
-      documentIds: [...new Set(matches.map((match) => match.documentId))],
-      assetIds: [...new Set(assetMatches.map((match) => match.assetId))],
-      userId,
-      workspaceId,
-    }),
+    //
+    // Workstream 2B — the chunk-sourced half of `knowledge_graph`'s
+    // retrieval; gated by the same `included` decision as
+    // retrieveNamedEntityGraphContext above, not just left to naturally
+    // return null from empty documentIds/assetIds, so a skipped source is
+    // actually never invoked.
+    included.includes('knowledge_graph')
+      ? retrieveGraphContext({
+          documentIds: [...new Set(matches.map((match) => match.documentId))],
+          assetIds: [...new Set(assetMatches.map((match) => match.assetId))],
+          userId,
+          workspaceId,
+        })
+      : Promise.resolve(null),
     // PIP Sprint 4/10 — resolved before buildSystemPrompt (not after, the
     // way resolveReferences below is) so the model itself can see which
     // document/page each excerpt came from, not just the UI's reference

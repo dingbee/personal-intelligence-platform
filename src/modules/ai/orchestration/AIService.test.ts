@@ -219,9 +219,18 @@ describe('sendMessage', () => {
   // content must actually reach the prompt sent to the provider, not only
   // when a knowledge-graph node for its subject happens to already exist
   // from a different source.
+  // Workstream 2B — baseParams()'s default text classifies as the
+  // low-confidence fallback ('ask'), whose requiredContext deliberately
+  // excludes 'notes' (see planningRules.ts's FALLBACK_CONTEXT). These
+  // note-specific tests need a text the planner actually requests notes
+  // for ('review' intent — requiredContext includes 'notes') so they keep
+  // proving what they claim: that retrieved note content really reaches
+  // the prompt, not just that it would if it were fetched.
+  const NOTE_REQUESTING_TEXT = 'Review my notes about hospitality.'
+
   it('includes note content in the prompt sent to the provider when retrieveNoteContext finds a match', async () => {
     retrieveNoteContextMock.mockResolvedValueOnce([{ noteId: 'note-1', title: 'Meeting Notes', content: 'ARRIYIA was mentioned once.', similarity: 0.9 }])
-    await sendMessage(baseParams())
+    await sendMessage({ ...baseParams(), text: NOTE_REQUESTING_TEXT })
     const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
     expect(lastCall?.system).toContain('<note_context>')
     expect(lastCall?.system).toContain('ARRIYIA was mentioned once.')
@@ -229,13 +238,13 @@ describe('sendMessage', () => {
 
   it('counts note matches into retrievedChunks, so a note-only answer is not misreported as "nothing retrieved"', async () => {
     retrieveNoteContextMock.mockResolvedValueOnce([{ noteId: 'note-1', title: 'Meeting Notes', content: 'ARRIYIA was mentioned once.', similarity: 0.9 }])
-    const result = await sendMessage(baseParams())
+    const result = await sendMessage({ ...baseParams(), text: NOTE_REQUESTING_TEXT })
     expect(result.contextTrace.retrievedChunks).toBe(1)
   })
 
   it('never breaks the chat response when retrieveNoteContext rejects (never-throws contract)', async () => {
     retrieveNoteContextMock.mockRejectedValueOnce(new Error('embedding provider unavailable'))
-    const result = await sendMessage(baseParams())
+    const result = await sendMessage({ ...baseParams(), text: NOTE_REQUESTING_TEXT })
     expect(result.message.content).toBe('Hello there.')
   })
 
@@ -547,7 +556,11 @@ describe('sendMessage', () => {
     it('Test C — a document chunk and a note both contribute evidence in the same turn, in distinct blocks', async () => {
       retrieveContextMock.mockResolvedValueOnce([{ chunkId: 'c1', documentId: 'd1', content: 'The document says ARRIYIA manages the project.', similarity: 0.8 }])
       retrieveNoteContextMock.mockResolvedValueOnce([{ noteId: 'n1', title: 'Meeting Notes', content: 'My note says ARRIYIA joined in March.', similarity: 0.7 }])
-      await sendMessage(baseParams())
+      // Workstream 2B — needs a text the planner requests BOTH documents
+      // and notes for ('create' intent); baseParams()'s default text
+      // falls to the fallback-ask safety net, which deliberately excludes
+      // notes (see planningRules.ts's FALLBACK_CONTEXT).
+      await sendMessage({ ...baseParams(), text: 'Create a note about this.' })
       const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
       expect(lastCall?.system).toContain('The document says ARRIYIA manages the project.')
       expect(lastCall?.system).toContain('<note_context>')
@@ -603,7 +616,8 @@ describe('sendMessage', () => {
         { noteId: 'n1', title: 'Note One', content: 'First distinct note.', similarity: 0.8 },
         { noteId: 'n2', title: 'Note Two', content: 'Second distinct note.', similarity: 0.7 },
       ])
-      const result = await sendMessage(baseParams())
+      // Workstream 2B — same reasoning as Test C: needs a notes-requesting text.
+      const result = await sendMessage({ ...baseParams(), text: 'Review my notes about this.' })
       expect(result.contextTrace.retrievedChunks).toBe(2)
       const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
       expect(lastCall?.system).toContain('[1] (Note: Note One) First distinct note.')
@@ -639,7 +653,9 @@ describe('sendMessage', () => {
     })
 
     it('shares the one computed embedding with retrieveContext, retrieveAssetContext, and retrieveNoteContext', async () => {
-      await sendMessage(baseParams())
+      // Workstream 2B — needs a text the planner requests both documents
+      // and notes for, so all three embedding-consuming sources actually run.
+      await sendMessage({ ...baseParams(), text: 'Create a note about this.' })
       const embedding = (await invokeAiEmbedMock.mock.results[0]!.value).embeddings[0]
       expect(retrieveContextMock).toHaveBeenCalledWith(expect.objectContaining({ embedding }))
       expect(retrieveAssetContextMock).toHaveBeenCalledWith(expect.objectContaining({ embedding }))
@@ -786,6 +802,151 @@ describe('sendMessage', () => {
       vi.mocked(quotaService.consumeQuota).mockClear()
       await expect(sendMessage(baseParams())).rejects.toThrow()
       expect(quotaService.consumeQuota).not.toHaveBeenCalled()
+    })
+  })
+
+  /**
+   * Workstream 2B — Retrieval Preference Gating. The planner's
+   * requiredContext (repaired in the prerequisite workstream) now
+   * preferentially gates the four modeled sources — documents, notes,
+   * memory, knowledge_graph — immediately before the first retrieval
+   * Promise.all, Model B: a preference with a safe fallback, never strict
+   * authorization. `assets`/`spreadsheet` are deliberately never gated
+   * (see plannerTypes.ts's ContextRequirement doc comment) and the
+   * workspace-action short-circuit still runs before any of this.
+   *
+   * Every "skipped" assertion below pre-loads the mock with real content
+   * that WOULD reach the prompt if the source were invoked — proving the
+   * source was never called, not merely that it happened to return
+   * nothing this turn (the distinction the audit's acceptance criteria
+   * specifically called out).
+   */
+  describe('Workstream 2B — retrieval preference gating', () => {
+    beforeEach(() => {
+      retrieveContextMock.mockClear()
+      retrieveAssetContextMock.mockClear()
+      retrieveNoteContextMock.mockClear()
+      retrieveNamedEntityGraphContextMock.mockClear()
+      retrieveMemoryContextMock.mockClear()
+      retrieveGraphContextMock.mockClear()
+      retrieveSpreadsheetContextMock.mockClear()
+    })
+
+    it('explain retrieves documents + graph, and never invokes memory or notes retrieval', async () => {
+      retrieveContextMock.mockResolvedValueOnce([{ chunkId: 'c1', documentId: 'd1', content: 'A passage.', similarity: 0.8 }])
+      retrieveNamedEntityGraphContextMock.mockResolvedValueOnce('Entity: ARRIYIA')
+      await sendMessage({ ...baseParams(), text: 'Explain how this works.' })
+
+      expect(retrieveContextMock).toHaveBeenCalled()
+      expect(retrieveNamedEntityGraphContextMock).toHaveBeenCalled()
+      expect(retrieveGraphContextMock).toHaveBeenCalled()
+      expect(retrieveMemoryContextMock).not.toHaveBeenCalled()
+      expect(retrieveNoteContextMock).not.toHaveBeenCalled()
+    })
+
+    it('compare retrieves documents + graph, and never invokes memory or notes retrieval', async () => {
+      await sendMessage({ ...baseParams(), text: 'Compare Deep Work and Atomic Habits.' })
+
+      expect(retrieveContextMock).toHaveBeenCalled()
+      expect(retrieveNamedEntityGraphContextMock).toHaveBeenCalled()
+      expect(retrieveGraphContextMock).toHaveBeenCalled()
+      expect(retrieveMemoryContextMock).not.toHaveBeenCalled()
+      expect(retrieveNoteContextMock).not.toHaveBeenCalled()
+    })
+
+    // PLANNING_RULES.plan actually requires documents+notes+recent_conversations
+    // (recent_conversations isn't one of the six retrieval sources — see
+    // planningRules.ts), not graph or memory — so "plan doesn't
+    // unnecessarily invoke notes/graph retrieval" is verified here against
+    // the real rule: plan skips memory + knowledge_graph, and DOES
+    // (correctly) retrieve documents + notes.
+    it('plan retrieves documents + notes, and never invokes memory or knowledge_graph retrieval', async () => {
+      await sendMessage({ ...baseParams(), text: 'Help me plan my week.' })
+
+      expect(retrieveContextMock).toHaveBeenCalled()
+      expect(retrieveNoteContextMock).toHaveBeenCalled()
+      expect(retrieveMemoryContextMock).not.toHaveBeenCalled()
+      expect(retrieveNamedEntityGraphContextMock).not.toHaveBeenCalled()
+      expect(retrieveGraphContextMock).not.toHaveBeenCalled()
+    })
+
+    it('the low-confidence fallback (\'ask\') retains documents + memory + graph, and never invokes notes retrieval', async () => {
+      // baseParams()'s default text classifies as the fallback intent.
+      await sendMessage(baseParams())
+
+      expect(retrieveContextMock).toHaveBeenCalled()
+      expect(retrieveMemoryContextMock).toHaveBeenCalled()
+      expect(retrieveNamedEntityGraphContextMock).toHaveBeenCalled()
+      expect(retrieveGraphContextMock).toHaveBeenCalled()
+      expect(retrieveNoteContextMock).not.toHaveBeenCalled()
+    })
+
+    it('a continuation ("continue") broadens the base intent\'s gate: documents + memory now run even though the base \'continue\' row alone requires neither', async () => {
+      // "continue" both classifies as the 'continue' intent (base
+      // requiredContext: reading_progress/recent_conversations — neither
+      // a gated source) AND is itself flagged a continuation by
+      // isContinuationMessage, so CONTINUATION_CONTEXT's documents/memory
+      // merge in on top. notes/knowledge_graph are in neither set, so
+      // they stay skipped.
+      await sendMessage({ ...baseParams(), text: 'continue' })
+
+      expect(retrieveContextMock).toHaveBeenCalled()
+      expect(retrieveMemoryContextMock).toHaveBeenCalled()
+      expect(retrieveNoteContextMock).not.toHaveBeenCalled()
+      expect(retrieveNamedEntityGraphContextMock).not.toHaveBeenCalled()
+      expect(retrieveGraphContextMock).not.toHaveBeenCalled()
+    })
+
+    it('gates all four modeled sources to zero for an intent whose requiredContext excludes every one of them, while assets and spreadsheet retrieval still run unconditionally', async () => {
+      // 'read' intent (matches "open chapter") -> requiredContext:
+      // ['reading_progress'] only — none of documents/notes/memory/
+      // knowledge_graph. The strongest possible proof that gating is
+      // real, and that assets/spreadsheet are never touched by it.
+      await sendMessage({ ...baseParams(), documentId: 'doc-1', text: 'Open chapter 3.' })
+
+      expect(retrieveContextMock).not.toHaveBeenCalled()
+      expect(retrieveNoteContextMock).not.toHaveBeenCalled()
+      expect(retrieveMemoryContextMock).not.toHaveBeenCalled()
+      expect(retrieveNamedEntityGraphContextMock).not.toHaveBeenCalled()
+      expect(retrieveGraphContextMock).not.toHaveBeenCalled()
+      expect(retrieveAssetContextMock).toHaveBeenCalled()
+      expect(retrieveSpreadsheetContextMock).toHaveBeenCalledWith('doc-1')
+    })
+
+    it('a representative gated prompt contains the expected context blocks and genuinely omits the skipped ones (not merely empty ones)', async () => {
+      // 'explain' -> documents + knowledge_graph only. memory/notes are
+      // pre-loaded with real content that WOULD produce a prompt block if
+      // invoked — proving their absence below is because they were never
+      // called, not because they happened to return nothing.
+      retrieveContextMock.mockResolvedValueOnce([{ chunkId: 'c1', documentId: 'd1', content: 'A passage about ARRIYIA.', similarity: 0.8 }])
+      retrieveNamedEntityGraphContextMock.mockResolvedValueOnce('Entity: ARRIYIA')
+      retrieveMemoryContextMock.mockResolvedValueOnce('## Learned preferences\n- Likes concise answers')
+      retrieveNoteContextMock.mockResolvedValueOnce([{ noteId: 'n1', title: 'A Note', content: 'Note content that must not leak in.', similarity: 0.9 }])
+
+      await sendMessage({ ...baseParams(), text: 'Explain how this works.' })
+
+      expect(retrieveMemoryContextMock).not.toHaveBeenCalled()
+      expect(retrieveNoteContextMock).not.toHaveBeenCalled()
+
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('A passage about ARRIYIA.')
+      expect(lastCall?.system).toContain('<knowledge_connections>')
+      expect(lastCall?.system).not.toContain('<personal_context>')
+      expect(lastCall?.system).not.toContain('<note_context>')
+      expect(lastCall?.system).not.toContain('Note content that must not leak in.')
+    })
+
+    it('the workspace-action short-circuit never invokes any of the six retrieval sources', async () => {
+      runWorkspaceActionMock.mockResolvedValueOnce({ responseText: 'Saved to Notes: "NOVA Reply".' })
+      await sendMessage({ ...baseParams(), text: 'Save this' })
+
+      expect(retrieveContextMock).not.toHaveBeenCalled()
+      expect(retrieveAssetContextMock).not.toHaveBeenCalled()
+      expect(retrieveNoteContextMock).not.toHaveBeenCalled()
+      expect(retrieveMemoryContextMock).not.toHaveBeenCalled()
+      expect(retrieveNamedEntityGraphContextMock).not.toHaveBeenCalled()
+      expect(retrieveGraphContextMock).not.toHaveBeenCalled()
+      expect(retrieveSpreadsheetContextMock).not.toHaveBeenCalled()
     })
   })
 })
