@@ -1,5 +1,6 @@
 import type { ReaderInteractionState } from '@/modules/reader/intelligence/readerInteraction'
 import type { LocalSuggestionId } from '@/modules/reader/intelligence/chapterSuggestions'
+import type { LearningStage } from '@/modules/intelligence/learning/learningTypes'
 import { ReferenceRow } from '@/modules/intelligence/components/ReferenceRow'
 import { SignalList } from '@/modules/intelligence/components/SignalList'
 import { PersonalIntelligenceTimeline } from '@/modules/intelligence/components/PersonalIntelligenceTimeline'
@@ -11,6 +12,18 @@ const JOURNEY_LABEL: Record<ReaderInteractionState['journey']['status'], string>
   paused: 'Paused',
   completed: 'Completed',
 }
+
+/** Same human-readable-label pattern as JOURNEY_LABEL above — never the raw LearningStage enum value. */
+const LEARNING_STAGE_LABEL: Record<LearningStage, string> = {
+  starting: 'Just getting started',
+  in_progress: 'In progress',
+  reviewing: 'Time to review',
+  practicing: 'Practicing',
+  mastered: 'Mastered',
+}
+
+const OPPORTUNITY_BUTTON_CLASS =
+  'inline-flex items-center gap-1.5 rounded-pill border border-[var(--color-border)] bg-[var(--surface-raised)] px-2.5 py-1 text-xs text-[var(--color-ink)] shadow-raised transition-shadow hover:shadow-floating'
 
 /**
  * UX-9 Phase 9/10 — everything here reuses existing primitives (plain
@@ -73,6 +86,32 @@ export function ReaderIntelligencePanel({
         {state.journey.notesAddedCount === 1 ? '' : 's'} · {state.journey.questionsAskedCount} conversation
         {state.journey.questionsAskedCount === 1 ? '' : 's'}
       </p>
+
+      {/* Capability Audit #11+ — interpretation of the journey facts above,
+          not a duplicate of them: visually set apart in its own inset
+          block so it doesn't blend into the passive stats line. */}
+      {state.learningMode && (
+        <div className="flex flex-col gap-1.5 rounded-control bg-[var(--surface-inset)] p-2 shadow-inset">
+          <p>
+            <span className="font-medium text-[var(--color-ink)]">Learning:</span> {LEARNING_STAGE_LABEL[state.learningMode.stage]}
+          </p>
+          <p>{state.learningMode.suggestedNextStep}</p>
+          {(state.learningMode.reviewOpportunity || state.learningMode.practiceOpportunity) && (
+            <div className="flex flex-wrap gap-1.5">
+              {state.learningMode.reviewOpportunity && (
+                <button type="button" onClick={() => onLocalSuggestion('highlights')} className={OPPORTUNITY_BUTTON_CLASS}>
+                  Review your highlights
+                </button>
+              )}
+              {state.learningMode.practiceOpportunity && (
+                <button type="button" onClick={() => onLocalSuggestion('flashcards')} className={OPPORTUNITY_BUTTON_CLASS}>
+                  Practice with flashcards
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <details>
         <summary className="cursor-pointer select-none hover:text-[var(--color-ink)]">More from your knowledge</summary>

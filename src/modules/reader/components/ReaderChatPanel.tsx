@@ -102,6 +102,7 @@ export function ReaderChatPanel({
     contextTrace,
     references,
     signals,
+    reasoningPlan,
     memoryCandidates,
     dismissMemoryCandidate,
     artifactPreview,
@@ -120,6 +121,14 @@ export function ReaderChatPanel({
   // UX-9 Phase 8/10 — recomputed whenever the chapter context or the last
   // chat turn's output changes; reuses buildReaderInteractionState (Phase
   // 8) exactly like ChatPage reuses buildInteractionState (UX-8).
+  //
+  // Learning Mode consumer-chain activation (Capability Audit #11+) —
+  // reasoningPlan.intent is already computed by AIService on every turn
+  // (useSendMessage already returns it; this panel just wasn't reading it
+  // before), passed through so buildReaderInteractionState can derive
+  // learningMode from this panel's genuinely real DocumentJourney. Only
+  // present once a turn has completed, same "no fabricated default" rule
+  // contextTrace/references already follow above.
   const [readerInteractionState, setReaderInteractionState] = useState<ReaderInteractionState | null>(null)
   useEffect(() => {
     let cancelled = false
@@ -132,6 +141,7 @@ export function ReaderChatPanel({
       progressUpdatedAt: hasProgress ? progressUpdatedAt : null,
       references: contextTrace ? references : undefined,
       graphNodeCount: contextTrace?.graphNodes,
+      intent: reasoningPlan?.intent,
     }).then((state) => {
       if (!cancelled) setReaderInteractionState(state)
     })
@@ -139,7 +149,7 @@ export function ReaderChatPanel({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documentId, activeChapterIndex, scrollFraction, hasProgress, progressUpdatedAt, contextTrace, references])
+  }, [documentId, activeChapterIndex, scrollFraction, hasProgress, progressUpdatedAt, contextTrace, references, reasoningPlan])
 
   async function handleSend(text: string): Promise<boolean> {
     // AI Preference Layer v1 — see ChatPage.handleNew for why chain[0] is

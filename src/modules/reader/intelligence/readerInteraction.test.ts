@@ -72,4 +72,59 @@ describe('buildReaderInteractionState', () => {
     expect(state.journey.summarizedChapterCount).toBe(0)
     expect(state.journey.flashcardCount).toBe(0)
   })
+
+  // Capability Audit #11+ — Learning Mode consumer-chain activation.
+  // detectLearningIntelligence itself is untouched and already tested in
+  // learningEngine.test.ts; these tests cover only the new wiring: does
+  // buildReaderInteractionState pass it the real journey/highlight data
+  // and a real intent, and does the result land on ReaderInteractionState.
+  describe('learningMode', () => {
+    it('is null when no intent is provided — no Reader Chat turn has happened yet', async () => {
+      const state = await buildReaderInteractionState(baseParams())
+      expect(state.learningMode).toBeNull()
+    })
+
+    it('is null for a non-learning intent even when a real journey and unreviewed highlights exist', async () => {
+      listHighlightsMock.mockResolvedValueOnce([{ chapter_index: 0, note: null }])
+      const state = await buildReaderInteractionState({
+        ...baseParams(),
+        progressUpdatedAt: new Date().toISOString(),
+        intent: 'search',
+      })
+      expect(state.learningMode).toBeNull()
+    })
+
+    it('is non-null for a learning intent, deriving stage/suggestedNextStep from the real journey and opportunities from the real highlight/flashcard counts', async () => {
+      listHighlightsMock.mockResolvedValueOnce([
+        { chapter_index: 0, note: null }, // unreviewed
+        { chapter_index: 0, note: 'already annotated' },
+      ])
+      listFlashcardsMock.mockResolvedValueOnce([{ chapter_index: 0 }, { chapter_index: 0 }]) // 2 < LOW_FLASHCARD_THRESHOLD (5)
+
+      const state = await buildReaderInteractionState({
+        ...baseParams(),
+        progressUpdatedAt: new Date().toISOString(), // recent -> journey.status 'started' -> stage 'in_progress'
+        intent: 'review', // a LEARNING_INTENTS member
+      })
+
+      expect(state.learningMode).not.toBeNull()
+      expect(state.learningMode?.stage).toBe('in_progress')
+      expect(state.learningMode?.suggestedNextStep).toBe('Continue reading where you left off.')
+      // Reflects the actual unreviewed highlight above, not a guess.
+      expect(state.learningMode?.reviewOpportunity).toBe(true)
+      // Reflects the actual low flashcard count above (2 < 5) at an in_progress stage.
+      expect(state.learningMode?.practiceOpportunity).toBe(true)
+    })
+
+    it('reports no opportunities when there is nothing to review or practice', async () => {
+      listFlashcardsMock.mockResolvedValueOnce(Array.from({ length: 10 }, (_, i) => ({ chapter_index: i % 2 }))) // >= LOW_FLASHCARD_THRESHOLD
+      const state = await buildReaderInteractionState({
+        ...baseParams(),
+        progressUpdatedAt: new Date().toISOString(),
+        intent: 'review',
+      })
+      expect(state.learningMode?.reviewOpportunity).toBe(false)
+      expect(state.learningMode?.practiceOpportunity).toBe(false)
+    })
+  })
 })
