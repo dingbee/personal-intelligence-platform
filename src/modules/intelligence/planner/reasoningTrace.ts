@@ -1,7 +1,7 @@
 import type { ContextTrace } from '@/modules/ai/orchestration/buildContextTrace'
 import type { IntentType } from '@/modules/intelligence/intent/intentTypes'
 import type { ContextSelection } from '@/modules/intelligence/planner/contextSelector'
-import type { ReasoningPlan } from '@/modules/intelligence/planner/plannerTypes'
+import type { ReasoningPlan, ReasoningStrategy } from '@/modules/intelligence/planner/plannerTypes'
 import type { ResponseStrategyType } from '@/modules/intelligence/strategy/strategyTypes'
 import type { DecisionFramework } from '@/modules/intelligence/decision/decisionTypes'
 import type { LearningIntelligence } from '@/modules/intelligence/learning/learningTypes'
@@ -17,9 +17,16 @@ import type { LearningIntelligence } from '@/modules/intelligence/learning/learn
  * projected onto their own top-level fields too so the trace shape
  * matches the brief's six named fields directly, not because there's a
  * second source of truth for them.
+ *
+ * Capability Audit #12 — `strategy` (the planner's `ReasoningStrategy`,
+ * already computed on every `ReasoningPlan`) gets the same top-level
+ * projection treatment as `intent`/`responseStrategy` above: it was already
+ * reachable via `planner.strategy`, just never read by any consumer. The
+ * planner itself is unchanged — this only exposes an existing field.
  */
 export interface ReasoningTrace extends ContextTrace {
   intent: IntentType
+  strategy: ReasoningStrategy
   planner: ReasoningPlan
   responseStrategy: ResponseStrategyType
   selectedContext: ContextSelection
@@ -37,6 +44,7 @@ export function buildReasoningTrace(params: {
   return {
     ...params.contextTrace,
     intent: params.plan.intent,
+    strategy: params.plan.strategy,
     planner: params.plan,
     responseStrategy: params.plan.responseStrategy,
     selectedContext: params.selectedContext,

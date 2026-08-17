@@ -41,6 +41,21 @@ describe('buildReasoningTrace', () => {
     expect(trace.responseStrategy).toBe('comparison')
   })
 
+  // Capability Audit #12 — strategy consumer activation. The planner
+  // already computed ReasoningStrategy on every plan; this only confirms
+  // it's now projected onto ReasoningTrace the same way intent/
+  // responseStrategy already are, above.
+  it('projects strategy from the plan onto a top-level field', () => {
+    const trace = buildReasoningTrace({
+      contextTrace: { retrievedChunks: 0, graphNodes: 0, memoriesUsed: 0 },
+      plan: plan({ strategy: 'comparative' }),
+      selectedContext: selectContext([]),
+      decisionFramework: null,
+      learningMode: null,
+    })
+    expect(trace.strategy).toBe('comparative')
+  })
+
   it('includes the full planner output for deeper inspection', () => {
     const thePlan = plan()
     const trace = buildReasoningTrace({
