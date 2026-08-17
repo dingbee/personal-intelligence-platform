@@ -42,10 +42,48 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 // number shown anywhere on this page still comes from usePublicPlanCatalog).
 const CORE_FEATURES = ['Documents, notes, knowledge graph & conversations', 'AI memory & personalization']
 
-const VALUE_PROP: Record<string, string> = {
-  free: 'Get started with your own knowledge base.',
-  student: 'For students, researchers and academic users.',
-  pro: 'More capacity and collaboration when you need it.',
+// Capability-progression messaging: each plan sells a distinct job-to-be-done
+// (headline + positioning + value prop + capability bullets) rather than
+// reading as the same product at a different quota level. This is
+// presentational copy only — the live numbers below (AI messages, storage,
+// collaboration) still come exclusively from usePublicPlanCatalog and are
+// never duplicated into this table.
+const CARD_COPY: Record<string, { headline: string; positioning: string; valueProp: string; bullets: string[] }> = {
+  free: {
+    headline: 'Start Thinking Differently',
+    positioning: 'Experience intelligence',
+    valueProp: 'Get introduced to a more intelligent way of researching, thinking, planning and organizing what matters to you.',
+    bullets: [
+      'Explore ideas with AI-assisted thinking',
+      'Organize conversations and emerging knowledge',
+      'Get answers grounded in your own documents and notes',
+      'Start building your personal knowledge foundation',
+    ],
+  },
+  student: {
+    headline: 'Learn, Research & Build Knowledge',
+    positioning: 'For students, researchers and academic users.',
+    valueProp: 'Understand difficult subjects, work through research, connect ideas and turn information into structured knowledge.',
+    bullets: [
+      'Break down complex academic material',
+      'Get answers grounded in your own course materials',
+      'Connect ideas across your knowledge',
+      'Work through problems and ideas step by step',
+      'Build a persistent research workspace',
+    ],
+  },
+  pro: {
+    headline: 'Your Personal Intelligence Partner',
+    positioning: 'Think, create and decide with intelligence',
+    valueProp: 'Go beyond asking AI questions. Research deeply, connect knowledge, reason through complex problems, plan with greater clarity and turn what you learn into action.',
+    bullets: [
+      'Conduct deeper research and synthesis',
+      'Work across multiple sources and ideas',
+      'Develop structured plans and decisions',
+      'Build and use a persistent personal intelligence system',
+      'Apply ARRIYIA across professional and creative work',
+    ],
+  },
 }
 
 function formatPrice(cents: number | null, currency: string): string | null {
@@ -60,19 +98,21 @@ type ProCta =
   | { kind: 'upgrade'; onClick: () => void; isStarting: boolean; error: string | null }
 
 /**
- * Card hierarchy (Phase: Pricing/Founding Pro/Beta Consolidation):
- * name -> price -> value proposition -> key capabilities (short,
- * scannable) -> CTA. The exhaustive spec comparison (exact AI-message
- * counts, exact storage, collaboration) moves to the "Compare plans"
- * section below so a card never has to choose between being readable
- * and being complete — it's readable, and complete detail is one click
- * away.
+ * Card hierarchy (capability-progression refresh): name -> capability
+ * headline -> price -> positioning -> value proposition -> "what you can
+ * accomplish" (capability bullets, marketing copy) -> "what's included"
+ * (concrete features/limits, still 100% live-data-driven) -> CTA. The
+ * exhaustive spec comparison (exact AI-message counts, exact storage,
+ * collaboration) still moves to the "Compare plans" section below so a
+ * card never has to choose between being readable and being complete —
+ * it's readable, and complete detail is one click away.
  */
 function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent: boolean; proCta: ProCta }) {
   const monthly = formatPrice(tier.monthlyPriceCents, tier.currency)
   const annual = formatPrice(tier.annualPriceCents, tier.currency)
   const isFree = tier.code === 'free'
   const isPro = tier.code === 'pro'
+  const copy = CARD_COPY[tier.code]
 
   return (
     <SurfaceCard className="flex flex-col gap-4">
@@ -81,6 +121,7 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">{tier.name}</h2>
           {isCurrent && <StatusBadge label="Current plan" variant="info" />}
         </div>
+        {copy && <p className="mt-1 text-sm font-semibold text-[var(--color-accent)]">{copy.headline}</p>}
         {isFree ? (
           <p className="mt-1 text-2xl font-semibold text-[var(--color-ink)]">Free</p>
         ) : monthly ? (
@@ -91,35 +132,53 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
         ) : (
           <p className="mt-1 text-lg font-semibold text-[var(--color-ink)]">Pricing to be announced</p>
         )}
-        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{VALUE_PROP[tier.code] ?? tier.description}</p>
+        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{copy?.positioning ?? tier.description}</p>
+        <p className="mt-2 text-sm text-[var(--color-ink-muted)]">{copy?.valueProp ?? tier.description}</p>
       </div>
 
-      <ul className="flex flex-1 flex-col gap-2 text-sm text-[var(--color-ink)]">
-        {isFree && CORE_FEATURES.map((feature) => (
-          <li key={feature} className="flex items-start gap-2">
-            <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
-            {feature}
-          </li>
-        ))}
-        {!isFree && (
+      {copy && (
+        <div>
+          <p className="text-xs font-medium text-[var(--color-ink-muted)]">What you can accomplish</p>
+          <ul className="mt-2 flex flex-col gap-2 text-sm text-[var(--color-ink)]">
+            {copy.bullets.map((bullet) => (
+              <li key={bullet} className="flex items-start gap-2">
+                <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
+                {bullet}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="flex flex-1 flex-col gap-2">
+        <p className="text-xs font-medium text-[var(--color-ink-muted)]">What's included</p>
+        <ul className="flex flex-col gap-2 text-sm text-[var(--color-ink)]">
+          {isFree && CORE_FEATURES.map((feature) => (
+            <li key={feature} className="flex items-start gap-2">
+              <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
+              {feature}
+            </li>
+          ))}
+          {!isFree && (
+            <li className="flex items-start gap-2">
+              <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
+              Everything in Free
+            </li>
+          )}
           <li className="flex items-start gap-2">
             <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
-            Everything in Free
+            {tier.aiMessagesPerMonth !== null ? `${tier.aiMessagesPerMonth.toLocaleString()} AI messages / month` : 'AI messages per month'}
           </li>
-        )}
-        <li className="flex items-start gap-2">
-          <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
-          {tier.aiMessagesPerMonth !== null ? `${tier.aiMessagesPerMonth.toLocaleString()} AI messages / month` : 'AI messages per month'}
-        </li>
-        <li className="flex items-start gap-2">
-          <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
-          {tier.storageBytes !== null ? `${formatFileSize(tier.storageBytes)} storage` : 'Storage'}
-        </li>
-        <li className="flex items-start gap-2">
-          <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
-          {tier.collaboration ? 'Invite teammates to your workspace' : 'Single-owner workspace'}
-        </li>
-      </ul>
+          <li className="flex items-start gap-2">
+            <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
+            {tier.storageBytes !== null ? `${formatFileSize(tier.storageBytes)} storage` : 'Storage'}
+          </li>
+          <li className="flex items-start gap-2">
+            <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
+            {tier.collaboration ? 'Invite teammates to your workspace' : 'Single-owner workspace'}
+          </li>
+        </ul>
+      </div>
 
       {isPro && proCta.kind === 'manage-billing' && (
         <Link to="/settings">
@@ -221,7 +280,7 @@ export function PricingPage() {
         <div>
           <h1 className="text-2xl font-semibold text-[var(--color-ink)]">Plans</h1>
           <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
-            Free is useful on its own. Pro adds capacity and collaboration when you need it.
+            A personal intelligence workspace that grows with you — from exploring ideas to deep research, planning and decision-making.
           </p>
         </div>
 

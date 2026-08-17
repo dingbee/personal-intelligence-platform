@@ -26,6 +26,20 @@ const FOUNDING_PRO_FEATURES = [
   'Automatic transition to standard Pro once your founding period ends',
 ]
 
+// Capability-progression messaging, matching PricingPage's CARD_COPY pattern
+// (see that file's own comment) — presentational only, no effect on
+// eligibility, capacity, or pricing logic below.
+const FOUNDING_PRO_HEADLINE = 'Shape the Future of Personal Intelligence'
+const FOUNDING_PRO_POSITIONING = 'Lead the evolution of personal intelligence'
+const FOUNDING_PRO_VALUE_PROP = 'Use the complete Pro experience from the beginning — and help shape the product as personal intelligence evolves.'
+const FOUNDING_PRO_CAPABILITY_BULLETS = [
+  'Full Pro intelligence capabilities',
+  'Early access to emerging capabilities',
+  'Founder-level product participation',
+  'Direct influence through early feedback',
+  'Lock in founding access and benefits',
+]
+
 export function FoundingProCard() {
   const { user } = useAuth()
   const { data: capacity, isLoading: capacityLoading } = useFoundingProCapacity()
@@ -49,20 +63,38 @@ export function FoundingProCard() {
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">Founding Pro</h2>
           {state.kind === 'member' && <StatusBadge label="Your plan" variant="info" />}
         </div>
+        <p className="mt-1 text-sm font-semibold text-[var(--color-accent)]">{FOUNDING_PRO_HEADLINE}</p>
         <p className="mt-1 text-lg font-semibold text-[var(--color-ink)]">Discounted founding rate</p>
-        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{FOUNDING_PRO_POSITIONING}</p>
+        <p className="mt-2 text-sm text-[var(--color-ink-muted)]">{FOUNDING_PRO_VALUE_PROP}</p>
+        <p className="mt-2 text-xs text-[var(--color-ink-muted)]">
           For our first 100 approved public members. Your exact rate is confirmed when your application is approved.
         </p>
       </div>
 
-      <ul className="flex flex-1 flex-col gap-2 text-sm text-[var(--color-ink)]">
-        {FOUNDING_PRO_FEATURES.map((feature) => (
-          <li key={feature} className="flex items-start gap-2">
-            <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
-            {feature}
-          </li>
-        ))}
-      </ul>
+      <div>
+        <p className="text-xs font-medium text-[var(--color-ink-muted)]">What you can accomplish</p>
+        <ul className="mt-2 flex flex-col gap-2 text-sm text-[var(--color-ink)]">
+          {FOUNDING_PRO_CAPABILITY_BULLETS.map((bullet) => (
+            <li key={bullet} className="flex items-start gap-2">
+              <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
+              {bullet}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-2">
+        <p className="text-xs font-medium text-[var(--color-ink-muted)]">What's included</p>
+        <ul className="flex flex-col gap-2 text-sm text-[var(--color-ink)]">
+          {FOUNDING_PRO_FEATURES.map((feature) => (
+            <li key={feature} className="flex items-start gap-2">
+              <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
+              {feature}
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <div className="rounded-control bg-[var(--surface-inset)] px-3 py-2 text-xs text-[var(--color-ink-muted)]">
         {capacityLoading || !capacity ? (
