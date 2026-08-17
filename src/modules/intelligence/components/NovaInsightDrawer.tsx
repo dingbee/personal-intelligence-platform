@@ -10,6 +10,7 @@ import { NovaContextUsedBadges } from '@/modules/intelligence/components/NovaCon
 import { ReferenceRow } from '@/modules/intelligence/components/ReferenceRow'
 import { EvidenceBadge } from '@/modules/intelligence/components/EvidenceBadge'
 import { ReasoningIndicators } from '@/modules/intelligence/components/ReasoningIndicators'
+import { SuggestedCommandActions } from '@/modules/intelligence/components/SuggestedCommandActions'
 import { PlanPreviewPanel } from '@/modules/intelligence/components/PlanPreviewPanel'
 import { ExplainAnswerPanel } from '@/modules/intelligence/components/ExplainAnswerPanel'
 import { NovaSuggestions } from '@/modules/intelligence/components/NovaSuggestions'
@@ -97,6 +98,11 @@ export function NovaInsightDrawer(props: NovaInsightDrawerProps) {
           {props.reasoningTrace && (
             <>
               <ReasoningIndicators trace={props.reasoningTrace} />
+              <SuggestedCommandActions
+                commandIds={props.reasoningTrace.planner.suggestedCommandIds}
+                context={props.commandContext}
+                actions={props.commandActions}
+              />
               <PlanPreviewPanel trace={props.reasoningTrace} />
             </>
           )}
