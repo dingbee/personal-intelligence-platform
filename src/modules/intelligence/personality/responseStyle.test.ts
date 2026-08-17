@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildResponseStyleGuidance, inferResponseStyleHint } from '@/modules/intelligence/personality/responseStyle'
+import { inferResponseStyleHint } from '@/modules/intelligence/personality/responseStyle'
 
 describe('inferResponseStyleHint', () => {
   it('treats a short direct question as brief', () => {
@@ -18,14 +18,5 @@ describe('inferResponseStyleHint', () => {
 
   it('treats an empty query as standard (no crash on empty input)', () => {
     expect(inferResponseStyleHint('')).toBe('standard')
-  })
-})
-
-describe('buildResponseStyleGuidance', () => {
-  it('returns distinct, non-empty guidance for every hint', () => {
-    const hints = ['brief', 'standard', 'exploratory'] as const
-    const guidance = hints.map(buildResponseStyleGuidance)
-    expect(new Set(guidance).size).toBe(hints.length)
-    for (const g of guidance) expect(g.length).toBeGreaterThan(0)
   })
 })

@@ -275,14 +275,62 @@ describe('sendMessage', () => {
     })
   })
 
-  it('does not inject the reasoning plan into the prompt sent to the provider (carried through the return value only, per UX-14.2 scope)', async () => {
+  it('never dumps the raw plan structure into the prompt sent to the provider — only its closed-set responseStrategy guidance', async () => {
     await sendMessage(baseParams())
     const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
-    // The plan's own field names never appear as literal prompt text —
-    // this sprint explicitly does not wire planner output into prompt
-    // construction.
+    // Corrected UX-14.2 boundary: the plan's own field names / raw
+    // metadata never appear as literal prompt text, but its
+    // responseStrategy's developer-authored description now does (see
+    // the dedicated 'Reasoning Planner integration' tests below).
     expect(lastCall?.system).not.toContain('reasoningPlan')
     expect(lastCall?.system).not.toContain('suggestedCommandIds')
+    expect(lastCall?.system).not.toContain('requiredContext')
+    expect(lastCall?.system).not.toContain('intent:')
+  })
+
+  describe('Reasoning Planner integration (responseStrategy -> prompt guidance)', () => {
+    // Planner Integration fix — reasoningPlan.responseStrategy (already
+    // computed once per turn, before this change too) now drives the
+    // prompt's style guidance via describeResponseStrategy, replacing the
+    // narrower, independent inferResponseStyleHint(userQuery) path that
+    // only ever recognized 3 buckets. These are the two concrete gaps the
+    // preceding audit found and verified against real regex/word-count
+    // logic: both messages previously got the generic 1-3-sentence
+    // "brief" instruction despite the planner already correctly
+    // classifying them as needing a multi-step plan / structured decision.
+    it('a planning request ("Help me plan my week.") gets the planner\'s planning guidance, not the old generic brief-answer instruction', async () => {
+      await sendMessage({ ...baseParams(), text: 'Help me plan my week.' })
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('A multi-step plan broken into concrete actions.')
+      expect(lastCall?.system).not.toContain('Answer directly in 1-3 sentences unless more detail is clearly needed.')
+    })
+
+    it('a decision request ("Should I switch to a new provider?") gets the planner\'s decision guidance, not the old generic brief-answer instruction', async () => {
+      await sendMessage({ ...baseParams(), text: 'Should I switch to a new provider?' })
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain('A structured decision: options, trade-offs, and a recommendation.')
+      expect(lastCall?.system).not.toContain('Answer directly in 1-3 sentences unless more detail is clearly needed.')
+    })
+
+    // Full ResponseStrategyType coverage — one representative message per
+    // strategy, chosen from the real intent-classification rules
+    // (intentRules.ts / strategyRules.ts), proving the planner
+    // classification -> responseStrategy -> prompt guidance chain end to
+    // end for every currently supported strategy, not just the two above.
+    it.each([
+      ['Help me plan my week.', 'A multi-step plan broken into concrete actions.'],
+      ['Should I switch to a new provider?', 'A structured decision: options, trade-offs, and a recommendation.'],
+      ['Compare Deep Work and Atomic Habits.', 'A side-by-side comparison of the things being weighed.'],
+      ['Analyze these trends.', 'An open-ended exploration with room to develop ideas.'],
+      ['Explain how this works.', 'A step-by-step explanation suited to learning.'],
+      ['Summarize this.', 'A short, direct answer.'],
+      ['Organize my documents.', 'A clear, complete answer without padding.'],
+      ['Summarize everything in my workspace.', 'A high-level summary across your whole workspace.'],
+    ])('"%s" produces the strategy guidance "%s" in the provider prompt', async (text, expectedGuidance) => {
+      await sendMessage({ ...baseParams(), text })
+      const lastCall = streamChatCompletionMock.mock.calls.at(-1)?.[0]
+      expect(lastCall?.system).toContain(expectedGuidance)
+    })
   })
 
   it('resolves a chapter reference from this turn\'s retrieved matches', async () => {

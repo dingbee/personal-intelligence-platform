@@ -72,10 +72,11 @@ export interface SendMessageResult {
   /**
    * UX-14.2 (Planner Integration) — computed here, before the LLM call,
    * instead of after the response inside ChatPage (Architecture
-   * Consolidation Sprint, Required Refactor R1). Not injected into the
-   * prompt below — that's explicitly out of scope for this sprint; the
-   * plan is only carried through so ChatPage can render it instead of
-   * recomputing it a second time.
+   * Consolidation Sprint, Required Refactor R1). Its `responseStrategy`
+   * now also drives the prompt's style guidance (see the
+   * buildNovaContextPrompt call below); the full plan object is still
+   * carried through unchanged so ChatPage can render the Reasoning Trace
+   * instead of recomputing it a second time.
    */
   reasoningPlan: ReasoningPlan
   /** UX-14.4.3 — carried through unchanged from a Workspace Action's outcome; null on the normal chat path. Ephemeral UI signal only, never persisted. */
@@ -274,8 +275,10 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   // reads resolveNovaContext's activityContext instead of the client's
   // separately-cached commandContext — same underlying
   // getMostRecentReadingProgress query, not a new signal source.
-  // Deliberately not appended to `system` below — carrying the plan
-  // through the return value is this sprint's entire scope.
+  // `reasoningPlan.responseStrategy` now feeds buildNovaContextPrompt
+  // below (see that function's own doc comment) instead of the prompt
+  // independently re-deriving a style hint from `text` — no new
+  // classifier, no new work, just reusing the plan already computed here.
   const reasoningPlan = buildReasoningPlan({
     text,
     signals: {
@@ -285,7 +288,7 @@ await quotaService.consumeQuota(userId, 'ai_messages')
       isContinuation: isContinuationMessage(text),
     },
   })
-  system = `${system}\n\n${buildNovaContextPrompt(novaContext, text)}`
+  system = `${system}\n\n${buildNovaContextPrompt(novaContext, reasoningPlan.responseStrategy)}`
 
   const { result } = await runWithFallback(providerChain, (candidateId) =>
     streamChatCompletion({

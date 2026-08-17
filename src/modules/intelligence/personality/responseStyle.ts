@@ -17,13 +17,3 @@ export function inferResponseStyleHint(query: string): ResponseStyleHint {
 
   return 'standard'
 }
-
-const STYLE_GUIDANCE: Record<ResponseStyleHint, string> = {
-  brief: 'Answer directly in 1-3 sentences unless more detail is clearly needed.',
-  standard: 'Answer clearly and completely without padding.',
-  exploratory: 'This is an open-ended question — explain with more depth and structure where it helps.',
-}
-
-export function buildResponseStyleGuidance(hint: ResponseStyleHint): string {
-  return STYLE_GUIDANCE[hint]
-}
