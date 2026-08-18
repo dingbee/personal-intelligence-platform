@@ -1,7 +1,40 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '@/shared/lib/supabase'
 import type { FoundingProApplication, FoundingProInvitation } from '@/shared/types/database'
 
 /** Every function here calls a SECURITY DEFINER RPC that re-checks is_platform_admin() itself and raises if the caller isn't one — the authorization is enforced by the database, this file is a thin, unprivileged wrapper. */
+
+/**
+ * P1-3 (Edge Function diagnostic error-swallowing) — mirrors
+ * workspaceMembers.ts's own `extractEdgeFunctionErrorMessage` exactly, for
+ * this file's two edge-function-invoking functions below
+ * (`sendBetaInvitationEmail`, `sendFoundingProInvitationEmail`).
+ * `supabase.functions.invoke()` throws a `FunctionsHttpError` for any
+ * non-2xx response whose `.message` is always the same hardcoded string
+ * ("Edge Function returned a non-2xx status code"), regardless of what
+ * the function actually reported. Both send-beta-invitation and
+ * send-founding-pro-invitation's own `errorResponse` helpers always
+ * respond with `{ error: string }` on failure, so this reads exactly that
+ * one field. Any read failure (non-JSON body, empty body, unexpected
+ * shape) falls back to the original generic `error.message`, so this can
+ * only ever add information, never lose the pre-existing behavior.
+ */
+async function extractEdgeFunctionErrorMessage(error: unknown): Promise<string> {
+  const fallbackMessage = error instanceof Error ? error.message : 'Failed to send invitation email'
+  if (!(error instanceof FunctionsHttpError)) return fallbackMessage
+
+  try {
+    const body: unknown = await error.context.json()
+    if (body && typeof body === 'object' && 'error' in body) {
+      const serverMessage = (body as { error: unknown }).error
+      if (typeof serverMessage === 'string' && serverMessage.trim().length > 0) return serverMessage
+    }
+  } catch {
+    // Response body wasn't valid JSON (or couldn't be read) — use the generic fallback below.
+  }
+
+  return fallbackMessage
+}
 
 export async function adminListUsers() {
   const { data, error } = await supabase.rpc('admin_list_users')
@@ -51,7 +84,7 @@ export async function adminRevokeBetaInvite(inviteId: string) {
  */
 export async function sendBetaInvitationEmail(inviteId: string): Promise<{ error: string | null }> {
   const { error } = await supabase.functions.invoke('send-beta-invitation', { body: { inviteId } })
-  return { error: error ? error.message : null }
+  return { error: error ? await extractEdgeFunctionErrorMessage(error) : null }
 }
 
 export async function adminChangeUserPlan(params: { userId: string; planId: string }) {
@@ -228,5 +261,5 @@ export async function adminInviteFoundingProMember(params: {
  */
 export async function sendFoundingProInvitationEmail(invitationId: string): Promise<{ error: string | null }> {
   const { error } = await supabase.functions.invoke('send-founding-pro-invitation', { body: { invitationId } })
-  return { error: error ? error.message : null }
+  return { error: error ? await extractEdgeFunctionErrorMessage(error) : null }
 }

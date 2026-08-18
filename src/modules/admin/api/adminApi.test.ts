@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { FunctionsHttpError } from '@supabase/supabase-js'
 
 const { rpcMock, functionsInvokeMock } = vi.hoisted(() => ({ rpcMock: vi.fn(), functionsInvokeMock: vi.fn() }))
 vi.mock('@/shared/lib/supabase', () => ({ supabase: { rpc: rpcMock, functions: { invoke: functionsInvokeMock } } }))
@@ -18,7 +19,23 @@ import {
   adminSetUserQuotaOverride,
   adminUpdatePlanQuota,
   sendBetaInvitationEmail,
+  sendFoundingProInvitationEmail,
 } from '@/modules/admin/api/adminApi'
+
+/**
+ * P1-3 — a real `FunctionsHttpError` (thrown by `@supabase/functions-js`
+ * for any non-2xx response) carries the raw `Response` on `.context`, not
+ * a pre-parsed body. `jsonBody` fakes just enough of that `Response` shape
+ * (`.json()`) for `extractEdgeFunctionErrorMessage` to read from, without
+ * needing a real fetch Response in this test environment — same helper
+ * shape as workspaceMembers.test.ts's own `fakeHttpError`.
+ */
+function fakeHttpError(jsonBody: unknown | (() => Promise<unknown>)): FunctionsHttpError {
+  const context = {
+    json: () => (typeof jsonBody === 'function' ? (jsonBody as () => Promise<unknown>)() : Promise.resolve(jsonBody)),
+  }
+  return new FunctionsHttpError(context as unknown as Response)
+}
 
 describe('adminApi', () => {
   it('adminListUsers calls the RPC and returns its rows', async () => {
@@ -213,8 +230,16 @@ describe('adminApi', () => {
       expect(result).toEqual({ error: null })
     })
 
-    it('returns the error message rather than throwing when the provider rejects the send', async () => {
-      functionsInvokeMock.mockResolvedValueOnce({ data: null, error: new Error('Email provider error: 502 upstream failure') })
+    // P1-3 — a real `supabase.functions.invoke()` failure is a
+    // FunctionsHttpError, not a plain Error: the real diagnostic text lives
+    // in the response body (`.context`), reachable exactly once, not in
+    // `.message` (always the generic SDK string). These three replace the
+    // prior plain-Error mocks, which didn't reflect actual SDK behavior.
+    it('reads the real diagnostic reason out of a structured FunctionsHttpError response body, instead of the generic SDK message', async () => {
+      functionsInvokeMock.mockResolvedValueOnce({
+        data: null,
+        error: fakeHttpError({ error: 'Email provider error: 502 upstream failure' }),
+      })
 
       const result = await sendBetaInvitationEmail('invite-1')
 
@@ -222,11 +247,66 @@ describe('adminApi', () => {
     })
 
     it('surfaces a 409 for an already-accepted invite as an error, not a throw', async () => {
-      functionsInvokeMock.mockResolvedValueOnce({ data: null, error: new Error('Invite is no longer pending (accepted)') })
+      functionsInvokeMock.mockResolvedValueOnce({
+        data: null,
+        error: fakeHttpError({ error: 'Invite is no longer pending (accepted)' }),
+      })
 
       const result = await sendBetaInvitationEmail('invite-1')
 
       expect(result.error).toMatch(/no longer pending/)
+    })
+
+    it('falls back to the generic SDK message when the response body is not valid JSON', async () => {
+      functionsInvokeMock.mockResolvedValueOnce({
+        data: null,
+        error: fakeHttpError(() => Promise.reject(new Error('Unexpected token < in JSON'))),
+      })
+
+      const result = await sendBetaInvitationEmail('invite-1')
+
+      expect(result).toEqual({ error: 'Edge Function returned a non-2xx status code' })
+    })
+  })
+
+  describe('sendFoundingProInvitationEmail', () => {
+    it('invokes the edge function with only the invitation id and returns no error on success', async () => {
+      functionsInvokeMock.mockResolvedValueOnce({ data: { sent: true }, error: null })
+
+      const result = await sendFoundingProInvitationEmail('invitation-1')
+
+      expect(functionsInvokeMock).toHaveBeenCalledWith('send-founding-pro-invitation', { body: { invitationId: 'invitation-1' } })
+      expect(result).toEqual({ error: null })
+    })
+
+    it('reads the real diagnostic reason out of a structured FunctionsHttpError response body, instead of the generic SDK message', async () => {
+      functionsInvokeMock.mockResolvedValueOnce({
+        data: null,
+        error: fakeHttpError({ error: 'Email provider error: 502 upstream failure' }),
+      })
+
+      const result = await sendFoundingProInvitationEmail('invitation-1')
+
+      expect(result).toEqual({ error: 'Email provider error: 502 upstream failure' })
+    })
+
+    it('falls back to the generic SDK message when the response body is not valid JSON', async () => {
+      functionsInvokeMock.mockResolvedValueOnce({
+        data: null,
+        error: fakeHttpError(() => Promise.reject(new Error('Unexpected token < in JSON'))),
+      })
+
+      const result = await sendFoundingProInvitationEmail('invitation-1')
+
+      expect(result).toEqual({ error: 'Edge Function returned a non-2xx status code' })
+    })
+
+    it('still returns a message for a non-FunctionsHttpError rejection (e.g. a network failure)', async () => {
+      functionsInvokeMock.mockResolvedValueOnce({ data: null, error: new Error('Failed to fetch') })
+
+      const result = await sendFoundingProInvitationEmail('invitation-1')
+
+      expect(result).toEqual({ error: 'Failed to fetch' })
     })
   })
 })

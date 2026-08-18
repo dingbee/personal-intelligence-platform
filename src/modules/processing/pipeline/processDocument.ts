@@ -1,4 +1,3 @@
-import { FunctionsHttpError } from '@supabase/supabase-js'
 import { getDocument, updateDocumentStatus } from '@/modules/library/api/documents'
 import { createProcessingJob, updateProcessingJob } from '@/modules/processing/api/jobs'
 import { saveExtractionMetadata } from '@/modules/processing/api/extractionMetadata'
@@ -26,18 +25,17 @@ function sleep(ms: number): Promise<void> {
 /**
  * The ai-chat edge function always answers upstream failures with its own
  * 502, so the real OpenAI status only survives inside the JSON error body
- * text (e.g. "OpenAI embeddings error: 429 ..."). `FunctionsHttpError.context`
- * is the still-unread Response for that call, so this reads it once to check
- * for a 429 without needing the edge function to forward the real status.
+ * text (e.g. "OpenAI embeddings error: 429 ..."). Reads `err.message`
+ * rather than `err.context.json()` directly — P1-3's fix to
+ * `invokeAiEmbed()` (edgeFunctionClient.ts) already extracts that same
+ * body's `.error` field into `.message` before this error ever reaches
+ * here, and a fetch `Response` body can only be consumed once: reading
+ * `.context.json()` a second time in this function would always fail,
+ * since `invokeAiEmbed` already consumed it. Checking `.message` is both
+ * correct and the only safe option post-fix.
  */
 export async function isRateLimitError(err: unknown): Promise<boolean> {
-  if (!(err instanceof FunctionsHttpError)) return false
-  try {
-    const body = (await err.context.json()) as { error?: string }
-    return typeof body.error === 'string' && /\b429\b/.test(body.error)
-  } catch {
-    return false
-  }
+  return err instanceof Error && /\b429\b/.test(err.message)
 }
 
 /**

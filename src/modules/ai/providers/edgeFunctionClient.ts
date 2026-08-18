@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '@/shared/lib/supabase'
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`
@@ -122,10 +123,49 @@ export interface EmbedResult {
   promptTokens: number | null
 }
 
+/**
+ * P1-3 (Edge Function diagnostic error-swallowing) — mirrors workspaceMembers.ts's
+ * own `extractEdgeFunctionErrorMessage` exactly (same `.error` field convention
+ * ai-chat's own `errorResponse` helper always uses, same fail-open-to-the-
+ * generic-message behavior on a non-JSON or unexpected body), adapted for
+ * `invokeAiEmbed`'s throw-based contract: rather than returning a string,
+ * this mutates the SAME `FunctionsHttpError` instance's own `.message` in
+ * place and rethrows it completely unchanged in every other respect (still
+ * a `FunctionsHttpError`, `.context` untouched as an object reference).
+ *
+ * That matters specifically here because `processDocument.ts`'s
+ * `isRateLimitError()` also needs to read this same 429 signal from the
+ * same error object further downstream (`embedBatchWithRetry`'s catch,
+ * after `OpenAIEmbeddingProvider.embed()`'s own catch has already run) —
+ * and a fetch `Response` body (`.context`) can only ever be read once.
+ * Mutating `.message` in place here, then having `isRateLimitError` read
+ * `.message` instead of re-reading `.context`, is what lets both the
+ * observability fix (this function, `OpenAIEmbeddingProvider`) and the
+ * retry logic (`processDocument.ts`) see the real diagnostic text from a
+ * single body read, without changing the error's type or breaking either
+ * one.
+ */
+async function extractEdgeFunctionErrorMessage(error: FunctionsHttpError): Promise<void> {
+  try {
+    const body: unknown = await error.context.json()
+    if (body && typeof body === 'object' && 'error' in body) {
+      const serverMessage = (body as { error: unknown }).error
+      if (typeof serverMessage === 'string' && serverMessage.trim().length > 0) {
+        error.message = serverMessage
+      }
+    }
+  } catch {
+    // Response body wasn't valid JSON (or couldn't be read) — the original generic message is left as-is.
+  }
+}
+
 export async function invokeAiEmbed(input: string[]): Promise<EmbedResult> {
   const { data, error } = await supabase.functions.invoke<EmbedResult>('ai-chat', {
     body: { action: 'embed', input },
   })
-  if (error) throw error
+  if (error) {
+    if (error instanceof FunctionsHttpError) await extractEdgeFunctionErrorMessage(error)
+    throw error
+  }
   return data!
 }

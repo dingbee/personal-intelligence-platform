@@ -41,10 +41,16 @@ vi.mock('@/modules/processing/api/jobs', () => ({
 
 const { processDocument, embedBatchWithRetry, isRateLimitError } = await import('@/modules/processing/pipeline/processDocument')
 
+// P1-3 — `.message` is set directly rather than via a mocked `.context.json()`,
+// simulating the state this error is always actually in by the time
+// `isRateLimitError` sees it: `invokeAiEmbed` (edgeFunctionClient.ts) already
+// extracted the real body text into `.message` before rethrowing, and a
+// fetch Response body can only be read once — `isRateLimitError` no longer
+// reads `.context` itself, so its own tests shouldn't rely on it either.
 function rateLimitError(): FunctionsHttpError {
-  return new FunctionsHttpError({
-    json: async () => ({ error: 'OpenAI embeddings error: 429 {"error":{"type":"rate_limit_exceeded"}}' }),
-  } as Response)
+  const err = new FunctionsHttpError({} as Response)
+  err.message = 'OpenAI embeddings error: 429 {"error":{"type":"rate_limit_exceeded"}}'
+  return err
 }
 
 function makeChunk(id: string, content: string): DocumentChunk {
@@ -70,14 +76,17 @@ describe('isRateLimitError', () => {
   })
 
   it('returns false for a non-429 FunctionsHttpError', async () => {
-    const err = new FunctionsHttpError({
-      json: async () => ({ error: 'OpenAI embeddings error: 400 bad request' }),
-    } as Response)
+    const err = new FunctionsHttpError({} as Response)
+    err.message = 'OpenAI embeddings error: 400 bad request'
     await expect(isRateLimitError(err)).resolves.toBe(false)
   })
 
   it('returns false for a plain error', async () => {
     await expect(isRateLimitError(new Error('network down'))).resolves.toBe(false)
+  })
+
+  it('returns false for a non-Error value', async () => {
+    await expect(isRateLimitError('not an error')).resolves.toBe(false)
   })
 })
 
