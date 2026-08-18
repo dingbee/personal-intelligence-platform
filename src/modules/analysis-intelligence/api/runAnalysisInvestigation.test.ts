@@ -325,12 +325,19 @@ describe('runAnalysisInvestigation', () => {
       // never called again for a fresh operation.
       expect(checkQuotaMock).not.toHaveBeenCalled()
       // All 3 AI calls this delegated investigation made consumed the
-      // PARENT's budget and quota key (research_intelligence_operations),
-      // not a new analysis_intelligence_operations one.
+      // PARENT's in-memory budget. P0-1 (Production Technical Blocker
+      // Audit) moved the actual quota_usage consumption server-side (the
+      // ai-chat edge function now atomically reserves it itself, keyed off
+      // the operationType each call forwards) — quotaService.consumeQuota
+      // is no longer called from this client-side orchestration at all.
       expect(parentOperation.callsConsumed).toBe(3)
-      expect(consumeQuotaMock).toHaveBeenCalledTimes(3)
-      for (const call of consumeQuotaMock.mock.calls) {
-        expect(call[1]).toBe('research_intelligence_operations')
+      expect(consumeQuotaMock).not.toHaveBeenCalled()
+      // Every one of the 3 calls still correctly identifies itself as
+      // belonging to the PARENT's operation type (research_intelligence,
+      // not a new analysis_intelligence one) — this is what the edge
+      // function uses to resolve the correct server-side quota key.
+      for (const call of streamChatCompletionMock.mock.calls) {
+        expect((call[0] as { operationType?: string }).operationType).toBe('research_intelligence')
       }
       expect(investigation.status).toBe('complete')
       // A delegated investigation never marks the shared parent operation

@@ -19,6 +19,23 @@ export interface ChatRequest {
   messages: ChatProviderMessage[]
   system?: string
   onUsage?: (usage: ChatUsage) => void
+  /**
+   * P0-1 (Production Technical Blocker Audit) — which quota_key the
+   * `ai-chat` edge function should atomically reserve/consume before ever
+   * calling a real provider. Omitted means 'ai_messages' (the universal
+   * baseline every plan has); any `*_operations` key is independently
+   * re-verified server-side against the caller's actual entitlement — see
+   * that function's own `resolveQuotaKey`. Never itself an authorization
+   * decision, only a declaration of which pool this call should draw from.
+   */
+  quotaKey?: string
+  /** Everything below is audit-log context only, forwarded to the edge function's server-side ai_requests insert — never used for any authorization decision there. */
+  workspaceId?: string | null
+  feature?: string
+  requestedProvider?: string
+  fallbackReason?: string | null
+  operationId?: string | null
+  operationType?: string | null
 }
 
 export interface ChatProvider {

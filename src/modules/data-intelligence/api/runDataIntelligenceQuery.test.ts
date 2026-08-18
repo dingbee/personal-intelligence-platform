@@ -201,7 +201,14 @@ describe('runDataIntelligenceQuery', () => {
       expect(interpretationCall.operationType).toBe('data_intelligence')
     })
 
-    it('marks the operation completed by consuming quota once per real attempt, never once per query regardless of call count', async () => {
+    // P0-1 (Production Technical Blocker Audit) — quota consumption for
+    // data_intelligence_operations moved server-side: the ai-chat edge
+    // function now atomically reserves/consumes it itself (via the
+    // quotaKey streamChatCompletion forwards on each request), before ever
+    // calling a real provider. quotaService.consumeQuota() is no longer
+    // called from this client-side orchestration at all — calling it here
+    // too would double-charge the same two real AI calls.
+    it('never calls quotaService.consumeQuota — that consumption now happens server-side, in the ai-chat edge function itself', async () => {
       hasFeatureMock.mockResolvedValue(true)
       streamChatCompletionMock
         .mockResolvedValueOnce({ content: JSON.stringify({ dimensions: [{ column: 'Salesperson' }], measures: [{ as: 'total', aggregation: 'sum', column: 'Total Price' }] }), model: 'm' })
@@ -209,9 +216,7 @@ describe('runDataIntelligenceQuery', () => {
 
       await runDataIntelligenceQuery({ datasetId: 'dataset-1', question: 'Who sold the most?', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
 
-      // Two real AI calls (plan + interpretation) -> two consumeQuota calls.
-      expect(consumeQuotaMock).toHaveBeenCalledTimes(2)
-      expect(consumeQuotaMock).toHaveBeenCalledWith('pro-user', 'data_intelligence_operations')
+      expect(consumeQuotaMock).not.toHaveBeenCalled()
     })
   })
 })

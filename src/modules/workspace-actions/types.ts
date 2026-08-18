@@ -43,6 +43,21 @@ export interface WorkspaceActionOutcome {
   references?: Reference[]
   /** Optional — when present, the chat UI renders a structured card (KnowledgeCard-based) for this response instead of plain markdown. Ephemeral: never persisted, only available for the turn it was returned in. */
   artifactPreview?: ArtifactPreview
+  /**
+   * P0-1 hardening (Production Technical Blocker Audit) — set `true` when
+   * this action's own `run()` already made a real, server-metered AI call
+   * (i.e. went through `runCapability`/`streamChatCompletion`, which the
+   * `ai-chat` edge function itself now atomically gates and consumes
+   * quota for — see that function's own header comment). Most workspace
+   * actions are deterministic and never touch an LLM at all, so
+   * `AIService.sendMessage` still charges one generic 'ai_messages' unit
+   * for those, the same "one workspace action = one chat-turn" accounting
+   * it always has. An action that sets this to `true` has already been
+   * charged by the edge function for the real call it made — the generic
+   * per-turn charge is skipped for it specifically, so one logical AI
+   * request is never billed twice against the same quota.
+   */
+  usedAiCall?: boolean
 }
 
 /**

@@ -50,12 +50,22 @@ export const generateSpreadsheetArtifactAction: WorkspaceAction<{ request: strin
       }),
     )
 
+    // P0-1 hardening — every return below this point happens after the
+    // runWithFallback/runCapability call above already made one real,
+    // server-metered AI request (the edge function gates and consumes
+    // quota for it regardless of what this action does with the result,
+    // including a validation/safety rejection of the model's own output).
+    // `usedAiCall: true` on every branch tells AIService.sendMessage not
+    // to also charge its generic per-turn 'ai_messages' unit for this
+    // outcome — see WorkspaceActionOutcome's own doc comment.
+
     let spec
     try {
       spec = parseSpreadsheetSpecificationResponse(result.content)
     } catch {
       return {
         responseText: "I wasn't able to generate a valid spreadsheet for that — try rephrasing your request.",
+        usedAiCall: true,
       }
     }
 
@@ -64,6 +74,7 @@ export const generateSpreadsheetArtifactAction: WorkspaceAction<{ request: strin
       const reasons = validation.errors.slice(0, MAX_ERRORS_SHOWN).map((error) => error.message)
       return {
         responseText: `I couldn't build that spreadsheet — the generated structure had ${validation.errors.length === 1 ? 'an issue' : 'issues'}:\n${reasons.map((reason) => `- ${reason}`).join('\n')}\n\nTry rephrasing your request.`,
+        usedAiCall: true,
       }
     }
 
@@ -76,6 +87,7 @@ export const generateSpreadsheetArtifactAction: WorkspaceAction<{ request: strin
           responseText:
             "I couldn't build that spreadsheet — one of the generated formulas isn't allowed for safety reasons. " +
             'Try rephrasing your request, or ask for the figures without a formula.',
+          usedAiCall: true,
         }
       }
     }
@@ -91,6 +103,7 @@ export const generateSpreadsheetArtifactAction: WorkspaceAction<{ request: strin
       // KnowledgeCard-based preview instead of the plain markdown table
       // for this one message.
       artifactPreview: { kind: 'spreadsheet', title, content: markdown },
+      usedAiCall: true,
     }
   },
 }

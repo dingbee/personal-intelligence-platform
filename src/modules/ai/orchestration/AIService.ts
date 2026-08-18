@@ -146,8 +146,16 @@ async function sendMessageAfterUserTurn(params: {
     })
     void indexMessage(assistantMessage, workspaceId)
     await touchConversation(conversationId)
-    
-await quotaService.consumeQuota(userId, 'ai_messages')
+
+    // Most workspace actions are deterministic and never call an LLM, so
+    // this generic per-turn charge is still the ONLY quota consumption
+    // that happens for them — unchanged. An action that DID make its own
+    // real AI call (e.g. generateSpreadsheetArtifactAction) sets
+    // `usedAiCall: true`; the `ai-chat` edge function already atomically
+    // metered that call itself (P0-1 hardening), so charging again here
+    // would double-count one logical AI request. See
+    // WorkspaceActionOutcome's own doc comment.
+    if (!actionOutcome.usedAiCall) await quotaService.consumeQuota(userId, 'ai_messages')
     return {
       message: assistantMessage,
       suggestions: [],
@@ -369,8 +377,15 @@ await quotaService.consumeQuota(userId, 'ai_messages')
   void linkKnownConceptsToSource({ userId, sourceType: 'conversation', sourceId: conversationId, text: result.content })
 
   await touchConversation(conversationId)
-  
-  await quotaService.consumeQuota(userId, 'ai_messages')
+
+  // P0-1 (Production Technical Blocker Audit) — quota is no longer
+  // consumed here. The streamChatCompletion() call above now runs through
+  // the `ai-chat` edge function's own atomic consume_quota('ai_messages')
+  // gate (see streamChatCompletion.ts's quotaKey derivation and that
+  // function's own header comment) — consuming it again here would
+  // double-charge one real AI call. checkQuota() above remains a
+  // client-side pre-flight only, for fast UX before doing any retrieval
+  // work; the edge function's own gate is what's actually authoritative.
 
   // UX-7 Phase 2 — resolveReferences never throws (see its own try/catch-
   // free but purely-additive design: no matches means [] immediately);

@@ -151,7 +151,7 @@ describe('intelligenceOperations', () => {
       expect(operation.status).toBe('budget_exhausted')
     })
 
-    it('records exactly one consumed call and one consumeQuota invocation for a single successful attempt', async () => {
+    it('records exactly one consumed call in-memory, without touching consumeQuota, for a single successful attempt', async () => {
       const operation = op()
       const run = vi.fn(async () => 'answer')
 
@@ -159,8 +159,6 @@ describe('intelligenceOperations', () => {
 
       expect(result).toBe('answer')
       expect(operation.callsConsumed).toBe(1)
-      expect(consumeQuotaMock).toHaveBeenCalledTimes(1)
-      expect(consumeQuotaMock).toHaveBeenCalledWith('user-1', 'data_intelligence_operations')
       expect(operation.status).toBe('running')
     })
 
@@ -175,7 +173,6 @@ describe('intelligenceOperations', () => {
 
       // Two real attempts (anthropic failed, openai succeeded) — both consumed budget.
       expect(operation.callsConsumed).toBe(2)
-      expect(consumeQuotaMock).toHaveBeenCalledTimes(2)
     })
 
     it('counts every individual provider-fallback attempt against the budget, not one call per operation', async () => {
@@ -186,7 +183,25 @@ describe('intelligenceOperations', () => {
 
       await expect(runOperationAiCall(operation, ['anthropic', 'openai', 'google'], run)).rejects.toThrow('down')
       expect(operation.callsConsumed).toBe(3)
-      expect(consumeQuotaMock).toHaveBeenCalledTimes(3)
+    })
+
+    // P0-1 (Production Technical Blocker Audit) — quota consumption for
+    // every operation type moved server-side: the `ai-chat` edge function
+    // now atomically reserves/consumes the operation's own `*_operations`
+    // quota key itself (via the quotaKey the caller forwards on each
+    // request — see streamChatCompletion.ts), before ever calling a real
+    // provider. Calling quotaService.consumeQuota() again from here would
+    // double-charge the exact same AI call against the exact same key.
+    // checkQuota() (beginIntelligenceOperation, above) remains a
+    // client-side pre-flight only, for fast UX before starting a
+    // multi-step operation — the edge function's own gate is authoritative.
+    it('never calls quotaService.consumeQuota — that consumption now happens server-side, in the ai-chat edge function itself', async () => {
+      const operation = op({ maxCalls: 3 })
+      const run = vi.fn(async () => 'ok')
+
+      await runOperationAiCall(operation, ['anthropic'], run)
+
+      expect(consumeQuotaMock).not.toHaveBeenCalled()
     })
 
     it('stops attempting further fallback candidates once the budget runs out mid-chain, and reclassifies the result as OperationBudgetExhaustedError', async () => {
@@ -213,16 +228,15 @@ describe('intelligenceOperations', () => {
       expect(operation.status).not.toBe('budget_exhausted')
     })
 
-    it('never calls consumeQuota for a candidate that was never actually attempted', async () => {
+    it('never increments callsConsumed for a candidate that was never actually attempted', async () => {
       const operation = op({ maxCalls: 1 })
       const run = vi.fn(async () => 'ok')
 
       await runOperationAiCall(operation, ['anthropic', 'openai', 'google'], run)
 
       // Succeeded on the first candidate — the other two were never attempted and
-      // never consumed budget or quota.
+      // never consumed budget.
       expect(run).toHaveBeenCalledTimes(1)
-      expect(consumeQuotaMock).toHaveBeenCalledTimes(1)
       expect(operation.callsConsumed).toBe(1)
     })
   })

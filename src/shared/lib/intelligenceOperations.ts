@@ -72,7 +72,7 @@ const INTELLIGENCE_OPERATION_HARD_CEILINGS: Record<IntelligenceOperationType, nu
  * at all," this key answers "how much AI work has this user's use of it
  * actually consumed this month."
  */
-const INTELLIGENCE_OPERATION_QUOTA_KEYS: Record<IntelligenceOperationType, string> = {
+export const INTELLIGENCE_OPERATION_QUOTA_KEYS: Record<IntelligenceOperationType, string> = {
   data_intelligence: 'data_intelligence_operations',
   analysis_intelligence: 'analysis_intelligence_operations',
   research_intelligence: 'research_intelligence_operations',
@@ -187,15 +187,21 @@ export function isOperationBudgetExhausted(operation: IntelligenceOperation): bo
 /**
  * Records one real AI-call attempt (success or failure — both consumed
  * real execution capacity, per the sprint brief's §20 semantics) against
- * the operation's in-memory counter and the same monthly
- * quota_usage/consume_quota mechanism 'ai_messages' already uses. Never
- * called for deterministic computation, retrieval, or any non-AI step —
- * callers only invoke this from within runOperationAiCall, immediately
- * around a real provider attempt.
+ * the operation's in-memory counter. The monthly quota_usage/consume_quota
+ * mechanism itself is no longer incremented from here (P0-1, Production
+ * Technical Blocker Audit): the `ai-chat` edge function now atomically
+ * reserves/consumes the operation's own `*_operations` quota key
+ * server-side, before ever calling a real provider, for every call this
+ * operation makes (see streamChatCompletion.ts, which derives that key
+ * from `operationType` and forwards it on every request). Consuming it
+ * again here would double-charge the same real AI call against the same
+ * key. This function still exists to track the operation's own in-memory
+ * `maxCalls` ceiling (a distinct, per-operation safety backstop — see this
+ * module's own header comment — that the server-side monthly quota knows
+ * nothing about).
  */
-async function recordOperationAiCall(operation: IntelligenceOperation): Promise<void> {
+function recordOperationAiCall(operation: IntelligenceOperation): void {
   operation.callsConsumed += 1
-  await quotaService.consumeQuota(operation.userId, INTELLIGENCE_OPERATION_QUOTA_KEYS[operation.operationType])
 }
 
 /**
@@ -224,7 +230,7 @@ export async function runOperationAiCall<T>(operation: IntelligenceOperation, ch
         try {
           return await run(providerId)
         } finally {
-          await recordOperationAiCall(operation)
+          recordOperationAiCall(operation)
         }
       },
       { shouldAbort: () => isOperationBudgetExhausted(operation) },
