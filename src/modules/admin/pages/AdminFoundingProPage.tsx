@@ -29,6 +29,22 @@ function formatPrice(cents: number, currency: string): string {
   return (cents / 100).toLocaleString(undefined, { style: 'currency', currency })
 }
 
+// V1 Founding Pro Expiry — transition_status gained two explicit outcome
+// values (0072_founding_pro_expiry.sql); 'transitioned' is kept only for
+// any historical row that might already carry it (nothing has ever
+// written that value) and displays with the same generic fallback it
+// always has.
+const TRANSITION_STATUS_LABELS: Record<string, string> = {
+  active: 'Active',
+  converted_to_pro: 'Converted to Pro',
+  expired_to_free: 'Expired to Free',
+  transitioned: 'Transitioned',
+}
+
+function formatTransitionStatus(status: string): string {
+  return TRANSITION_STATUS_LABELS[status] ?? status
+}
+
 /**
  * Founding Pro Programme Phase 4 — the Application → Approved →
  * Invitation Sent → Accepted → Enrolled lifecycle is a derived display
@@ -373,7 +389,7 @@ export function AdminFoundingProPage() {
                     <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{formatPrice(m.founding_price_cents, m.currency)}</td>
                     <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{formatDate(m.founding_started_at)}</td>
                     <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{formatDate(m.founding_expires_at)}</td>
-                    <td className="py-2 pr-4 capitalize text-[var(--color-ink-muted)]">{m.transition_status}</td>
+                    <td className="py-2 pr-4 text-[var(--color-ink-muted)]">{formatTransitionStatus(m.transition_status)}</td>
                     <td className="py-2 text-[var(--color-ink-muted)]">{m.current_plan_code ?? '—'}</td>
                   </tr>
                 ))}

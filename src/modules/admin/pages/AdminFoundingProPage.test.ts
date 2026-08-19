@@ -237,6 +237,26 @@ describe('AdminFoundingProPage', () => {
     expect(totalLabel.parentElement?.parentElement?.textContent).toContain('2')
   })
 
+  // V1 Founding Pro Expiry — transition_status gained two explicit
+  // outcome values (0072_founding_pro_expiry.sql); the registry must show
+  // a human-readable label for each, not the raw snake_case value.
+  it('shows human-readable transition labels for converted/expired members', () => {
+    useAdminFoundingProMembersMock.mockReturnValue({
+      data: [
+        { ...publicMember, id: 'member-3', applicant_email: 'converted@example.com', transition_status: 'converted_to_pro', transitioned_at: '2026-03-01T00:00:00Z' },
+        { ...publicMember, id: 'member-4', applicant_email: 'expired@example.com', transition_status: 'expired_to_free', transitioned_at: '2026-04-05T00:00:00Z' },
+      ],
+      isLoading: false,
+    })
+
+    renderPage()
+
+    expect(screen.getByText('Converted to Pro')).not.toBeNull()
+    expect(screen.getByText('Expired to Free')).not.toBeNull()
+    expect(screen.queryByText('converted_to_pro')).toBeNull()
+    expect(screen.queryByText('expired_to_free')).toBeNull()
+  })
+
   it('shows Send Invitation only for an approved application with no active invitation', () => {
     useAdminFoundingProApplicationsMock.mockReturnValue({ data: [approvedApp], isLoading: false })
 

@@ -20,10 +20,17 @@ import { Button } from '@/shared/components/ui/Button'
 //     phase's concern); this card never reads plans.founding_pro's own
 //     monthly_price_cents, which is a different, unrelated concept (see
 //     0052's own comment on admin_enroll_founding_pro_member).
+// V1 Founding Pro Expiry — "Automatic transition to standard Pro" was
+// inaccurate: expiry (expire_founding_pro_members(),
+// 0072_founding_pro_expiry.sql) only keeps someone on Pro if they've
+// separately, explicitly converted (normal Pro checkout) before their
+// 3-month term ends; otherwise they return to Free, not Pro. This copy
+// must state that honestly rather than implying Pro is the automatic
+// outcome.
 const FOUNDING_PRO_FEATURES = [
   'Everything in Pro, from day one',
-  'Discounted founding rate for your first 3 months',
-  'Automatic transition to standard Pro once your founding period ends',
+  'Discounted founding rate for a 3-month founding term',
+  'Move to standard Pro anytime during your term to keep full access afterward — otherwise you return to Free when it ends',
 ]
 
 // Capability-progression messaging, matching PricingPage's CARD_COPY pattern

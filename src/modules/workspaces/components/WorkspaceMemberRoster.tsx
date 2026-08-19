@@ -49,12 +49,19 @@ const ASSIGNABLE_ROLES: Exclude<WorkspaceMemberRole, 'owner'>[] = ['editor', 'vi
  * than `invite.isError`/a failed resend: the invitation is already
  * correctly pending in the database either way, and can be resent.
  *
- * Phase 4 Commercial Architecture — collaboration is Pro-only. The
- * database (`invite_to_workspace`'s `has_feature('collaboration')` check)
- * is the actual enforcement boundary; this component's `useHasFeature`
- * read is purely a UX improvement so a Free-plan owner sees an upgrade
- * prompt in place of a form that would just fail server-side, rather than
- * discovering the restriction only after submitting it.
+ * V1 Free Collaboration — Free now has the collaboration feature itself
+ * (`has_feature('collaboration')` is true for Free, Beta, Pro, Founding
+ * Pro, and Enterprise; only a plan without the feature at all, e.g.
+ * Student, sees the "not included" block below). What actually limits a
+ * Free workspace is *capacity* — 1 active collaborator, 1 outstanding
+ * invitation (`invite_to_workspace`'s own `max_active_collaborators`/
+ * `max_pending_invitations` checks, 0071_free_access_and_collaboration.sql)
+ * — enforced there, server-side, in the same transaction as the write.
+ * This component's own capacity display (`activeCollaboratorCount`/
+ * `pendingCount`, computed from data already loaded here) is advisory
+ * only, exactly like the pre-existing `useHasFeature` read below: it
+ * never grants or blocks anything by itself, and a stale/optimistic
+ * client read here can never permit an invite the RPC would reject.
  */
 export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) {
   const { user } = useAuth()
@@ -72,15 +79,28 @@ export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) 
 
   const isOwner = role === 'owner'
 
+  // Advisory only (see this component's own doc-comment) — computed from
+  // data already loaded here, purely for presentation. The RPC re-derives
+  // both counts itself, server-side, and is the only enforcement point.
+  const activeCollaboratorCount = members.filter((m) => m.status === 'active' && m.role !== 'owner').length
+  const pendingCount = members.filter((m) => m.status === 'pending').length + invitations.length
+
+  // Capacity errors (invite_to_workspace's own controlled P0001 messages,
+  // 0071_free_access_and_collaboration.sql) get a distinct, actionable
+  // presentation — a plain red error line reads as a generic failure to
+  // retry, not as "you're at your plan's limit," so this surfaces the
+  // real reason with an upgrade path instead of a confusing generic error.
+  const inviteErrorMessage = invite.error instanceof Error ? invite.error.message : invite.isError ? 'Failed to send invitation' : null
+  const isCollaboratorLimitError = inviteErrorMessage?.includes('collaborator limit') ?? false
+  const isPendingLimitError = inviteErrorMessage?.includes('outstanding invitation') ?? false
+
   return (
     <div className="flex flex-col gap-4">
       {isOwner && !collaborationLoading && !canCollaborate && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-[var(--color-border)] bg-[var(--surface-raised)] p-4">
           <div>
-            <p className="text-sm font-medium text-[var(--color-ink)]">Inviting teammates requires Pro</p>
-            <p className="text-xs text-[var(--color-ink-muted)]">
-              Free workspaces are single-owner. Upgrade to invite editors and viewers.
-            </p>
+            <p className="text-sm font-medium text-[var(--color-ink)]">Collaboration isn't included on your plan</p>
+            <p className="text-xs text-[var(--color-ink-muted)]">Upgrade to invite editors and viewers to this workspace.</p>
           </div>
           <Button variant="secondary" onClick={() => navigate('/pricing')}>
             Upgrade to Pro
@@ -132,11 +152,27 @@ export function WorkspaceMemberRoster({ workspaceId }: { workspaceId: string }) 
           <Button type="submit" loading={invite.isPending} disabled={!inviteEmail.trim()}>
             Invite
           </Button>
-          {invite.isError && (
-            <p className="w-full text-sm text-[var(--color-danger)]">
-              {invite.error instanceof Error ? invite.error.message : 'Failed to send invitation'}
-            </p>
-          )}
+          <p className="w-full text-xs text-[var(--color-ink-muted)]">
+            {activeCollaboratorCount} active collaborator{activeCollaboratorCount === 1 ? '' : 's'}
+            {pendingCount > 0 && <> · {pendingCount} pending invitation{pendingCount === 1 ? '' : 's'}</>}
+          </p>
+          {invite.isError &&
+            (isCollaboratorLimitError || isPendingLimitError ? (
+              <div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] p-3">
+                <p className="text-sm text-[var(--color-ink)]">
+                  {isCollaboratorLimitError
+                    ? "You've reached the Free collaboration limit. Upgrade to Pro for expanded collaboration."
+                    : inviteErrorMessage}
+                </p>
+                {isCollaboratorLimitError && (
+                  <Button variant="secondary" onClick={() => navigate('/pricing')}>
+                    Upgrade to Pro
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <p className="w-full text-sm text-[var(--color-danger)]">{inviteErrorMessage}</p>
+            ))}
           {emailWarning && (
             <p className="w-full text-sm text-[var(--color-warning)]">
               {emailWarning}{' '}

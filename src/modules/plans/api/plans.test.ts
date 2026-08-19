@@ -106,21 +106,41 @@ describe('getPublicPlanCatalog', () => {
         aiMessagesPerMonth: 10000,
         storageBytes: 5368709120,
         collaboration: true,
+        maxActiveCollaborators: null,
       },
     ])
   })
 
-  it('derives collaboration: false from a 0 quota_limit (Free\'s shape) rather than defaulting to true', async () => {
+  it('derives collaboration: true and a finite maxActiveCollaborators for Free\'s shape (1/1)', async () => {
     mockCatalog(
       [{ id: 'plan-2', code: 'free', name: 'Free', description: null, active: true, monthly_price_cents: null, annual_price_cents: null, currency: 'USD' }],
-      [{ plan_id: 'plan-2', quota_key: 'feature:collaboration', quota_limit: 0 }],
+      [
+        { plan_id: 'plan-2', quota_key: 'feature:collaboration', quota_limit: 1 },
+        { plan_id: 'plan-2', quota_key: 'max_active_collaborators', quota_limit: 1 },
+      ],
     )
 
     const result = await getPublicPlanCatalog(['free'])
     const [tier] = result
 
-    expect(tier?.collaboration).toBe(false)
+    expect(tier?.collaboration).toBe(true)
+    expect(tier?.maxActiveCollaborators).toBe(1)
     expect(tier?.monthlyPriceCents).toBeNull()
+  })
+
+  it('treats the documented -1 "unlimited" sentinel as null (Pro/Beta/Founding Pro/Enterprise\'s shape)', async () => {
+    mockCatalog(
+      [{ id: 'plan-4', code: 'pro', name: 'Pro', description: null, active: true, monthly_price_cents: 1999, annual_price_cents: null, currency: 'USD' }],
+      [
+        { plan_id: 'plan-4', quota_key: 'feature:collaboration', quota_limit: 1 },
+        { plan_id: 'plan-4', quota_key: 'max_active_collaborators', quota_limit: -1 },
+      ],
+    )
+
+    const result = await getPublicPlanCatalog(['pro'])
+    const [tier] = result
+
+    expect(tier?.maxActiveCollaborators).toBeNull()
   })
 
   it('returns null (not 0) for a quota key that has no row at all, never inventing a limit', async () => {
@@ -132,6 +152,7 @@ describe('getPublicPlanCatalog', () => {
     expect(tier?.aiMessagesPerMonth).toBeNull()
     expect(tier?.storageBytes).toBeNull()
     expect(tier?.collaboration).toBe(false)
+    expect(tier?.maxActiveCollaborators).toBeNull()
   })
 
   it('returns an empty array when the plans query itself fails, never throwing', async () => {

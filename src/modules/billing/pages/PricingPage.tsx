@@ -175,7 +175,11 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
           </li>
           <li className="flex items-start gap-2">
             <span aria-hidden className="mt-0.5 text-[var(--color-accent)]">✓</span>
-            {tier.collaboration ? 'Invite teammates to your workspace' : 'Single-owner workspace'}
+            {tier.collaboration
+              ? tier.maxActiveCollaborators !== null
+                ? `Invite ${tier.maxActiveCollaborators} collaborator${tier.maxActiveCollaborators === 1 ? '' : 's'} to your workspace`
+                : 'Invite unlimited teammates to your workspace'
+              : 'Single-owner workspace'}
           </li>
         </ul>
       </div>
@@ -192,22 +196,16 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
             <Button className="w-full">Sign up</Button>
           </Link>
           {/*
-            V1 — Collaboration Invitation Signup Authorization. ARRIYIA
-            v1 is controlled-access, not unrestricted self-serve signup
-            (AuthContext.signUpWithPassword authorizes via either an
-            admin-granted invite or a valid pending workspace invitation
-            — see 0069_collaboration_invitation_signup_authorization.sql
-            — neither of which this page weakens). Previously this said
-            "Currently invite-only — you'll be able to request access on
-            the next page," which described the old beta-only model and
-            implied every visitor's only path was requesting beta access;
-            the primary path is now a workspace invitation, which this
-            page has no way to reference (an anonymous visitor may not
-            have one) — kept intentionally general rather than steering
-            everyone toward the request-access fallback that only
-            actually applies to visitors with no invitation at all.
+            V1 Free Access — registration is open (enforce_signup_-
+            authorization, 0071_free_access_and_collaboration.sql, no
+            longer requires an invitation of any kind). A visitor
+            clicking "Sign up" from the Pro card lands on the same open
+            /signup as everyone else and starts on Free; paid Pro
+            conversion is a separate, later step (PricingPage's own
+            upgrade-checkout CTA once signed in), never something signup
+            itself grants.
           */}
-          <p className="text-xs text-[var(--color-ink-muted)]">Currently available by invitation only.</p>
+          <p className="text-xs text-[var(--color-ink-muted)]">Free to sign up — upgrade to Pro anytime afterward.</p>
           <p className="text-xs text-[var(--color-ink-muted)]">
             Already have an account? <Link to="/login" className="text-[var(--color-accent)] hover:underline">Log in</Link>
           </p>
@@ -251,24 +249,21 @@ export function PricingPage() {
     }
   }
 
-  // A real "Free" user is never actually assigned plans.code = 'free' —
-  // assign_default_plan() (0044_commercial_schema_reconciliation.sql)
-  // only ever assigns 'beta' on signup, or nothing at all for accounts
-  // that predate that trigger (confirmed live: 2 of 5 users have no
-  // active user_plan_assignments row). getCurrentUserPlan() correctly
+  // V1 Free Access — assign_default_plan() (0071_free_access_and_-
+  // collaboration.sql) now assigns 'free' on ordinary signup, but a
+  // handful of accounts predating that trigger still have no active
+  // user_plan_assignments row at all. getCurrentUserPlan() correctly
   // returns null for those users — null means "no explicit assignment,"
   // which this page must treat as the implicit Free default, not as an
-  // unknown/excluded state. Previously `!currentPlan` was bundled into
-  // the same branch as Founding Pro/Enterprise, which hid the Pro CTA
-  // entirely for exactly this cohort. effectivePlanCode disambiguates:
-  // only a *known* non-upgradable code suppresses the CTA now.
+  // unknown/excluded state. effectivePlanCode disambiguates: only a
+  // *known* non-upgradable code suppresses the CTA below.
   const effectivePlanCode = currentPlan?.planCode ?? (user ? 'free' : null)
 
   // What the Pro card's CTA should be, resolved once, in the exact order
   // that avoids ever offering an upgrade that doesn't make sense:
   // anonymous -> sign up; already Pro -> manage billing; a plan that
   // can't (yet) become Pro (Founding Pro/Enterprise) or still loading ->
-  // nothing; anything else (Free/Beta) -> the real checkout button.
+  // nothing; anything else (Free/legacy Beta) -> the real checkout button.
   function resolveProCta(): ProCta {
     if (!user) return { kind: 'sign-up' }
     if (planLoading) return { kind: 'none' }
@@ -356,7 +351,13 @@ export function PricingPage() {
                         <td className="py-2 pr-4 text-[var(--color-ink-muted)]">
                           {tier.storageBytes !== null ? formatFileSize(tier.storageBytes) : '—'}
                         </td>
-                        <td className="py-2 text-[var(--color-ink-muted)]">{tier.collaboration ? 'Included' : '—'}</td>
+                        <td className="py-2 text-[var(--color-ink-muted)]">
+                          {tier.collaboration
+                            ? tier.maxActiveCollaborators !== null
+                              ? `${tier.maxActiveCollaborators} collaborator${tier.maxActiveCollaborators === 1 ? '' : 's'}`
+                              : 'Unlimited'
+                            : '—'}
+                        </td>
                       </tr>
                     )
                   })}
