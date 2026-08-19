@@ -18,6 +18,18 @@ export interface PublicPlanTier {
   aiMessagesPerMonth: number | null
   storageBytes: number | null
   collaboration: boolean
+  /**
+   * V1 Free Collaboration — the plan's active-non-owner-collaborator
+   * cap, resolved from the `max_active_collaborators` plan_quotas key
+   * (0071_free_access_and_collaboration.sql). `null` means unlimited —
+   * either the plan carries the documented `-1` "no cap" sentinel, or
+   * (for a plan with no collaboration at all, e.g. Student) the key
+   * simply isn't seeded; both display identically here since this field
+   * is presentational only, never itself an enforcement point (the
+   * server-side `invite_to_workspace` capacity check is authoritative).
+   * A finite plan (only Free today) gets its real number.
+   */
+  maxActiveCollaborators: number | null
 }
 
 /**
@@ -152,6 +164,7 @@ export async function getPublicPlanCatalog(codes: string[]): Promise<PublicPlanT
     const aiMessages = planQuotas.find((q) => q.quota_key === 'ai_messages')
     const storage = planQuotas.find((q) => q.quota_key === 'storage_bytes')
     const collaboration = planQuotas.find((q) => q.quota_key === 'feature:collaboration')
+    const maxActiveCollaborators = planQuotas.find((q) => q.quota_key === 'max_active_collaborators')
     return {
       planId: plan.id,
       code: plan.code,
@@ -164,6 +177,11 @@ export async function getPublicPlanCatalog(codes: string[]): Promise<PublicPlanT
       aiMessagesPerMonth: aiMessages?.quota_limit ?? null,
       storageBytes: storage?.quota_limit ?? null,
       collaboration: (collaboration?.quota_limit ?? 0) > 0,
+      // -1 is the documented "unlimited" sentinel (0071); an absent row
+      // (no cap configured, e.g. a plan without collaboration at all)
+      // displays the same as unlimited since this is presentational only.
+      maxActiveCollaborators:
+        maxActiveCollaborators && maxActiveCollaborators.quota_limit >= 0 ? maxActiveCollaborators.quota_limit : null,
     }
   })
 }

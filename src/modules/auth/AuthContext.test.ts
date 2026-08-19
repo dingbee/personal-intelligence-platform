@@ -7,19 +7,14 @@ import { AuthProvider } from '@/modules/auth/AuthContext'
 import { useAuth } from '@/modules/auth/useAuth'
 
 /**
- * V1 — Collaboration Invitation Signup Authorization — the client-side
- * half (AuthContext.signUpWithPassword's pre-check via
- * get_signup_access_status, before ever calling auth.signUp()). The
- * actual authorization decision is the enforce_signup_authorization_
- * before_insert database trigger (0069_collaboration_invitation_signup_
- * authorization.sql); this pre-check exists purely so the UI can show an
- * accurate denial reason before attempting signUp at all. What this
- * suite deliberately cannot cover: the trigger's own enforcement, or
- * handle_new_user's/assign_default_plan's reconciliation — those are
- * database triggers with no local Postgres harness in this repo (see
- * supabase/tests/collaboration_invitation_signup_authorization_security_
- * test.sql for that coverage, run manually against a live Supabase
- * instance).
+ * V1 Free Access — signUpWithPassword no longer pre-checks anything
+ * before calling auth.signUp(); registration is open
+ * (enforce_signup_authorization, 0071_free_access_and_collaboration.sql,
+ * no longer rejects an uninvited signup at the database level either).
+ * What this suite deliberately cannot cover: the database trigger's own
+ * behavior or assign_default_plan's/handle_new_user's reconciliation —
+ * those are database functions with no local Postgres harness wired into
+ * this test file (see supabase/tests/ for SQL-level coverage).
  */
 const { rpcMock, signUpMock, getSessionMock, onAuthStateChangeMock, capturedAuthListener } = vi.hoisted(() => {
   const capturedAuthListener: { current: ((event: AuthChangeEvent, session: Session | null) => void) | null } = {
@@ -72,16 +67,15 @@ describe('AuthContext.signUpWithPassword', () => {
   })
 
 
-  it('proceeds to auth.signUp for an authorized email (workspace invitation or beta invite), redirecting the confirmation link to the current origin by default', async () => {
-    rpcMock.mockResolvedValueOnce({ data: 'ok', error: null })
+  it('proceeds directly to auth.signUp for any email — registration is open — redirecting the confirmation link to the current origin by default', async () => {
     signUpMock.mockResolvedValueOnce({ error: null })
     const { result } = renderHook(() => useAuth(), { wrapper })
 
-    const outcome = await result.current.signUpWithPassword('invited@example.com', 'password123')
+    const outcome = await result.current.signUpWithPassword('stranger@example.com', 'password123')
 
-    expect(rpcMock).toHaveBeenCalledWith('get_signup_access_status', { check_email: 'invited@example.com' })
+    expect(rpcMock).not.toHaveBeenCalled()
     expect(signUpMock).toHaveBeenCalledWith({
-      email: 'invited@example.com',
+      email: 'stranger@example.com',
       password: 'password123',
       options: { emailRedirectTo: window.location.origin },
     })
@@ -94,83 +88,20 @@ describe('AuthContext.signUpWithPassword', () => {
   // entirely to its own dashboard-configured Site URL).
   it('prefers VITE_SITE_URL over window.location.origin for the confirmation redirect when configured', async () => {
     vi.stubEnv('VITE_SITE_URL', 'https://app.nolmark.co/')
-    rpcMock.mockResolvedValueOnce({ data: 'ok', error: null })
     signUpMock.mockResolvedValueOnce({ error: null })
     const { result } = renderHook(() => useAuth(), { wrapper })
 
-    await result.current.signUpWithPassword('invited@example.com', 'password123')
+    await result.current.signUpWithPassword('newperson@example.com', 'password123')
 
     expect(signUpMock).toHaveBeenCalledWith({
-      email: 'invited@example.com',
+      email: 'newperson@example.com',
       password: 'password123',
       options: { emailRedirectTo: 'https://app.nolmark.co' },
     })
     vi.unstubAllEnvs()
   })
 
-  it('blocks an email with no invitation of any kind without ever calling auth.signUp, and flags it as a not_invited denial', async () => {
-    rpcMock.mockResolvedValueOnce({ data: 'not_invited', error: null })
-    const { result } = renderHook(() => useAuth(), { wrapper })
-
-    const outcome = await result.current.signUpWithPassword('stranger@example.com', 'password123')
-
-    expect(outcome).toEqual({
-      error: 'ARRIYIA access is currently provided through a workspace invitation. If someone has invited you to their workspace, use the link from that invitation email.',
-      denialReason: 'not_invited',
-    })
-    expect(signUpMock).not.toHaveBeenCalled()
-  })
-
-  it('blocks an expired workspace invitation with a distinct message, without calling auth.signUp', async () => {
-    rpcMock.mockResolvedValueOnce({ data: 'invitation_expired', error: null })
-    const { result } = renderHook(() => useAuth(), { wrapper })
-
-    const outcome = await result.current.signUpWithPassword('expired@example.com', 'password123')
-
-    expect(outcome).toEqual({
-      error: 'Your workspace invitation has expired. Ask the workspace owner to send you a new one.',
-      denialReason: 'invitation_expired',
-    })
-    expect(signUpMock).not.toHaveBeenCalled()
-  })
-
-  it('blocks a revoked workspace invitation with a distinct message, without calling auth.signUp', async () => {
-    rpcMock.mockResolvedValueOnce({ data: 'invitation_revoked', error: null })
-    const { result } = renderHook(() => useAuth(), { wrapper })
-
-    const outcome = await result.current.signUpWithPassword('revoked@example.com', 'password123')
-
-    expect(outcome).toEqual({
-      error: 'This workspace invitation is no longer valid. Ask the workspace owner to send you a new one.',
-      denialReason: 'invitation_revoked',
-    })
-    expect(signUpMock).not.toHaveBeenCalled()
-  })
-
-  it('surfaces a get_signup_access_status RPC error as a plain error, without a denialReason and without calling auth.signUp', async () => {
-    rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'network error' } })
-    const { result } = renderHook(() => useAuth(), { wrapper })
-
-    const outcome = await result.current.signUpWithPassword('anyone@example.com', 'password123')
-
-    expect(outcome).toEqual({ error: 'network error' })
-    expect(signUpMock).not.toHaveBeenCalled()
-  })
-
-  it('treats a race-condition rejection from the database trigger itself (pre-check said ok, but signUp still failed) as a not_invited denial, not a generic error', async () => {
-    rpcMock.mockResolvedValueOnce({ data: 'ok', error: null })
-    signUpMock.mockResolvedValueOnce({
-      error: { message: 'This email is not authorized to create an account. An admin invitation or a pending workspace invitation is required.' },
-    })
-    const { result } = renderHook(() => useAuth(), { wrapper })
-
-    const outcome = await result.current.signUpWithPassword('racecondition@example.com', 'password123')
-
-    expect(outcome.denialReason).toBe('not_invited')
-  })
-
-  it('surfaces an unrelated auth.signUp failure (e.g. already-registered email) as a plain error, without a denialReason', async () => {
-    rpcMock.mockResolvedValueOnce({ data: 'ok', error: null })
+  it('surfaces an ordinary auth.signUp failure (e.g. already-registered email) as a plain error', async () => {
     signUpMock.mockResolvedValueOnce({ error: { message: 'User already registered' } })
     const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -179,13 +110,11 @@ describe('AuthContext.signUpWithPassword', () => {
     expect(outcome).toEqual({ error: 'User already registered' })
   })
 
-  it('never mentions "beta" anywhere in any denial message', async () => {
-    for (const status of ['not_invited', 'invitation_expired', 'invitation_revoked']) {
-      rpcMock.mockResolvedValueOnce({ data: status, error: null })
-      const { result } = renderHook(() => useAuth(), { wrapper })
-      const outcome = await result.current.signUpWithPassword('someone@example.com', 'password123')
-      expect(outcome.error?.toLowerCase()).not.toContain('beta')
-    }
+  it('never mentions "beta" in a signup outcome', async () => {
+    signUpMock.mockResolvedValueOnce({ error: { message: 'Password should be at least 8 characters.' } })
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    const outcome = await result.current.signUpWithPassword('someone@example.com', 'short')
+    expect(outcome.error?.toLowerCase()).not.toContain('beta')
   })
 })
 

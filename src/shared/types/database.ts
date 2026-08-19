@@ -885,7 +885,15 @@ export type FoundingProApplication = {
 }
 
 export type FoundingProMemberSlotType = 'public' | 'grandfathered'
-export type FoundingProMemberTransitionStatus = 'active' | 'transitioned'
+/**
+ * V1 Founding Pro Expiry — widened from ('active'|'transitioned') to
+ * explicit outcomes. 'transitioned' is kept only for backward
+ * compatibility with any historical row that might already carry it
+ * (nothing has ever written that value); every new transition from
+ * `expire_founding_pro_members()`/`apply_subscription_event()`
+ * (0072_founding_pro_expiry.sql) uses the two explicit values instead.
+ */
+export type FoundingProMemberTransitionStatus = 'active' | 'converted_to_pro' | 'expired_to_free' | 'transitioned'
 
 /**
  * `founding_member_number` is 1-100 for `slot_type = 'public'` and always

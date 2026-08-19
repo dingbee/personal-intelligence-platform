@@ -60,7 +60,8 @@ const freeTier = {
   currency: 'USD',
   aiMessagesPerMonth: 100,
   storageBytes: 524288000,
-  collaboration: false,
+  collaboration: true,
+  maxActiveCollaborators: 1,
 }
 const proTier = {
   planId: 'plan-pro',
@@ -74,6 +75,7 @@ const proTier = {
   aiMessagesPerMonth: 10000,
   storageBytes: 5368709120,
   collaboration: true,
+  maxActiveCollaborators: null,
 }
 const foundingProTier = { ...proTier, planId: 'plan-founding', code: 'founding_pro', name: 'Founding Pro' }
 const studentTier = {
@@ -88,6 +90,7 @@ const studentTier = {
   aiMessagesPerMonth: null,
   storageBytes: 524288000,
   collaboration: false,
+  maxActiveCollaborators: null,
 }
 
 function renderPage() {
@@ -123,7 +126,7 @@ describe('PricingPage', () => {
     expect(cards.getByRole('heading', { name: 'Free' })).not.toBeNull()
     expect(cards.getByRole('heading', { name: 'Pro' })).not.toBeNull()
     expect(screen.getByText('Sign up')).not.toBeNull()
-    expect(screen.getByText('Currently available by invitation only.')).not.toBeNull()
+    expect(screen.getByText('Free to sign up — upgrade to Pro anytime afterward.')).not.toBeNull()
     expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
   })
 

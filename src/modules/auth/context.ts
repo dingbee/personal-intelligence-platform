@@ -16,23 +16,13 @@ export interface AuthContextValue {
   passwordRecovery: boolean
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
   /**
-   * V1 — Collaboration Invitation Signup Authorization. `denialReason`
-   * distinguishes *why* signup was denied — a stale invitation
-   * ('invitation_expired'), a cancelled one ('invitation_revoked'), or no
-   * invitation of any kind ('not_invited') — from an ordinary, unrelated
-   * signup failure (network, validation, an already-registered email),
-   * which leaves `denialReason` unset. The authorization decision itself
-   * is never made here: this calls `get_signup_access_status()`, a
-   * database function, purely to classify *why* for the UI's benefit
-   * before ever attempting `signUp()`; the actual enforcement is the
-   * `enforce_signup_authorization_before_insert` trigger on `auth.users`
-   * (0069_collaboration_invitation_signup_authorization.sql), which runs
-   * regardless of what this pre-check said.
+   * V1 Free Access — open registration. No pre-check gates this call
+   * anymore (enforce_signup_authorization, 0071_free_access_and_-
+   * collaboration.sql, no longer rejects an uninvited signup at the
+   * database level either) — `error` is only ever an ordinary signup
+   * failure (network, validation, an already-registered email).
    */
-  signUpWithPassword: (
-    email: string,
-    password: string,
-  ) => Promise<{ error: string | null; denialReason?: 'invitation_expired' | 'invitation_revoked' | 'not_invited' }>
+  signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
   signInWithMagicLink: (email: string) => Promise<{ error: string | null }>
   sendPasswordReset: (email: string) => Promise<{ error: string | null }>
   updatePassword: (password: string) => Promise<{ error: string | null }>
