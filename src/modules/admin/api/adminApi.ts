@@ -263,3 +263,126 @@ export async function sendFoundingProInvitationEmail(invitationId: string): Prom
   const { error } = await supabase.functions.invoke('send-founding-pro-invitation', { body: { invitationId } })
   return { error: error ? await extractEdgeFunctionErrorMessage(error) : null }
 }
+
+/**
+ * #21 Phase 4.3 — Admin Billing & Subscription Operations. Every function
+ * below is read-only: none of them write to subscriptions,
+ * pesapal_checkout_orders, or subscription_events — those stay exclusively
+ * owned by apply_subscription_event() / the pesapal-checkout and pesapal-ipn
+ * Edge Functions. There is deliberately no admin mutation path for billing
+ * state (see 0082_admin_billing_and_usage_visibility.sql's own header).
+ */
+export async function adminListSubscriptions(params?: { status?: string | null; planCode?: string | null; limit?: number }) {
+  const { data, error } = await supabase.rpc('admin_list_subscriptions', {
+    p_status: params?.status ?? null,
+    p_plan_code: params?.planCode ?? null,
+    p_limit: params?.limit ?? 500,
+  })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function adminListSubscriptionEvents(params?: { processingStatus?: string | null; limit?: number }) {
+  const { data, error } = await supabase.rpc('admin_list_subscription_events', {
+    p_processing_status: params?.processingStatus ?? null,
+    p_limit: params?.limit ?? 200,
+  })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function adminCommercialOverview() {
+  const { data, error } = await supabase.rpc('admin_commercial_overview')
+  if (error) throw error
+  return (data ?? {}) as Record<string, number>
+}
+
+/**
+ * #21 Phase 4.4 — Admin Usage & Quota Operations. Reads only; every write
+ * still goes through adminSetUserQuotaOverride/adminRemoveUserQuotaOverride
+ * above (unchanged) — this section only adds the missing read views P4.4
+ * needs across quota keys other than ai_messages.
+ */
+export async function adminGetUserQuotaBreakdown(userId: string) {
+  const { data, error } = await supabase.rpc('admin_get_user_quota_breakdown', { p_user_id: userId })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function adminPlanQuotaPopulation() {
+  const { data, error } = await supabase.rpc('admin_plan_quota_population')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function adminUsageOverview() {
+  const { data, error } = await supabase.rpc('admin_usage_overview')
+  if (error) throw error
+  return (data ?? {}) as Record<string, number>
+}
+
+/**
+ * #21 Phase 5 — Unified Admin Intelligence / Error Centre. Every admin_*
+ * function here re-checks is_platform_admin() itself, same as every other
+ * function in this file. Producer-side writes (report_system_health_event,
+ * report_document_processing_failure) are never called from here — the
+ * former is service_role-only (Edge Functions call it directly), the
+ * latter is called from the client-side document processing pipeline, not
+ * the admin surface.
+ */
+export async function adminListSystemHealthEvents(params?: {
+  category?: string | null
+  severity?: string | null
+  status?: string | null
+  since?: string | null
+  userId?: string | null
+  operation?: string | null
+  provider?: string | null
+  limit?: number
+}) {
+  const { data, error } = await supabase.rpc('admin_list_system_health_events', {
+    p_category: params?.category ?? null,
+    p_severity: params?.severity ?? null,
+    p_status: params?.status ?? null,
+    p_since: params?.since ?? null,
+    p_user_id: params?.userId ?? null,
+    p_operation: params?.operation ?? null,
+    p_provider: params?.provider ?? null,
+    p_limit: params?.limit ?? 200,
+  })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function adminSystemHealthSummary() {
+  const { data, error } = await supabase.rpc('admin_system_health_summary')
+  if (error) throw error
+  return (data ?? {}) as Record<string, number>
+}
+
+export async function adminAcknowledgeSystemHealthEvent(eventId: string) {
+  const { data, error } = await supabase.rpc('admin_acknowledge_system_health_event', { p_event_id: eventId })
+  if (error) throw error
+  return data
+}
+
+export async function adminResolveSystemHealthEvent(params: { eventId: string; resolutionNote?: string | null }) {
+  const { data, error } = await supabase.rpc('admin_resolve_system_health_event', {
+    p_event_id: params.eventId,
+    p_resolution_note: params.resolutionNote ?? null,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function adminReopenSystemHealthEvent(eventId: string) {
+  const { data, error } = await supabase.rpc('admin_reopen_system_health_event', { p_event_id: eventId })
+  if (error) throw error
+  return data
+}
+
+export async function adminIgnoreSystemHealthEvent(eventId: string) {
+  const { data, error } = await supabase.rpc('admin_ignore_system_health_event', { p_event_id: eventId })
+  if (error) throw error
+  return data
+}

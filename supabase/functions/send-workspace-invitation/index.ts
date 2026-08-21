@@ -259,6 +259,28 @@ Deno.serve(async (req) => {
     console.error(
       `send-workspace-invitation: Resend rejected the send for ${kind} ${id} in workspace ${workspaceId} (${resendResponse.status})`,
     )
+    // #21 Phase 5 — this function's own prior comment flagged the exact gap
+    // this closes: "no server-side trail for later diagnosis if the
+    // frontend caller's own error handling didn't surface it." Awaited (not
+    // fire-and-forget) so it actually completes before the response is
+    // sent; wrapped in try/catch so a reporting failure never changes what
+    // the caller sees.
+    try {
+      await serviceClient.rpc('report_system_health_event', {
+        p_severity: 'error',
+        p_category: 'collaboration',
+        p_operation: 'send_workspace_invitation_email',
+        p_message: `Resend rejected the send (${resendResponse.status})`,
+        p_error_code: String(resendResponse.status),
+        p_workspace_id: workspaceId,
+        p_related_entity_type: kind,
+        p_related_entity_id: id,
+        p_provider: 'resend',
+        p_metadata: { kind },
+      })
+    } catch (reportErr) {
+      console.error('send-workspace-invitation: failed to report system_health_event:', reportErr)
+    }
     return errorResponse(`Email provider error: ${resendResponse.status} ${resendBody}`, 502)
   }
 

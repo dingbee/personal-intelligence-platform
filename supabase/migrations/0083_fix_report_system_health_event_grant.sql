@@ -1,0 +1,14 @@
+-- 0081_system_health_events.sql revoked EXECUTE on report_system_health_event
+-- from public and anon, intending service_role-only access (it is the full-
+-- privilege event producer, distinct from the narrow authenticated-facing
+-- report_document_processing_failure). It did not also revoke from
+-- `authenticated` — Supabase's own default-privilege template auto-grants
+-- EXECUTE on every newly created public-schema function to `authenticated`
+-- (and `anon`) independently of PUBLIC, so the anon revoke alone was not
+-- sufficient. Caught live: a rollback-wrapped SQL test confirmed an
+-- ordinary authenticated user could call report_system_health_event
+-- directly (test "03_report_event_blocked_for_user" failed before this
+-- fix). This closes that gap; no data was affected, since a caller would
+-- still have had to know the function's argument shape and nothing else in
+-- the client ever calls it.
+revoke execute on function public.report_system_health_event(text, text, text, text, text, text, uuid, uuid, text, uuid, text, jsonb, interval) from authenticated;

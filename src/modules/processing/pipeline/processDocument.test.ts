@@ -38,6 +38,10 @@ vi.mock('@/modules/processing/api/jobs', () => ({
   createProcessingJob: createProcessingJobMock,
   updateProcessingJob: updateProcessingJobMock,
 }))
+const reportDocumentProcessingFailureMock = vi.fn()
+vi.mock('@/modules/processing/api/systemHealth', () => ({
+  reportDocumentProcessingFailure: reportDocumentProcessingFailureMock,
+}))
 
 const { processDocument, embedBatchWithRetry, isRateLimitError } = await import('@/modules/processing/pipeline/processDocument')
 
@@ -164,6 +168,7 @@ describe('processDocument catch path', () => {
     updateDocumentStatusMock.mockReset().mockResolvedValue(undefined)
     createProcessingJobMock.mockReset().mockResolvedValue({ id: 'job-1' })
     updateProcessingJobMock.mockReset().mockResolvedValue(undefined)
+    reportDocumentProcessingFailureMock.mockReset().mockResolvedValue(undefined)
   })
 
   it('preserves message/code/details/hint from a thrown Error-like object that fails instanceof Error, instead of recording the generic fallback', async () => {
@@ -198,5 +203,26 @@ describe('processDocument catch path', () => {
 
     const failedCall = updateProcessingJobMock.mock.calls.find((call) => call[1]?.status === 'failed')
     expect(failedCall![1].error_message).toBe('document not found')
+  })
+
+  // #21 Phase 5 — ERROR INGESTION (DOCUMENTS): the catch path must mirror
+  // the failure into the unified System Health centre via the narrow
+  // report_document_processing_failure RPC, using the same message
+  // already recorded on the processing job, not a re-derived one.
+  it('reports the failure to the System Health centre with the document id and the same error message recorded on the job', async () => {
+    getDocumentMock.mockRejectedValueOnce(new Error('document not found'))
+
+    await processDocument('doc-1', 'user-1')
+
+    expect(reportDocumentProcessingFailureMock).toHaveBeenCalledWith('doc-1', 'document not found')
+  })
+
+  it('a System Health reporting failure never prevents processDocument from resolving, and the job/document status updates still happened', async () => {
+    getDocumentMock.mockRejectedValueOnce(new Error('document not found'))
+    reportDocumentProcessingFailureMock.mockRejectedValueOnce(new Error('Not authorized'))
+
+    await expect(processDocument('doc-1', 'user-1')).resolves.toBeUndefined()
+
+    expect(updateDocumentStatusMock).toHaveBeenCalledWith('doc-1', 'error')
   })
 })

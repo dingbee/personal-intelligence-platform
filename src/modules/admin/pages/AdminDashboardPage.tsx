@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom'
 import {
   useAdminAiUsageSummary,
   useAdminBetaInvites,
+  useAdminCommercialOverview,
   useAdminCreateBetaInvite,
   useAdminPlansAndQuotas,
   useAdminPlatformCounts,
   useAdminRevokeBetaInvite,
   useAdminSendBetaInvitationEmail,
+  useAdminSystemHealthSummary,
+  useAdminUsageOverview,
   useAdminUsers,
 } from '@/modules/admin/hooks/useAdminData'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
@@ -43,7 +46,7 @@ function StatTile({ label, value }: { label: string; value: number | string }) {
  * (creating a beta invite).
  */
 export function AdminDashboardPage() {
-  const { data: users = [], isLoading: usersLoading } = useAdminUsers()
+  const { data: users = [] } = useAdminUsers()
   const { data: invites = [], isLoading: invitesLoading } = useAdminBetaInvites()
   const { data: plansAndQuotas } = useAdminPlansAndQuotas()
   const createInvite = useAdminCreateBetaInvite()
@@ -51,6 +54,9 @@ export function AdminDashboardPage() {
   const revokeInvite = useAdminRevokeBetaInvite()
   const { data: aiUsage = [] } = useAdminAiUsageSummary()
   const { data: counts } = useAdminPlatformCounts()
+  const { data: commercial } = useAdminCommercialOverview()
+  const { data: usage } = useAdminUsageOverview()
+  const { data: healthSummary } = useAdminSystemHealthSummary()
 
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteName, setInviteName] = useState('')
@@ -135,6 +141,15 @@ export function AdminDashboardPage() {
         <Link to="/admin/founding-pro" className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-ink)] hover:bg-[var(--surface-inset)]">
           Founding Pro →
         </Link>
+        <Link to="/admin/billing" className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-ink)] hover:bg-[var(--surface-inset)]">
+          Billing & Subscriptions →
+        </Link>
+        <Link to="/admin/usage" className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-ink)] hover:bg-[var(--surface-inset)]">
+          Usage & Quotas →
+        </Link>
+        <Link to="/admin/system-health" className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-ink)] hover:bg-[var(--surface-inset)]">
+          System Health →
+        </Link>
       </div>
 
       {/* Overview */}
@@ -144,9 +159,12 @@ export function AdminDashboardPage() {
           <p className="mb-2 text-xs font-medium text-[var(--color-ink-muted)]">Users</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatTile label="Total users" value={users.length} />
+            <StatTile label="Free" value={planCounts.free ?? 0} />
+            <StatTile label="Student" value={planCounts.student ?? 0} />
+            <StatTile label="Pro" value={planCounts.pro ?? 0} />
+            <StatTile label="Founding Pro" value={planCounts.founding_pro ?? 0} />
+            <StatTile label="Enterprise" value={planCounts.enterprise ?? 0} />
             <StatTile label="Legacy Beta" value={planCounts.beta ?? 0} />
-            <StatTile label="Pro plan" value={planCounts.pro ?? 0} />
-            <StatTile label="Enterprise plan" value={planCounts.enterprise ?? 0} />
           </div>
         </div>
         <div>
@@ -168,10 +186,57 @@ export function AdminDashboardPage() {
         </div>
         <div>
           <p className="mb-2 text-xs font-medium text-[var(--color-ink-muted)]">System</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatTile label="Pending access invites" value={pendingInvites.length} />
-            <StatTile label="Database reachable" value={!usersLoading ? 'Yes' : 'Checking…'} />
-            <StatTile label="Auth session" value="Active" />
+            <StatTile label="Open critical events" value={healthSummary?.open_critical ?? '–'} />
+            <StatTile label="Open error events" value={healthSummary?.open_error ?? '–'} />
+            <StatTile label="Unresolved events" value={healthSummary?.unresolved ?? '–'} />
+          </div>
+        </div>
+      </SurfaceCard>
+
+      {/* Commercial — active/pending/failed/cancelled subscriptions and Founding Pro lifecycle counts, sourced from admin_commercial_overview (read-only over the existing Pesapal/apply_subscription_event architecture; see AdminBillingPage's own header comment). */}
+      <SurfaceCard className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <SectionHeading>Commercial</SectionHeading>
+          <Link to="/admin/billing" className="text-xs text-[var(--color-accent)] hover:underline">
+            Billing & Subscriptions →
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatTile label="Active subscriptions" value={commercial?.active_subscriptions ?? '–'} />
+          <StatTile label="Pending checkouts" value={commercial?.pending_checkout_orders ?? '–'} />
+          <StatTile label="Failed checkouts (30d)" value={commercial?.failed_checkout_orders_30d ?? '–'} />
+          <StatTile label="Cancelled" value={commercial?.cancelled_subscriptions ?? '–'} />
+          <StatTile label="Founding Pro active" value={commercial?.founding_pro_active ?? '–'} />
+          <StatTile label="Founding Pro expiring (30d)" value={commercial?.founding_pro_expiring_30d ?? '–'} />
+          <StatTile label="Plan transitions (30d)" value={commercial?.recent_transitions_30d ?? '–'} />
+          <StatTile label="Billing inconsistencies (30d)" value={commercial?.failed_subscription_events_30d ?? '–'} />
+        </div>
+      </SurfaceCard>
+
+      {/* Usage & Collaboration — quota exhaustion/unusual consumption and workspace collaboration health, sourced from admin_usage_overview. */}
+      <SurfaceCard className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <SectionHeading>Usage & Collaboration</SectionHeading>
+          <Link to="/admin/usage" className="text-xs text-[var(--color-accent)] hover:underline">
+            Usage & Quotas →
+          </Link>
+        </div>
+        <div>
+          <p className="mb-2 text-xs font-medium text-[var(--color-ink-muted)]">Usage</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <StatTile label="At 100% this month" value={usage?.exhausted_count ?? '–'} />
+            <StatTile label="Over 90%" value={usage?.over_90_count ?? '–'} />
+            <StatTile label="Over 75%" value={usage?.over_75_count ?? '–'} />
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-xs font-medium text-[var(--color-ink-muted)]">Collaboration</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <StatTile label="Active collaborators" value={usage?.active_collaborators ?? '–'} />
+            <StatTile label="Pending invitations" value={usage?.pending_invitations ?? '–'} />
+            <StatTile label="Expired pending invitations" value={usage?.expired_pending_invitations ?? '–'} />
           </div>
         </div>
       </SurfaceCard>
