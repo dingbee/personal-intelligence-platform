@@ -1,9 +1,12 @@
 import type { Decision, DecisionContextSource, DecisionContextSourceType } from '@/modules/decision-intelligence/decision'
+import { analysisInvestigationToProvenance } from '@/shared/provenance/adapters/analysisIntelligenceAdapter'
 import type { DerivationReference, EvidenceReference, ProvenanceChain, SourceReference, SourceType } from '@/shared/provenance/types'
 
-// Decision.contextEvidence's own DecisionContextSourceType ('document'|'note'|'asset') maps 1:1
-// onto the shared model's own SourceType, identical to planningIntelligenceAdapter.ts's mapping.
-const SOURCE_TYPE_MAP: Record<DecisionContextSourceType, SourceType> = { document: 'document', note: 'note', asset: 'asset' }
+// Decision.contextEvidence's own DecisionContextSourceType maps onto the shared model's own
+// SourceType, identical to planningIntelligenceAdapter.ts's mapping — 'dataset_investigation' maps
+// to 'dataset', the same tag Data/Analysis/Research Intelligence's own adapters already use for a
+// structured_datasets sheet (researchIntelligenceAdapter.ts's identical mapping).
+const SOURCE_TYPE_MAP: Record<DecisionContextSourceType, SourceType> = { document: 'document', note: 'note', asset: 'asset', dataset_investigation: 'dataset' }
 
 function toSourceReference(source: DecisionContextSource): SourceReference {
   return { type: SOURCE_TYPE_MAP[source.type], id: source.id, title: source.title }
@@ -35,16 +38,32 @@ export function decisionToProvenance(decision: Decision): ProvenanceChain {
   const derivations: DerivationReference[] = []
   const observationDerivationIds: string[] = []
 
+  // When this decision delegated to Analysis Intelligence for a real, deterministic number
+  // (buildDecisionContext.ts), splice in that investigation's OWN provenance chain — real
+  // cross-engine reuse, not reimplementation, mirroring researchIntelligenceAdapter.ts's
+  // identical Data -> Analysis splice exactly. Any evaluation that cited the resulting
+  // dataset_investigation evidence item links back to it via basedOnDerivationIds below.
+  let nestedSynthesisDerivationId: string | null = null
+  const datasetEvidenceId = decision.contextEvidence.find((item) => item.type === 'dataset_investigation')?.id ?? null
+  if (decision.datasetInvestigation) {
+    const nested = analysisInvestigationToProvenance(decision.datasetInvestigation)
+    evidence.push(...nested.evidence)
+    derivations.push(...nested.derivations)
+    nestedSynthesisDerivationId = `analysis:${decision.datasetInvestigation.id}:synthesis`
+    if (!derivations.some((d) => d.id === nestedSynthesisDerivationId)) nestedSynthesisDerivationId = null
+  }
+
   for (const evaluation of decision.evaluations) {
     if (evaluation.evidenceIds.length === 0) continue
     const alternative = decision.alternatives.find((a) => a.id === evaluation.alternativeId)
     const criterion = decision.criteria.find((c) => c.id === evaluation.criterionId)
     const derivationId = `decision:${decision.id}:evaluation:${evaluation.alternativeId}:${evaluation.criterionId}`
+    const citesDatasetInvestigation = datasetEvidenceId !== null && evaluation.evidenceIds.includes(datasetEvidenceId)
     derivations.push({
       id: derivationId,
       kind: 'observation',
       evidenceIds: evaluation.evidenceIds,
-      basedOnDerivationIds: [],
+      basedOnDerivationIds: citesDatasetInvestigation && nestedSynthesisDerivationId ? [nestedSynthesisDerivationId] : [],
       statement: `${alternative?.title ?? evaluation.alternativeId} scores ${evaluation.score}/10 on ${criterion?.name ?? evaluation.criterionId}: ${evaluation.rationale}`,
       method: null,
     })

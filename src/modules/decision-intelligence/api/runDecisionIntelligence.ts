@@ -39,6 +39,7 @@ function emptyDecision(question: string, objective: string | null, workspaceId: 
     sensitivity: [],
     nextAction: null,
     contextEvidence: [],
+    datasetInvestigation: null,
     provisional: false,
     provisionalReason: null,
     validationIssues: [],
@@ -74,8 +75,10 @@ export async function runDecisionIntelligence(params: {
   workspaceId: string | null
   chain: string[]
   plan?: PlanDerivedDecisionContext | null
+  /** Optional single-document scope — when set and that document has a real structured dataset, buildDecisionContext.ts delegates to Analysis Intelligence for a deterministic, dataset-grounded number (see that function's own doc comment). Mirrors Research Intelligence's identical `documentId` parameter. */
+  documentId?: string | null
 }): Promise<DecisionIntelligenceOutcome> {
-  const { question, objective = null, userConstraints = [], userId, workspaceId, chain, plan = null } = params
+  const { question, objective = null, userConstraints = [], userId, workspaceId, chain, plan = null, documentId = null } = params
 
   if (!(await hasFeature(userId, DECISION_INTELLIGENCE_FEATURE_KEY))) {
     throw new Error('Decision Intelligence requires an upgraded plan.')
@@ -95,7 +98,7 @@ export async function runDecisionIntelligence(params: {
     throw err
   }
 
-  const context = await buildDecisionContext({ question, objective, userConstraints, userId, workspaceId, plan })
+  const context = await buildDecisionContext({ question, objective, userConstraints, userId, workspaceId, plan, documentId, chain, operation })
   const decisionSummary = formatDecisionContextForPrompt(context)
 
   let call
@@ -125,10 +128,18 @@ export async function runDecisionIntelligence(params: {
   const parsed = parseDecisionResponse(call.content, context.relevantEvidence)
 
   if (parsed.status === 'declined') {
-    return { decision: emptyDecision(question, objective, workspaceId, { status: 'declined', declineReason: parsed.reason, contextEvidence: context.relevantEvidence }) }
+    return { decision: emptyDecision(question, objective, workspaceId, { status: 'declined', declineReason: parsed.reason, contextEvidence: context.relevantEvidence, datasetInvestigation: context.datasetInvestigation }) }
   }
   if (parsed.status === 'invalid') {
-    return { decision: emptyDecision(question, objective, workspaceId, { status: 'failed', generationFailed: true, declineReason: parsed.reason, contextEvidence: context.relevantEvidence }) }
+    return {
+      decision: emptyDecision(question, objective, workspaceId, {
+        status: 'failed',
+        generationFailed: true,
+        declineReason: parsed.reason,
+        contextEvidence: context.relevantEvidence,
+        datasetInvestigation: context.datasetInvestigation,
+      }),
+    }
   }
 
   const fields = parsed.decision
@@ -165,6 +176,7 @@ export async function runDecisionIntelligence(params: {
     sensitivity,
     nextAction: fields.nextAction,
     contextEvidence: context.relevantEvidence,
+    datasetInvestigation: context.datasetInvestigation,
     provisional,
     provisionalReason,
     validationIssues,
