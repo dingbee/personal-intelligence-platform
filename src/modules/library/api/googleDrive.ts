@@ -7,10 +7,15 @@ import type { DocumentRow } from '@/shared/types/database'
  * Identity Services (GIS) for OAuth and the Google Picker API for file
  * selection; the actual download/import happens server-side (see
  * supabase/functions/google-drive-import), so this module never sees or
- * stores a long-lived credential — the two access tokens it does touch
- * (the code-flow exchange's result, and the Picker's own transient
- * token) either never leave the browser (Picker token) or are sent once
- * to google-drive-oauth and never returned (the authorization code).
+ * stores a long-lived credential. Two transient access tokens pass
+ * through here, neither ever stored in this app's own database: the
+ * code-flow authorization code is sent once to google-drive-oauth and
+ * never returned; the Picker's own transient access token (`drive.file`)
+ * is forwarded once, alongside the picked file, to google-drive-import —
+ * which uses it only for that one immediate download and discards it
+ * (see that function's own header comment for why forwarding it, rather
+ * than minting a fresh token server-side, is what makes drive.file's
+ * per-file grant actually work for a just-picked file).
  *
  * Scope is `drive.file` — Google's least-privilege scope for "the app can
  * only see files the user explicitly picked through Picker," never a
@@ -151,6 +156,21 @@ export interface PickedDriveFile {
   id: string
   name: string
   mimeType: string
+  /**
+   * Handoff fix — the transient Picker OAuth access token (drive.file
+   * scope) that was actually used to authorize this specific file in
+   * Picker. Under drive.file, Google grants per-file visibility tied to
+   * the OAuth grant that was active when the user picked the file — a
+   * SEPARATE access token later minted from the stored refresh_token
+   * (a different grant, even at the same scope) does not reliably inherit
+   * that visibility, which is what caused "file not found" on files that
+   * were clearly selectable in Picker. Carrying this token through to
+   * importGoogleDriveFile lets google-drive-import use the SAME grant
+   * that picked the file. Used exactly once, for the immediate download
+   * request, and never persisted/logged/returned — see that function's
+   * own header comment.
+   */
+  accessToken: string
 }
 
 /** Resolves `null` if the user cancels the picker (a normal, non-error outcome). */
@@ -182,10 +202,20 @@ export async function pickGoogleDriveFile(): Promise<PickedDriveFile | null> {
         .addView(pickerGoogle.picker.ViewId.DOCS)
         .setOAuthToken(accessToken)
         .setDeveloperKey(apiKey)
+        // Required for drive.file: without setAppId, Picker still displays
+        // and lets the user select files, but Google never registers the
+        // per-file access grant for THIS app against the selected file — so
+        // the very token that just picked the file is later rejected by the
+        // Drive API when used to download it. The App ID Picker expects is
+        // the Google Cloud project number, which is exactly the numeric
+        // prefix of the OAuth client ID (e.g. "123456789-abc...
+        // .apps.googleusercontent.com" belongs to project 123456789) — no
+        // separate credential or Cloud config change needed.
+        .setAppId(clientId.split('-')[0])
         .setCallback((data: { action: string; docs?: { id: string; name: string; mimeType: string }[] }) => {
           if (data.action === pickerGoogle.picker.Action.PICKED && data.docs?.[0]) {
             const doc = data.docs[0]
-            resolve({ id: doc.id, name: doc.name, mimeType: doc.mimeType })
+            resolve({ id: doc.id, name: doc.name, mimeType: doc.mimeType, accessToken })
           } else if (data.action === pickerGoogle.picker.Action.CANCEL) {
             resolve(null)
           }
@@ -203,12 +233,23 @@ export interface GoogleDriveImportResult {
   document: DocumentRow
 }
 
+/**
+ * Handoff fix — forwards the exact Picker access token that authorized
+ * this specific file (file.accessToken) alongside the ordinary Supabase
+ * session JWT already sent as the Authorization header by
+ * supabase.functions.invoke. google-drive-import uses that token ONLY for
+ * the immediate download of this file, never persists/logs/returns it,
+ * and never falls back to a differently-scoped credential if it's
+ * missing — see that function's own header comment for the full
+ * rationale (drive.file grants per-file visibility tied to the specific
+ * OAuth grant that picked the file, not just the scope string).
+ */
 export async function importGoogleDriveFile(
   file: PickedDriveFile,
   opts: { collectionId?: string | null; workspaceId?: string | null } = {},
 ): Promise<GoogleDriveImportResult> {
   const { data, error } = await supabase.functions.invoke<GoogleDriveImportResult>('google-drive-import', {
-    body: { fileId: file.id, fileName: file.name, mimeType: file.mimeType, ...opts },
+    body: { fileId: file.id, fileName: file.name, mimeType: file.mimeType, driveAccessToken: file.accessToken, ...opts },
   })
   if (error) throw await translateFunctionsError(error)
   if (!data) throw new Error('Import did not return a result')

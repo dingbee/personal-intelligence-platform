@@ -149,6 +149,9 @@ describe('googleDrive', () => {
             setDeveloperKey() {
               return this
             }
+            setAppId() {
+              return this
+            }
             setCallback(cb: (data: unknown) => void) {
               this.cb = cb
               return this
@@ -165,13 +168,19 @@ describe('googleDrive', () => {
       await expect(pickGoogleDriveFile()).rejects.toThrow('Google Drive import is not configured')
     })
 
-    it('resolves the picked file', async () => {
+    it('resolves the picked file together with the exact Picker access token that authorized it', async () => {
+      // Token handoff fix — the Picker access token (from initTokenClient,
+      // the transient grant that actually authorized this specific file
+      // under drive.file) must travel with the picked file, not be
+      // discarded after Picker closes. Previously only {id, name,
+      // mimeType} was returned, which is what let google-drive-import
+      // silently mint a DIFFERENT, differently-scoped token later.
       vi.stubEnv('VITE_GOOGLE_OAUTH_CLIENT_ID', 'client-id')
       vi.stubEnv('VITE_GOOGLE_API_KEY', 'api-key')
       stubGoogleForPicker((cb) => cb({ action: 'picked', docs: [{ id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf' }] }))
 
       const result = await pickGoogleDriveFile()
-      expect(result).toEqual({ id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf' })
+      expect(result).toEqual({ id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf', accessToken: 'access-token-abc' })
     })
 
     it('resolves null when the picker is cancelled', async () => {
@@ -182,22 +191,74 @@ describe('googleDrive', () => {
       const result = await pickGoogleDriveFile()
       expect(result).toBeNull()
     })
+
+    it('configures the Picker with setAppId using the Cloud project number from the OAuth client id (required for drive.file to actually grant file access, not just let the user browse/select)', async () => {
+      vi.stubEnv('VITE_GOOGLE_OAUTH_CLIENT_ID', '123456789-abcxyz.apps.googleusercontent.com')
+      vi.stubEnv('VITE_GOOGLE_API_KEY', 'api-key')
+      const setAppIdSpy = vi.fn()
+      ;(window as unknown as { google: unknown }).google = {
+        accounts: {
+          oauth2: {
+            initTokenClient: (config: { callback: (r: { access_token?: string }) => void }) => ({
+              requestAccessToken: () => config.callback({ access_token: 'access-token-abc' }),
+            }),
+          },
+        },
+        picker: {
+          ViewId: { DOCS: 'DOCS' },
+          Action: { PICKED: 'picked', CANCEL: 'cancel' },
+          PickerBuilder: class {
+            private cb: ((data: unknown) => void) | undefined
+            addView() {
+              return this
+            }
+            setOAuthToken() {
+              return this
+            }
+            setDeveloperKey() {
+              return this
+            }
+            setAppId(appId: string) {
+              setAppIdSpy(appId)
+              return this
+            }
+            setCallback(cb: (data: unknown) => void) {
+              this.cb = cb
+              return this
+            }
+            build() {
+              return { setVisible: () => this.cb!({ action: 'picked', docs: [{ id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf' }] }) }
+            }
+          },
+        },
+      }
+
+      await pickGoogleDriveFile()
+      expect(setAppIdSpy).toHaveBeenCalledWith('123456789')
+    })
   })
 
   describe('importGoogleDriveFile', () => {
-    it('sends the picked file through the google-drive-import function', async () => {
+    it('sends the picked file, INCLUDING its Picker access token as driveAccessToken, through the google-drive-import function', async () => {
       invokeMock.mockResolvedValueOnce({
         data: { outcome: 'imported', document: { id: 'doc-1', file_name: 'Notes.pdf' } },
         error: null,
       })
 
       const result = await importGoogleDriveFile(
-        { id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf' },
+        { id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf', accessToken: 'access-token-abc' },
         { collectionId: 'col-1', workspaceId: 'ws-1' },
       )
 
       expect(invokeMock).toHaveBeenCalledWith('google-drive-import', {
-        body: { fileId: 'file-1', fileName: 'Notes.pdf', mimeType: 'application/pdf', collectionId: 'col-1', workspaceId: 'ws-1' },
+        body: {
+          fileId: 'file-1',
+          fileName: 'Notes.pdf',
+          mimeType: 'application/pdf',
+          driveAccessToken: 'access-token-abc',
+          collectionId: 'col-1',
+          workspaceId: 'ws-1',
+        },
       })
       expect(result.outcome).toBe('imported')
     })
@@ -208,8 +269,74 @@ describe('googleDrive', () => {
         error: null,
       })
 
-      const result = await importGoogleDriveFile({ id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf' })
+      const result = await importGoogleDriveFile({ id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf', accessToken: 'access-token-abc' })
       expect(result.outcome).toBe('already_imported')
+    })
+  })
+
+  /**
+   * Token handoff fix (regression) — end-to-end proof that the SAME
+   * transient access token Picker used to authorize the selected file is
+   * the one that reaches google-drive-import, with nothing in between
+   * substituting a different credential. This is the exact call chain
+   * UploadDropzone.tsx drives: pickGoogleDriveFile() -> pass its result
+   * straight into importGoogleDriveFile().
+   */
+  describe('Picker-to-importer token handoff (regression)', () => {
+    it('the exact access token Picker used to authorize the file reaches google-drive-import as driveAccessToken', async () => {
+      vi.stubEnv('VITE_GOOGLE_OAUTH_CLIENT_ID', 'client-id')
+      vi.stubEnv('VITE_GOOGLE_API_KEY', 'api-key')
+      ;(window as unknown as { google: unknown }).google = {
+        accounts: {
+          oauth2: {
+            initTokenClient: (config: { callback: (r: { access_token?: string }) => void }) => ({
+              requestAccessToken: () => config.callback({ access_token: 'the-specific-grant-that-picked-this-file' }),
+            }),
+          },
+        },
+        picker: {
+          ViewId: { DOCS: 'DOCS' },
+          Action: { PICKED: 'picked', CANCEL: 'cancel' },
+          PickerBuilder: class {
+            private cb: ((data: unknown) => void) | undefined
+            addView() {
+              return this
+            }
+            setOAuthToken() {
+              return this
+            }
+            setDeveloperKey() {
+              return this
+            }
+            setAppId() {
+              return this
+            }
+            setCallback(cb: (data: unknown) => void) {
+              this.cb = cb
+              return this
+            }
+            build() {
+              return {
+                setVisible: () =>
+                  this.cb!({ action: 'picked', docs: [{ id: 'file-1', name: 'Report.pdf', mimeType: 'application/pdf' }] }),
+              }
+            }
+          },
+        },
+      }
+      invokeMock.mockResolvedValueOnce({
+        data: { outcome: 'imported', document: { id: 'doc-1', file_name: 'Report.pdf' } },
+        error: null,
+      })
+
+      const picked = await pickGoogleDriveFile()
+      expect(picked).not.toBeNull()
+      await importGoogleDriveFile(picked!, {})
+
+      expect(invokeMock).toHaveBeenCalledWith(
+        'google-drive-import',
+        expect.objectContaining({ body: expect.objectContaining({ driveAccessToken: 'the-specific-grant-that-picked-this-file' }) }),
+      )
     })
   })
 })

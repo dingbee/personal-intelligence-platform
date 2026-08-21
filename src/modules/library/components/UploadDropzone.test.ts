@@ -73,7 +73,7 @@ describe('UploadDropzone — Google Drive import', () => {
     isGoogleDriveImportConfiguredMock.mockReturnValue(true)
     getGoogleDriveConnectionStatusMock.mockResolvedValueOnce({ connected: false, connectedAt: null })
     connectGoogleDriveMock.mockResolvedValueOnce(undefined)
-    pickGoogleDriveFileMock.mockResolvedValueOnce({ id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf' })
+    pickGoogleDriveFileMock.mockResolvedValueOnce({ id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf', accessToken: 'picker-token-1' })
     importFromGoogleDriveMutateAsync.mockResolvedValueOnce({ outcome: 'imported', document: { id: 'doc-1', file_name: 'Notes.pdf' } })
 
     renderDropzone()
@@ -82,7 +82,7 @@ describe('UploadDropzone — Google Drive import', () => {
     await waitFor(() => expect(screen.getByText('Uploaded')).not.toBeNull())
     expect(connectGoogleDriveMock).toHaveBeenCalledTimes(1)
     expect(importFromGoogleDriveMutateAsync).toHaveBeenCalledWith({
-      file: { id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf' },
+      file: { id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf', accessToken: 'picker-token-1' },
       collectionId: null,
     })
   })
@@ -90,7 +90,7 @@ describe('UploadDropzone — Google Drive import', () => {
   it('skips the OAuth popup when already connected', async () => {
     isGoogleDriveImportConfiguredMock.mockReturnValue(true)
     getGoogleDriveConnectionStatusMock.mockResolvedValueOnce({ connected: true, connectedAt: '2026-08-01T00:00:00Z' })
-    pickGoogleDriveFileMock.mockResolvedValueOnce({ id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf' })
+    pickGoogleDriveFileMock.mockResolvedValueOnce({ id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf', accessToken: 'picker-token-1' })
     importFromGoogleDriveMutateAsync.mockResolvedValueOnce({ outcome: 'imported', document: { id: 'doc-1', file_name: 'Notes.pdf' } })
 
     renderDropzone()
@@ -130,7 +130,7 @@ describe('UploadDropzone — Google Drive import', () => {
   it('shows an upgrade CTA when the import fails on storage quota', async () => {
     isGoogleDriveImportConfiguredMock.mockReturnValue(true)
     getGoogleDriveConnectionStatusMock.mockResolvedValueOnce({ connected: true, connectedAt: '2026-08-01T00:00:00Z' })
-    pickGoogleDriveFileMock.mockResolvedValueOnce({ id: 'file-1', name: 'Big.pdf', mimeType: 'application/pdf' })
+    pickGoogleDriveFileMock.mockResolvedValueOnce({ id: 'file-1', name: 'Big.pdf', mimeType: 'application/pdf', accessToken: 'picker-token-1' })
     importFromGoogleDriveMutateAsync.mockRejectedValueOnce(new Error('Storage quota exceeded: this upload would use 999 bytes of your 100 byte limit.'))
 
     renderDropzone()
@@ -143,7 +143,7 @@ describe('UploadDropzone — Google Drive import', () => {
   it('shows a clear, specific error for an unsupported file type, without creating an item marked done', async () => {
     isGoogleDriveImportConfiguredMock.mockReturnValue(true)
     getGoogleDriveConnectionStatusMock.mockResolvedValueOnce({ connected: true, connectedAt: '2026-08-01T00:00:00Z' })
-    pickGoogleDriveFileMock.mockResolvedValueOnce({ id: 'file-1', name: 'Deck', mimeType: 'application/vnd.google-apps.presentation' })
+    pickGoogleDriveFileMock.mockResolvedValueOnce({ id: 'file-1', name: 'Deck', mimeType: 'application/vnd.google-apps.presentation', accessToken: 'picker-token-1' })
     importFromGoogleDriveMutateAsync.mockRejectedValueOnce(new Error("Google Slides isn't supported yet — ARRIYIA can't process presentation files."))
 
     renderDropzone()

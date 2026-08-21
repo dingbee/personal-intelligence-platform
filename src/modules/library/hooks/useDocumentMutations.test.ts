@@ -72,7 +72,7 @@ describe('useDocumentMutations', () => {
   })
 
   it('imports from Google Drive scoped to the current workspace, then kicks off processing without awaiting it', async () => {
-    const file = { id: 'drive-file-1', name: 'Notes.pdf', mimeType: 'application/pdf' }
+    const file = { id: 'drive-file-1', name: 'Notes.pdf', mimeType: 'application/pdf', accessToken: 'picker-token-1' }
     importGoogleDriveFileMock.mockResolvedValueOnce({ outcome: 'imported', document: { id: 'doc-2', file_name: 'Notes.pdf' } })
     processDocumentMock.mockImplementation(() => new Promise(() => {}))
 
@@ -86,7 +86,7 @@ describe('useDocumentMutations', () => {
   })
 
   it('does not re-trigger processing when the Drive file was already imported (dedup)', async () => {
-    const file = { id: 'drive-file-1', name: 'Notes.pdf', mimeType: 'application/pdf' }
+    const file = { id: 'drive-file-1', name: 'Notes.pdf', mimeType: 'application/pdf', accessToken: 'picker-token-1' }
     importGoogleDriveFileMock.mockResolvedValueOnce({ outcome: 'already_imported', document: { id: 'doc-2', file_name: 'Notes.pdf' } })
 
     const { result } = renderHook(() => useDocumentMutations(), { wrapper })
