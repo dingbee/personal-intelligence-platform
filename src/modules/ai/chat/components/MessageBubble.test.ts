@@ -49,7 +49,8 @@ describe('MessageBubble — copy affordance (V1 Launch Hardening)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy response' }))
     await screen.findByText('Copied')
 
-    await screen.findByText('Copy', {}, { timeout: 2500 })
+    await vi.waitFor(() => expect(screen.queryByText('Copied')).toBeNull(), { timeout: 2500 })
+    expect(screen.getByRole('button', { name: 'Copy response' })).not.toBeNull()
   }, 5000)
 
   it('does not render a Copy button on a user message', async () => {
@@ -80,7 +81,7 @@ describe('MessageBubble — copy affordance (V1 Launch Hardening)', () => {
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(1))
 
     expect(screen.queryByText('Copied')).toBeNull()
-    expect(screen.getByText('Copy')).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Copy response' })).not.toBeNull()
   })
 
   it('still renders "Save to Notes" alongside Copy, unaffected by the new control', async () => {
