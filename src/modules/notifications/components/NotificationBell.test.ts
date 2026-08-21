@@ -180,4 +180,113 @@ describe('NotificationBell', () => {
     expect(markReadMutate).not.toHaveBeenCalled()
     expect(navigateMock).toHaveBeenCalledWith('/settings/workspaces')
   })
+
+  it('renders a quota_threshold notification with a human label, never the raw quota_key, and routes to /settings', () => {
+    useNotificationsMock.mockReturnValue({
+      data: [
+        notification({
+          id: 'notif-quota',
+          type: 'quota_threshold',
+          payload: { quota_key: 'research_intelligence_operations', threshold: 90, usage_count: 45, quota_limit: 50, period_end: '2026-09-01T00:00:00Z' },
+        }),
+      ],
+      isLoading: false,
+      unreadCount: 1,
+      markRead: { mutate: markReadMutate },
+    })
+
+    renderBell()
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    expect(screen.getByText(/close to your Research Intelligence limit/)).not.toBeNull()
+    expect(screen.queryByText(/research_intelligence_operations/)).toBeNull()
+
+    fireEvent.click(screen.getByText(/close to your Research Intelligence limit/))
+    expect(navigateMock).toHaveBeenCalledWith('/settings')
+  })
+
+  it('never implies every capability is exhausted when only one quota hit 100%', () => {
+    useNotificationsMock.mockReturnValue({
+      data: [
+        notification({
+          id: 'notif-quota-100',
+          type: 'quota_threshold',
+          payload: { quota_key: 'data_intelligence_operations', threshold: 100, usage_count: 50, quota_limit: 50, period_end: '2026-09-01T00:00:00Z' },
+        }),
+      ],
+      isLoading: false,
+      unreadCount: 1,
+      markRead: { mutate: markReadMutate },
+    })
+
+    renderBell()
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    expect(screen.getByText("You've reached your Data Intelligence limit for this period. Upgrade for more capacity.")).not.toBeNull()
+  })
+
+  it('renders a founding_pro_expiry_warning notification and routes to /pricing', () => {
+    useNotificationsMock.mockReturnValue({
+      data: [
+        notification({
+          id: 'notif-fp-warn',
+          type: 'founding_pro_expiry_warning',
+          payload: { member_id: 'member-1', threshold_days: 7, founding_expires_at: '2026-09-01T00:00:00Z' },
+        }),
+      ],
+      isLoading: false,
+      unreadCount: 1,
+      markRead: { mutate: markReadMutate },
+    })
+
+    renderBell()
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    expect(screen.getByText(/Founding Pro term ends in 7 days/)).not.toBeNull()
+
+    fireEvent.click(screen.getByText(/Founding Pro term ends in 7 days/))
+    expect(navigateMock).toHaveBeenCalledWith('/pricing')
+  })
+
+  it('renders a founding_pro_transition (expired_to_free) notification distinct from a conversion notification', () => {
+    useNotificationsMock.mockReturnValue({
+      data: [
+        notification({
+          id: 'notif-fp-expired',
+          type: 'founding_pro_transition',
+          payload: { member_id: 'member-1', transition_status: 'expired_to_free' },
+        }),
+      ],
+      isLoading: false,
+      unreadCount: 1,
+      markRead: { mutate: markReadMutate },
+    })
+
+    renderBell()
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    expect(screen.getByText(/now on the Free plan/)).not.toBeNull()
+    expect(screen.queryByText(/moved to standard Pro/)).toBeNull()
+  })
+
+  it('renders a founding_pro_transition (converted_to_pro) notification distinct from an expiry notification', () => {
+    useNotificationsMock.mockReturnValue({
+      data: [
+        notification({
+          id: 'notif-fp-converted',
+          type: 'founding_pro_transition',
+          payload: { member_id: 'member-1', transition_status: 'converted_to_pro' },
+        }),
+      ],
+      isLoading: false,
+      unreadCount: 1,
+      markRead: { mutate: markReadMutate },
+    })
+
+    renderBell()
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    expect(screen.getByText(/moved to standard Pro/)).not.toBeNull()
+    expect(screen.queryByText(/now on the Free plan/)).toBeNull()
+  })
 })

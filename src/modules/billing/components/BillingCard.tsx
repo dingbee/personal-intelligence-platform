@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useCurrentPlan } from '@/modules/plans/hooks/useCurrentPlan'
 import { useStorageUsage } from '@/modules/plans/hooks/useStorageUsage'
 import { useAiMessageUsage } from '@/modules/plans/hooks/useAiMessageUsage'
+import { useIntelligenceOperationUsage } from '@/modules/plans/hooks/useIntelligenceOperationUsage'
 import { useSubscription } from '@/modules/billing/hooks/useSubscription'
 import { UsageIndicator } from '@/modules/billing/components/UsageIndicator'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
@@ -29,6 +30,7 @@ export function BillingCard() {
   const { data: subscription } = useSubscription()
   const { data: storage } = useStorageUsage()
   const { data: aiUsage } = useAiMessageUsage()
+  const { data: operationUsage } = useIntelligenceOperationUsage()
 
   const statusInfo = subscription ? STATUS_BADGE[subscription.status] : null
   // Phase 5C Task 9 — a Free user approaching or at their storage limit
@@ -84,6 +86,14 @@ export function BillingCard() {
       {storage && (
         <div className="mt-4">
           <UsageIndicator label="Storage" used={storage.used} limit={storage.limit} formatValue={formatFileSize} />
+        </div>
+      )}
+
+      {operationUsage && operationUsage.length > 0 && (
+        <div className="mt-4 flex flex-col gap-3">
+          {operationUsage.map((row) => (
+            <UsageIndicator key={row.quotaKey} label={`${row.label} this month`} used={row.used} limit={row.limit} />
+          ))}
         </div>
       )}
 

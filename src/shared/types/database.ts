@@ -128,6 +128,28 @@ export type CollaborationInvitationPayload = {
   inviter_name: string | null
 }
 
+/** `notifications.type = 'quota_threshold'` (0077_quota_threshold_notifications.sql). `quota_key` is the raw internal key (e.g. 'data_intelligence_operations') — never render it directly; map it to a human label client-side (see NotificationBell.tsx's own QUOTA_KEY_LABELS). */
+export type QuotaThresholdPayload = {
+  quota_key: string
+  threshold: number
+  usage_count: number
+  quota_limit: number
+  period_end: string
+}
+
+/** `notifications.type = 'founding_pro_expiry_warning'` (0078_founding_pro_expiry_notifications.sql) — a 30/7/1-day pre-expiry warning for the caller's own founding_pro_members row. */
+export type FoundingProExpiryWarningPayload = {
+  member_id: string
+  threshold_days: number
+  founding_expires_at: string
+}
+
+/** `notifications.type = 'founding_pro_transition'` (0078_founding_pro_expiry_notifications.sql) — the one-time notice sent exactly when a Founding Pro membership actually transitions (never a duplicate, never a warning). */
+export type FoundingProTransitionPayload = {
+  member_id: string
+  transition_status: 'converted_to_pro' | 'expired_to_free'
+}
+
 export type Collection = {
   id: string
   user_id: string

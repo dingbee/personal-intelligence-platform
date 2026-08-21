@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useFoundingProCapacity } from '@/modules/founding-pro/hooks/useFoundingProCapacity'
@@ -7,9 +8,11 @@ import {
   useMyPendingFoundingProInvitation,
 } from '@/modules/founding-pro/hooks/useMyFoundingProStatus'
 import { resolveFoundingProDisplayState, type FoundingProDisplayState } from '@/modules/founding-pro/foundingProState'
+import { startProCheckout } from '@/modules/billing/api/billing'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
 import { Button } from '@/shared/components/ui/Button'
+import type { FoundingProMember } from '@/shared/types/database'
 
 // LOCKED PRODUCT DECISIONS this card must honor, same as PricingPage's
 // existing Pro/Free cards:
@@ -47,6 +50,98 @@ const FOUNDING_PRO_CAPABILITY_BULLETS = [
   'Lock in founding access and benefits',
 ]
 
+function formatMemberPrice(cents: number, currency: string): string {
+  return (cents / 100).toLocaleString(undefined, { style: 'currency', currency })
+}
+
+function formatMemberDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
+/** Whole days remaining until `expiresAt`, floored at 0 — never negative, so an already-past-due-but-not-yet-swept member reads as "0 days left," not a confusing negative count. */
+function daysRemaining(expiresAt: string): number {
+  const ms = new Date(expiresAt).getTime() - Date.now()
+  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)))
+}
+
+/**
+ * V1 Founding Pro Expiry commercial UX — the member's own founding price/
+ * dates, driving three distinct presentations by transition_status. Never
+ * reuses founding_price_cents/currency once transition_status leaves
+ * 'active' (that rate was for the 3-month founding term only, not a
+ * standing discount), and never offers a "Renew Founding Pro" CTA — the
+ * only paths forward are the existing Pro checkout (startProCheckout) or,
+ * post-expiry, the existing Free->Pro upgrade path.
+ */
+function FoundingProMemberPanel({ member }: { member: FoundingProMember }) {
+  const [isStarting, setIsStarting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleContinueWithPro() {
+    setError(null)
+    setIsStarting(true)
+    try {
+      const { redirectUrl } = await startProCheckout()
+      window.location.href = redirectUrl
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Checkout is unavailable right now. Please try again later.')
+      setIsStarting(false)
+    }
+  }
+
+  if (member.transition_status === 'active') {
+    const remaining = daysRemaining(member.founding_expires_at)
+    const memberLabel = member.slot_type === 'public' && member.founding_member_number ? `Founding member #${member.founding_member_number}` : 'Founding Pro member'
+    return (
+      <div className="flex flex-col gap-3">
+        <div>
+          <p className="text-xs font-medium text-[var(--color-ink-muted)]">{memberLabel}</p>
+          <p className="text-2xl font-semibold text-[var(--color-ink)]">
+            {formatMemberPrice(member.founding_price_cents, member.currency)}/mo
+          </p>
+          <p className="text-xs text-[var(--color-ink-muted)]">Your founding rate, locked in through {formatMemberDate(member.founding_expires_at)}</p>
+        </div>
+        <div className="rounded-control bg-[var(--surface-inset)] px-3 py-2 text-xs text-[var(--color-ink-muted)]">
+          <span className="font-medium text-[var(--color-ink)]">{remaining}</span> day{remaining === 1 ? '' : 's'} left in your founding term
+          <p className="mt-1">
+            When your term ends, you'll move to the Free plan unless you continue with standard Pro before then.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button onClick={handleContinueWithPro} disabled={isStarting}>
+            {isStarting ? 'Starting checkout…' : 'Continue with Pro'}
+          </Button>
+          {error && <p className="text-xs text-[var(--color-danger-strong)]">{error}</p>}
+        </div>
+      </div>
+    )
+  }
+
+  if (member.transition_status === 'converted_to_pro') {
+    return (
+      <div className="rounded-control bg-[var(--surface-inset)] px-3 py-2 text-xs text-[var(--color-ink-muted)]">
+        You moved to standard Pro{member.transitioned_at ? ` on ${formatMemberDate(member.transitioned_at)}` : ''}. Your Founding Pro rate ended with your
+        founding term — see the Pro plan for your current billing.
+      </div>
+    )
+  }
+
+  // expired_to_free (or the legacy 'transitioned' value)
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="rounded-control bg-[var(--surface-inset)] px-3 py-2 text-xs text-[var(--color-ink-muted)]">
+        Your founding term ended{member.transitioned_at ? ` on ${formatMemberDate(member.transitioned_at)}` : ''}. You're now on the Free plan.
+      </div>
+      <div className="flex flex-col gap-2">
+        <Button onClick={handleContinueWithPro} disabled={isStarting}>
+          {isStarting ? 'Starting checkout…' : 'Upgrade to Pro'}
+        </Button>
+        {error && <p className="text-xs text-[var(--color-danger-strong)]">{error}</p>}
+      </div>
+    </div>
+  )
+}
+
 export function FoundingProCard() {
   const { user } = useAuth()
   const { data: capacity, isLoading: capacityLoading } = useFoundingProCapacity()
@@ -68,16 +163,20 @@ export function FoundingProCard() {
       <div>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-[var(--color-ink)]">Founding Pro</h2>
-          {state.kind === 'member' && <StatusBadge label="Your plan" variant="info" />}
+          {state.kind === 'member' && state.member.transition_status === 'active' && <StatusBadge label="Your plan" variant="info" />}
         </div>
         <p className="mt-1 text-sm font-semibold text-[var(--color-accent)]">{FOUNDING_PRO_HEADLINE}</p>
-        <p className="mt-1 text-lg font-semibold text-[var(--color-ink)]">Discounted founding rate</p>
+        {state.kind !== 'member' && <p className="mt-1 text-lg font-semibold text-[var(--color-ink)]">Discounted founding rate</p>}
         <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{FOUNDING_PRO_POSITIONING}</p>
         <p className="mt-2 text-sm text-[var(--color-ink-muted)]">{FOUNDING_PRO_VALUE_PROP}</p>
-        <p className="mt-2 text-xs text-[var(--color-ink-muted)]">
-          For our first 100 approved public members. Your exact rate is confirmed when your application is approved.
-        </p>
+        {state.kind !== 'member' && (
+          <p className="mt-2 text-xs text-[var(--color-ink-muted)]">
+            For our first 100 approved public members. Your exact rate is confirmed when your application is approved.
+          </p>
+        )}
       </div>
+
+      {state.kind === 'member' && <FoundingProMemberPanel member={state.member} />}
 
       <div>
         <p className="text-xs font-medium text-[var(--color-ink-muted)]">What you can accomplish</p>
@@ -103,16 +202,18 @@ export function FoundingProCard() {
         </ul>
       </div>
 
-      <div className="rounded-control bg-[var(--surface-inset)] px-3 py-2 text-xs text-[var(--color-ink-muted)]">
-        {capacityLoading || !capacity ? (
-          'Loading capacity…'
-        ) : (
-          <>
-            <span className="font-medium text-[var(--color-ink)]">{capacity.remainingPublicSlots}</span> of {capacity.maxPublicSlots} public spots
-            remaining
-          </>
-        )}
-      </div>
+      {state.kind !== 'member' && (
+        <div className="rounded-control bg-[var(--surface-inset)] px-3 py-2 text-xs text-[var(--color-ink-muted)]">
+          {capacityLoading || !capacity ? (
+            'Loading capacity…'
+          ) : (
+            <>
+              <span className="font-medium text-[var(--color-ink)]">{capacity.remainingPublicSlots}</span> of {capacity.maxPublicSlots} public spots
+              remaining
+            </>
+          )}
+        </div>
+      )}
 
       <FoundingProCta state={state} />
     </SurfaceCard>
@@ -121,6 +222,10 @@ export function FoundingProCard() {
 
 function FoundingProCta({ state }: { state: FoundingProDisplayState }) {
   switch (state.kind) {
+    case 'member':
+      // Rendered above via FoundingProMemberPanel (price/expiry/CTA all
+      // live together there, since the CTA differs by transition_status).
+      return null
     case 'anonymous':
       return (
         <div className="flex flex-col gap-2">
@@ -138,13 +243,6 @@ function FoundingProCta({ state }: { state: FoundingProDisplayState }) {
       )
     case 'loading':
       return null
-    case 'member': {
-      const label =
-        state.member.slot_type === 'public' && state.member.founding_member_number
-          ? `Founding member #${state.member.founding_member_number}`
-          : 'Founding Pro member'
-      return <p className="text-sm font-medium text-[var(--color-ink)]">{label}</p>
-    }
     case 'invited':
       return (
         <Link to="/founding-pro/invitation">

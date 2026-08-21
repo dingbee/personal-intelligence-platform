@@ -3,9 +3,54 @@ import { useNotifications } from '@/modules/notifications/hooks/useNotifications
 import { DropdownMenu } from '@/shared/components/ui/DropdownMenu'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { formatRelativeTime } from '@/shared/utils/formatRelativeTime'
-import type { CollaborationInvitationPayload, Notification } from '@/shared/types/database'
+import type {
+  CollaborationInvitationPayload,
+  FoundingProExpiryWarningPayload,
+  FoundingProTransitionPayload,
+  Notification,
+  QuotaThresholdPayload,
+} from '@/shared/types/database'
 
-/** Every notification `type` this phase produces routes to a fixed destination and renders a fixed message — a small lookup, not a generic template engine, since there is exactly one type today (Phase 1 scope). */
+/**
+ * Usage Intelligence — never render `quota_key` (or any other internal
+ * identifier) to a user; this is the one place a raw quota_key becomes a
+ * human label. Deliberately excludes 'ai_messages' from having a distinct
+ * "capability" framing (it already reads naturally as "AI messages").
+ */
+const QUOTA_KEY_LABELS: Record<string, string> = {
+  ai_messages: 'AI messages',
+  data_intelligence_operations: 'Data Intelligence',
+  analysis_intelligence_operations: 'Analysis Intelligence',
+  research_intelligence_operations: 'Research Intelligence',
+  decision_intelligence_operations: 'Decision Intelligence',
+  planning_intelligence_operations: 'Planning Intelligence',
+  action_intelligence_operations: 'Action Intelligence',
+}
+
+/**
+ * Copy is deliberately scoped to the single capability that crossed a
+ * threshold — never implies every capability is unavailable, never names
+ * the raw quota_key. 50%/75% are informational; 90%/100% are actionable
+ * (100% points at the upgrade path, matching BillingCard's own "Upgrade
+ * to Pro" precedent).
+ */
+function quotaThresholdMessage(payload: Partial<QuotaThresholdPayload>): string {
+  const label = (payload.quota_key && QUOTA_KEY_LABELS[payload.quota_key]) || 'a capability'
+  switch (payload.threshold) {
+    case 50:
+      return `You've used half of your ${label} for this period.`
+    case 75:
+      return `You've used 75% of your ${label} for this period.`
+    case 90:
+      return `You're close to your ${label} limit for this period — 90% used.`
+    case 100:
+      return `You've reached your ${label} limit for this period. Upgrade for more capacity.`
+    default:
+      return `Your ${label} usage has reached ${payload.threshold ?? ''}% for this period.`
+  }
+}
+
+/** Every notification `type` routes to a fixed destination and renders a fixed message — a small lookup, not a generic template engine. */
 function describeNotification(notification: Notification): { icon: string; message: string; to: string } {
   if (notification.type === 'collaboration_invitation') {
     // Payload is DB-guaranteed `not null default '{}'`, but a malformed or
@@ -17,6 +62,24 @@ function describeNotification(notification: Notification): { icon: string; messa
       message: `${payload.inviter_name ?? 'Someone'} invited you to join ${payload.workspace_name ?? 'a workspace'}`,
       to: '/settings/workspaces',
     }
+  }
+  if (notification.type === 'quota_threshold') {
+    const payload = (notification.payload ?? {}) as unknown as Partial<QuotaThresholdPayload>
+    return { icon: '📊', message: quotaThresholdMessage(payload), to: '/settings' }
+  }
+  if (notification.type === 'founding_pro_expiry_warning') {
+    const payload = (notification.payload ?? {}) as unknown as Partial<FoundingProExpiryWarningPayload>
+    const days = payload.threshold_days
+    const when = days === 1 ? 'in 1 day' : `in ${days ?? 'a few'} days`
+    return { icon: '⏳', message: `Your Founding Pro term ends ${when}. Continue with Pro anytime to keep full access.`, to: '/pricing' }
+  }
+  if (notification.type === 'founding_pro_transition') {
+    const payload = (notification.payload ?? {}) as unknown as Partial<FoundingProTransitionPayload>
+    const message =
+      payload.transition_status === 'converted_to_pro'
+        ? "You've moved to standard Pro. Your Founding Pro term has ended."
+        : "Your Founding Pro term has ended and you're now on the Free plan."
+    return { icon: '🎓', message, to: '/pricing' }
   }
   return { icon: '🔔', message: notification.type, to: '/settings/workspaces' }
 }
