@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useCurrentPlan } from '@/modules/plans/hooks/useCurrentPlan'
 import { usePublicPlanCatalog } from '@/modules/plans/hooks/usePublicPlanCatalog'
-import { startProCheckout } from '@/modules/billing/api/billing'
+import { startCheckout } from '@/modules/billing/api/billing'
 import type { PublicPlanTier } from '@/modules/plans/api/plans'
 import { formatFileSize } from '@/modules/library/utils/fileTypes'
 import { FoundingProCard } from '@/modules/founding-pro/components/FoundingProCard'
@@ -91,11 +91,19 @@ function formatPrice(cents: number | null, currency: string): string | null {
   return `${(cents / 100).toLocaleString(undefined, { style: 'currency', currency })}`
 }
 
-type ProCta =
+type PlanCta =
   | { kind: 'none' }
   | { kind: 'manage-billing' }
   | { kind: 'sign-up' }
-  | { kind: 'upgrade'; onClick: () => void; isStarting: boolean; error: string | null }
+  | { kind: 'checkout'; onClick: () => void; isStarting: boolean; error: string | null }
+
+// Commercial Readiness — Student pricing-card fix. The self-serve plans
+// with a working checkout intent (see pesapal-checkout/index.ts's own
+// INTENT_PLAN_CODES). Student previously had no CTA at all because every
+// CTA block below was gated on `isPro` specifically — the actual bug was
+// at this layer (which plans get a checkout CTA), not a one-off missing
+// button.
+const CHECKOUT_PLAN_CODES = new Set(['pro', 'student'])
 
 /**
  * Card hierarchy (capability-progression refresh): name -> capability
@@ -107,11 +115,11 @@ type ProCta =
  * card never has to choose between being readable and being complete —
  * it's readable, and complete detail is one click away.
  */
-function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent: boolean; proCta: ProCta }) {
+function PlanCard({ tier, isCurrent, cta }: { tier: PublicPlanTier; isCurrent: boolean; cta: PlanCta }) {
   const monthly = formatPrice(tier.monthlyPriceCents, tier.currency)
   const annual = formatPrice(tier.annualPriceCents, tier.currency)
   const isFree = tier.code === 'free'
-  const isPro = tier.code === 'pro'
+  const isCheckoutable = CHECKOUT_PLAN_CODES.has(tier.code)
   const copy = CARD_COPY[tier.code]
 
   return (
@@ -184,13 +192,13 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
         </ul>
       </div>
 
-      {isPro && proCta.kind === 'manage-billing' && (
+      {isCheckoutable && cta.kind === 'manage-billing' && (
         <Link to="/settings">
           <Button variant="secondary">Manage billing</Button>
         </Link>
       )}
 
-      {isPro && proCta.kind === 'sign-up' && (
+      {isCheckoutable && cta.kind === 'sign-up' && (
         <div className="flex flex-col gap-2">
           <Link to="/signup">
             <Button className="w-full">Sign up</Button>
@@ -199,26 +207,26 @@ function PlanCard({ tier, isCurrent, proCta }: { tier: PublicPlanTier; isCurrent
             V1 Free Access — registration is open (enforce_signup_-
             authorization, 0071_free_access_and_collaboration.sql, no
             longer requires an invitation of any kind). A visitor
-            clicking "Sign up" from the Pro card lands on the same open
-            /signup as everyone else and starts on Free; paid Pro
+            clicking "Sign up" from a checkout-eligible card lands on the
+            same open /signup as everyone else and starts on Free; paid
             conversion is a separate, later step (PricingPage's own
-            upgrade-checkout CTA once signed in), never something signup
-            itself grants.
+            checkout CTA once signed in), never something signup itself
+            grants.
           */}
-          <p className="text-xs text-[var(--color-ink-muted)]">Free to sign up — upgrade to Pro anytime afterward.</p>
+          <p className="text-xs text-[var(--color-ink-muted)]">Free to sign up — subscribe to {tier.name} anytime afterward.</p>
           <p className="text-xs text-[var(--color-ink-muted)]">
             Already have an account? <Link to="/login" className="text-[var(--color-accent)] hover:underline">Log in</Link>
           </p>
         </div>
       )}
 
-      {isPro && proCta.kind === 'upgrade' && (
+      {isCheckoutable && cta.kind === 'checkout' && (
         <div className="flex flex-col gap-2">
-          <Button onClick={proCta.onClick} disabled={proCta.isStarting}>
-            {proCta.isStarting ? 'Starting checkout…' : 'Upgrade to Pro (sandbox)'}
+          <Button onClick={cta.onClick} disabled={cta.isStarting}>
+            {cta.isStarting ? 'Starting checkout…' : `Subscribe to ${tier.name} (sandbox)`}
           </Button>
           <p className="text-xs text-[var(--color-ink-muted)]">Pesapal sandbox checkout — no real payment is processed.</p>
-          {proCta.error && <p className="text-xs text-[var(--color-danger-strong)]">{proCta.error}</p>}
+          {cta.error && <p className="text-xs text-[var(--color-danger-strong)]">{cta.error}</p>}
         </div>
       )}
     </SurfaceCard>
@@ -229,23 +237,27 @@ export function PricingPage() {
   const { user, session } = useAuth()
   const { data: currentPlan, isLoading: planLoading } = useCurrentPlan()
   const { data: catalog, isLoading: catalogLoading } = usePublicPlanCatalog()
-  const [checkoutError, setCheckoutError] = useState<string | null>(null)
-  const [isStartingCheckout, setIsStartingCheckout] = useState(false)
+  // Per-plan-code state (not a single shared boolean/string) — Pro's and
+  // Student's checkout buttons are independent controls on the same page;
+  // starting one, or a failure on one, must never show as loading/errored
+  // on the other.
+  const [checkoutError, setCheckoutError] = useState<{ planCode: string; message: string } | null>(null)
+  const [startingCheckoutFor, setStartingCheckoutFor] = useState<string | null>(null)
 
   // Phase 5B Pesapal Sandbox Billing — server resolves everything; this
   // click sends only a fixed intent, never a price or plan id (see
   // pesapal-checkout/index.ts). If Pesapal isn't configured for this
   // environment the function fails closed with a 501, surfaced here as an
   // honest inline error rather than a silent no-op or a fake success.
-  async function handleUpgradeClick() {
+  async function handleCheckoutClick(planCode: 'pro' | 'student') {
     setCheckoutError(null)
-    setIsStartingCheckout(true)
+    setStartingCheckoutFor(planCode)
     try {
-      const { redirectUrl } = await startProCheckout()
+      const { redirectUrl } = await startCheckout(planCode)
       window.location.href = redirectUrl
     } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : 'Checkout is unavailable right now. Please try again later.')
-      setIsStartingCheckout(false)
+      setCheckoutError({ planCode, message: err instanceof Error ? err.message : 'Checkout is unavailable right now. Please try again later.' })
+      setStartingCheckoutFor(null)
     }
   }
 
@@ -259,19 +271,26 @@ export function PricingPage() {
   // *known* non-upgradable code suppresses the CTA below.
   const effectivePlanCode = currentPlan?.planCode ?? (user ? 'free' : null)
 
-  // What the Pro card's CTA should be, resolved once, in the exact order
-  // that avoids ever offering an upgrade that doesn't make sense:
-  // anonymous -> sign up; already Pro -> manage billing; a plan that
-  // can't (yet) become Pro (Founding Pro/Enterprise) or still loading ->
-  // nothing; anything else (Free/legacy Beta) -> the real checkout button.
-  function resolveProCta(): ProCta {
+  // What a checkout-eligible card's CTA should be, resolved per target
+  // plan code, in the exact order that avoids ever offering a checkout
+  // that doesn't make sense: anonymous -> sign up; already on that exact
+  // plan -> manage billing; a plan that can't self-serve-switch (Founding
+  // Pro/Enterprise) or still loading -> nothing; anything else (Free, or
+  // the other self-serve plan) -> the real checkout button. Same rule for
+  // both Pro and Student — this was previously hardcoded to Pro only,
+  // which is the actual reason Student had no CTA at all.
+  function resolveCheckoutCta(targetPlanCode: 'pro' | 'student'): PlanCta {
     if (!user) return { kind: 'sign-up' }
     if (planLoading) return { kind: 'none' }
-    if (effectivePlanCode === 'pro') return { kind: 'manage-billing' }
+    if (effectivePlanCode === targetPlanCode) return { kind: 'manage-billing' }
     if (effectivePlanCode && ['founding_pro', 'enterprise'].includes(effectivePlanCode)) return { kind: 'none' }
-    return { kind: 'upgrade', onClick: handleUpgradeClick, isStarting: isStartingCheckout, error: checkoutError }
+    return {
+      kind: 'checkout',
+      onClick: () => void handleCheckoutClick(targetPlanCode),
+      isStarting: startingCheckoutFor === targetPlanCode,
+      error: checkoutError?.planCode === targetPlanCode ? checkoutError.message : null,
+    }
   }
-  const proCta = resolveProCta()
 
   return (
     <div className="min-h-screen min-h-dvh bg-[var(--color-canvas)]">
@@ -317,7 +336,12 @@ export function PricingPage() {
             {catalog
               .filter((tier) => tier.code !== 'founding_pro')
               .map((tier) => (
-                <PlanCard key={tier.code} tier={tier} isCurrent={effectivePlanCode === tier.code} proCta={tier.code === 'pro' ? proCta : { kind: 'none' }} />
+                <PlanCard
+                  key={tier.code}
+                  tier={tier}
+                  isCurrent={effectivePlanCode === tier.code}
+                  cta={CHECKOUT_PLAN_CODES.has(tier.code) ? resolveCheckoutCta(tier.code as 'pro' | 'student') : { kind: 'none' }}
+                />
               ))}
           </div>
         )}

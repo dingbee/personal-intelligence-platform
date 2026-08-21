@@ -58,4 +58,28 @@ describe('FoundingProCard discount presentation', () => {
     expect(screen.getByText('$39.40/mo')).toBeTruthy()
     expect(screen.queryByText(/Save \d+%/)).toBeNull()
   })
+
+  it('does not invent a discount when the Pro price and the founder price are in different currencies', () => {
+    mocks.catalog.mockReturnValue({
+      data: [{ planId: 'pro', code: 'pro', name: 'Pro', description: null, active: true, monthlyPriceCents: 9900, annualPriceCents: 99000, currency: 'EUR', aiMessagesPerMonth: 3000, storageBytes: 26843545600, collaboration: true, maxActiveCollaborators: 10 }],
+      isLoading: false,
+    })
+    cleanup()
+    render(createElement(MemoryRouter, null, createElement(FoundingProCard)))
+    expect(screen.getByText('$39.40/mo')).toBeTruthy()
+    expect(screen.queryByText(/Save \d+%/)).toBeNull()
+    expect(screen.queryByText(/Pro €99\.00/)).toBeNull()
+  })
+
+  it('does not invent a discount when the founder price is not actually lower than the Pro price', () => {
+    mocks.catalog.mockReturnValue({
+      data: [{ planId: 'pro', code: 'pro', name: 'Pro', description: null, active: true, monthlyPriceCents: 2000, annualPriceCents: 20000, currency: 'USD', aiMessagesPerMonth: 3000, storageBytes: 26843545600, collaboration: true, maxActiveCollaborators: 10 }],
+      isLoading: false,
+    })
+    mocks.membership.mockReturnValue({ data: member({ founding_price_cents: 3940 }), isLoading: false })
+    cleanup()
+    render(createElement(MemoryRouter, null, createElement(FoundingProCard)))
+    expect(screen.getByText('$39.40/mo')).toBeTruthy()
+    expect(screen.queryByText(/Save \d+%/)).toBeNull()
+  })
 })

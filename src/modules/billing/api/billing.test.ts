@@ -7,7 +7,7 @@ const { invokeMock } = vi.hoisted(() => ({
 
 vi.mock('@/shared/lib/supabase', () => ({ supabase: { functions: { invoke: invokeMock } } }))
 
-import { startProCheckout } from '@/modules/billing/api/billing'
+import { startCheckout, startProCheckout } from '@/modules/billing/api/billing'
 
 /**
  * Regression: pesapal-checkout fails closed with a specific, useful
@@ -47,5 +47,48 @@ describe('startProCheckout', () => {
     invokeMock.mockResolvedValueOnce({ data: { redirectUrl: 'https://cybqa.pesapal.com/redirect', merchantReference: 'pip-pro-abc' }, error: null })
 
     await expect(startProCheckout()).resolves.toEqual({ redirectUrl: 'https://cybqa.pesapal.com/redirect', merchantReference: 'pip-pro-abc' })
+  })
+
+  it('sends the fixed start_pro_subscription intent — never a plan id, price, or currency', async () => {
+    invokeMock.mockResolvedValueOnce({ data: { redirectUrl: 'https://cybqa.pesapal.com/redirect', merchantReference: 'pip-pro-abc' }, error: null })
+
+    await startProCheckout()
+
+    expect(invokeMock).toHaveBeenCalledWith('pesapal-checkout', { body: { intent: 'start_pro_subscription' } })
+  })
+})
+
+/**
+ * Regression: the Student pricing card had no checkout CTA because
+ * PricingPage's PlanCard only ever rendered a CTA for the 'pro' tier.
+ * startCheckout(planCode) is the same server-resolves-everything Pesapal
+ * flow startProCheckout already used, generalized to accept which
+ * self-serve plan to launch — this proves Student launches through the
+ * SAME existing edge function with the SAME "server sends only a fixed
+ * intent, never a price" contract, not a new/duplicated checkout path.
+ */
+describe('startCheckout', () => {
+  it('launches the existing pesapal-checkout function with the Student plan\'s own registered intent', async () => {
+    invokeMock.mockResolvedValueOnce({ data: { redirectUrl: 'https://cybqa.pesapal.com/redirect', merchantReference: 'pip-student-abc' }, error: null })
+
+    const result = await startCheckout('student')
+
+    expect(invokeMock).toHaveBeenCalledWith('pesapal-checkout', { body: { intent: 'start_student_subscription' } })
+    expect(result).toEqual({ redirectUrl: 'https://cybqa.pesapal.com/redirect', merchantReference: 'pip-student-abc' })
+  })
+
+  it('launches Pro checkout with the same intent startProCheckout uses', async () => {
+    invokeMock.mockResolvedValueOnce({ data: { redirectUrl: 'https://cybqa.pesapal.com/redirect', merchantReference: 'pip-pro-abc' }, error: null })
+
+    await startCheckout('pro')
+
+    expect(invokeMock).toHaveBeenCalledWith('pesapal-checkout', { body: { intent: 'start_pro_subscription' } })
+  })
+
+  it('surfaces the edge function\'s own error message on failure, same as startProCheckout', async () => {
+    const context = new Response(JSON.stringify({ error: 'Student plan is not configured' }), { status: 500 })
+    invokeMock.mockResolvedValueOnce({ data: null, error: new FunctionsHttpError(context) })
+
+    await expect(startCheckout('student')).rejects.toThrow('Student plan is not configured')
   })
 })

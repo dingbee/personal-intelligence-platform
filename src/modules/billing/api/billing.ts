@@ -34,21 +34,28 @@ export async function getCurrentUserSubscription(userId: string): Promise<Subscr
   return data
 }
 
+/** The self-serve plan codes with a working checkout intent — matches pesapal-checkout/index.ts's own INTENT_PLAN_CODES allow-list exactly. */
+const CHECKOUT_INTENT_BY_PLAN_CODE: Record<'pro' | 'student', string> = {
+  pro: 'start_pro_subscription',
+  student: 'start_student_subscription',
+}
+
 /**
- * Phase 5B Pesapal Sandbox Billing — initiates a Pro checkout entirely
- * server-side (pesapal-checkout Edge Function). The client sends only a
- * fixed intent string, never a plan id, price, or currency — every
- * commercial fact is resolved by the server. `supabase.functions.invoke`
- * forwards the caller's own session JWT automatically (same pattern
- * `adminApi.ts`'s `sendBetaInvitationEmail` already uses), so the
- * function can authenticate the caller without this code doing anything
- * extra. Throws on any failure (network, 501 "not configured", a
- * declined order) — callers surface that as an inline error rather than
- * ever assuming success.
+ * Phase 5B Pesapal Sandbox Billing — initiates checkout entirely
+ * server-side (pesapal-checkout Edge Function), for any self-serve plan
+ * with a registered intent. The client sends only a fixed intent string,
+ * never a plan id, price, or currency — every commercial fact is resolved
+ * by the server. `supabase.functions.invoke` forwards the caller's own
+ * session JWT automatically (same pattern `adminApi.ts`'s
+ * `sendBetaInvitationEmail` already uses), so the function can
+ * authenticate the caller without this code doing anything extra. Throws
+ * on any failure (network, 501 "not configured", a declined order) —
+ * callers surface that as an inline error rather than ever assuming
+ * success.
  */
-export async function startProCheckout(): Promise<{ redirectUrl: string; merchantReference: string }> {
+export async function startCheckout(planCode: 'pro' | 'student'): Promise<{ redirectUrl: string; merchantReference: string }> {
   const { data, error } = await supabase.functions.invoke<{ redirectUrl: string; merchantReference: string }>('pesapal-checkout', {
-    body: { intent: 'start_pro_subscription' },
+    body: { intent: CHECKOUT_INTENT_BY_PLAN_CODE[planCode] },
   })
   if (error) {
     // supabase-js's FunctionsHttpError.message is always the same generic
@@ -68,6 +75,11 @@ export async function startProCheckout(): Promise<{ redirectUrl: string; merchan
   }
   if (!data) throw new Error('Checkout did not return a redirect URL')
   return data
+}
+
+/** Thin, back-compat-named wrapper — every existing Pro checkout call site (PricingPage, FoundingProCard) keeps working unchanged. */
+export function startProCheckout(): Promise<{ redirectUrl: string; merchantReference: string }> {
+  return startCheckout('pro')
 }
 
 /**

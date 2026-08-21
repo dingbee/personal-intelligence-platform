@@ -15,15 +15,23 @@ import type { FoundingProMember } from '@/shared/types/database'
  * Pro" CTA (also via startProCheckout, never founding pricing).
  */
 
-const { useAuthMock, useFoundingProCapacityMock, useMyFoundingProMembershipMock, useMyLatestFoundingProApplicationMock, useMyPendingFoundingProInvitationMock, startProCheckoutMock } =
-  vi.hoisted(() => ({
-    useAuthMock: vi.fn(),
-    useFoundingProCapacityMock: vi.fn(),
-    useMyFoundingProMembershipMock: vi.fn(),
-    useMyLatestFoundingProApplicationMock: vi.fn(),
-    useMyPendingFoundingProInvitationMock: vi.fn(),
-    startProCheckoutMock: vi.fn(),
-  }))
+const {
+  useAuthMock,
+  useFoundingProCapacityMock,
+  useMyFoundingProMembershipMock,
+  useMyLatestFoundingProApplicationMock,
+  useMyPendingFoundingProInvitationMock,
+  usePublicPlanCatalogMock,
+  startProCheckoutMock,
+} = vi.hoisted(() => ({
+  useAuthMock: vi.fn(),
+  useFoundingProCapacityMock: vi.fn(),
+  useMyFoundingProMembershipMock: vi.fn(),
+  useMyLatestFoundingProApplicationMock: vi.fn(),
+  useMyPendingFoundingProInvitationMock: vi.fn(),
+  usePublicPlanCatalogMock: vi.fn(),
+  startProCheckoutMock: vi.fn(),
+}))
 
 vi.mock('@/modules/auth/useAuth', () => ({ useAuth: useAuthMock }))
 vi.mock('@/modules/founding-pro/hooks/useFoundingProCapacity', () => ({ useFoundingProCapacity: useFoundingProCapacityMock }))
@@ -32,6 +40,7 @@ vi.mock('@/modules/founding-pro/hooks/useMyFoundingProStatus', () => ({
   useMyLatestFoundingProApplication: useMyLatestFoundingProApplicationMock,
   useMyPendingFoundingProInvitation: useMyPendingFoundingProInvitationMock,
 }))
+vi.mock('@/modules/plans/hooks/usePublicPlanCatalog', () => ({ usePublicPlanCatalog: usePublicPlanCatalogMock }))
 vi.mock('@/modules/billing/api/billing', () => ({ startProCheckout: startProCheckoutMock }))
 
 import { FoundingProCard } from '@/modules/founding-pro/components/FoundingProCard'
@@ -65,6 +74,10 @@ describe('FoundingProCard', () => {
     useFoundingProCapacityMock.mockReturnValue({ data: { maxPublicSlots: 100, enrolledPublicCount: 10, remainingPublicSlots: 90 }, isLoading: false })
     useMyLatestFoundingProApplicationMock.mockReturnValue({ data: null, isLoading: false })
     useMyPendingFoundingProInvitationMock.mockReturnValue({ data: null, isLoading: false })
+    // No Pro-price comparison data by default in this file — these tests
+    // are about member price/expiry/CTA behavior, not the discount
+    // presentation (covered separately in FoundingProCard.discount.test.ts).
+    usePublicPlanCatalogMock.mockReturnValue({ data: [], isLoading: false })
   })
 
   afterEach(cleanup)
