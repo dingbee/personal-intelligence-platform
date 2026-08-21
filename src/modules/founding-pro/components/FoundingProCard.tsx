@@ -9,6 +9,7 @@ import {
 } from '@/modules/founding-pro/hooks/useMyFoundingProStatus'
 import { resolveFoundingProDisplayState, type FoundingProDisplayState } from '@/modules/founding-pro/foundingProState'
 import { startProCheckout } from '@/modules/billing/api/billing'
+import { usePublicPlanCatalog } from '@/modules/plans/hooks/usePublicPlanCatalog'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
 import { Button } from '@/shared/components/ui/Button'
@@ -19,10 +20,10 @@ import type { FoundingProMember } from '@/shared/types/database'
 //   - Never name an AI provider, model, or provider-allocation concept —
 //     "Full Pro functionality" stays generic on purpose.
 //   - Never invent a founding price. The exact rate is confirmed to the
-//     applicant only after an admin approves and enrolls them (a later
-//     phase's concern); this card never reads plans.founding_pro's own
-//     monthly_price_cents, which is a different, unrelated concept (see
-//     0052's own comment on admin_enroll_founding_pro_member).
+//     applicant only after an admin approves and enrolls them; this card
+//     reads the member's actual founding_price_cents/currency.
+//   - The ordinary Pro comparison price is always read from the live public
+//     Pro plan catalog. It is never hard-coded.
 // V1 Founding Pro Expiry — "Automatic transition to standard Pro" was
 // inaccurate: expiry (expire_founding_pro_members(),
 // 0072_founding_pro_expiry.sql) only keeps someone on Pro if they've
@@ -58,6 +59,11 @@ function formatMemberDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
+function discountPercent(proPriceCents: number, foundingPriceCents: number): number {
+  if (proPriceCents <= 0 || foundingPriceCents >= proPriceCents) return 0
+  return Math.round(((proPriceCents - foundingPriceCents) / proPriceCents) * 100)
+}
+
 /** Whole days remaining until `expiresAt`, floored at 0 — never negative, so an already-past-due-but-not-yet-swept member reads as "0 days left," not a confusing negative count. */
 function daysRemaining(expiresAt: string): number {
   const ms = new Date(expiresAt).getTime() - Date.now()
@@ -76,6 +82,8 @@ function daysRemaining(expiresAt: string): number {
 function FoundingProMemberPanel({ member }: { member: FoundingProMember }) {
   const [isStarting, setIsStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { data: catalog } = usePublicPlanCatalog()
+  const proPlan = catalog?.find((plan) => plan.code === 'pro')
 
   async function handleContinueWithPro() {
     setError(null)
@@ -92,14 +100,33 @@ function FoundingProMemberPanel({ member }: { member: FoundingProMember }) {
   if (member.transition_status === 'active') {
     const remaining = daysRemaining(member.founding_expires_at)
     const memberLabel = member.slot_type === 'public' && member.founding_member_number ? `Founding member #${member.founding_member_number}` : 'Founding Pro member'
+    const proPriceMatchesCurrency = proPlan?.monthlyPriceCents != null && proPlan.currency === member.currency
+    const discount = proPriceMatchesCurrency ? discountPercent(proPlan.monthlyPriceCents!, member.founding_price_cents) : 0
+
     return (
       <div className="flex flex-col gap-3">
         <div>
           <p className="text-xs font-medium text-[var(--color-ink-muted)]">{memberLabel}</p>
-          <p className="text-2xl font-semibold text-[var(--color-ink)]">
-            {formatMemberPrice(member.founding_price_cents, member.currency)}/mo
+          {proPriceMatchesCurrency && proPlan.monthlyPriceCents! > member.founding_price_cents ? (
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <p className="text-sm text-[var(--color-ink-muted)] line-through">
+                Pro {formatMemberPrice(proPlan.monthlyPriceCents!, proPlan.currency)}/mo
+              </p>
+              <p className="text-2xl font-semibold text-[var(--color-ink)]">
+                {formatMemberPrice(member.founding_price_cents, member.currency)}/mo
+              </p>
+              <span className="rounded-control bg-[var(--surface-inset)] px-2 py-0.5 text-xs font-semibold text-[var(--color-accent)]">
+                Save {discount}%
+              </span>
+            </div>
+          ) : (
+            <p className="text-2xl font-semibold text-[var(--color-ink)]">
+              {formatMemberPrice(member.founding_price_cents, member.currency)}/mo
+            </p>
+          )}
+          <p className="text-xs text-[var(--color-ink-muted)]">
+            Your founder price, locked in through {formatMemberDate(member.founding_expires_at)}
           </p>
-          <p className="text-xs text-[var(--color-ink-muted)]">Your founding rate, locked in through {formatMemberDate(member.founding_expires_at)}</p>
         </div>
         <div className="rounded-control bg-[var(--surface-inset)] px-3 py-2 text-xs text-[var(--color-ink-muted)]">
           <span className="font-medium text-[var(--color-ink)]">{remaining}</span> day{remaining === 1 ? '' : 's'} left in your founding term
@@ -223,8 +250,6 @@ export function FoundingProCard() {
 function FoundingProCta({ state }: { state: FoundingProDisplayState }) {
   switch (state.kind) {
     case 'member':
-      // Rendered above via FoundingProMemberPanel (price/expiry/CTA all
-      // live together there, since the CTA differs by transition_status).
       return null
     case 'anonymous':
       return (
