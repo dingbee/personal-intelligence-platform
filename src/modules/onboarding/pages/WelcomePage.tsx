@@ -27,7 +27,7 @@ const ORIENTATION_STEPS = [
   },
   {
     title: 'Conversations',
-    body: 'Talk with Nova, your AI assistant, about anything in your library — or just think out loud.',
+    body: 'Talk with ARRIYIA about anything in your library — or simply think out loud.',
   },
   {
     title: 'Intelligence',
@@ -99,7 +99,7 @@ export function WelcomePage() {
 
             <SurfaceCard className="flex flex-col gap-2">
               <p className="text-sm font-medium text-[var(--color-ink)]">Start your first conversation</p>
-              <p className="text-xs text-[var(--color-ink-muted)]">Ask Nova anything — you don't need any documents uploaded first.</p>
+              <p className="text-xs text-[var(--color-ink-muted)]">Ask anything — with or without documents. ARRIYIA can help you think, research, analyse, and work with your knowledge.</p>
               <Button className="mt-auto" onClick={() => finish('/chat')}>
                 Start a conversation
               </Button>
