@@ -1,5 +1,6 @@
 import { useEffect, useState, type RefObject } from 'react'
 import { computeSelectionPopupPosition } from '@/modules/reader/components/selectionPopupPosition'
+import { CopyIcon } from '@/shared/components/ui/CopyIcon'
 
 interface SelectionState {
   text: string
@@ -92,10 +93,12 @@ export function SelectionHighlightButton({
       <button
         type="button"
         onClick={() => void handleCopy()}
-        aria-label="Copy selection"
-        className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-canvas)] shadow-md hover:opacity-90"
+        aria-label={copied ? 'Copied' : 'Copy selection'}
+        title={copied ? 'Copied' : 'Copy selection'}
+        className="flex items-center gap-1 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-canvas)] shadow-md hover:opacity-90"
       >
-        {copied ? 'Copied' : 'Copy'}
+        <CopyIcon />
+        {copied && <span>Copied</span>}
       </button>
     </div>
   )

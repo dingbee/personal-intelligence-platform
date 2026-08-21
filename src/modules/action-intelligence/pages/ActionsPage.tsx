@@ -16,6 +16,7 @@ import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
+import { CopyIcon } from '@/shared/components/ui/CopyIcon'
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback
@@ -123,8 +124,11 @@ function ActionCard({
         <button
           type="button"
           onClick={() => void handleCopy()}
-          className="rounded-control border border-[var(--color-border)] px-2 py-1 text-[10px] font-medium text-[var(--color-ink-muted)]"
+          aria-label={copied ? 'Copied' : 'Copy action'}
+          title={copied ? 'Copied' : 'Copy action'}
+          className="flex items-center gap-1 rounded-control border border-[var(--color-border)] px-2 py-1 text-[10px] font-medium text-[var(--color-ink-muted)]"
         >
+          <CopyIcon className="h-3 w-3" />
           {copied ? 'Copied' : 'Copy action'}
         </button>
         <button
@@ -343,8 +347,11 @@ export function ActionsPage() {
             <button
               type="button"
               onClick={() => void handleCopySet()}
-              className="shrink-0 rounded-control border border-[var(--color-border)] px-2 py-1 text-[10px] font-medium text-[var(--color-ink-muted)]"
+              aria-label={actionSetCopied ? 'Copied' : 'Copy action set'}
+              title={actionSetCopied ? 'Copied' : 'Copy action set'}
+              className="flex shrink-0 items-center gap-1 rounded-control border border-[var(--color-border)] px-2 py-1 text-[10px] font-medium text-[var(--color-ink-muted)]"
             >
+              <CopyIcon className="h-3 w-3" />
               {actionSetCopied ? 'Copied' : 'Copy action set'}
             </button>
           </div>

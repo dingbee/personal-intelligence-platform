@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Message } from '@/shared/types/database'
 import { MarkdownRenderer } from '@/modules/ai/chat/components/renderer/MarkdownRenderer'
 import { ArtifactPreviewCard } from '@/modules/ai/chat/components/ArtifactPreviewCard'
+import { CopyIcon } from '@/shared/components/ui/CopyIcon'
 import type { ArtifactPreview } from '@/modules/workspace-actions/types'
 
 /**
@@ -90,10 +91,12 @@ export function MessageBubble({
               <button
                 type="button"
                 onClick={() => void handleCopy()}
-                aria-label="Copy response"
-                className="text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-accent)]"
+                aria-label={copied ? 'Copied' : 'Copy response'}
+                title={copied ? 'Copied' : 'Copy response'}
+                className="flex items-center gap-1 text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-accent)]"
               >
-                {copied ? 'Copied' : 'Copy'}
+                <CopyIcon />
+                {copied && <span>Copied</span>}
               </button>
             )}
             {onSave && (
