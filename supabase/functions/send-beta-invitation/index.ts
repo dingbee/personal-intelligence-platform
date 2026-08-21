@@ -164,6 +164,24 @@ Deno.serve(async (req) => {
     // error handling didn't surface it. inviteId is safe to log (not a
     // secret); the Resend response body/key never is, and isn't logged here.
     console.error(`send-beta-invitation: Resend rejected the send for invite ${inviteId} (${resendResponse.status})`)
+    // #21 Phase 5 — a beta invite grants signup access authorization
+    // (is_beta_invited()), so a delivery failure here is an AUTH-category
+    // event, not a collaboration one. Awaited + try/catch, same reasoning
+    // as send-workspace-invitation's own equivalent call.
+    try {
+      await serviceClient.rpc('report_system_health_event', {
+        p_severity: 'error',
+        p_category: 'auth',
+        p_operation: 'send_beta_invitation_email',
+        p_message: `Resend rejected the send (${resendResponse.status})`,
+        p_error_code: String(resendResponse.status),
+        p_related_entity_type: 'beta_invite',
+        p_related_entity_id: inviteId,
+        p_provider: 'resend',
+      })
+    } catch (reportErr) {
+      console.error('send-beta-invitation: failed to report system_health_event:', reportErr)
+    }
     return errorResponse(`Email provider error: ${resendResponse.status} ${resendBody}`, 502)
   }
 

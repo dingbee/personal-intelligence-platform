@@ -313,6 +313,38 @@ async function recordAiRequest(
     operation_type: fields.operationType,
   })
   if (error) console.error('ai-chat: failed to record ai_requests audit row:', error.message)
+
+  // #21 Phase 5 — best-effort mirror into the unified System Health centre
+  // so a founder can see AI provider failures without a separate trip to
+  // /admin/ai. Uses its own short-lived service-role client (never the
+  // caller-scoped one ai_requests uses above) because
+  // report_system_health_event is granted to service_role only — never
+  // authenticated — by design (0081_system_health_events.sql). Wrapped in
+  // its own try/catch and never awaited by the caller for anything: a
+  // reporting failure here must never turn an already-served (or already
+  // failed-and-reported-to-ai_requests) chat response into a different
+  // outcome for the end user.
+  if (fields.status === 'error') {
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      if (supabaseUrl && serviceRoleKey) {
+        const serviceClient = createClient(supabaseUrl, serviceRoleKey)
+        await serviceClient.rpc('report_system_health_event', {
+          p_severity: 'error',
+          p_category: 'ai',
+          p_operation: fields.feature,
+          p_message: fields.errorMessage ?? 'AI provider request failed',
+          p_user_id: ctx.userId,
+          p_workspace_id: fields.workspaceId,
+          p_provider: fields.provider,
+          p_metadata: { model: fields.model, requested_provider: fields.requestedProvider, fallback_reason: fields.fallbackReason },
+        })
+      }
+    } catch (reportErr) {
+      console.error('ai-chat: failed to report system_health_event:', reportErr)
+    }
+  }
 }
 
 async function handleChat(body: ChatRequestBody, ctx: RequestContext): Promise<Response> {

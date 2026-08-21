@@ -214,6 +214,25 @@ Deno.serve(async (req) => {
     .upload(storagePath, fileBytes, { upsert: false, contentType: fileRes.headers.get('content-type') ?? undefined })
   if (uploadError) {
     console.error('google-drive-import: storage upload failed:', uploadError)
+    // #21 Phase 5 — categorized 'system' rather than 'documents': this is a
+    // failure of the external Google Drive import pipeline/storage layer
+    // itself, distinct from the local upload processing pipeline that
+    // reports 'documents' category events via
+    // report_document_processing_failure. Best-effort, awaited so it
+    // completes before the response is sent.
+    try {
+      await serviceClient.rpc('report_system_health_event', {
+        p_severity: 'error',
+        p_category: 'system',
+        p_operation: 'google_drive_import_storage_upload',
+        p_message: uploadError.message,
+        p_user_id: user.id,
+        p_provider: 'google_drive',
+        p_metadata: { file_id: fileId, file_name: fileName },
+      })
+    } catch (reportErr) {
+      console.error('google-drive-import: failed to report system_health_event:', reportErr)
+    }
     return jsonResponse({ error: 'upload_failed', message: 'Failed to store the imported file.' }, 500)
   }
 

@@ -7,6 +7,7 @@ import { getDocumentProcessor } from '@/modules/processing/extractors/registry'
 import { getChunker } from '@/modules/processing/chunking/registry'
 import { downloadDocumentFile } from '@/modules/processing/pipeline/downloadFile'
 import { getErrorMessage } from '@/modules/processing/pipeline/getErrorMessage'
+import { reportDocumentProcessingFailure } from '@/modules/processing/api/systemHealth'
 import { OpenAIEmbeddingProvider } from '@/modules/ai/embeddings/OpenAIEmbeddingProvider'
 import { supabaseVectorStore } from '@/modules/ai/retrieval/SupabaseVectorStore'
 import type { DocumentChunk } from '@/shared/types/database'
@@ -146,5 +147,16 @@ export async function processDocument(documentId: string, userId: string): Promi
       completed_at: new Date().toISOString(),
     }).catch(() => undefined)
     await updateDocumentStatus(documentId, 'error').catch(() => undefined)
+    // #21 Phase 5 — mirrors the same failure into the unified System
+    // Health centre via the narrow report_document_processing_failure RPC
+    // (0081_system_health_events.sql), which re-verifies server-side that
+    // this document actually belongs to the caller before writing
+    // anything. Best-effort: this pipeline is already fire-and-forget from
+    // the UI's point of view (see this function's own module-level
+    // comment), so a reporting failure here must never surface as a new
+    // error to the user beyond what's already recorded above.
+    await reportDocumentProcessingFailure(documentId, message).catch((reportErr) =>
+      console.error(`Document processing failed for ${documentId}: also failed to report system_health_event:`, reportErr),
+    )
   }
 }

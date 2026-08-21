@@ -929,6 +929,36 @@ export type FoundingProMemberSlotType = 'public' | 'grandfathered'
  */
 export type FoundingProMemberTransitionStatus = 'active' | 'converted_to_pro' | 'expired_to_free' | 'transitioned'
 
+/** #21 Phase 5 — system_health_events (0081_system_health_events.sql). */
+export type SystemHealthEventSeverity = 'info' | 'warning' | 'error' | 'critical'
+export type SystemHealthEventCategory = 'auth' | 'ai' | 'documents' | 'billing' | 'collaboration' | 'system'
+export type SystemHealthEventStatus = 'open' | 'acknowledged' | 'resolved' | 'ignored'
+
+export interface SystemHealthEvent {
+  id: string
+  created_at: string
+  severity: SystemHealthEventSeverity
+  category: SystemHealthEventCategory
+  operation: string
+  error_code: string | null
+  message: string
+  diagnosis: string | null
+  status: SystemHealthEventStatus
+  user_id: string | null
+  workspace_id: string | null
+  related_entity_type: string | null
+  related_entity_id: string | null
+  provider: string | null
+  metadata: Record<string, unknown>
+  occurrence_count: number
+  last_occurred_at: string
+  dedup_key: string
+  acknowledged_at: string | null
+  acknowledged_by: string | null
+  resolved_at: string | null
+  resolved_by: string | null
+}
+
 /**
  * `founding_member_number` is 1-100 for `slot_type = 'public'` and always
  * null for `slot_type = 'grandfathered'` — enforced by a structural CHECK
@@ -1891,6 +1921,141 @@ export type Database = {
       disconnect_google_drive: {
         Args: Record<string, never>
         Returns: void
+      }
+      /**
+       * #21 Phase 4.3 — read-only admin billing/subscription surface.
+       * `subscription_status` is 'free' | 'none' | SubscriptionStatus:
+       * 'free' for a Free-plan user with no subscription row, 'none' for a
+       * paid-plan user assignment with no subscription row yet (e.g. a
+       * checkout order still pending), otherwise the real subscriptions.status.
+       */
+      admin_list_subscriptions: {
+        Args: { p_status?: string | null; p_plan_code?: string | null; p_limit?: number }
+        Returns: {
+          user_id: string
+          email: string | null
+          display_name: string | null
+          plan_code: string
+          plan_name: string
+          subscription_status: string
+          billing_provider: string | null
+          provider_subscription_id: string | null
+          latest_order_reference: string | null
+          latest_order_status: string | null
+          current_period_start: string | null
+          current_period_end: string | null
+          cancel_at_period_end: boolean | null
+          started_at: string
+          last_event_at: string | null
+          founding_pro_transition_status: FoundingProMemberTransitionStatus | null
+        }[]
+      }
+      admin_list_subscription_events: {
+        Args: { p_processing_status?: string | null; p_limit?: number }
+        Returns: {
+          id: string
+          provider: string
+          event_type: string
+          processing_status: 'pending' | 'processed' | 'ignored_stale' | 'failed'
+          received_at: string
+          processed_at: string | null
+          user_id: string | null
+          email: string | null
+          plan_code: string | null
+        }[]
+      }
+      admin_commercial_overview: {
+        Args: Record<string, never>
+        Returns: {
+          active_subscriptions: number
+          past_due_subscriptions: number
+          cancelled_subscriptions: number
+          pending_checkout_orders: number
+          failed_checkout_orders_30d: number
+          failed_subscription_events_30d: number
+          founding_pro_active: number
+          founding_pro_expiring_30d: number
+          recent_transitions_30d: number
+        }
+      }
+      /**
+       * #21 Phase 4.4 — per-user quota breakdown across every consumption-
+       * tracked quota_key on their active plan (excludes feature:* flags).
+       * `effective_limit` reproduces resolve_effective_quota_limit's own
+       * coalesce(override, plan_default) formula exactly.
+       */
+      admin_get_user_quota_breakdown: {
+        Args: { p_user_id: string }
+        Returns: {
+          quota_key: string
+          plan_limit: number
+          override_limit: number | null
+          effective_limit: number
+          usage_count: number
+          percent_used: number
+          period_start: string
+          period_end: string
+        }[]
+      }
+      admin_plan_quota_population: {
+        Args: Record<string, never>
+        Returns: { plan_id: string; plan_code: string; plan_name: string; quota_key: string; quota_limit: number; user_count: number }[]
+      }
+      admin_usage_overview: {
+        Args: Record<string, never>
+        Returns: {
+          exhausted_count: number
+          over_90_count: number
+          over_75_count: number
+          active_collaborators: number
+          pending_invitations: number
+          expired_pending_invitations: number
+        }
+      }
+      /**
+       * #21 Phase 5 — Unified Admin Intelligence / Error Centre
+       * (0081_system_health_events.sql). `report_system_health_event` is
+       * intentionally NOT typed here, matching apply_subscription_event's
+       * own precedent above: it's granted to `service_role` only, so no
+       * client code has a legitimate call site — Edge Functions call it
+       * directly with the service-role client.
+       */
+      report_document_processing_failure: {
+        Args: { p_document_id: string; p_error_message: string }
+        Returns: string
+      }
+      admin_list_system_health_events: {
+        Args: {
+          p_category?: string | null
+          p_severity?: string | null
+          p_status?: string | null
+          p_since?: string | null
+          p_user_id?: string | null
+          p_operation?: string | null
+          p_provider?: string | null
+          p_limit?: number
+        }
+        Returns: SystemHealthEvent[]
+      }
+      admin_system_health_summary: {
+        Args: Record<string, never>
+        Returns: { open_critical: number; open_error: number; open_warning: number; events_today: number; unresolved: number }
+      }
+      admin_acknowledge_system_health_event: {
+        Args: { p_event_id: string }
+        Returns: SystemHealthEvent
+      }
+      admin_resolve_system_health_event: {
+        Args: { p_event_id: string; p_resolution_note?: string | null }
+        Returns: SystemHealthEvent
+      }
+      admin_reopen_system_health_event: {
+        Args: { p_event_id: string }
+        Returns: SystemHealthEvent
+      }
+      admin_ignore_system_health_event: {
+        Args: { p_event_id: string }
+        Returns: SystemHealthEvent
       }
     }
     Enums: {
