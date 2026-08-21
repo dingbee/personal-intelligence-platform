@@ -315,25 +315,30 @@ export function PricingPage() {
           </p>
         </div>
 
-        {catalogLoading || !catalog ? (
-          <div className="flex justify-center py-12">
-            <Spinner />
-          </div>
-        ) : (
-          <div data-testid="plan-cards" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {/*
-              Founding Pro Programme Phase 2 — Founding Pro now has its own
-              dedicated card (live capacity, application state, no invented
-              price, no AI provider mentions) rather than reusing the
-              generic PlanCard used for ordinary self-serve tiers. It never
-              comes from the plans catalog fetch here — founding_pro is
-              excluded from PublicPlanTier rendering entirely, since its
-              price/capacity/eligibility all come from Founding-Pro-specific
-              reads (get_founding_pro_public_capacity, the caller's own
-              application/membership rows), not from plans/plan_quotas.
-            */}
-            <FoundingProCard />
-            {catalog
+        {/*
+          Rendering-gap fix — FoundingProCard was previously nested INSIDE
+          the `catalogLoading || !catalog` branch below, so a slow, erroring,
+          or hung usePublicPlanCatalog() request took the entire grid down
+          with it: Free/Student/Pro AND Founding Pro all disappeared
+          together behind an indefinite spinner. Founding Pro Programme
+          Phase 2 already made FoundingProCard independent of the public
+          plan catalog fetch (it never comes from `catalog`; founding_pro's
+          price/capacity/eligibility all come from Founding-Pro-specific
+          reads — get_founding_pro_public_capacity, the caller's own
+          application/membership rows), but the JSX nesting undid that
+          independence. FoundingProCard now renders unconditionally as its
+          own sibling, last in the grid (Free/Student/Pro, then Founding
+          Pro) — only the ordinary catalog-driven cards wait on
+          catalogLoading, since those genuinely need real catalog data
+          (price/quotas) to render at all.
+        */}
+        <div data-testid="plan-cards" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {catalogLoading || !catalog ? (
+            <div className="col-span-full flex justify-center py-12">
+              <Spinner />
+            </div>
+          ) : (
+            catalog
               .filter((tier) => tier.code !== 'founding_pro')
               .map((tier) => (
                 <PlanCard
@@ -342,9 +347,10 @@ export function PricingPage() {
                   isCurrent={effectivePlanCode === tier.code}
                   cta={CHECKOUT_PLAN_CODES.has(tier.code) ? resolveCheckoutCta(tier.code as 'pro' | 'student') : { kind: 'none' }}
                 />
-              ))}
-          </div>
-        )}
+              ))
+          )}
+          <FoundingProCard />
+        </div>
 
         {!catalogLoading && catalog && (
           <details className="rounded-card border border-[var(--color-border)] bg-[var(--surface-inset)] p-4">

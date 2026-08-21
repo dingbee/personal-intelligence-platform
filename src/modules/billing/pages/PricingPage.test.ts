@@ -397,4 +397,97 @@ describe('PricingPage', () => {
       expect(screen.getByText('Subscribe to Pro (sandbox)')).not.toBeNull()
     })
   })
+
+  /**
+   * Regression (urgent) — FoundingProCard was previously nested INSIDE the
+   * `catalogLoading || !catalog` branch, so it shared the ordinary
+   * catalog-driven cards' fate: a slow/erroring/hung usePublicPlanCatalog()
+   * request took the whole grid down with it, Founding Pro included. These
+   * tests pin the specific product requirement that regressed: Founding
+   * Pro must render regardless of the public plan catalog's load/error
+   * state and regardless of whether `founding_pro` is even present in the
+   * fetched catalog — it has never come from `catalog.find(...)` (its
+   * price/capacity/eligibility come from Founding-Pro-specific reads), and
+   * the JSX nesting must not reintroduce that dependency.
+   */
+  describe('Founding Pro card renders independently of the public plan catalog (regression)', () => {
+    it('still renders the Founding Pro card while the public plan catalog is loading', () => {
+      useAuthMock.mockReturnValue({ user: null, session: null })
+      useCurrentPlanMock.mockReturnValue({ data: undefined, isLoading: false })
+      usePublicPlanCatalogMock.mockReturnValue({ data: undefined, isLoading: true })
+
+      renderPage()
+
+      expect(within(screen.getByTestId('plan-cards')).getByRole('heading', { name: 'Founding Pro' })).not.toBeNull()
+    })
+
+    it('still renders the Founding Pro card if the public plan catalog query has failed (data stays undefined, isLoading false)', () => {
+      useAuthMock.mockReturnValue({ user: null, session: null })
+      useCurrentPlanMock.mockReturnValue({ data: undefined, isLoading: false })
+      usePublicPlanCatalogMock.mockReturnValue({ data: undefined, isLoading: false })
+
+      renderPage()
+
+      expect(within(screen.getByTestId('plan-cards')).getByRole('heading', { name: 'Founding Pro' })).not.toBeNull()
+    })
+
+    it('renders the Founding Pro card even when the fetched catalog contains only Free/Student/Pro and no founding_pro row at all', () => {
+      useAuthMock.mockReturnValue({ user: null, session: null })
+      useCurrentPlanMock.mockReturnValue({ data: undefined, isLoading: false })
+      usePublicPlanCatalogMock.mockReturnValue({ data: [freeTier, studentTier, proTier], isLoading: false })
+
+      renderPage()
+
+      expect(within(screen.getByTestId('plan-cards')).getByRole('heading', { name: 'Founding Pro' })).not.toBeNull()
+    })
+
+    it('a signed-in Free user sees the Founding Pro card', () => {
+      useAuthMock.mockReturnValue({ user: { id: 'u1' }, session: { user: { id: 'u1' } } })
+      useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-free', planCode: 'free', planName: 'Free' }, isLoading: false })
+
+      renderPage()
+
+      expect(within(screen.getByTestId('plan-cards')).getByRole('heading', { name: 'Founding Pro' })).not.toBeNull()
+    })
+
+    it('a signed-in Pro user sees the Founding Pro card', () => {
+      useAuthMock.mockReturnValue({ user: { id: 'u1' }, session: { user: { id: 'u1' } } })
+      useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-pro', planCode: 'pro', planName: 'Pro' }, isLoading: false })
+
+      renderPage()
+
+      expect(within(screen.getByTestId('plan-cards')).getByRole('heading', { name: 'Founding Pro' })).not.toBeNull()
+    })
+
+    it('a signed-in Founding Pro member sees the Founding Pro card (their own membership panel, not a suppressed card)', () => {
+      useAuthMock.mockReturnValue({ user: { id: 'u1', email: 'founder@example.com' }, session: { user: { id: 'u1' } } })
+      useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-founding', planCode: 'founding_pro', planName: 'Founding Pro' }, isLoading: false })
+      useMyFoundingProMembershipMock.mockReturnValue({
+        data: {
+          id: 'member-1', user_id: 'u1', application_id: null, slot_type: 'public', founding_member_number: 42,
+          founding_price_cents: 1999, currency: 'USD', founding_started_at: '2026-01-01T00:00:00Z',
+          founding_expires_at: '2026-04-01T00:00:00Z', transition_status: 'active', transitioned_at: null,
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        isLoading: false,
+      })
+
+      renderPage()
+
+      expect(within(screen.getByTestId('plan-cards')).getByRole('heading', { name: 'Founding Pro' })).not.toBeNull()
+    })
+
+    it('the ordinary Free/Student/Pro cards still wait on the catalog (they genuinely need real price/quota data), independent of Founding Pro already being visible', () => {
+      useAuthMock.mockReturnValue({ user: null, session: null })
+      useCurrentPlanMock.mockReturnValue({ data: undefined, isLoading: false })
+      usePublicPlanCatalogMock.mockReturnValue({ data: undefined, isLoading: true })
+
+      renderPage()
+
+      const cards = within(screen.getByTestId('plan-cards'))
+      expect(cards.queryByRole('heading', { name: 'Free' })).toBeNull()
+      expect(cards.queryByRole('heading', { name: 'Pro' })).toBeNull()
+      expect(cards.getByRole('heading', { name: 'Founding Pro' })).not.toBeNull()
+    })
+  })
 })
