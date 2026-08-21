@@ -54,6 +54,10 @@ function fakeSourceDocument(): DocumentRow {
     file_type: 'pdf',
     file_size: 42,
     status: 'ready',
+    source: 'upload',
+    source_file_id: null,
+    source_metadata: {},
+    imported_at: null,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-02T00:00:00.000Z',
   }
@@ -162,6 +166,10 @@ describe('export -> import -> processed document (end to end)', () => {
       file_type: 'pdf',
       file_size: originalBytes.length,
       status: 'uploaded',
+      source: 'upload',
+      source_file_id: null,
+      source_metadata: {},
+      imported_at: null,
       created_at: '2026-03-01T00:00:00.000Z',
       updated_at: '2026-03-01T00:00:00.000Z',
     }

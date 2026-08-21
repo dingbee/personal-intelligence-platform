@@ -17,8 +17,15 @@ export function ChatInput({ disabled, onSend }: { disabled: boolean; onSend: (te
     if (succeeded) setValue('')
   }
 
+  // LOCKED DECISION — Enter always inserts a newline (the textarea's own
+  // native behavior; nothing to do here for that case), identically on
+  // mobile and desktop. Ctrl+Enter / Cmd+Enter is the one keyboard
+  // shortcut that sends, matching common chat-composer convention without
+  // hijacking plain Enter — a mobile virtual keyboard's Enter/Go key never
+  // sets ctrlKey/metaKey, so this is desktop-only in practice, exactly as
+  // intended. The Send button (below) is the only other way to submit.
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault()
       void submit()
     }

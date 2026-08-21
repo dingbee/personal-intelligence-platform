@@ -3,12 +3,13 @@ import { createElement, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 
-const { uploadDocumentMock, renameDocumentMock, moveDocumentMock, deleteDocumentMock, processDocumentMock } = vi.hoisted(() => ({
+const { uploadDocumentMock, renameDocumentMock, moveDocumentMock, deleteDocumentMock, processDocumentMock, importGoogleDriveFileMock } = vi.hoisted(() => ({
   uploadDocumentMock: vi.fn(),
   renameDocumentMock: vi.fn(),
   moveDocumentMock: vi.fn(),
   deleteDocumentMock: vi.fn(),
   processDocumentMock: vi.fn(),
+  importGoogleDriveFileMock: vi.fn(),
 }))
 
 vi.mock('@/modules/library/api/documents', () => ({
@@ -17,6 +18,7 @@ vi.mock('@/modules/library/api/documents', () => ({
   moveDocument: moveDocumentMock,
   deleteDocument: deleteDocumentMock,
 }))
+vi.mock('@/modules/library/api/googleDrive', () => ({ importGoogleDriveFile: importGoogleDriveFileMock }))
 vi.mock('@/modules/processing/pipeline/processDocument', () => ({ processDocument: processDocumentMock }))
 vi.mock('@/modules/auth/useAuth', () => ({ useAuth: () => ({ user: { id: 'user-1' } }) }))
 vi.mock('@/modules/workspaces/useWorkspace', () => ({ useWorkspace: () => ({ currentWorkspaceId: 'ws-1' }) }))
@@ -42,6 +44,7 @@ describe('useDocumentMutations', () => {
     moveDocumentMock.mockReset()
     deleteDocumentMock.mockReset()
     processDocumentMock.mockReset()
+    importGoogleDriveFileMock.mockReset()
   })
 
   it('uploads scoped to the current user and workspace, then kicks off processing without awaiting it', async () => {
@@ -65,6 +68,31 @@ describe('useDocumentMutations', () => {
     result.current.upload.mutate({ file: new File(['x'], 'a.pdf'), collectionId: null })
 
     await waitFor(() => expect(result.current.upload.isError).toBe(true))
+    expect(processDocumentMock).not.toHaveBeenCalled()
+  })
+
+  it('imports from Google Drive scoped to the current workspace, then kicks off processing without awaiting it', async () => {
+    const file = { id: 'drive-file-1', name: 'Notes.pdf', mimeType: 'application/pdf' }
+    importGoogleDriveFileMock.mockResolvedValueOnce({ outcome: 'imported', document: { id: 'doc-2', file_name: 'Notes.pdf' } })
+    processDocumentMock.mockImplementation(() => new Promise(() => {}))
+
+    const { result } = renderHook(() => useDocumentMutations(), { wrapper })
+    result.current.importFromGoogleDrive.mutate({ file, collectionId: 'col-1' })
+
+    await waitFor(() => expect(result.current.importFromGoogleDrive.isSuccess).toBe(true))
+
+    expect(importGoogleDriveFileMock).toHaveBeenCalledWith(file, { collectionId: 'col-1', workspaceId: 'ws-1' })
+    expect(processDocumentMock).toHaveBeenCalledWith('doc-2', 'user-1')
+  })
+
+  it('does not re-trigger processing when the Drive file was already imported (dedup)', async () => {
+    const file = { id: 'drive-file-1', name: 'Notes.pdf', mimeType: 'application/pdf' }
+    importGoogleDriveFileMock.mockResolvedValueOnce({ outcome: 'already_imported', document: { id: 'doc-2', file_name: 'Notes.pdf' } })
+
+    const { result } = renderHook(() => useDocumentMutations(), { wrapper })
+    result.current.importFromGoogleDrive.mutate({ file, collectionId: null })
+
+    await waitFor(() => expect(result.current.importFromGoogleDrive.isSuccess).toBe(true))
     expect(processDocumentMock).not.toHaveBeenCalled()
   })
 

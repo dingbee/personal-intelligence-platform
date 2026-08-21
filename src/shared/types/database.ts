@@ -11,6 +11,8 @@ export type Profile = {
   email: string
   display_name: string | null
   default_chat_provider_id: string | null
+  /** First-Login Welcome Experience — null means "show the welcome experience"; set once on completion OR explicit skip, never cleared. Backfilled to a non-null value for every pre-existing profile at migration time (0079) so only genuinely new signups after that deploy ever see it. */
+  onboarding_completed_at: string | null
   created_at: string
   updated_at: string
 }
@@ -160,6 +162,8 @@ export type Collection = {
   updated_at: string
 }
 
+export type DocumentSource = 'upload' | 'google_drive'
+
 export type DocumentRow = {
   id: string
   user_id: string
@@ -171,6 +175,14 @@ export type DocumentRow = {
   file_type: DocumentFileType
   file_size: number
   status: DocumentStatus
+  /** Import from Google Drive (0080_google_drive_import.sql). Defaults to 'upload' for every document created the ordinary way. */
+  source: DocumentSource
+  /** The originating Drive file id, non-null only when source = 'google_drive' — the dedup key (unique per user+source). */
+  source_file_id: string | null
+  /** Provenance metadata (e.g. { mimeType, driveFileName }) — informational only, never used for access control. */
+  source_metadata: Record<string, unknown>
+  /** Non-null only for an imported document — when the import actually happened, distinct from created_at. */
+  imported_at: string | null
   created_at: string
   updated_at: string
 }
@@ -1871,6 +1883,14 @@ export type Database = {
           cancel_at_period_end: boolean
           updated_at: string
         }[]
+      }
+      get_google_drive_connection_status: {
+        Args: Record<string, never>
+        Returns: { connected: boolean; connected_at: string | null }[]
+      }
+      disconnect_google_drive: {
+        Args: Record<string, never>
+        Returns: void
       }
     }
     Enums: {

@@ -7,6 +7,13 @@ import {
   formatFileSize,
   isSupportedFile,
 } from '@/modules/library/utils/fileTypes'
+import {
+  GoogleDriveAuthCancelledError,
+  connectGoogleDrive,
+  getGoogleDriveConnectionStatus,
+  isGoogleDriveImportConfigured,
+  pickGoogleDriveFile,
+} from '@/modules/library/api/googleDrive'
 import { Button } from '@/shared/components/ui/Button'
 
 interface UploadItem {
@@ -27,9 +34,10 @@ interface UploadItem {
 const STORAGE_QUOTA_ERROR_MARKER = 'Storage quota exceeded'
 
 export function UploadDropzone({ collectionId }: { collectionId: string | null }) {
-  const { upload } = useDocumentMutations()
+  const { upload, importFromGoogleDrive } = useDocumentMutations()
   const [items, setItems] = useState<UploadItem[]>([])
   const [dragOver, setDragOver] = useState(false)
+  const [driveImporting, setDriveImporting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   async function handleFiles(files: FileList | null) {
@@ -87,6 +95,55 @@ export function UploadDropzone({ collectionId }: { collectionId: string | null }
     void handleFiles(event.dataTransfer.files)
   }
 
+  // Import from Google Drive — connects (if not already) via the OAuth
+  // popup, opens the Picker, then routes the selection through the exact
+  // same server-side intake pipeline an ordinary upload uses (see
+  // useDocumentMutations' importFromGoogleDrive). Reuses this dropzone's
+  // own `items` progress list rather than a second, separate list UI.
+  async function handleDriveImport() {
+    setDriveImporting(true)
+    try {
+      const status = await getGoogleDriveConnectionStatus()
+      if (!status.connected) {
+        await connectGoogleDrive()
+      }
+
+      const file = await pickGoogleDriveFile()
+      if (!file) return // user cancelled the picker — not an error
+
+      const id = crypto.randomUUID()
+      setItems((prev) => [...prev, { id, fileName: file.name, status: 'uploading' }])
+      try {
+        const result = await importFromGoogleDrive.mutateAsync({ file, collectionId })
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === id
+              ? { ...item, status: 'done', fileName: result.document.file_name }
+              : item,
+          ),
+        )
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Import from Google Drive failed'
+        const isStorageQuotaError = message.includes(STORAGE_QUOTA_ERROR_MARKER)
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === id
+              ? { ...item, status: 'error', error: isStorageQuotaError ? "You've reached your storage limit." : message, isStorageQuotaError }
+              : item,
+          ),
+        )
+      }
+    } catch (err) {
+      // A cancelled OAuth popup is a normal outcome, not an error to show.
+      if (err instanceof GoogleDriveAuthCancelledError) return
+      const id = crypto.randomUUID()
+      const message = err instanceof Error ? err.message : 'Could not connect to Google Drive'
+      setItems((prev) => [...prev, { id, fileName: 'Google Drive', status: 'error', error: message }])
+    } finally {
+      setDriveImporting(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div
@@ -109,6 +166,20 @@ export function UploadDropzone({ collectionId }: { collectionId: string | null }
           >
             browse
           </button>
+          {isGoogleDriveImportConfigured() && (
+            <>
+              {' '}
+              or{' '}
+              <button
+                type="button"
+                onClick={() => void handleDriveImport()}
+                disabled={driveImporting}
+                className="font-medium text-[var(--color-accent)] hover:underline disabled:opacity-50"
+              >
+                {driveImporting ? 'connecting…' : 'import from Google Drive'}
+              </button>
+            </>
+          )}
         </p>
         <p className="text-xs text-[var(--color-ink-muted)]">PDF, EPUB, DOCX, TXT, Markdown, Excel, CSV, ODS</p>
         <input

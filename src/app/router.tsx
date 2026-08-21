@@ -40,6 +40,7 @@ import { ExecutionsPage } from '@/modules/execution-foundation/pages/ExecutionsP
 import { HistoryPage } from '@/modules/intelligence-ledger/pages/HistoryPage'
 import { IntelligenceRecordDetailPage } from '@/modules/intelligence-ledger/pages/IntelligenceRecordDetailPage'
 import { IntelligenceJourneyDetailPage } from '@/modules/intelligence-ledger/pages/IntelligenceJourneyDetailPage'
+import { WelcomePage } from '@/modules/onboarding/pages/WelcomePage'
 import { PricingPage } from '@/modules/billing/pages/PricingPage'
 import { BillingReturnPage } from '@/modules/billing/pages/BillingReturnPage'
 import { FoundingProApplyPage } from '@/modules/founding-pro/pages/FoundingProApplyPage'
@@ -77,6 +78,14 @@ export const router = createBrowserRouter([
       // AppShell. Not nested under '/' on purpose — it must never depend
       // on ProtectedRoute's auth gate.
       { path: '/pricing', element: <PricingPage /> },
+      {
+        path: '/welcome',
+        element: (
+          <ProtectedRoute>
+            <WelcomePage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: '/library/:documentId/read',
         element: (

@@ -3,16 +3,18 @@ import { createElement, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 
-const { getProfileMock, updateProfileMock, updateDefaultChatProviderMock } = vi.hoisted(() => ({
+const { getProfileMock, updateProfileMock, updateDefaultChatProviderMock, completeOnboardingMock } = vi.hoisted(() => ({
   getProfileMock: vi.fn(),
   updateProfileMock: vi.fn(),
   updateDefaultChatProviderMock: vi.fn(),
+  completeOnboardingMock: vi.fn(),
 }))
 
 vi.mock('@/modules/settings/api/profile', () => ({
   getProfile: getProfileMock,
   updateProfile: updateProfileMock,
   updateDefaultChatProvider: updateDefaultChatProviderMock,
+  completeOnboarding: completeOnboardingMock,
 }))
 vi.mock('@/modules/auth/useAuth', () => ({ useAuth: () => ({ user: { id: 'user-1' } }) }))
 
@@ -28,6 +30,7 @@ describe('useProfile', () => {
     getProfileMock.mockReset()
     updateProfileMock.mockReset()
     updateDefaultChatProviderMock.mockReset()
+    completeOnboardingMock.mockReset()
   })
 
   it('loads the current user\'s profile', async () => {
@@ -75,5 +78,20 @@ describe('useProfile', () => {
 
     await waitFor(() => expect(result.current.updateDefaultProvider.isSuccess).toBe(true))
     expect(updateDefaultChatProviderMock).toHaveBeenCalledWith('user-1', 'anthropic')
+  })
+
+  it('marks onboarding complete for the current user and refetches the profile', async () => {
+    getProfileMock.mockResolvedValueOnce({ id: 'user-1', display_name: null, onboarding_completed_at: null })
+    const { result } = renderHook(() => useProfile(), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    completeOnboardingMock.mockResolvedValueOnce({ id: 'user-1', onboarding_completed_at: '2026-08-21T00:00:00.000Z' })
+    getProfileMock.mockResolvedValueOnce({ id: 'user-1', display_name: null, onboarding_completed_at: '2026-08-21T00:00:00.000Z' })
+
+    result.current.completeOnboarding.mutate()
+
+    await waitFor(() => expect(result.current.completeOnboarding.isSuccess).toBe(true))
+    expect(completeOnboardingMock).toHaveBeenCalledWith('user-1')
+    await waitFor(() => expect(getProfileMock).toHaveBeenCalledTimes(2))
   })
 })

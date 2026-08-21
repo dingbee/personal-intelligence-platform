@@ -29,3 +29,22 @@ export async function updateDefaultChatProvider(userId: string, providerId: stri
   if (error) throw error
   return data
 }
+
+/**
+ * First-Login Welcome Experience (0079_onboarding_state.sql) — marks
+ * onboarding handled, whether the user finished the guided steps or
+ * explicitly skipped; both are "never show this again," so there is
+ * exactly one write path for both outcomes. Idempotent in effect (setting
+ * it again just moves the timestamp forward), so callers don't need to
+ * guard against calling this more than once.
+ */
+export async function completeOnboarding(userId: string): Promise<Profile> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ onboarding_completed_at: new Date().toISOString() })
+    .eq('id', userId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getProfile, updateDefaultChatProvider, updateProfile } from '@/modules/settings/api/profile'
+import { completeOnboarding, getProfile, updateDefaultChatProvider, updateProfile } from '@/modules/settings/api/profile'
 import { useAuth } from '@/modules/auth/useAuth'
 
 export function useProfile() {
@@ -23,5 +23,10 @@ export function useProfile() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: profileKey }),
   })
 
-  return { ...query, updateDisplayName, updateDefaultProvider }
+  const completeOnboardingMutation = useMutation({
+    mutationFn: () => completeOnboarding(user!.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: profileKey }),
+  })
+
+  return { ...query, updateDisplayName, updateDefaultProvider, completeOnboarding: completeOnboardingMutation }
 }
