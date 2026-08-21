@@ -1,20 +1,45 @@
 // Supabase Edge Function (Deno) — Import from Google Drive: file import.
-// Given a Drive file id the caller selected via the Google Picker
-// (client-side; this function never sees a client-supplied Google access
-// token), downloads the file server-side using a fresh access token
-// minted from the caller's own stored refresh_token
-// (google_drive_connections, service-role-only table), then runs it
-// through EXACTLY the same document-creation shape
-// src/modules/library/api/documents.ts's uploadDocument() already
-// produces — same storage bucket/path convention, same `documents`
-// insert shape, same enforce_storage_quota() trigger (0046), which fires
-// on this insert regardless of role, so a Drive import cannot bypass the
-// quota an ordinary upload would hit. No second document-processing
-// architecture is introduced.
+//
+// TOKEN HANDOFF FIX — root cause and fix, explicitly documented since this
+// is the second time this function's Google-token strategy has mattered:
+// this function used to IGNORE any client-supplied Google access token and
+// always mint a fresh one from the caller's own stored refresh_token
+// (google_drive_connections, service-role-only table, populated by the
+// separate google-drive-oauth code-flow). Under `drive.file` — Google's
+// least-privilege scope — a token only sees the specific files that were
+// visible/picked under THAT SAME OAuth grant; a freshly-minted token from a
+// DIFFERENT grant (the stored refresh_token, obtained via a separate
+// initCodeClient consent) does not reliably inherit visibility into a file
+// the user just picked via a THIRD, transient initTokenClient grant in
+// Picker. Production symptom: a file clearly selectable in Picker came
+// back "not found" once this function tried to download it with its own
+// separately-minted token.
+//
+// Fix: the caller now forwards the exact transient Picker access token
+// that authorized the picked file (`driveAccessToken` in the request
+// body — see src/modules/library/api/googleDrive.ts's own header comment).
+// This function uses THAT token — and only that token — for the one
+// immediate Drive download this request makes. It is never persisted to
+// any table, never logged, and never included in any response body; it
+// lives only in a local variable for the duration of this request and is
+// discarded when the function returns. If it's absent, this function fails
+// closed with a clear 401 rather than falling back to a fresh
+// refresh-token-minted token — that fallback is exactly the credential
+// mismatch this fix closes, so it is never a safe substitute here.
+//
+// The stored refresh-token connection (google_drive_connections) is
+// UNCHANGED and untouched by this function: it remains the source of
+// truth for connection state (get_google_drive_connection_status),
+// reconnect (google-drive-oauth), and any future background operation
+// that isn't tied to one just-picked file in the current session.
+//
+// Everything downstream of the download — storage upload, `documents`
+// insert (same shape src/modules/library/api/documents.ts's
+// uploadDocument() produces), enforce_storage_quota() (0046), provenance
+// (source/source_file_id/source_metadata), and same-file dedup — is
+// unchanged.
 //
 // Deploy: supabase functions deploy google-drive-import
-// Secrets required: GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET
-// (same OAuth client as google-drive-oauth).
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -24,7 +49,6 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GOOGLE_DRIVE_API = 'https://www.googleapis.com/drive/v3'
 
 function jsonResponse(body: unknown, status: number): Response {
@@ -66,23 +90,19 @@ function extensionOf(fileName: string): string {
   return parts.length > 1 ? (parts.pop() ?? '').toLowerCase() : ''
 }
 
-interface GoogleTokenResponse {
-  access_token?: string
-  expires_in?: number
-  error?: string
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS_HEADERS })
   if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405)
 
+  // GOOGLE_OAUTH_CLIENT_ID/SECRET are deliberately NOT required here — this
+  // function no longer mints a Google access token itself (see the token
+  // handoff fix above); only google-drive-oauth still needs them, for the
+  // separate refresh-token code-flow exchange.
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  const clientId = Deno.env.get('GOOGLE_OAUTH_CLIENT_ID')
-  const clientSecret = Deno.env.get('GOOGLE_OAUTH_CLIENT_SECRET')
 
-  if (!supabaseUrl || !anonKey || !serviceRoleKey || !clientId || !clientSecret) {
+  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     return jsonResponse({ error: 'Google Drive import is not configured for this environment' }, 501)
   }
 
@@ -95,15 +115,25 @@ Deno.serve(async (req) => {
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400)
   }
-  const { fileId, fileName, mimeType, collectionId, workspaceId } = (body ?? {}) as {
+  const { fileId, fileName, mimeType, driveAccessToken, collectionId, workspaceId } = (body ?? {}) as {
     fileId?: unknown
     fileName?: unknown
     mimeType?: unknown
+    driveAccessToken?: unknown
     collectionId?: unknown
     workspaceId?: unknown
   }
   if (typeof fileId !== 'string' || !fileId || typeof fileName !== 'string' || !fileName || typeof mimeType !== 'string' || !mimeType) {
     return jsonResponse({ error: 'Missing fileId, fileName, or mimeType' }, 400)
+  }
+  // Fail closed rather than falling back to a differently-scoped
+  // credential — see the token handoff fix comment above for why that
+  // fallback is exactly the bug this closes, not a safe substitute.
+  if (typeof driveAccessToken !== 'string' || !driveAccessToken) {
+    return jsonResponse(
+      { error: 'authorization_expired', message: 'Your Google authorization for this file has expired. Please try importing again.' },
+      401,
+    )
   }
 
   const callerClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } })
@@ -162,47 +192,32 @@ Deno.serve(async (req) => {
     return jsonResponse({ outcome: 'already_imported', document: existing }, 200)
   }
 
-  // Mint a fresh access token from the caller's own stored refresh_token
-  // — never trust or accept an access token from the client for this step.
-  const { data: connection } = await serviceClient
-    .from('google_drive_connections')
-    .select('refresh_token')
-    .eq('user_id', user.id)
-    .maybeSingle()
-  if (!connection) {
-    return jsonResponse({ error: 'not_connected', message: 'Google Drive is not connected.' }, 409)
-  }
-
-  const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      refresh_token: connection.refresh_token,
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: 'refresh_token',
-    }),
-  })
-  const tokenBody = (await tokenRes.json().catch(() => null)) as GoogleTokenResponse | null
-
-  if (!tokenRes.ok || !tokenBody?.access_token) {
-    // A refresh token can be invalidated externally (the user revoked
-    // access in their Google Account, or Google expired it). Clear the
-    // now-useless stored connection so the client's own connection-status
-    // check correctly reports "not connected" and offers reconnect,
-    // rather than repeatedly failing against a dead token.
-    await serviceClient.from('google_drive_connections').delete().eq('user_id', user.id)
-    console.error('google-drive-import: refresh token exchange failed:', tokenRes.status, JSON.stringify(tokenBody))
-    return jsonResponse({ error: 'authorization_expired', message: 'Your Google Drive authorization has expired. Please reconnect.' }, 401)
-  }
-
-  const fileRes = await fetch(downloadUrl, { headers: { Authorization: `Bearer ${tokenBody.access_token}` } })
+  // Use the caller-supplied Picker access token directly — the exact
+  // grant that authorized this file in Picker — for this one immediate
+  // download. Never persisted to any table, never logged (not even on
+  // failure, where only the response status is logged), never included in
+  // the response. `driveAccessToken` goes out of scope and is discarded
+  // once this request completes; it is never assigned to any variable
+  // that outlives this function invocation.
+  const fileRes = await fetch(downloadUrl, { headers: { Authorization: `Bearer ${driveAccessToken}` } })
   if (!fileRes.ok) {
-    const status = fileRes.status === 403 || fileRes.status === 404 ? 403 : 502
-    return jsonResponse(
-      { error: 'drive_download_failed', message: fileRes.status === 404 ? 'That file could not be found in Google Drive.' : "ARRIYIA doesn't have permission to read that file." },
-      status,
-    )
+    // 401/403/404 kept distinct — collapsing them (as this function used
+    // to) is exactly what made a real "you don't have access" or
+    // "genuinely missing" outcome unreadable as a plain "file not found."
+    if (fileRes.status === 401) {
+      return jsonResponse(
+        { error: 'authorization_expired', message: 'Your Google authorization for this file has expired. Please try importing again.' },
+        401,
+      )
+    }
+    if (fileRes.status === 403) {
+      return jsonResponse({ error: 'permission_denied', message: "ARRIYIA doesn't have permission to read that file." }, 403)
+    }
+    if (fileRes.status === 404) {
+      return jsonResponse({ error: 'not_found', message: 'That file could not be found in Google Drive.' }, 404)
+    }
+    console.error('google-drive-import: Drive download failed:', fileRes.status)
+    return jsonResponse({ error: 'drive_download_failed', message: 'Google Drive returned an unexpected error while downloading this file.' }, 502)
   }
   const fileBytes = new Uint8Array(await fileRes.arrayBuffer())
 
@@ -214,6 +229,26 @@ Deno.serve(async (req) => {
     .upload(storagePath, fileBytes, { upsert: false, contentType: fileRes.headers.get('content-type') ?? undefined })
   if (uploadError) {
     console.error('google-drive-import: storage upload failed:', uploadError)
+    // #21 Phase 5 — categorized 'system' rather than 'documents': this is a
+    // failure of the external Google Drive import pipeline/storage layer
+    // itself, distinct from the local upload processing pipeline that
+    // reports 'documents' category events via
+    // report_document_processing_failure. Best-effort, awaited so it
+    // completes before the response is sent. Preserved as-is by the token
+    // handoff fix — this call never touches driveAccessToken.
+    try {
+      await serviceClient.rpc('report_system_health_event', {
+        p_severity: 'error',
+        p_category: 'system',
+        p_operation: 'google_drive_import_storage_upload',
+        p_message: uploadError.message,
+        p_user_id: user.id,
+        p_provider: 'google_drive',
+        p_metadata: { file_id: fileId, file_name: fileName },
+      })
+    } catch (reportErr) {
+      console.error('google-drive-import: failed to report system_health_event:', reportErr)
+    }
     return jsonResponse({ error: 'upload_failed', message: 'Failed to store the imported file.' }, 500)
   }
 
