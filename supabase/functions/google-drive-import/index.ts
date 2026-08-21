@@ -128,8 +128,13 @@ Deno.serve(async (req) => {
   }
   // Fail closed rather than falling back to a differently-scoped
   // credential — see the token handoff fix comment above for why that
-  // fallback is exactly the bug this closes, not a safe substitute.
+  // fallback is exactly the bug this closes, not a safe substitute. Logged
+  // (status/shape only, never the token) so this is distinguishable from a
+  // real Google-side rejection below — an empty/missing driveAccessToken
+  // here means the caller never sent one at all, most often a stale
+  // frontend build that predates this handoff fix.
   if (typeof driveAccessToken !== 'string' || !driveAccessToken) {
+    console.error('google-drive-import: request had no driveAccessToken (caller did not forward a Picker token)')
     return jsonResponse(
       { error: 'authorization_expired', message: 'Your Google authorization for this file has expired. Please try importing again.' },
       401,
@@ -204,6 +209,10 @@ Deno.serve(async (req) => {
     // 401/403/404 kept distinct — collapsing them (as this function used
     // to) is exactly what made a real "you don't have access" or
     // "genuinely missing" outcome unreadable as a plain "file not found."
+    // Logged in every branch (status code only, never driveAccessToken)
+    // so a real Google-side rejection is distinguishable in logs from the
+    // "caller sent no token at all" case handled above.
+    console.error('google-drive-import: Drive download request rejected by Google, status:', fileRes.status)
     if (fileRes.status === 401) {
       return jsonResponse(
         { error: 'authorization_expired', message: 'Your Google authorization for this file has expired. Please try importing again.' },
@@ -216,7 +225,6 @@ Deno.serve(async (req) => {
     if (fileRes.status === 404) {
       return jsonResponse({ error: 'not_found', message: 'That file could not be found in Google Drive.' }, 404)
     }
-    console.error('google-drive-import: Drive download failed:', fileRes.status)
     return jsonResponse({ error: 'drive_download_failed', message: 'Google Drive returned an unexpected error while downloading this file.' }, 502)
   }
   const fileBytes = new Uint8Array(await fileRes.arrayBuffer())

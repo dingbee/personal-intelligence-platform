@@ -149,6 +149,9 @@ describe('googleDrive', () => {
             setDeveloperKey() {
               return this
             }
+            setAppId() {
+              return this
+            }
             setCallback(cb: (data: unknown) => void) {
               this.cb = cb
               return this
@@ -187,6 +190,51 @@ describe('googleDrive', () => {
 
       const result = await pickGoogleDriveFile()
       expect(result).toBeNull()
+    })
+
+    it('configures the Picker with setAppId using the Cloud project number from the OAuth client id (required for drive.file to actually grant file access, not just let the user browse/select)', async () => {
+      vi.stubEnv('VITE_GOOGLE_OAUTH_CLIENT_ID', '123456789-abcxyz.apps.googleusercontent.com')
+      vi.stubEnv('VITE_GOOGLE_API_KEY', 'api-key')
+      const setAppIdSpy = vi.fn()
+      ;(window as unknown as { google: unknown }).google = {
+        accounts: {
+          oauth2: {
+            initTokenClient: (config: { callback: (r: { access_token?: string }) => void }) => ({
+              requestAccessToken: () => config.callback({ access_token: 'access-token-abc' }),
+            }),
+          },
+        },
+        picker: {
+          ViewId: { DOCS: 'DOCS' },
+          Action: { PICKED: 'picked', CANCEL: 'cancel' },
+          PickerBuilder: class {
+            private cb: ((data: unknown) => void) | undefined
+            addView() {
+              return this
+            }
+            setOAuthToken() {
+              return this
+            }
+            setDeveloperKey() {
+              return this
+            }
+            setAppId(appId: string) {
+              setAppIdSpy(appId)
+              return this
+            }
+            setCallback(cb: (data: unknown) => void) {
+              this.cb = cb
+              return this
+            }
+            build() {
+              return { setVisible: () => this.cb!({ action: 'picked', docs: [{ id: 'file-1', name: 'Notes.pdf', mimeType: 'application/pdf' }] }) }
+            }
+          },
+        },
+      }
+
+      await pickGoogleDriveFile()
+      expect(setAppIdSpy).toHaveBeenCalledWith('123456789')
     })
   })
 
@@ -258,6 +306,9 @@ describe('googleDrive', () => {
               return this
             }
             setDeveloperKey() {
+              return this
+            }
+            setAppId() {
               return this
             }
             setCallback(cb: (data: unknown) => void) {

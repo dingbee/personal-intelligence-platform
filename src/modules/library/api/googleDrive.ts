@@ -202,6 +202,16 @@ export async function pickGoogleDriveFile(): Promise<PickedDriveFile | null> {
         .addView(pickerGoogle.picker.ViewId.DOCS)
         .setOAuthToken(accessToken)
         .setDeveloperKey(apiKey)
+        // Required for drive.file: without setAppId, Picker still displays
+        // and lets the user select files, but Google never registers the
+        // per-file access grant for THIS app against the selected file — so
+        // the very token that just picked the file is later rejected by the
+        // Drive API when used to download it. The App ID Picker expects is
+        // the Google Cloud project number, which is exactly the numeric
+        // prefix of the OAuth client ID (e.g. "123456789-abc...
+        // .apps.googleusercontent.com" belongs to project 123456789) — no
+        // separate credential or Cloud config change needed.
+        .setAppId(clientId.split('-')[0])
         .setCallback((data: { action: string; docs?: { id: string; name: string; mimeType: string }[] }) => {
           if (data.action === pickerGoogle.picker.Action.PICKED && data.docs?.[0]) {
             const doc = data.docs[0]
