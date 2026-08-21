@@ -19,11 +19,11 @@ import type { FoundingProMember } from '@/shared/types/database'
 // existing Pro/Free cards:
 //   - Never name an AI provider, model, or provider-allocation concept —
 //     "Full Pro functionality" stays generic on purpose.
-//   - Never invent a founding price. The exact rate is confirmed to the
-//     applicant only after an admin approves and enrolls them; this card
-//     reads the member's actual founding_price_cents/currency.
-//   - The ordinary Pro comparison price is always read from the live public
-//     Pro plan catalog. It is never hard-coded.
+//   - Public Founding Pro pricing is read from the live founding_pro plan
+//     catalog and compared against the live Pro catalog price. Never hard-code
+//     a public price or discount percentage.
+//   - A member's actual founding_price_cents/currency remains authoritative
+//     for their enrolled terms and is shown on their member state.
 // V1 Founding Pro Expiry — "Automatic transition to standard Pro" was
 // inaccurate: expiry (expire_founding_pro_members(),
 // 0072_founding_pro_expiry.sql) only keeps someone on Pro if they've
@@ -37,9 +37,6 @@ const FOUNDING_PRO_FEATURES = [
   'Move to standard Pro anytime during your term to keep full access afterward — otherwise you return to Free when it ends',
 ]
 
-// Capability-progression messaging, matching PricingPage's CARD_COPY pattern
-// (see that file's own comment) — presentational only, no effect on
-// eligibility, capacity, or pricing logic below.
 const FOUNDING_PRO_HEADLINE = 'Shape the Future of Personal Intelligence'
 const FOUNDING_PRO_POSITIONING = 'Lead the evolution of personal intelligence'
 const FOUNDING_PRO_VALUE_PROP = 'Use the complete Pro experience from the beginning — and help shape the product as personal intelligence evolves.'
@@ -64,21 +61,11 @@ function discountPercent(proPriceCents: number, foundingPriceCents: number): num
   return Math.round(((proPriceCents - foundingPriceCents) / proPriceCents) * 100)
 }
 
-/** Whole days remaining until `expiresAt`, floored at 0 — never negative, so an already-past-due-but-not-yet-swept member reads as "0 days left," not a confusing negative count. */
 function daysRemaining(expiresAt: string): number {
   const ms = new Date(expiresAt).getTime() - Date.now()
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)))
 }
 
-/**
- * V1 Founding Pro Expiry commercial UX — the member's own founding price/
- * dates, driving three distinct presentations by transition_status. Never
- * reuses founding_price_cents/currency once transition_status leaves
- * 'active' (that rate was for the 3-month founding term only, not a
- * standing discount), and never offers a "Renew Founding Pro" CTA — the
- * only paths forward are the existing Pro checkout (startProCheckout) or,
- * post-expiry, the existing Free->Pro upgrade path.
- */
 function FoundingProMemberPanel({ member }: { member: FoundingProMember }) {
   const [isStarting, setIsStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -153,7 +140,6 @@ function FoundingProMemberPanel({ member }: { member: FoundingProMember }) {
     )
   }
 
-  // expired_to_free (or the legacy 'transitioned' value)
   return (
     <div className="flex flex-col gap-3">
       <div className="rounded-control bg-[var(--surface-inset)] px-3 py-2 text-xs text-[var(--color-ink-muted)]">
@@ -175,6 +161,18 @@ export function FoundingProCard() {
   const { data: membership, isLoading: membershipLoading } = useMyFoundingProMembership()
   const { data: latestApplication, isLoading: applicationLoading } = useMyLatestFoundingProApplication()
   const { data: pendingInvitation, isLoading: invitationLoading } = useMyPendingFoundingProInvitation()
+  const { data: catalog } = usePublicPlanCatalog()
+
+  const proPlan = catalog?.find((plan) => plan.code === 'pro')
+  const foundingProPlan = catalog?.find((plan) => plan.code === 'founding_pro')
+  const publicPricesMatch =
+    foundingProPlan?.monthlyPriceCents != null &&
+    proPlan?.monthlyPriceCents != null &&
+    foundingProPlan.currency === proPlan.currency &&
+    foundingProPlan.monthlyPriceCents < proPlan.monthlyPriceCents
+  const publicDiscount = publicPricesMatch
+    ? discountPercent(proPlan!.monthlyPriceCents!, foundingProPlan!.monthlyPriceCents!)
+    : 0
 
   const state = resolveFoundingProDisplayState({
     isAuthenticated: Boolean(user),
@@ -193,12 +191,26 @@ export function FoundingProCard() {
           {state.kind === 'member' && state.member.transition_status === 'active' && <StatusBadge label="Your plan" variant="info" />}
         </div>
         <p className="mt-1 text-sm font-semibold text-[var(--color-accent)]">{FOUNDING_PRO_HEADLINE}</p>
-        {state.kind !== 'member' && <p className="mt-1 text-lg font-semibold text-[var(--color-ink)]">Discounted founding rate</p>}
+        {state.kind !== 'member' && publicPricesMatch ? (
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <p className="text-sm text-[var(--color-ink-muted)] line-through">
+              Pro {formatMemberPrice(proPlan!.monthlyPriceCents!, proPlan!.currency)}/mo
+            </p>
+            <p className="text-2xl font-semibold text-[var(--color-ink)]">
+              {formatMemberPrice(foundingProPlan!.monthlyPriceCents!, foundingProPlan!.currency)}/mo
+            </p>
+            <span className="rounded-control bg-[var(--surface-inset)] px-2 py-0.5 text-xs font-semibold text-[var(--color-accent)]">
+              Save {publicDiscount}%
+            </span>
+          </div>
+        ) : state.kind !== 'member' ? (
+          <p className="mt-1 text-lg font-semibold text-[var(--color-ink)]">Founding rate</p>
+        ) : null}
         <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{FOUNDING_PRO_POSITIONING}</p>
         <p className="mt-2 text-sm text-[var(--color-ink-muted)]">{FOUNDING_PRO_VALUE_PROP}</p>
         {state.kind !== 'member' && (
           <p className="mt-2 text-xs text-[var(--color-ink-muted)]">
-            For our first 100 approved public members. Your exact rate is confirmed when your application is approved.
+            For our first 100 approved public members. The displayed founding rate is the current public offer and is confirmed at enrollment.
           </p>
         )}
       </div>
