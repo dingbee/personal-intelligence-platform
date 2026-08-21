@@ -13,6 +13,7 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import type { TextItem } from 'pdfjs-dist/types/src/display/api'
 import type { DocumentProcessor, ExtractionResult } from '@/modules/processing/extractors/types'
 import { countWords, normalizeText } from '@/modules/processing/extractors/textStats'
+import { assemblePdfPageText } from '@/modules/processing/extractors/assemblePdfPageText'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
@@ -31,10 +32,7 @@ export const pdfProcessor: DocumentProcessor = {
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
       const page = await pdf.getPage(pageNumber)
       const content = await page.getTextContent()
-      const pageText = content.items
-        .filter((item): item is TextItem => 'str' in item)
-        .map((item) => item.str)
-        .join(' ')
+      const pageText = assemblePdfPageText(content.items.filter((item): item is TextItem => 'str' in item))
       pageTexts.push(pageText)
     }
 
