@@ -38,7 +38,7 @@ const {
 vi.mock('@/modules/auth/useAuth', () => ({ useAuth: useAuthMock }))
 vi.mock('@/modules/plans/hooks/useCurrentPlan', () => ({ useCurrentPlan: useCurrentPlanMock }))
 vi.mock('@/modules/plans/hooks/usePublicPlanCatalog', () => ({ usePublicPlanCatalog: usePublicPlanCatalogMock }))
-vi.mock('@/modules/billing/api/billing', () => ({ startProCheckout: vi.fn() }))
+vi.mock('@/modules/billing/api/billing', () => ({ startCheckout: vi.fn() }))
 vi.mock('@/modules/founding-pro/hooks/useFoundingProCapacity', () => ({ useFoundingProCapacity: useFoundingProCapacityMock }))
 vi.mock('@/modules/founding-pro/hooks/useMyFoundingProStatus', () => ({
   useMyFoundingProMembership: useMyFoundingProMembershipMock,
@@ -47,7 +47,7 @@ vi.mock('@/modules/founding-pro/hooks/useMyFoundingProStatus', () => ({
 }))
 
 import { PricingPage } from '@/modules/billing/pages/PricingPage'
-import { startProCheckout } from '@/modules/billing/api/billing'
+import { startCheckout } from '@/modules/billing/api/billing'
 
 const freeTier = {
   planId: 'plan-free',
@@ -126,8 +126,8 @@ describe('PricingPage', () => {
     expect(cards.getByRole('heading', { name: 'Free' })).not.toBeNull()
     expect(cards.getByRole('heading', { name: 'Pro' })).not.toBeNull()
     expect(screen.getByText('Sign up')).not.toBeNull()
-    expect(screen.getByText('Free to sign up — upgrade to Pro anytime afterward.')).not.toBeNull()
-    expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
+    expect(screen.getByText('Free to sign up — subscribe to Pro anytime afterward.')).not.toBeNull()
+    expect(screen.queryByText(/Subscribe to Pro/)).toBeNull()
   })
 
   it('shows the Founding Pro card publicly to an anonymous visitor, with live capacity and a sign-up CTA (Phase 2)', () => {
@@ -148,11 +148,11 @@ describe('PricingPage', () => {
 
     renderPage()
 
-    expect(screen.getByText('Upgrade to Pro (sandbox)')).not.toBeNull()
+    expect(screen.getByText('Subscribe to Pro (sandbox)')).not.toBeNull()
     expect(screen.queryByText('Sign up')).toBeNull()
   })
 
-  it('shows "Upgrade to Pro" and marks Free as current for a signed-in user with no explicit plan assignment row', () => {
+  it('shows "Subscribe to Pro" and marks Free as current for a signed-in user with no explicit plan assignment row', () => {
     // Regression: getCurrentUserPlan() returns null for a user with no
     // active user_plan_assignments row — the real shape of a Free user in
     // this system (assign_default_plan() only ever assigns 'beta' on
@@ -165,20 +165,21 @@ describe('PricingPage', () => {
 
     renderPage()
 
-    expect(screen.getByText('Upgrade to Pro (sandbox)')).not.toBeNull()
+    expect(screen.getByText('Subscribe to Pro (sandbox)')).not.toBeNull()
     expect(screen.queryByText('Sign up')).toBeNull()
     expect(screen.getByText('Current plan')).not.toBeNull()
   })
 
-  it('invokes the existing Pesapal sandbox checkout path when a Free user clicks "Upgrade to Pro"', async () => {
-    vi.mocked(startProCheckout).mockResolvedValue({ redirectUrl: 'https://pesapal.example/checkout', merchantReference: 'ref-1' })
+  it('invokes the existing Pesapal sandbox checkout path with the Pro plan code when a Free user clicks "Subscribe to Pro"', async () => {
+    vi.mocked(startCheckout).mockResolvedValue({ redirectUrl: 'https://pesapal.example/checkout', merchantReference: 'ref-1' })
     useAuthMock.mockReturnValue({ user: { id: 'u1' }, session: { user: { id: 'u1' } } })
     useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-free', planCode: 'free', planName: 'Free' }, isLoading: false })
 
     renderPage()
-    fireEvent.click(screen.getByText('Upgrade to Pro (sandbox)'))
+    fireEvent.click(screen.getByText('Subscribe to Pro (sandbox)'))
 
-    expect(startProCheckout).toHaveBeenCalledTimes(1)
+    expect(startCheckout).toHaveBeenCalledTimes(1)
+    expect(startCheckout).toHaveBeenCalledWith('pro')
   })
 
   it('shows "Manage billing" instead of another checkout button for a signed-in Pro user', () => {
@@ -188,7 +189,7 @@ describe('PricingPage', () => {
     renderPage()
 
     expect(screen.getByText('Manage billing')).not.toBeNull()
-    expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
+    expect(screen.queryByText(/Subscribe to Pro/)).toBeNull()
   })
 
   it('offers no Pro upgrade path at all for a Founding Pro viewer, and shows their own membership status instead of an application CTA', () => {
@@ -216,7 +217,7 @@ describe('PricingPage', () => {
 
     expect(within(screen.getByTestId('plan-cards')).getByText('Founding Pro')).not.toBeNull()
     expect(screen.getByText('Founding member #42')).not.toBeNull()
-    expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
+    expect(screen.queryByText(/Subscribe to Pro/)).toBeNull()
     expect(screen.queryByText('Manage billing')).toBeNull()
     expect(screen.queryByText('Sign up')).toBeNull()
     expect(screen.queryByText('Apply for Founding Pro')).toBeNull()
@@ -251,7 +252,7 @@ describe('PricingPage', () => {
 
     renderPage()
 
-    expect(screen.queryByText(/Upgrade to Pro/)).toBeNull()
+    expect(screen.queryByText(/Subscribe to Pro/)).toBeNull()
     expect(screen.queryByText('Manage billing')).toBeNull()
     expect(screen.queryByText('Sign up')).toBeNull()
   })
@@ -288,5 +289,112 @@ describe('PricingPage', () => {
     expect(cards.getByRole('heading', { name: 'Student' })).not.toBeNull()
     expect(cards.getByText('For students, researchers and academic users.')).not.toBeNull()
     expect(cards.getByText('Pricing to be announced')).not.toBeNull()
+  })
+
+  /**
+   * Regression: the Student card previously had NO purchase/checkout CTA
+   * at all — every CTA block in PlanCard was gated on `isPro` specifically,
+   * so Student (and any future self-serve plan) silently got nothing,
+   * regardless of auth/plan state. These tests cover the same CTA-state
+   * matrix already covered for Pro above, now for Student, plus proof the
+   * two cards' checkout buttons are launched and tracked independently.
+   */
+  describe('Student checkout CTA', () => {
+    beforeEach(() => {
+      usePublicPlanCatalogMock.mockReturnValue({ data: [freeTier, studentTier, proTier, foundingProTier], isLoading: false })
+    })
+
+    it('shows a sign-up CTA (not a checkout button) for an anonymous visitor', () => {
+      useAuthMock.mockReturnValue({ user: null, session: null })
+      useCurrentPlanMock.mockReturnValue({ data: undefined, isLoading: false })
+
+      renderPage()
+
+      expect(screen.getByText('Free to sign up — subscribe to Student anytime afterward.')).not.toBeNull()
+      expect(screen.queryByText(/Subscribe to Student \(sandbox\)/)).toBeNull()
+    })
+
+    it('shows a working "Subscribe to Student (sandbox)" checkout button for a signed-in Free user', () => {
+      useAuthMock.mockReturnValue({ user: { id: 'u1' }, session: { user: { id: 'u1' } } })
+      useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-free', planCode: 'free', planName: 'Free' }, isLoading: false })
+
+      renderPage()
+
+      expect(screen.getByText('Subscribe to Student (sandbox)')).not.toBeNull()
+      // Pro's own checkout button is still there too — the two are independent.
+      expect(screen.getByText('Subscribe to Pro (sandbox)')).not.toBeNull()
+    })
+
+    it('shows "Manage billing" instead of a checkout button for a signed-in Student user', () => {
+      useAuthMock.mockReturnValue({ user: { id: 'u1' }, session: { user: { id: 'u1' } } })
+      useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-student', planCode: 'student', planName: 'Student' }, isLoading: false })
+
+      renderPage()
+
+      const cards = within(screen.getByTestId('plan-cards'))
+      expect(cards.getAllByText('Manage billing')).toHaveLength(1)
+      expect(screen.queryByText(/Subscribe to Student/)).toBeNull()
+      // A Student user still sees Pro's own checkout button (switching self-serve plans is allowed).
+      expect(screen.getByText('Subscribe to Pro (sandbox)')).not.toBeNull()
+    })
+
+    it('offers no Student checkout at all for a Founding Pro viewer', () => {
+      useAuthMock.mockReturnValue({ user: { id: 'u1', email: 'founder@example.com' }, session: { user: { id: 'u1' } } })
+      useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-founding', planCode: 'founding_pro', planName: 'Founding Pro' }, isLoading: false })
+      useMyFoundingProMembershipMock.mockReturnValue({
+        data: {
+          id: 'member-1', user_id: 'u1', application_id: null, slot_type: 'public', founding_member_number: 42,
+          founding_price_cents: 1999, currency: 'USD', founding_started_at: '2026-01-01T00:00:00Z',
+          founding_expires_at: '2026-04-01T00:00:00Z', transition_status: 'active', transitioned_at: null,
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        isLoading: false,
+      })
+
+      renderPage()
+
+      expect(screen.queryByText(/Subscribe to Student/)).toBeNull()
+    })
+
+    it('launches the Student checkout via startCheckout("student"), independent of Pro\'s own checkout call', async () => {
+      vi.mocked(startCheckout).mockResolvedValue({ redirectUrl: 'https://pesapal.example/student-checkout', merchantReference: 'ref-student-1' })
+      useAuthMock.mockReturnValue({ user: { id: 'u1' }, session: { user: { id: 'u1' } } })
+      useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-free', planCode: 'free', planName: 'Free' }, isLoading: false })
+
+      renderPage()
+      fireEvent.click(screen.getByText('Subscribe to Student (sandbox)'))
+
+      expect(startCheckout).toHaveBeenCalledTimes(1)
+      expect(startCheckout).toHaveBeenCalledWith('student')
+    })
+
+    it('shows a loading state only on the Student button while its checkout is starting, leaving Pro\'s button untouched', async () => {
+      let resolveCheckout: (value: { redirectUrl: string; merchantReference: string }) => void = () => {}
+      vi.mocked(startCheckout).mockImplementation(
+        () => new Promise((resolve) => { resolveCheckout = resolve }),
+      )
+      useAuthMock.mockReturnValue({ user: { id: 'u1' }, session: { user: { id: 'u1' } } })
+      useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-free', planCode: 'free', planName: 'Free' }, isLoading: false })
+
+      renderPage()
+      fireEvent.click(screen.getByText('Subscribe to Student (sandbox)'))
+
+      expect(await screen.findByText('Starting checkout…')).not.toBeNull()
+      expect(screen.getByText('Subscribe to Pro (sandbox)')).not.toBeNull()
+
+      resolveCheckout({ redirectUrl: 'https://pesapal.example/x', merchantReference: 'ref' })
+    })
+
+    it('shows a checkout error only on the Student card when its checkout fails, leaving Pro unaffected', async () => {
+      vi.mocked(startCheckout).mockRejectedValueOnce(new Error('Student checkout is unavailable'))
+      useAuthMock.mockReturnValue({ user: { id: 'u1' }, session: { user: { id: 'u1' } } })
+      useCurrentPlanMock.mockReturnValue({ data: { planId: 'plan-free', planCode: 'free', planName: 'Free' }, isLoading: false })
+
+      renderPage()
+      fireEvent.click(screen.getByText('Subscribe to Student (sandbox)'))
+
+      expect(await screen.findByText('Student checkout is unavailable')).not.toBeNull()
+      expect(screen.getByText('Subscribe to Pro (sandbox)')).not.toBeNull()
+    })
   })
 })

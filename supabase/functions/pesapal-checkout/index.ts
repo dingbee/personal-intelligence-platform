@@ -1,11 +1,19 @@
 // Supabase Edge Function (Deno). Phase 5B Pesapal Sandbox Billing —
 // server-side checkout initiation. This is the ONLY thing the client is
 // allowed to trigger toward Pesapal, and it accepts nothing from the
-// client except a fixed intent string ("start_pro_subscription") — no
-// plan_id, no price, no currency, no arbitrary amount. Every commercial
-// fact (which plan, what it costs) is resolved here, server-side, from
-// `plans` — a client sending a forged body cannot change what gets
-// charged or what plan gets requested.
+// client except a fixed intent string ("start_pro_subscription" /
+// "start_student_subscription") — no plan_id, no price, no currency, no
+// arbitrary amount. Every commercial fact (which plan, what it costs) is
+// resolved here, server-side, from `plans` — a client sending a forged
+// body cannot change what gets charged or what plan gets requested.
+//
+// Commercial Readiness — generalized from a single Pro-only intent to an
+// intent -> plan_code allow-list (INTENT_PLAN_CODES below) so the same
+// server-resolves-everything security model now also covers Student
+// checkout, without duplicating this function. pesapal-ipn already reads
+// `plan_code` back from the `pesapal_checkout_orders` row this function
+// writes (never hardcoded to 'pro' there), so it required no change at
+// all — this was the only Pro-specific edge in the whole checkout path.
 //
 // SANDBOX ONLY. Refuses to run unless PESAPAL_ENV=sandbox. There is no
 // code path in this function that can reach Pesapal's production host —
@@ -58,6 +66,14 @@ const PESAPAL_BASE_URL: Record<string, string> = {
 // intended production price.
 const SANDBOX_TEST_AMOUNT_CENTS = 1000 // sandbox test value only — not a real price
 const SANDBOX_TEST_CURRENCY = 'USD'
+
+// The only two self-serve checkout intents this function accepts, each
+// mapped to a real `plans.code`. Adding a future self-serve plan is a
+// one-line addition here, never a new endpoint or a client-supplied code.
+const INTENT_PLAN_CODES: Record<string, string> = {
+  start_pro_subscription: 'pro',
+  start_student_subscription: 'student',
+}
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -147,7 +163,8 @@ Deno.serve(async (req) => {
   const intent = (body as { intent?: unknown } | null)?.intent
   // The ONLY client input this function accepts. Anything else in the
   // body (a plan_id, a price, a currency) is simply never read.
-  if (intent !== 'start_pro_subscription') {
+  const planCode = typeof intent === 'string' ? INTENT_PLAN_CODES[intent] : undefined
+  if (!planCode) {
     return jsonResponse({ error: 'Unsupported checkout intent' }, 400)
   }
 
@@ -160,21 +177,22 @@ Deno.serve(async (req) => {
   } = await callerClient.auth.getUser()
   if (userError || !user || !user.email) return jsonResponse({ error: 'Unauthorized' }, 401)
 
-  // Step 2: resolve the commercial product entirely server-side. 'pro' is
-  // the only self-serve paid plan; its price comes from `plans` (readable
-  // by any authenticated user already) and falls back to the sandbox
-  // placeholder only when unset, never to a client-supplied number.
-  const { data: proPlan, error: planError } = await callerClient
+  // Step 2: resolve the commercial product entirely server-side, for
+  // whichever plan the caller's own intent resolved to above. Price comes
+  // from `plans` (readable by any authenticated user already) and falls
+  // back to the sandbox placeholder only when unset, never to a
+  // client-supplied number.
+  const { data: targetPlan, error: planError } = await callerClient
     .from('plans')
-    .select('id, code, monthly_price_cents, currency')
-    .eq('code', 'pro')
+    .select('id, code, name, monthly_price_cents, currency')
+    .eq('code', planCode)
     .maybeSingle()
-  if (planError || !proPlan) return jsonResponse({ error: 'Pro plan is not configured' }, 500)
+  if (planError || !targetPlan) return jsonResponse({ error: `${planCode} plan is not configured` }, 500)
 
-  const amountCents = proPlan.monthly_price_cents ?? SANDBOX_TEST_AMOUNT_CENTS
-  const currency = proPlan.monthly_price_cents !== null ? proPlan.currency : SANDBOX_TEST_CURRENCY
+  const amountCents = targetPlan.monthly_price_cents ?? SANDBOX_TEST_AMOUNT_CENTS
+  const currency = targetPlan.monthly_price_cents !== null ? targetPlan.currency : SANDBOX_TEST_CURRENCY
 
-  const merchantReference = `pip-pro-${user.id.replace(/-/g, '').slice(0, 12)}-${Date.now()}`
+  const merchantReference = `pip-${planCode}-${user.id.replace(/-/g, '').slice(0, 12)}-${Date.now()}`
 
   const serviceClient = createClient(supabaseUrl, serviceRoleKey)
 
@@ -183,7 +201,7 @@ Deno.serve(async (req) => {
   const { error: insertError } = await serviceClient.from('pesapal_checkout_orders').insert({
     user_id: user.id,
     merchant_reference: merchantReference,
-    plan_code: 'pro',
+    plan_code: planCode,
     amount_cents: amountCents,
     currency,
     status: 'pending',
@@ -219,7 +237,7 @@ Deno.serve(async (req) => {
       id: merchantReference,
       currency,
       amount: amountCents / 100,
-      description: 'ARRIYIA Pro subscription (sandbox)',
+      description: `ARRIYIA ${targetPlan.name} subscription (sandbox)`,
       callback_url: callbackUrl,
       notification_id: ipnId,
       billing_address: {
