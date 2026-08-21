@@ -24,9 +24,12 @@
  * the arithmetic's result.
  */
 
+import type { AnalysisInvestigation } from '@/modules/analysis-intelligence/analysisInvestigation'
+
 export type InformationOrigin = 'known' | 'assumed' | 'unknown' | 'requires_user_input'
 
-export type DecisionContextSourceType = 'document' | 'note' | 'asset'
+/** 'dataset_investigation' mirrors Research Intelligence's own ResearchSourceType exactly (researchInvestigation.ts) — only ever constructed by buildDecisionContext.ts's own delegation to Analysis Intelligence, never by a plain gatherEvidence call. */
+export type DecisionContextSourceType = 'document' | 'note' | 'asset' | 'dataset_investigation'
 
 /** One real, retrieved passage the decision engine actually saw — identical contract to Plan's own PlanContextSource (see plan.ts), defined separately here rather than imported, so Decision and Planning stay independently evolvable per the sprint brief's "do not tightly couple the modules" instruction. */
 export interface DecisionContextSource {
@@ -171,6 +174,8 @@ export interface Decision {
   sensitivity: SensitivityInsight[]
   nextAction: string | null
   contextEvidence: DecisionContextSource[]
+  /** Populated only when this decision was scoped to a document with a real structured dataset — the real, unmodified AnalysisInvestigation this decision delegated to (see buildDecisionContext.ts), so a "which option costs less" style question can be grounded in an actually-computed number, not a document/note snippet's prose. Exposed so provenance can splice in the underlying AnalyticalPlan/AnalyticalResult chain directly, never re-derived — mirrors ResearchStep.datasetInvestigation exactly. Null when no document/dataset was in scope. */
+  datasetInvestigation: AnalysisInvestigation | null
   /** True when the recommendation is hedged because material information was missing — an honest signal, not a fabricated confident answer. */
   provisional: boolean
   provisionalReason: string | null

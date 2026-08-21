@@ -14,7 +14,18 @@ export function useDecisionIntelligence(workspaceId: string | null) {
   const chain = useProviderChain(providerId)
 
   return useMutation({
-    mutationFn: ({ question, objective, userConstraints, plan }: { question: string; objective?: string | null; userConstraints?: string[]; plan?: PlanDerivedDecisionContext | null }) =>
-      withProviderAvailability(chain, () => runDecisionIntelligence({ question, objective, userConstraints, plan, userId: user!.id, workspaceId, chain }), { queryClient }),
+    mutationFn: ({
+      question,
+      objective,
+      userConstraints,
+      plan,
+      documentId,
+    }: {
+      question: string
+      objective?: string | null
+      userConstraints?: string[]
+      plan?: PlanDerivedDecisionContext | null
+      documentId?: string | null
+    }) => withProviderAvailability(chain, () => runDecisionIntelligence({ question, objective, userConstraints, plan, documentId, userId: user!.id, workspaceId, chain }), { queryClient }),
   })
 }

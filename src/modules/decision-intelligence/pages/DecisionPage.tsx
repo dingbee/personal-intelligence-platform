@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
+import { useDocuments } from '@/modules/library/hooks/useDocuments'
 import { useHasDecisionIntelligence } from '@/modules/plans/hooks/useHasDecisionIntelligence'
 import { useDecisionIntelligence } from '@/modules/decision-intelligence/hooks/useDecisionIntelligence'
 import { useSaveDecisionToNote } from '@/modules/decision-intelligence/hooks/useSaveDecisionToNote'
@@ -43,7 +44,9 @@ export function DecisionPage() {
   const [question, setQuestion] = useState('')
   const [objective, setObjective] = useState('')
   const [constraintsText, setConstraintsText] = useState('')
+  const [documentId, setDocumentId] = useState('')
   const [decision, setDecision] = useState<Decision | null>(null)
+  const { data: documents } = useDocuments({})
 
   const mutation = useDecisionIntelligence(currentWorkspaceId)
   const saveMutation = useSaveDecisionToNote(currentWorkspaceId)
@@ -58,7 +61,7 @@ export function DecisionPage() {
       .split('\n')
       .map((c) => c.trim())
       .filter((c) => c.length > 0)
-    const outcome = await mutation.mutateAsync({ question: question.trim(), objective: objective.trim() || null, userConstraints })
+    const outcome = await mutation.mutateAsync({ question: question.trim(), objective: objective.trim() || null, userConstraints, documentId: documentId || null })
     setDecision(outcome.decision)
   }
 
@@ -111,6 +114,20 @@ export function DecisionPage() {
               rows={2}
               className="rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] px-3 py-1.5 text-sm"
             />
+            {documents && documents.length > 0 && (
+              <select
+                value={documentId}
+                onChange={(e) => setDocumentId(e.target.value)}
+                className="rounded-control border border-[var(--color-border)] bg-[var(--surface-inset)] px-3 py-1.5 text-sm text-[var(--color-ink-muted)]"
+              >
+                <option value="">No document dataset (evidence only)</option>
+                {documents.map((doc) => (
+                  <option key={doc.id} value={doc.id}>
+                    Ground in dataset from: {doc.title}
+                  </option>
+                ))}
+              </select>
+            )}
             <button
               type="submit"
               disabled={mutation.isPending || !question.trim()}

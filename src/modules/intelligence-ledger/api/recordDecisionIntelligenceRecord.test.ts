@@ -36,6 +36,7 @@ function realDecision(overrides: Partial<Decision> = {}): Decision {
     sensitivity: [],
     nextAction: null,
     contextEvidence: [{ id: 'evidence-1', type: 'document', title: 'Q3 usage report', excerpt: 'Usage grew 22% quarter over quarter.' }],
+    datasetInvestigation: null,
     provisional: false,
     provisionalReason: null,
     validationIssues: [],

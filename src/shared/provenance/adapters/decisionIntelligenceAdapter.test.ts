@@ -28,6 +28,7 @@ function baseDecision(overrides: Partial<Decision> = {}): Decision {
     sensitivity: [],
     nextAction: null,
     contextEvidence: [],
+    datasetInvestigation: null,
     provisional: false,
     provisionalReason: null,
     validationIssues: [],

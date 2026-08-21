@@ -39,8 +39,11 @@ export type IntelligenceOperationType = 'data_intelligence' | 'analysis_intellig
  *   research_intelligence: (MAX_RESEARCH_STEPS=4×2 + (5+1) delegation +1 synthesis) × 3 = 45
  *                           — the audit's own §7/§11 arithmetic, confirmed against
  *                             runResearchInvestigation.ts's doc comment.
- *   decision_intelligence: 1 AI call (single-pass structured decision analysis, no
- *                           step loop — see runDecisionIntelligence.ts)     × 3 = 3
+ *   decision_intelligence: 1 AI call (single-pass structured decision analysis) + an
+ *                           optional, capped-at-once delegation to Analysis
+ *                           Intelligence when the decision is scoped to a document
+ *                           with a real structured dataset (MAX_INVESTIGATION_STEPS=5
+ *                           + 1 synthesis = 6 — see buildDecisionContext.ts) = 7 × 3 = 21
  *   action_intelligence:   1 AI call (single-pass structured action-set generation, no
  *                           step loop — see runActionIntelligence.ts)       × 3 = 3
  *   planning_intelligence: 1 AI call (single-pass structured plan generation, no
@@ -58,7 +61,7 @@ const INTELLIGENCE_OPERATION_HARD_CEILINGS: Record<IntelligenceOperationType, nu
   analysis_intelligence: 18,
   research_intelligence: 45,
   planning_intelligence: 3,
-  decision_intelligence: 3,
+  decision_intelligence: 21,
   action_intelligence: 3,
 }
 
