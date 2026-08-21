@@ -5,19 +5,31 @@ const { rpcMock, functionsInvokeMock } = vi.hoisted(() => ({ rpcMock: vi.fn(), f
 vi.mock('@/shared/lib/supabase', () => ({ supabase: { rpc: rpcMock, functions: { invoke: functionsInvokeMock } } }))
 
 import {
+  adminAcknowledgeSystemHealthEvent,
   adminAiUsageSummary,
   adminChangeUserPlan,
+  adminCommercialOverview,
   adminCreateBetaInvite,
+  adminGetUserQuotaBreakdown,
+  adminIgnoreSystemHealthEvent,
   adminListBetaInvites,
+  adminListSubscriptionEvents,
+  adminListSubscriptions,
+  adminListSystemHealthEvents,
   adminListUsers,
+  adminPlanQuotaPopulation,
   adminPlatformCounts,
   adminRemoveUserQuotaOverride,
+  adminReopenSystemHealthEvent,
   adminResetUserQuota,
+  adminResolveSystemHealthEvent,
   adminRevokeBetaInvite,
   adminSetPlatformProviderSetting,
   adminSetUserDisabled,
   adminSetUserQuotaOverride,
+  adminSystemHealthSummary,
   adminUpdatePlanQuota,
+  adminUsageOverview,
   sendBetaInvitationEmail,
   sendFoundingProInvitationEmail,
 } from '@/modules/admin/api/adminApi'
@@ -307,6 +319,202 @@ describe('adminApi', () => {
       const result = await sendFoundingProInvitationEmail('invitation-1')
 
       expect(result).toEqual({ error: 'Failed to fetch' })
+    })
+  })
+
+  /**
+   * #21 Phase 4.3 — Admin Billing & Subscription Operations. Every function
+   * here is read-only (see adminApi.ts's own header comment on this
+   * section) — there is deliberately no test for a client-side subscription
+   * mutation, because no such call site exists.
+   */
+  describe('admin billing/subscription reads', () => {
+    it('adminListSubscriptions defaults every filter to null and forwards the default limit', async () => {
+      rpcMock.mockResolvedValueOnce({ data: [{ user_id: 'user-1', plan_code: 'pro' }], error: null })
+
+      const result = await adminListSubscriptions()
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_list_subscriptions', { p_status: null, p_plan_code: null, p_limit: 500 })
+      expect(result).toEqual([{ user_id: 'user-1', plan_code: 'pro' }])
+    })
+
+    it('adminListSubscriptions forwards explicit status/plan filters', async () => {
+      rpcMock.mockResolvedValueOnce({ data: [], error: null })
+
+      await adminListSubscriptions({ status: 'past_due', planCode: 'student' })
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_list_subscriptions', { p_status: 'past_due', p_plan_code: 'student', p_limit: 500 })
+    })
+
+    it('adminListSubscriptions throws on error — a non-admin caller must see the failure, not an empty list', async () => {
+      rpcMock.mockResolvedValueOnce({ data: null, error: new Error('Not authorized') })
+
+      await expect(adminListSubscriptions()).rejects.toThrow('Not authorized')
+    })
+
+    it('adminListSubscriptionEvents defaults processingStatus to null', async () => {
+      rpcMock.mockResolvedValueOnce({ data: [{ id: 'evt-1', processing_status: 'failed' }], error: null })
+
+      const result = await adminListSubscriptionEvents()
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_list_subscription_events', { p_processing_status: null, p_limit: 200 })
+      expect(result).toEqual([{ id: 'evt-1', processing_status: 'failed' }])
+    })
+
+    it('adminListSubscriptionEvents forwards an explicit processingStatus filter, so "billing inconsistencies" can be isolated', async () => {
+      rpcMock.mockResolvedValueOnce({ data: [], error: null })
+
+      await adminListSubscriptionEvents({ processingStatus: 'failed' })
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_list_subscription_events', { p_processing_status: 'failed', p_limit: 200 })
+    })
+
+    it('adminCommercialOverview calls the RPC and falls back to an empty object if no data is returned', async () => {
+      rpcMock.mockResolvedValueOnce({ data: null, error: null })
+
+      const result = await adminCommercialOverview()
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_commercial_overview')
+      expect(result).toEqual({})
+    })
+  })
+
+  /**
+   * #21 Phase 4.4 — Admin Usage & Quota Operations reads. Overrides
+   * themselves are still exercised by the existing
+   * adminSetUserQuotaOverride/adminRemoveUserQuotaOverride tests above —
+   * this only covers the new read views across every quota key.
+   */
+  describe('admin usage/quota reads', () => {
+    it('adminGetUserQuotaBreakdown forwards exactly the target user id', async () => {
+      rpcMock.mockResolvedValueOnce({
+        data: [{ quota_key: 'ai_messages', plan_limit: 500, override_limit: null, effective_limit: 500, usage_count: 10, percent_used: 2 }],
+        error: null,
+      })
+
+      const result = await adminGetUserQuotaBreakdown('user-a')
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_get_user_quota_breakdown', { p_user_id: 'user-a' })
+      expect(result).toHaveLength(1)
+    })
+
+    it('adminGetUserQuotaBreakdown throws on error', async () => {
+      rpcMock.mockResolvedValueOnce({ data: null, error: new Error('Not authorized') })
+
+      await expect(adminGetUserQuotaBreakdown('user-a')).rejects.toThrow('Not authorized')
+    })
+
+    it('adminPlanQuotaPopulation calls the RPC with no args', async () => {
+      rpcMock.mockResolvedValueOnce({ data: [], error: null })
+
+      await adminPlanQuotaPopulation()
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_plan_quota_population')
+    })
+
+    it('adminUsageOverview calls the RPC and falls back to an empty object if no data is returned', async () => {
+      rpcMock.mockResolvedValueOnce({ data: null, error: null })
+
+      const result = await adminUsageOverview()
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_usage_overview')
+      expect(result).toEqual({})
+    })
+  })
+
+  /**
+   * #21 Phase 5 — Unified Admin Intelligence / Error Centre. Every action
+   * RPC is asserted to forward exactly the target event id — proving a
+   * single-event action can never carry a different event's id (same
+   * discipline as adminSetUserQuotaOverride's own test above).
+   */
+  describe('admin system health events', () => {
+    it('adminListSystemHealthEvents forwards every filter, defaulting absent ones to null and the limit to 200', async () => {
+      rpcMock.mockResolvedValueOnce({ data: [], error: null })
+
+      await adminListSystemHealthEvents({ category: 'billing', status: 'open' })
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_list_system_health_events', {
+        p_category: 'billing',
+        p_severity: null,
+        p_status: 'open',
+        p_since: null,
+        p_user_id: null,
+        p_operation: null,
+        p_provider: null,
+        p_limit: 200,
+      })
+    })
+
+    it('adminListSystemHealthEvents throws on error — a non-admin caller must see the failure, not an empty list', async () => {
+      rpcMock.mockResolvedValueOnce({ data: null, error: new Error('Not authorized') })
+
+      await expect(adminListSystemHealthEvents()).rejects.toThrow('Not authorized')
+    })
+
+    it('adminSystemHealthSummary calls the RPC and falls back to an empty object', async () => {
+      rpcMock.mockResolvedValueOnce({ data: null, error: null })
+
+      const result = await adminSystemHealthSummary()
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_system_health_summary')
+      expect(result).toEqual({})
+    })
+
+    it('adminAcknowledgeSystemHealthEvent forwards exactly the target event id', async () => {
+      rpcMock.mockResolvedValueOnce({ data: { id: 'evt-1', status: 'acknowledged' }, error: null })
+
+      const result = await adminAcknowledgeSystemHealthEvent('evt-1')
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_acknowledge_system_health_event', { p_event_id: 'evt-1' })
+      expect(result).toEqual({ id: 'evt-1', status: 'acknowledged' })
+    })
+
+    it('adminAcknowledgeSystemHealthEvent throws when the event is not open', async () => {
+      rpcMock.mockResolvedValueOnce({ data: null, error: new Error('Event must be open to acknowledge (current status: resolved)') })
+
+      await expect(adminAcknowledgeSystemHealthEvent('evt-1')).rejects.toThrow('Event must be open to acknowledge')
+    })
+
+    it('adminResolveSystemHealthEvent forwards the event id and an optional resolution note, defaulting to null', async () => {
+      rpcMock.mockResolvedValueOnce({ data: { id: 'evt-1', status: 'resolved' }, error: null })
+
+      await adminResolveSystemHealthEvent({ eventId: 'evt-1' })
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_resolve_system_health_event', { p_event_id: 'evt-1', p_resolution_note: null })
+    })
+
+    it('adminResolveSystemHealthEvent forwards an explicit resolution note', async () => {
+      rpcMock.mockResolvedValueOnce({ data: { id: 'evt-1', status: 'resolved' }, error: null })
+
+      await adminResolveSystemHealthEvent({ eventId: 'evt-1', resolutionNote: 'Retried and confirmed fixed.' })
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_resolve_system_health_event', {
+        p_event_id: 'evt-1',
+        p_resolution_note: 'Retried and confirmed fixed.',
+      })
+    })
+
+    it('adminReopenSystemHealthEvent forwards exactly the target event id', async () => {
+      rpcMock.mockResolvedValueOnce({ data: { id: 'evt-1', status: 'open' }, error: null })
+
+      await adminReopenSystemHealthEvent('evt-1')
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_reopen_system_health_event', { p_event_id: 'evt-1' })
+    })
+
+    it('adminReopenSystemHealthEvent throws when the event is already open', async () => {
+      rpcMock.mockResolvedValueOnce({ data: null, error: new Error('Event must be resolved or ignored to reopen (current status: open)') })
+
+      await expect(adminReopenSystemHealthEvent('evt-1')).rejects.toThrow('Event must be resolved or ignored to reopen')
+    })
+
+    it('adminIgnoreSystemHealthEvent forwards exactly the target event id', async () => {
+      rpcMock.mockResolvedValueOnce({ data: { id: 'evt-1', status: 'ignored' }, error: null })
+
+      await adminIgnoreSystemHealthEvent('evt-1')
+
+      expect(rpcMock).toHaveBeenCalledWith('admin_ignore_system_health_event', { p_event_id: 'evt-1' })
     })
   })
 })

@@ -263,6 +263,29 @@ Deno.serve(async (req) => {
 
   if (applyError) {
     console.error('pesapal-ipn: apply_subscription_event failed:', applyError)
+    // #21 Phase 5 — this is exactly the "billing inconsistency" the
+    // unified System Health centre exists to surface: a Pesapal
+    // notification that verified successfully but couldn't be applied
+    // (previously console.error-only, per the observability audit that
+    // found billing failure tracking partial/inconsistent). Awaited
+    // (unlike a true fire-and-forget) because Edge Functions don't
+    // guarantee unawaited work completes after the response is sent;
+    // wrapped in try/catch so a reporting failure never changes Pesapal's
+    // ack, since Pesapal retries on a 500 regardless.
+    try {
+      await serviceClient.rpc('report_system_health_event', {
+        p_severity: 'error',
+        p_category: 'billing',
+        p_operation: 'apply_subscription_event',
+        p_message: applyError.message,
+        p_error_code: applyError.code ?? null,
+        p_user_id: order.user_id,
+        p_provider: 'pesapal',
+        p_metadata: { order_tracking_id: orderTrackingId, merchant_reference: merchantReference, plan_code: order.plan_code, status_code: statusCode },
+      })
+    } catch (reportErr) {
+      console.error('pesapal-ipn: failed to report system_health_event:', reportErr)
+    }
     return ipnAckResponse({ orderTrackingId, orderMerchantReference: merchantReference, notificationType, ackStatus: 500 })
   }
 

@@ -1,27 +1,39 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import {
+  adminAcknowledgeSystemHealthEvent,
   adminAiUsageSummary,
   adminApproveFoundingProApplication,
   adminChangeUserPlan,
+  adminCommercialOverview,
   adminCreateBetaInvite,
+  adminGetUserQuotaBreakdown,
+  adminIgnoreSystemHealthEvent,
   adminInviteFoundingProMember,
   adminListBetaInvites,
   adminListFoundingProApplications,
   adminListFoundingProEvents,
   adminListFoundingProMembers,
+  adminListSubscriptionEvents,
+  adminListSubscriptions,
+  adminListSystemHealthEvents,
   adminListUsers,
+  adminPlanQuotaPopulation,
   adminPlatformCounts,
   adminRejectFoundingProApplication,
   adminRemoveUserQuotaOverride,
+  adminReopenSystemHealthEvent,
   adminResetUserQuota,
+  adminResolveSystemHealthEvent,
   adminRevokeBetaInvite,
   adminSetPlanAiProvider,
   adminSetPlatformProviderSetting,
   adminSetUserDisabled,
   adminSetUserQuotaOverride,
+  adminSystemHealthSummary,
   adminUpdatePlanCommercial,
   adminUpdatePlanQuota,
+  adminUsageOverview,
   sendBetaInvitationEmail,
   sendFoundingProInvitationEmail,
 } from '@/modules/admin/api/adminApi'
@@ -256,4 +268,113 @@ export function useAdminInviteFoundingProMember() {
 /** Founding Pro Programme Phase 4 — deliberately not wired to invalidate any query: sending the email never changes invitation state, only its delivery. Mirrors useAdminSendBetaInvitationEmail's own reasoning exactly. */
 export function useAdminSendFoundingProInvitationEmail() {
   return useMutation({ mutationFn: sendFoundingProInvitationEmail })
+}
+
+/**
+ * #21 Phase 4.3 — Admin Billing & Subscription Operations. Read-only:
+ * there is no admin mutation hook for billing state, by design (see
+ * adminApi.ts's own header comment on this section).
+ */
+export function useAdminSubscriptions(filters?: { status?: string | null; planCode?: string | null }) {
+  return useQuery({
+    queryKey: ['admin-subscriptions', filters?.status ?? null, filters?.planCode ?? null],
+    queryFn: () => adminListSubscriptions({ status: filters?.status, planCode: filters?.planCode }),
+  })
+}
+
+export function useAdminSubscriptionEvents(filters?: { processingStatus?: string | null }) {
+  return useQuery({
+    queryKey: ['admin-subscription-events', filters?.processingStatus ?? null],
+    queryFn: () => adminListSubscriptionEvents({ processingStatus: filters?.processingStatus }),
+  })
+}
+
+export function useAdminCommercialOverview() {
+  return useQuery({ queryKey: ['admin-commercial-overview'], queryFn: adminCommercialOverview })
+}
+
+/** #21 Phase 4.4 — Admin Usage & Quota Operations reads. Overrides still write through useAdminSetUserQuotaOverride/useAdminRemoveUserQuotaOverride above; this only adds the missing per-user, per-plan read views. */
+export function useAdminUserQuotaBreakdown(userId: string | null) {
+  return useQuery({
+    queryKey: ['admin-user-quota-breakdown', userId],
+    queryFn: () => adminGetUserQuotaBreakdown(userId as string),
+    enabled: userId != null,
+  })
+}
+
+export function useAdminPlanQuotaPopulation() {
+  return useQuery({ queryKey: ['admin-plan-quota-population'], queryFn: adminPlanQuotaPopulation })
+}
+
+export function useAdminUsageOverview() {
+  return useQuery({ queryKey: ['admin-usage-overview'], queryFn: adminUsageOverview })
+}
+
+/**
+ * #21 Phase 5 — Unified Admin Intelligence / Error Centre. Every mutation
+ * here invalidates both the filtered list and the summary tiles, since an
+ * acknowledge/resolve/reopen/ignore always changes at least one status
+ * count. The list query key includes every filter value so switching
+ * filters in the UI doesn't reuse a stale cached page.
+ */
+export function useAdminSystemHealthEvents(filters?: {
+  category?: string | null
+  severity?: string | null
+  status?: string | null
+  since?: string | null
+  userId?: string | null
+  operation?: string | null
+  provider?: string | null
+}) {
+  return useQuery({
+    queryKey: [
+      'admin-system-health-events',
+      filters?.category ?? null,
+      filters?.severity ?? null,
+      filters?.status ?? null,
+      filters?.since ?? null,
+      filters?.userId ?? null,
+      filters?.operation ?? null,
+      filters?.provider ?? null,
+    ],
+    queryFn: () => adminListSystemHealthEvents(filters),
+  })
+}
+
+export function useAdminSystemHealthSummary() {
+  return useQuery({ queryKey: ['admin-system-health-summary'], queryFn: adminSystemHealthSummary })
+}
+
+function useAdminSystemHealthEventMutation(mutationFn: (eventId: string) => Promise<unknown>) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-system-health-events'] })
+      void queryClient.invalidateQueries({ queryKey: ['admin-system-health-summary'] })
+    },
+  })
+}
+
+export function useAdminAcknowledgeSystemHealthEvent() {
+  return useAdminSystemHealthEventMutation(adminAcknowledgeSystemHealthEvent)
+}
+
+export function useAdminResolveSystemHealthEvent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: adminResolveSystemHealthEvent,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-system-health-events'] })
+      void queryClient.invalidateQueries({ queryKey: ['admin-system-health-summary'] })
+    },
+  })
+}
+
+export function useAdminReopenSystemHealthEvent() {
+  return useAdminSystemHealthEventMutation(adminReopenSystemHealthEvent)
+}
+
+export function useAdminIgnoreSystemHealthEvent() {
+  return useAdminSystemHealthEventMutation(adminIgnoreSystemHealthEvent)
 }

@@ -51,6 +51,9 @@ import { AdminUsersPage } from '@/modules/admin/pages/AdminUsersPage'
 import { AdminPlansPage } from '@/modules/admin/pages/AdminPlansPage'
 import { AdminAiGovernancePage } from '@/modules/admin/pages/AdminAiGovernancePage'
 import { AdminFoundingProPage } from '@/modules/admin/pages/AdminFoundingProPage'
+import { AdminBillingPage } from '@/modules/admin/pages/AdminBillingPage'
+import { AdminUsageQuotasPage } from '@/modules/admin/pages/AdminUsageQuotasPage'
+import { AdminSystemHealthPage } from '@/modules/admin/pages/AdminSystemHealthPage'
 import { RequireAdmin } from '@/modules/admin/RequireAdmin'
 
 export const router = createBrowserRouter([
@@ -197,6 +200,30 @@ export const router = createBrowserRouter([
             element: (
               <RequireAdmin>
                 <AdminFoundingProPage />
+              </RequireAdmin>
+            ),
+          },
+          {
+            path: 'admin/billing',
+            element: (
+              <RequireAdmin>
+                <AdminBillingPage />
+              </RequireAdmin>
+            ),
+          },
+          {
+            path: 'admin/usage',
+            element: (
+              <RequireAdmin>
+                <AdminUsageQuotasPage />
+              </RequireAdmin>
+            ),
+          },
+          {
+            path: 'admin/system-health',
+            element: (
+              <RequireAdmin>
+                <AdminSystemHealthPage />
               </RequireAdmin>
             ),
           },
