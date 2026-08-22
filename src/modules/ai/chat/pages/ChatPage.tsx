@@ -338,11 +338,22 @@ export function ChatPage() {
     // PIP Stabilization v1 (P0/P1) — was h-[calc(100vh-3.5rem)], assuming
     // TopBar is a fixed 3.5rem tall. TopBar is a two-row header with no
     // fixed-height class, so that assumption was false on every viewport,
-    // not just mobile — h-full instead lets this fill exactly what
-    // AppShell's flexbox chain (h-screen/h-dvh -> flex-col -> TopBar +
-    // flex-1 main) already computed as the real remaining space, self-
-    // correcting if TopBar's height ever changes.
-    <div className="-m-4 flex h-full md:-m-8">
+    // not just mobile — this fills exactly what AppShell's flexbox chain
+    // (h-screen/h-dvh -> flex-col -> TopBar + flex-1 main) already computed
+    // as the real remaining space, self-correcting if TopBar's height ever
+    // changes.
+    //
+    // Chat workspace viewport fix — height can't be a bare h-full (100%)
+    // here: percentage height resolves against main's *content* box, which
+    // excludes main's own p-4/md:p-8 padding. The negative margin below
+    // shifts this box up to visually erase the TOP padding gap, but a plain
+    // 100% height doesn't grow to claim the matching space at the BOTTOM —
+    // it stays pinned to main's smaller content-box height, leaving the
+    // composer stranded short of the real bottom edge with dead space below
+    // it (and the whole workspace correspondingly shorter than it should
+    // be). calc(100% + <full padding>) adds that reclaimed space back in,
+    // matching the negative margin exactly at each breakpoint.
+    <div className="-m-4 flex h-[calc(100%+2rem)] md:-m-8 md:h-[calc(100%+4rem)]">
       <ConversationList
         conversations={displayedConversations}
         selectedId={selectedId}
