@@ -9,6 +9,8 @@ import type { Plan } from '@/modules/planning-intelligence/plan'
  * unaffected by anything here.
  */
 export interface PlanDerivedActionContext {
+  /** The real Plan.id this context was built from — I7 addition, see ActionSource's own doc comment (plan.ts) on why this closes a genuine PLAN -> ACTION traceability gap. Never fabricated. */
+  planId: string
   planTitle: string
   planObjective: string
   relevantMilestones: string[]
@@ -18,6 +20,7 @@ export interface PlanDerivedActionContext {
 
 export function adaptPlanForActionContext(plan: Plan): PlanDerivedActionContext {
   return {
+    planId: plan.id,
     planTitle: plan.title,
     planObjective: plan.objective,
     relevantMilestones: plan.milestones.map((m) => m.title),

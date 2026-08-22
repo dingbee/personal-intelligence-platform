@@ -35,12 +35,29 @@ function emptyActionSet(objective: string | null, workspaceId: string | null, ov
   }
 }
 
-/** One consistent `source` for the whole generated batch — see parseActionResponse.ts's own doc comment on why per-action attribution isn't asked of the model. Decision takes priority over plan (an action set generated "to carry out this decision, in service of this plan" is fundamentally about the decision), and an explicit instruction with neither is its own source; evidence-only context (no plan/decision/instruction at all) is the honest fallback. */
+/**
+ * One consistent `source` for the whole generated batch — see
+ * parseActionResponse.ts's own doc comment on why per-action attribution
+ * isn't asked of the model. Decision takes priority over plan (an action
+ * set generated "to carry out this decision, in service of this plan" is
+ * fundamentally about the decision), and an explicit instruction with
+ * neither is its own source; evidence-only context (no plan/decision/
+ * instruction at all) is the honest fallback.
+ *
+ * I7 addition — `planId`/`decisionId` are carried through even when
+ * decision takes priority as the batch's own `kind`/`label` (a decision
+ * generated FROM a plan still has a real plan id worth keeping), closing
+ * the PLAN/DECISION -> ACTION traceability gap ActionSource's own doc
+ * comment describes. Never fabricated: only ever the real id the
+ * adapter actually carried in.
+ */
 function determineSource(instruction: string | null, planContext: PlanDerivedActionContext | null, decisionContext: DecisionDerivedActionContext | null): ActionSource {
-  if (decisionContext) return { kind: 'decision', label: decisionContext.decisionQuestion }
-  if (planContext) return { kind: 'plan', label: planContext.planTitle }
-  if (instruction) return { kind: 'user_instruction', label: instruction }
-  return { kind: 'evidence', label: 'retrieved evidence' }
+  const planId = planContext?.planId ?? null
+  const decisionId = decisionContext?.decisionId ?? null
+  if (decisionContext) return { kind: 'decision', label: decisionContext.decisionQuestion, planId, decisionId }
+  if (planContext) return { kind: 'plan', label: planContext.planTitle, planId, decisionId }
+  if (instruction) return { kind: 'user_instruction', label: instruction, planId: null, decisionId: null }
+  return { kind: 'evidence', label: 'retrieved evidence', planId: null, decisionId: null }
 }
 
 /**

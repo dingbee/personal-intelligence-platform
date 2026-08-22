@@ -47,6 +47,7 @@ describe('adaptDecisionForActionContext', () => {
     const context = adaptDecisionForActionContext(decision)
 
     expect(context).toEqual({
+      decisionId: 'decision-1',
       decisionQuestion: 'Which launch strategy?',
       recommendedAlternative: 'Student-first',
       rationale: 'Students adopt faster.',

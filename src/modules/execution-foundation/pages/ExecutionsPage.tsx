@@ -33,6 +33,18 @@ const STATUS_BADGE: Record<ExecutionRequestStatus, { label: string; variant: Bad
 
 const RISK_BADGE: Record<string, BadgeVariant> = { low: 'success', medium: 'warning', high: 'error' }
 
+const VERIFICATION_BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
+  verified: { label: 'Outcome verified', variant: 'success' },
+  mismatch: { label: 'Outcome mismatch', variant: 'error' },
+  unverified: { label: 'Outcome unverified', variant: 'warning' },
+}
+
+/** I7.12/I7.13 — the attempt's own `outcome` is the self-reported execution result; a nested `result.verification` (when present) is the independently re-read, possibly-disagreeing observed outcome. Never assume a shape here — an attempt with no verification is legitimately unverified, not a rendering bug. */
+function attemptVerification(attempt: { result: Record<string, unknown> | null }): { status: string } | null {
+  const verification = attempt.result?.verification
+  return verification && typeof verification === 'object' && 'status' in verification ? (verification as { status: string }) : null
+}
+
 function ExecutionHistory({ executionRequestId }: { executionRequestId: string }) {
   const { data, isLoading } = useExecutionRequestDetail(executionRequestId)
 
@@ -54,12 +66,19 @@ function ExecutionHistory({ executionRequestId }: { executionRequestId: string }
       {data.attempts.length > 0 && (
         <div>
           <p className="font-medium text-[var(--color-ink-muted)]">Attempts</p>
-          {data.attempts.map((a) => (
-            <p key={a.id} className="text-[var(--color-ink-muted)]">
-              #{a.attemptNumber}: {a.outcome ?? 'in progress'}
-              {a.failureKind && ` (${a.failureKind}${a.failureMessage ? `: ${a.failureMessage}` : ''})`}
-            </p>
-          ))}
+          {data.attempts.map((a) => {
+            const verification = attemptVerification(a)
+            const verificationBadge = verification ? VERIFICATION_BADGE[verification.status] : null
+            return (
+              <div key={a.id} className="flex flex-wrap items-center gap-1 py-0.5">
+                <p className="text-[var(--color-ink-muted)]">
+                  #{a.attemptNumber}: {a.outcome ?? 'in progress'}
+                  {a.failureKind && ` (${a.failureKind}${a.failureMessage ? `: ${a.failureMessage}` : ''})`}
+                </p>
+                {verificationBadge && <StatusBadge label={verificationBadge.label} variant={verificationBadge.variant} />}
+              </div>
+            )
+          })}
         </div>
       )}
       {data.auditEvents.length > 0 && (
@@ -99,6 +118,14 @@ function ExecutionRequestCard({ request, workspaceId }: { request: ExecutionRequ
       <p className="mt-1 text-[var(--color-ink-muted)]">
         Source: {request.source.kind === 'action' ? `Action Intelligence (${request.source.actionSource.label})` : request.source.label}
       </p>
+      {request.source.kind === 'action' && (request.source.actionSource.planId || request.source.actionSource.decisionId) && (
+        <p className="mt-0.5 text-[var(--color-ink-muted)]">
+          {/* I7.19 — real, honest provenance carried straight through from the originating Plan/Decision id, never fabricated. */}
+          Traced to: {request.source.actionSource.planId && `Plan ${request.source.actionSource.planId}`}
+          {request.source.actionSource.planId && request.source.actionSource.decisionId && ' · '}
+          {request.source.actionSource.decisionId && `Decision ${request.source.actionSource.decisionId}`}
+        </p>
+      )}
 
       {request.status === 'awaiting_approval' && (
         <div className="mt-2 rounded-control border border-[var(--color-warning-bg)] bg-[var(--color-warning-bg)] p-2 text-[var(--color-warning-strong)]">

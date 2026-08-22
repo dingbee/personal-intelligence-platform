@@ -7,6 +7,7 @@ import { getExecutionRequest, listExecutionAttempts, listExecutionAuthorizations
 import { recordExecutionAttempt } from '@/modules/execution-foundation/api/recordExecutionAttempt'
 import { decideRetry } from '@/modules/execution-foundation/api/retryPolicy'
 import { startExecution } from '@/modules/execution-foundation/api/startExecution'
+import { verifyOutcome } from '@/modules/execution-foundation/api/verifyOutcome'
 import { recordExecutionIntelligenceRecord } from '@/modules/intelligence-ledger/api/recordExecutionIntelligenceRecord'
 import type { ExecutionOutcome, ExecutionRequest } from '@/modules/execution-foundation/execution'
 import type { Action, ActionSet } from '@/modules/action-intelligence/action'
@@ -129,7 +130,13 @@ export async function executeCapability(params: { executionRequestId: string; us
     }
 
     if (outcome.outcome === 'succeeded') {
-      await recordExecutionAttempt({ executionRequestId, outcome: 'succeeded', result: outcome.result, isFinal: true })
+      // I7.12/I7.13 — a self-reported success is a claim, not proof. Re-read
+      // the real target before recording the attempt as final, and fold the
+      // OBSERVED outcome in alongside — never instead of — the self-reported
+      // one, so a disagreement (verification: 'mismatch') stays visible
+      // rather than silently overwriting the 'succeeded' execution result.
+      const verification = await verifyOutcome(request, outcome.result)
+      await recordExecutionAttempt({ executionRequestId, outcome: 'succeeded', result: { ...outcome.result, verification }, isFinal: true })
       await recordExecutionLedgerEvent(executionRequestId)
       return getExecutionRequest(executionRequestId)
     }

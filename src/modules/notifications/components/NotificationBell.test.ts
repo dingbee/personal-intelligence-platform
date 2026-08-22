@@ -289,4 +289,88 @@ describe('NotificationBell', () => {
     expect(screen.getByText(/moved to standard Pro/)).not.toBeNull()
     expect(screen.queryByText(/now on the Free plan/)).toBeNull()
   })
+
+  it('renders an execution_succeeded notification with a human capability label, never the raw id, and routes to /executions', () => {
+    useNotificationsMock.mockReturnValue({
+      data: [
+        notification({
+          id: 'notif-exec-succeeded',
+          type: 'execution_succeeded',
+          payload: { execution_request_id: 'req-1', capability: 'save_action_to_notes' },
+        }),
+      ],
+      isLoading: false,
+      unreadCount: 1,
+      markRead: { mutate: markReadMutate },
+    })
+
+    renderBell()
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    expect(screen.getByText('Save action to Notes completed successfully.')).not.toBeNull()
+    expect(screen.queryByText(/save_action_to_notes/)).toBeNull()
+
+    fireEvent.click(screen.getByText('Save action to Notes completed successfully.'))
+    expect(navigateMock).toHaveBeenCalledWith('/executions')
+  })
+
+  it('renders an execution_failed notification distinct from a success', () => {
+    useNotificationsMock.mockReturnValue({
+      data: [
+        notification({
+          id: 'notif-exec-failed',
+          type: 'execution_failed',
+          payload: { execution_request_id: 'req-1', capability: 'add_action_as_workspace_objective', failure_kind: 'permanent' },
+        }),
+      ],
+      isLoading: false,
+      unreadCount: 1,
+      markRead: { mutate: markReadMutate },
+    })
+
+    renderBell()
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    expect(screen.getByText('Add action as Workspace Objective failed to complete.')).not.toBeNull()
+  })
+
+  it('renders an execution_authorization_rejected notification distinct from a failure', () => {
+    useNotificationsMock.mockReturnValue({
+      data: [
+        notification({
+          id: 'notif-exec-rejected',
+          type: 'execution_authorization_rejected',
+          payload: { execution_request_id: 'req-1', capability: 'save_action_to_notes' },
+        }),
+      ],
+      isLoading: false,
+      unreadCount: 1,
+      markRead: { mutate: markReadMutate },
+    })
+
+    renderBell()
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    expect(screen.getByText('Save action to Notes was rejected — nothing was run.')).not.toBeNull()
+  })
+
+  it('renders an execution_cancelled notification distinct from the other three execution states', () => {
+    useNotificationsMock.mockReturnValue({
+      data: [
+        notification({
+          id: 'notif-exec-cancelled',
+          type: 'execution_cancelled',
+          payload: { execution_request_id: 'req-1', capability: 'save_action_to_notes', reason: 'No longer needed' },
+        }),
+      ],
+      isLoading: false,
+      unreadCount: 1,
+      markRead: { mutate: markReadMutate },
+    })
+
+    renderBell()
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    expect(screen.getByText('Save action to Notes was cancelled.')).not.toBeNull()
+  })
 })

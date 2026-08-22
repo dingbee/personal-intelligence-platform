@@ -37,9 +37,14 @@ export type ExecutionFailureKind = 'validation' | 'authorization' | 'capability_
  * Intelligence action id and its own upstream source (plan/decision/
  * instruction/evidence, see action-intelligence's own ActionSource);
  * a manual request (created directly from the UI, not from a generated
- * Action) says so rather than inventing an action id.
+ * Action) says so rather than inventing an action id. `planId`/
+ * `decisionId` (I7 addition) carry the real upstream Plan.id/Decision.id
+ * straight through from Action.source, never re-derived or fabricated —
+ * see action.ts's own ActionSource doc comment.
  */
-export type ExecutionSource = { kind: 'action'; actionId: string; actionSource: { kind: string; label: string } } | { kind: 'manual'; label: string }
+export type ExecutionSource =
+  | { kind: 'action'; actionId: string; actionSource: { kind: string; label: string; planId?: string | null; decisionId?: string | null } }
+  | { kind: 'manual'; label: string }
 
 /**
  * The material, hashable subset of an execution request — everything

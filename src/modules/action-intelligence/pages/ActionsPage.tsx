@@ -343,6 +343,14 @@ export function ActionsPage() {
               <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
                 {readyCount} of {sortedActions.length} action(s) are actually ready to act on right now.
               </p>
+              {sortedActions[0] && (
+                <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+                  {/* Every action in a set shares one honest, batch-level source (I7.19) — never fabricated per-action attribution. */}
+                  Source: {sortedActions[0].source.label}
+                  {sortedActions[0].source.planId && ` · Plan ${sortedActions[0].source.planId}`}
+                  {sortedActions[0].source.decisionId && ` · Decision ${sortedActions[0].source.decisionId}`}
+                </p>
+              )}
             </div>
             <button
               type="button"

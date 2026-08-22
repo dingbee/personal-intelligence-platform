@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useNotifications } from '@/modules/notifications/hooks/useNotifications'
+import { getCapability } from '@/modules/execution-foundation/api/capabilityRegistry'
 import { DropdownMenu } from '@/shared/components/ui/DropdownMenu'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { formatRelativeTime } from '@/shared/utils/formatRelativeTime'
 import type {
   CollaborationInvitationPayload,
+  ExecutionNotificationPayload,
   FoundingProExpiryWarningPayload,
   FoundingProTransitionPayload,
   Notification,
@@ -80,6 +82,30 @@ function describeNotification(notification: Notification): { icon: string; messa
         ? "You've moved to standard Pro. Your Founding Pro term has ended."
         : "Your Founding Pro term has ended and you're now on the Free plan."
     return { icon: '🎓', message, to: '/pricing' }
+  }
+  // I7 — the four execution-foundation notification producers (0085), reusing
+  // this exact notifications table rather than a second mechanism (see
+  // execution.ts's own doc comment). `capability` is the raw internal id —
+  // mapped through the same capabilityRegistry.ts the Executions page itself
+  // uses, never rendered raw.
+  if (
+    notification.type === 'execution_succeeded' ||
+    notification.type === 'execution_failed' ||
+    notification.type === 'execution_authorization_rejected' ||
+    notification.type === 'execution_cancelled'
+  ) {
+    const payload = (notification.payload ?? {}) as unknown as Partial<ExecutionNotificationPayload>
+    const capabilityLabel = (payload.capability && getCapability(payload.capability)?.label) || 'An action'
+    const message =
+      notification.type === 'execution_succeeded'
+        ? `${capabilityLabel} completed successfully.`
+        : notification.type === 'execution_failed'
+          ? `${capabilityLabel} failed to complete.`
+          : notification.type === 'execution_authorization_rejected'
+            ? `${capabilityLabel} was rejected — nothing was run.`
+            : `${capabilityLabel} was cancelled.`
+    const icon = notification.type === 'execution_succeeded' ? '✅' : notification.type === 'execution_failed' ? '⚠️' : notification.type === 'execution_authorization_rejected' ? '🚫' : '🛑'
+    return { icon, message, to: '/executions' }
   }
   return { icon: '🔔', message: notification.type, to: '/settings/workspaces' }
 }

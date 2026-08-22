@@ -170,7 +170,7 @@ describe('runActionIntelligence', () => {
     expect(actionSet.validationIssues).toEqual([])
 
     // Every action shares one consistent, honestly-derived source (instruction-only in this case).
-    for (const action of actionSet.actions) expect(action.source).toEqual({ kind: 'user_instruction', label: 'Prepare the client launch' })
+    for (const action of actionSet.actions) expect(action.source).toEqual({ kind: 'user_instruction', label: 'Prepare the client launch', planId: null, decisionId: null })
 
     const call = runCapabilityMock.mock.calls[0]![0]
     expect(call.capabilityId).toBe('action-generate-action-set')
@@ -185,11 +185,11 @@ describe('runActionIntelligence', () => {
       userId: 'pro-user',
       workspaceId: 'workspace-1',
       chain: ['anthropic'],
-      planContext: { planTitle: 'University Launch Plan', planObjective: 'Launch at the university', relevantMilestones: ['Beta cohort onboarded'], relevantTasks: [], relevantConstraints: [] },
+      planContext: { planId: 'plan-1', planTitle: 'University Launch Plan', planObjective: 'Launch at the university', relevantMilestones: ['Beta cohort onboarded'], relevantTasks: [], relevantConstraints: [] },
     })
 
     expect(actionSet.status).toBe('complete')
-    expect(actionSet.actions[0]!.source).toEqual({ kind: 'plan', label: 'University Launch Plan' })
+    expect(actionSet.actions[0]!.source).toEqual({ kind: 'plan', label: 'University Launch Plan', planId: 'plan-1', decisionId: null })
 
     const call = runCapabilityMock.mock.calls[0]![0]
     expect(call.variables.actionSummary).toContain('University Launch Plan')
@@ -204,11 +204,11 @@ describe('runActionIntelligence', () => {
       userId: 'pro-user',
       workspaceId: 'workspace-1',
       chain: ['anthropic'],
-      decisionContext: { decisionQuestion: 'Which launch strategy?', recommendedAlternative: 'Student-first', rationale: 'Faster adoption.', nextAction: null, relevantRisks: [], provisional: false },
+      decisionContext: { decisionId: 'decision-1', decisionQuestion: 'Which launch strategy?', recommendedAlternative: 'Student-first', rationale: 'Faster adoption.', nextAction: null, relevantRisks: [], provisional: false },
     })
 
     expect(actionSet.status).toBe('complete')
-    expect(actionSet.actions[0]!.source).toEqual({ kind: 'decision', label: 'Which launch strategy?' })
+    expect(actionSet.actions[0]!.source).toEqual({ kind: 'decision', label: 'Which launch strategy?', planId: null, decisionId: 'decision-1' })
 
     const call = runCapabilityMock.mock.calls[0]![0]
     expect(call.variables.actionSummary).toContain('Which launch strategy?')
@@ -223,12 +223,15 @@ describe('runActionIntelligence', () => {
       userId: 'pro-user',
       workspaceId: 'workspace-1',
       chain: ['anthropic'],
-      planContext: { planTitle: 'University Launch Plan', planObjective: 'Launch at the university', relevantMilestones: [], relevantTasks: [], relevantConstraints: [] },
-      decisionContext: { decisionQuestion: 'Which launch strategy?', recommendedAlternative: 'Student-first', rationale: null, nextAction: null, relevantRisks: [], provisional: false },
+      planContext: { planId: 'plan-1', planTitle: 'University Launch Plan', planObjective: 'Launch at the university', relevantMilestones: [], relevantTasks: [], relevantConstraints: [] },
+      decisionContext: { decisionId: 'decision-1', decisionQuestion: 'Which launch strategy?', recommendedAlternative: 'Student-first', rationale: null, nextAction: null, relevantRisks: [], provisional: false },
     })
 
     expect(actionSet.status).toBe('complete')
     expect(actionSet.actions[0]!.source.kind).toBe('decision')
+    // I7: both real upstream ids are preserved even though 'decision' won as the batch's own kind/label.
+    expect(actionSet.actions[0]!.source.planId).toBe('plan-1')
+    expect(actionSet.actions[0]!.source.decisionId).toBe('decision-1')
 
     const call = runCapabilityMock.mock.calls[0]![0]
     expect(call.variables.actionSummary).toContain('University Launch Plan')

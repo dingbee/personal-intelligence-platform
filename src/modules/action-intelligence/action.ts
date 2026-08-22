@@ -87,12 +87,31 @@ export interface ActionActor {
   label: string | null
 }
 
-/** What produced this action — never a database id for plan/decision (neither persists with a stable id outside one request), just an honest label identifying the source. */
+/** What produced this action — an honest label identifying the source, always. */
 export type ActionSourceKind = 'plan' | 'decision' | 'user_instruction' | 'evidence'
 
+/**
+ * I7 addition: `planId`/`decisionId` carry the REAL, real id the upstream
+ * Plan/Decision actually had at generation time (I6/I5 both mint a real
+ * `crypto.randomUUID()` for `Plan.id`/`Decision.id`, even though neither
+ * persists beyond one request unless the user explicitly saves it to a
+ * Note) — this is what makes PLAN -> ACTION and DECISION -> ACTION
+ * genuinely traceable within one generation arc, not just a human-
+ * readable label. Both null whenever the corresponding upstream object
+ * wasn't the (one, batch-level) source — see runActionIntelligence.ts's
+ * own determineSource(), which already picks ONE source for the whole
+ * generated batch; this only adds the id neither field previously kept,
+ * it does not add new per-action attribution (a deliberate, unrelated,
+ * already-justified design decision — see parseActionResponse.ts's own
+ * doc comment on why per-action source attribution isn't asked of the
+ * model). Never fabricated: only ever set from a real upstream id this
+ * request actually saw, never guessed or invented.
+ */
 export interface ActionSource {
   kind: ActionSourceKind
   label: string
+  planId?: string | null
+  decisionId?: string | null
 }
 
 export interface ActionExpectedOutput {
