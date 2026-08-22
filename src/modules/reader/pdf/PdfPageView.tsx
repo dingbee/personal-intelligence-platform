@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { TextLayer } from 'pdfjs-dist'
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
+import { computeCanvasRenderPlan } from '@/modules/reader/pdf/pdfCanvasRenderPlan'
 
 export type PdfZoom = { type: 'fit-width' } | { type: 'scale'; value: number }
 
@@ -58,18 +59,24 @@ export function PdfPageView({ pdf, pageIndex, zoom, onResolvedScaleChange }: Pdf
       const textLayerEl = textLayerRef.current
       if (!canvas || !textLayerEl || cancelled) return
 
-      canvas.width = viewport.width
-      canvas.height = viewport.height
-      canvas.style.width = `${viewport.width}px`
-      canvas.style.height = `${viewport.height}px`
+      // High-DPI rendering: the canvas's CSS box stays exactly the logical
+      // viewport size (so the text layer below, Fit Width math, and zoom
+      // percentages are unaffected), but its backing bitmap is rendered at
+      // devicePixelRatio more pixels via the render `transform`, so retina/
+      // high-density screens don't get a blurry upscale of a low-res canvas.
+      const plan = computeCanvasRenderPlan(viewport.width, viewport.height, window.devicePixelRatio || 1)
+      canvas.width = plan.canvasWidth
+      canvas.height = plan.canvasHeight
+      canvas.style.width = `${plan.cssWidth}px`
+      canvas.style.height = `${plan.cssHeight}px`
 
-      renderTask = page.render({ canvas, viewport })
+      renderTask = page.render({ canvas, viewport, transform: [plan.dpr, 0, 0, plan.dpr, 0, 0] })
       await renderTask.promise
       if (cancelled) return
 
       textLayerEl.replaceChildren()
-      textLayerEl.style.width = `${viewport.width}px`
-      textLayerEl.style.height = `${viewport.height}px`
+      textLayerEl.style.width = `${plan.cssWidth}px`
+      textLayerEl.style.height = `${plan.cssHeight}px`
       const textContent = await page.getTextContent()
       if (cancelled) return
       await new TextLayer({ textContentSource: textContent, container: textLayerEl, viewport }).render()
