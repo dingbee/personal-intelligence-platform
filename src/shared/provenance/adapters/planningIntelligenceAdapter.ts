@@ -1,4 +1,5 @@
 import type { Plan, PlanContextSource, PlanContextSourceType } from '@/modules/planning-intelligence/plan'
+import { decisionToProvenance } from '@/shared/provenance/adapters/decisionIntelligenceAdapter'
 import type { DerivationReference, EvidenceReference, ProvenanceChain, SourceReference, SourceType } from '@/shared/provenance/types'
 
 // Plan.contextEvidence's own PlanContextSourceType ('document'|'note'|'asset') maps 1:1 onto
@@ -26,6 +27,15 @@ function toSourceReference(source: PlanContextSource): SourceReference {
  * evidence at all (empty library, or the objective matched nothing), no
  * derivation is produced — an empty ProvenanceChain is the honest
  * answer, not a derivation grounded in nothing.
+ *
+ * I6 addition — any decision point this plan actually delegated to
+ * Decision Intelligence (see runPlanningIntelligence.ts's
+ * delegateUnresolvedDecisions) splices in that Decision's OWN provenance
+ * chain, exactly like decisionIntelligenceAdapter.ts's own Analysis
+ * splice: real cross-engine reuse, never a re-derivation. The plan-level
+ * synthesis derivation (when produced) is based on every such nested
+ * decision synthesis too, since a resolved decision genuinely informs
+ * the plan's own gap analysis/description.
  */
 export function planToProvenance(plan: Plan): ProvenanceChain {
   const evidence: EvidenceReference[] = plan.contextEvidence.map((item) => ({
@@ -37,12 +47,23 @@ export function planToProvenance(plan: Plan): ProvenanceChain {
   }))
 
   const derivations: DerivationReference[] = []
-  if (evidence.length > 0 && plan.status === 'complete') {
+  const nestedDecisionSynthesisIds: string[] = []
+
+  for (const decision of plan.decisions) {
+    if (!decision.decisionIntelligence) continue
+    const nested = decisionToProvenance(decision.decisionIntelligence)
+    evidence.push(...nested.evidence)
+    derivations.push(...nested.derivations)
+    const synthesisId = `decision:${decision.decisionIntelligence.id}:synthesis`
+    if (nested.derivations.some((d) => d.id === synthesisId)) nestedDecisionSynthesisIds.push(synthesisId)
+  }
+
+  if ((evidence.length > 0 || nestedDecisionSynthesisIds.length > 0) && plan.status === 'complete') {
     derivations.push({
       id: `planning:${plan.id}:synthesis`,
       kind: 'synthesis',
-      evidenceIds: evidence.map((e) => e.id),
-      basedOnDerivationIds: [],
+      evidenceIds: plan.contextEvidence.map((e) => e.id),
+      basedOnDerivationIds: nestedDecisionSynthesisIds,
       statement: plan.gapAnalysis ?? plan.description ?? plan.title,
       method: null,
     })

@@ -164,4 +164,118 @@ describe('parsePlanningResponse', () => {
     if (result.status !== 'plan') return
     expect(result.plan.description).toBe('Contains the word budget but no invented number.')
   })
+
+  it('sets every generated decision\'s decisionIntelligence to null — a real delegated outcome only ever gets attached by runPlanningIntelligence.ts, never by this parser', () => {
+    const result = parsePlanningResponse(json({ title: 'Plan', decisions: [{ decision: 'Pick a tier', options: [], recommendation: null, unresolved: true }] }))
+    expect(result.status).toBe('plan')
+    if (result.status !== 'plan') return
+    expect(result.plan.decisions[0]!.decisionIntelligence).toBeNull()
+  })
+
+  it('parses objectives, defaulting an invalid/missing origin to assumed and dropping a statement-less entry', () => {
+    const result = parsePlanningResponse(
+      json({ title: 'Plan', objectives: [{ statement: 'Grow revenue', origin: 'known' }, { statement: 'No origin given' }, { origin: 'known' }] }),
+    )
+    expect(result.status).toBe('plan')
+    if (result.status !== 'plan') return
+    expect(result.plan.objectives).toHaveLength(2)
+    expect(result.plan.objectives[0]).toMatchObject({ statement: 'Grow revenue', origin: 'known' })
+    expect(result.plan.objectives[1]).toMatchObject({ statement: 'No origin given', origin: 'assumed' })
+  })
+
+  it('resolves a task workstreamId localId reference to the real generated workstream id, and null for an unresolvable one', () => {
+    const result = parsePlanningResponse(
+      json({
+        title: 'Plan',
+        workstreams: [{ localId: 'w1', title: 'Design', description: '' }],
+        tasks: [
+          { localId: 't1', title: 'In workstream', description: '', priority: 'medium', sequence: 1, dependsOn: [], milestoneId: null, workstreamId: 'w1', estimatedEffort: null, requiredResources: [] },
+          { localId: 't2', title: 'Unresolvable', description: '', priority: 'medium', sequence: 2, dependsOn: [], milestoneId: null, workstreamId: 'ghost', estimatedEffort: null, requiredResources: [] },
+        ],
+      }),
+    )
+    expect(result.status).toBe('plan')
+    if (result.status !== 'plan') return
+    expect(result.plan.tasks[0]!.workstreamId).toBe(result.plan.workstreams[0]!.id)
+    expect(result.plan.tasks[1]!.workstreamId).toBeNull()
+  })
+
+  it('drops a resource with an invalid kind, and only keeps a positive finite capacity (never a fabricated or non-positive one)', () => {
+    const result = parsePlanningResponse(
+      json({
+        title: 'Plan',
+        resources: [
+          { localId: 'r1', name: 'Designer', kind: 'person', capacity: 1, unit: 'person', origin: 'known' },
+          { localId: 'r2', name: 'Bad kind', kind: 'not-a-kind', capacity: 5 },
+          { localId: 'r3', name: 'No honest capacity', kind: 'tool', capacity: null, origin: 'assumed' },
+          { localId: 'r4', name: 'Negative capacity dropped', kind: 'budget', capacity: -5 },
+        ],
+      }),
+    )
+    expect(result.status).toBe('plan')
+    if (result.status !== 'plan') return
+    expect(result.plan.resources).toHaveLength(3)
+    expect(result.plan.resources.find((r) => r.name === 'Designer')).toMatchObject({ capacity: 1, unit: 'person', origin: 'known' })
+    expect(result.plan.resources.find((r) => r.name === 'No honest capacity')).toMatchObject({ capacity: null })
+    expect(result.plan.resources.find((r) => r.name === 'Negative capacity dropped')).toMatchObject({ capacity: null })
+  })
+
+  it('resolves task resourceRequirements to real resource ids with a positive amount, dropping an unresolvable or non-positive entry', () => {
+    const result = parsePlanningResponse(
+      json({
+        title: 'Plan',
+        resources: [{ localId: 'r1', name: 'Designer', kind: 'person', capacity: 1 }],
+        tasks: [
+          {
+            localId: 't1',
+            title: 'Design task',
+            description: '',
+            priority: 'medium',
+            sequence: 1,
+            dependsOn: [],
+            milestoneId: null,
+            estimatedEffort: null,
+            requiredResources: [],
+            resourceRequirements: [{ resourceId: 'r1', amount: 1 }, { resourceId: 'ghost', amount: 1 }, { resourceId: 'r1', amount: -1 }],
+          },
+        ],
+      }),
+    )
+    expect(result.status).toBe('plan')
+    if (result.status !== 'plan') return
+    expect(result.plan.tasks[0]!.resourceRequirements).toEqual([{ resourceId: result.plan.resources[0]!.id, amount: 1 }])
+  })
+
+  it('parses a real ISO plan deadline and milestone targetDate, rejecting an impossible calendar date rather than guessing a repair', () => {
+    const result = parsePlanningResponse(
+      json({
+        title: 'Plan',
+        deadline: '2027-03-15',
+        milestones: [
+          { localId: 'm1', title: 'Real date', description: '', sequence: 1, dependsOn: [], targetDate: '2027-02-01' },
+          { localId: 'm2', title: 'Impossible date', description: '', sequence: 2, dependsOn: [], targetDate: '2027-02-30' },
+        ],
+      }),
+    )
+    expect(result.status).toBe('plan')
+    if (result.status !== 'plan') return
+    expect(result.plan.deadline).toBe('2027-03-15')
+    expect(result.plan.milestones[0]!.targetDate).toBe('2027-02-01')
+    expect(result.plan.milestones[1]!.targetDate).toBeNull()
+  })
+
+  it('leaves deadline/targetDate null when not supplied, rather than fabricating a date', () => {
+    const result = parsePlanningResponse(json({ title: 'Plan', milestones: [{ localId: 'm1', title: 'No date', description: '', sequence: 1, dependsOn: [] }] }))
+    expect(result.status).toBe('plan')
+    if (result.status !== 'plan') return
+    expect(result.plan.deadline).toBeNull()
+    expect(result.plan.milestones[0]!.targetDate).toBeNull()
+  })
+
+  it('parses a risk contingency distinctly from mitigation', () => {
+    const result = parsePlanningResponse(json({ title: 'Plan', risks: [{ risk: 'Design delays', impact: 'medium', mitigation: 'Start early', contingency: 'Bring in a contractor' }] }))
+    expect(result.status).toBe('plan')
+    if (result.status !== 'plan') return
+    expect(result.plan.risks[0]).toMatchObject({ mitigation: 'Start early', contingency: 'Bring in a contractor' })
+  })
 })

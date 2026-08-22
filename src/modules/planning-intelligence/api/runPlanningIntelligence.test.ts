@@ -25,6 +25,24 @@ function jsonResponse(obj: unknown) {
   return { content: JSON.stringify(obj), model: 'test-model' }
 }
 
+/**
+ * validPlanResponse below always has one `unresolved: true` decision, so
+ * every test using it now also exercises delegateUnresolvedDecisions —
+ * a REAL call into the actual runDecisionIntelligence (not mocked;
+ * mocking it would defeat the point of proving delegation is genuinely
+ * wired). Since runCapabilityMock is shared across both the planning
+ * capability and the decision-generate-recommendation capability it
+ * delegates into, this helper distinguishes them by capabilityId so a
+ * test that isn't specifically about delegation gets a harmless,
+ * decline-shaped decision response instead of the plan JSON misparsed as
+ * a decision.
+ */
+function mockPlanningCapability(planResponse: unknown, decisionResponse: unknown = { declined: true, reason: 'stub decision — not the subject of this test' }) {
+  runCapabilityMock.mockImplementation((call: { capabilityId: string }) =>
+    Promise.resolve(call.capabilityId === 'planning-generate-plan' ? jsonResponse(planResponse) : jsonResponse(decisionResponse)),
+  )
+}
+
 const validPlanResponse = {
   title: 'Pricing Page Launch Plan',
   description: 'Ship the new pricing page.',
@@ -97,7 +115,7 @@ describe('runPlanningIntelligence', () => {
     hasFeatureMock.mockResolvedValue(true)
     listWorkspaceObjectivesMock.mockResolvedValue([{ id: 'obj-1', workspace_id: 'workspace-1', user_id: 'pro-user', content: 'Grow signups', status: 'active', created_at: '', updated_at: '' }])
     gatherEvidenceMock.mockResolvedValue([{ id: 'chunk-1', source: { type: 'document', id: 'doc-1', title: 'Pricing Strategy Doc' }, excerpt: 'Our current pricing is outdated.', similarity: 0.9 }])
-    runCapabilityMock.mockResolvedValue(jsonResponse(validPlanResponse))
+    mockPlanningCapability(validPlanResponse)
 
     const { plan } = await runPlanningIntelligence({ objective: 'Launch the pricing page', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
 
@@ -125,7 +143,7 @@ describe('runPlanningIntelligence', () => {
 
   it('distinguishes known/assumed/unknown information in the returned assumptions rather than blurring them into facts', async () => {
     hasFeatureMock.mockResolvedValue(true)
-    runCapabilityMock.mockResolvedValue(jsonResponse(validPlanResponse))
+    mockPlanningCapability(validPlanResponse)
 
     const { plan } = await runPlanningIntelligence({ objective: 'Launch the pricing page', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
 
@@ -136,7 +154,7 @@ describe('runPlanningIntelligence', () => {
 
   it('passes explicit user-stated constraints through to the assembled context', async () => {
     hasFeatureMock.mockResolvedValue(true)
-    runCapabilityMock.mockResolvedValue(jsonResponse(validPlanResponse))
+    mockPlanningCapability(validPlanResponse)
 
     await runPlanningIntelligence({ objective: 'Launch the pricing page', userConstraints: ['No budget increase'], userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
 
@@ -180,12 +198,10 @@ describe('runPlanningIntelligence', () => {
 
   it('surfaces structural validation issues (e.g. a dangling dependency) rather than silently repairing them', async () => {
     hasFeatureMock.mockResolvedValue(true)
-    runCapabilityMock.mockResolvedValue(
-      jsonResponse({
-        ...validPlanResponse,
-        tasks: [{ localId: 't1', title: 'Solo task', description: 'No milestone yet.', priority: 'low', sequence: 1, dependsOn: [], milestoneId: 'does-not-exist', estimatedEffort: null, requiredResources: [] }],
-      }),
-    )
+    mockPlanningCapability({
+      ...validPlanResponse,
+      tasks: [{ localId: 't1', title: 'Solo task', description: 'No milestone yet.', priority: 'low', sequence: 1, dependsOn: [], milestoneId: 'does-not-exist', estimatedEffort: null, requiredResources: [] }],
+    })
 
     const { plan } = await runPlanningIntelligence({ objective: 'Launch the pricing page', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
 
@@ -193,5 +209,116 @@ describe('runPlanningIntelligence', () => {
     // there's nothing dangling left for validatePlan to catch here — this proves
     // the parser's own defensive filtering, a distinct guarantee from validatePlan's.
     expect(plan.tasks[0]!.milestoneId).toBeNull()
+  })
+
+  it('computes a non-empty criticalPath from the tasks\' dependency graph (I6 — never fabricated, computePlanSchedule.ts owns the arithmetic)', async () => {
+    hasFeatureMock.mockResolvedValue(true)
+    mockPlanningCapability(validPlanResponse)
+
+    const { plan } = await runPlanningIntelligence({ objective: 'Launch the pricing page', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
+
+    // validPlanResponse's t2 depends on t1 -> the critical path is both, in order.
+    expect(plan.criticalPath).toEqual([plan.tasks[0]!.id, plan.tasks[1]!.id])
+  })
+
+  describe('I6 — decision point delegation (a genuinely unresolved decision uses real Decision Intelligence, never a rebuilt recommendation)', () => {
+    const decisionResponse = {
+      title: 'Which pricing tiers to feature',
+      alternatives: [
+        { localId: 'alt-1', title: 'All tiers', description: '', advantages: [], disadvantages: [], estimatedImpact: null, risks: [] },
+        { localId: 'alt-2', title: 'Just the top tier', description: '', advantages: [], disadvantages: [], estimatedImpact: null, risks: [] },
+      ],
+      criteria: [{ localId: 'c1', name: 'Simplicity', description: '', weight: 1, importance: 'high', evaluationMethod: null }],
+      evaluations: [
+        { alternativeId: 'alt-1', criterionId: 'c1', score: 3, rationale: 'more complex page', evidenceIds: [], confidence: 'medium' },
+        { alternativeId: 'alt-2', criterionId: 'c1', score: 8, rationale: 'simpler to build and market', evidenceIds: [], confidence: 'medium' },
+      ],
+      recommendedAlternativeId: 'alt-2',
+      confidence: 'medium',
+      rationale: 'A single featured tier keeps the launch page simple.',
+      tradeoffs: [],
+      risks: [],
+      assumptions: [],
+      constraints: [],
+      unknowns: [],
+      consequences: [],
+      nextAction: null,
+    }
+
+    it('replaces the fallback recommendation with a real, deterministically-scored Decision Intelligence outcome when delegation succeeds', async () => {
+      hasFeatureMock.mockResolvedValue(true)
+      mockPlanningCapability(validPlanResponse, decisionResponse)
+
+      const { plan } = await runPlanningIntelligence({ objective: 'Launch the pricing page', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
+
+      expect(plan.decisions).toHaveLength(1)
+      const decision = plan.decisions[0]!
+      expect(decision.decisionIntelligence).not.toBeNull()
+      const recommendedId = decision.decisionIntelligence!.recommendedAlternativeId
+      expect(recommendedId).not.toBeNull()
+      expect(decision.decisionIntelligence!.alternatives.find((a) => a.id === recommendedId)!.title).toBe('Just the top tier')
+      // The deterministic weighted score, not a model-stated number, backs the recommendation.
+      expect(decision.decisionIntelligence!.weightedScores.find((w) => w.alternativeId === recommendedId)!.totalScore).toBe(8)
+      expect(decision.recommendation).toContain('Just the top tier')
+
+      const decisionCalls = runCapabilityMock.mock.calls.filter((c) => c[0].capabilityId === 'decision-generate-recommendation')
+      expect(decisionCalls).toHaveLength(1)
+      expect(decisionCalls[0]![0].variables.decisionSummary).toContain('Which pricing tiers to feature')
+    })
+
+    it('keeps the plan\'s own fallback recommendation, with decisionIntelligence null, when the delegated decision itself declines', async () => {
+      hasFeatureMock.mockResolvedValue(true)
+      mockPlanningCapability(validPlanResponse, { declined: true, reason: 'Not enough information to decide.' })
+
+      const { plan } = await runPlanningIntelligence({ objective: 'Launch the pricing page', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
+
+      expect(plan.decisions[0]!.decisionIntelligence).toBeNull()
+      expect(plan.decisions[0]!.recommendation).toBeNull() // validPlanResponse's own decision.recommendation was null
+      expect(plan.status).toBe('complete') // a declined DELEGATED decision never fails the plan itself
+    })
+
+    it('degrades honestly (decisionIntelligence stays null, plan still completes) when Decision Intelligence is not entitled for this user', async () => {
+      hasFeatureMock.mockImplementation((_userId: string, feature: string) => Promise.resolve(feature === 'planning_intelligence'))
+      mockPlanningCapability(validPlanResponse, decisionResponse)
+
+      const { plan } = await runPlanningIntelligence({ objective: 'Launch the pricing page', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
+
+      expect(plan.status).toBe('complete')
+      expect(plan.decisions[0]!.decisionIntelligence).toBeNull()
+    })
+
+    it('never delegates a decision that the model itself did not mark unresolved', async () => {
+      hasFeatureMock.mockResolvedValue(true)
+      mockPlanningCapability({ ...validPlanResponse, decisions: [{ ...validPlanResponse.decisions[0], unresolved: false }] }, decisionResponse)
+
+      await runPlanningIntelligence({ objective: 'Launch the pricing page', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
+
+      expect(runCapabilityMock.mock.calls.some((c) => c[0].capabilityId === 'decision-generate-recommendation')).toBe(false)
+    })
+
+    it('bounds delegation to MAX_DELEGATED_DECISIONS even when the plan proposes more unresolved decisions than that', async () => {
+      hasFeatureMock.mockResolvedValue(true)
+      const manyDecisions = Array.from({ length: 5 }, (_, i) => ({ decision: `Decision ${i}`, options: [], recommendation: null, unresolved: true }))
+      mockPlanningCapability({ ...validPlanResponse, decisions: manyDecisions }, decisionResponse)
+
+      const { plan } = await runPlanningIntelligence({ objective: 'Launch the pricing page', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
+
+      expect(plan.decisions).toHaveLength(5)
+      const decisionCalls = runCapabilityMock.mock.calls.filter((c) => c[0].capabilityId === 'decision-generate-recommendation')
+      expect(decisionCalls).toHaveLength(3)
+      expect(plan.decisions.filter((d) => d.decisionIntelligence !== null)).toHaveLength(3)
+    })
+
+    it('a delegated decision\'s own budget exhaustion never fails the plan itself — honest degradation, not a propagated crash', async () => {
+      hasFeatureMock.mockResolvedValue(true)
+      runCapabilityMock.mockImplementation((call: { capabilityId: string }) =>
+        call.capabilityId === 'planning-generate-plan' ? Promise.resolve(jsonResponse(validPlanResponse)) : Promise.reject(new Error('provider unavailable')),
+      )
+
+      const { plan } = await runPlanningIntelligence({ objective: 'Launch the pricing page', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic', 'openai', 'google'] })
+
+      expect(plan.status).toBe('complete')
+      expect(plan.decisions[0]!.decisionIntelligence).toBeNull()
+    })
   })
 })
