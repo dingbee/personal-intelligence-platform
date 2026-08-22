@@ -9,13 +9,25 @@
 // separate, explicit verification step, same tier as `npm run build`
 // and `npm run lint` already are in this project's manual checklist.
 //
-// Two assertions:
+// Assertions:
 //   1. `xlsx` is still split into its own chunk (not inlined into main).
 //   2. The main entry chunk stays under a ceiling comfortably below what
 //      it grew to when the regression happened (~1.40 MB at the time),
 //      so a reintroduced eager import fails this check loudly.
+//   3. PDF processing/reader ("Failed to fetch dynamically imported
+//      module" production incident) — the pdf extractor and PDF reader
+//      chunks are still split out (lazy-loading preserved), and every
+//      static import inside every emitted chunk resolves to a real file
+//      in this same dist/assets directory. That last check is a genuine
+//      build-internal-consistency proof (Rollup would never emit an
+//      unresolvable reference within one build) — it can't catch the
+//      actual cross-*deployment* mismatch that caused the incident (an
+//      old deployment's hashed chunk no longer existing once a new one
+//      is promoted; that's a runtime concern, covered instead by
+//      resilientDynamicImport.ts and its own unit tests), but it does
+//      catch a genuinely broken build before it ever ships.
 
-import { readdirSync, statSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 const ASSETS_DIR = join(import.meta.dirname, '..', 'dist', 'assets')
@@ -60,6 +72,59 @@ if (!xlsxChunk) {
   failed = true
 } else {
   console.log(`xlsx chunk OK: split into its own file (${xlsxChunk}).`)
+}
+
+// PDF processing/reader chunk presence — both dynamic-import paths named
+// in the "Failed to fetch dynamically imported module" incident.
+const PDF_EXTRACTOR_CHUNK_PATTERN = /^pdf-.*\.js$/
+const PDF_READER_CHUNK_PATTERN = /^PdfReaderView-.*\.js$/
+
+const pdfExtractorChunk = files.find((f) => PDF_EXTRACTOR_CHUNK_PATTERN.test(f))
+const pdfReaderChunk = files.find((f) => PDF_READER_CHUNK_PATTERN.test(f))
+
+if (!pdfExtractorChunk) {
+  console.error('Could not find a separate pdf-*.js chunk in dist/assets — the PDF processing extractor may have been inlined or its dynamic import broken.')
+  failed = true
+} else {
+  console.log(`PDF processing chunk OK: split into its own file (${pdfExtractorChunk}).`)
+}
+
+if (!pdfReaderChunk) {
+  console.error('Could not find a separate PdfReaderView-*.js chunk in dist/assets — the PDF reader may have been inlined or its dynamic import broken.')
+  failed = true
+} else {
+  console.log(`PDF reader chunk OK: split into its own file (${pdfReaderChunk}).`)
+}
+
+// Build-internal-consistency check — every relative static import inside
+// every emitted .js chunk must resolve to a real file in this same
+// directory. A single build is always internally consistent by
+// construction (this can't catch the actual cross-deployment mismatch —
+// see the header comment), but it does prove Rollup didn't emit a
+// reference to a chunk it forgot to also emit.
+const RELATIVE_IMPORT_PATTERN = /from\s*["'](\.\/[^"']+\.m?js)["']/g
+const jsFiles = files.filter((f) => f.endsWith('.js') || f.endsWith('.mjs'))
+let danglingImports = 0
+
+for (const file of jsFiles) {
+  let source
+  try {
+    source = readFileSync(join(ASSETS_DIR, file), 'utf8')
+  } catch {
+    continue
+  }
+  for (const match of source.matchAll(RELATIVE_IMPORT_PATTERN)) {
+    const referenced = match[1].replace(/^\.\//, '')
+    if (!files.includes(referenced)) {
+      console.error(`Dangling import: ${file} references "${referenced}", which does not exist in dist/assets.`)
+      danglingImports += 1
+      failed = true
+    }
+  }
+}
+
+if (danglingImports === 0) {
+  console.log(`Import graph OK: every relative static import across ${jsFiles.length} emitted chunk(s) resolves to a real file in dist/assets.`)
 }
 
 if (failed) process.exit(1)

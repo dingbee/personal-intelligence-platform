@@ -13,14 +13,22 @@ import { resolveReaderMode } from '@/modules/reader/resolveReaderMode'
 import type { LocalSuggestionId } from '@/modules/reader/intelligence/chapterSuggestions'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
+import { loadResilientChunk } from '@/shared/lib/resilientDynamicImport'
 
 // UX-13.7.1 — lazy-loaded so pdfjs-dist (a genuinely large library) only
 // downloads when someone actually opens a PDF, not on every page of the
 // app. See PdfReaderView's header comment.
-const PdfReaderView = lazy(() => import('@/modules/reader/pdf/PdfReaderView'))
+//
+// loadResilientChunk — this chunk shares pdfjs-dist's compiled output with
+// the PDF processing pipeline's own lazy import (extractors/registry.ts),
+// so any deploy that touches either one can shift the other's hashed
+// filename too. A tab opened before such a deploy would otherwise hard-fail
+// here with "Failed to fetch dynamically imported module" the first time
+// someone opens a PDF; this recovers with a one-shot reload instead.
+const PdfReaderView = lazy(() => loadResilientChunk(() => import('@/modules/reader/pdf/PdfReaderView')))
 // UX-13 Phase B — same reasoning: SheetJS only downloads when someone
 // actually opens a spreadsheet. See SpreadsheetReaderView's header comment.
-const SpreadsheetReaderView = lazy(() => import('@/modules/reader/spreadsheet/SpreadsheetReaderView'))
+const SpreadsheetReaderView = lazy(() => loadResilientChunk(() => import('@/modules/reader/spreadsheet/SpreadsheetReaderView')))
 
 type SidePanelTab = 'chat' | 'summary' | 'flashcards' | 'highlights'
 /**
