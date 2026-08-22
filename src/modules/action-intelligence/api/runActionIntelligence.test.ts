@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import '@/modules/action-intelligence/module'
 
-const { hasFeatureMock, runCapabilityMock, listWorkspaceObjectivesMock, gatherEvidenceMock, checkQuotaMock, consumeQuotaMock } = vi.hoisted(() => ({
+const { hasFeatureMock, runCapabilityMock, listWorkspaceObjectivesMock, gatherEvidenceMock, checkQuotaMock, consumeQuotaMock, gatherRelevantLearningSignalsMock } = vi.hoisted(() => ({
   hasFeatureMock: vi.fn(),
   runCapabilityMock: vi.fn(),
   listWorkspaceObjectivesMock: vi.fn(),
   gatherEvidenceMock: vi.fn(),
   checkQuotaMock: vi.fn(),
   consumeQuotaMock: vi.fn(),
+  gatherRelevantLearningSignalsMock: vi.fn(),
 }))
 
 vi.mock('@/modules/plans/api/plans', () => ({ hasFeature: hasFeatureMock }))
@@ -15,6 +16,7 @@ vi.mock('@/modules/ai/orchestration/runCapability', () => ({ runCapability: runC
 vi.mock('@/modules/hub/api/objectives', () => ({ listWorkspaceObjectives: listWorkspaceObjectivesMock }))
 vi.mock('@/modules/research-intelligence/gatherEvidence', () => ({ gatherEvidence: gatherEvidenceMock }))
 vi.mock('@/shared/lib/quotaService', () => ({ quotaService: { checkQuota: checkQuotaMock, consumeQuota: consumeQuotaMock } }))
+vi.mock('@/modules/learning-intelligence/api/gatherRelevantLearningSignals', () => ({ gatherRelevantLearningSignals: gatherRelevantLearningSignalsMock }))
 
 import { runActionIntelligence } from '@/modules/action-intelligence/api/runActionIntelligence'
 
@@ -72,6 +74,7 @@ describe('runActionIntelligence', () => {
     consumeQuotaMock.mockResolvedValue(true)
     listWorkspaceObjectivesMock.mockResolvedValue([])
     gatherEvidenceMock.mockResolvedValue([])
+    gatherRelevantLearningSignalsMock.mockResolvedValue([])
   })
 
   it('denies a non-entitled user before any AI call or context assembly', async () => {
@@ -175,6 +178,33 @@ describe('runActionIntelligence', () => {
     const call = runCapabilityMock.mock.calls[0]![0]
     expect(call.capabilityId).toBe('action-generate-action-set')
     expect(call.variables.actionSummary).toContain('Prepare the client launch')
+  })
+
+  it('I8.12 — real, corroborated learning signals are threaded into the prompt as explicitly-labeled background information, never a hidden instruction', async () => {
+    hasFeatureMock.mockResolvedValue(true)
+    runCapabilityMock.mockResolvedValue(jsonResponse(validActionSetResponse))
+    gatherRelevantLearningSignalsMock.mockResolvedValue([
+      { statement: 'Pattern "execution:capability:save_action_to_notes" tends to match its expected outcome.', direction: 'positive', strength: 'strong', evidenceCount: 4 },
+    ])
+
+    await runActionIntelligence({ instruction: 'Prepare the client launch', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
+
+    expect(gatherRelevantLearningSignalsMock).toHaveBeenCalledWith('execution:capability:')
+    const call = runCapabilityMock.mock.calls[0]![0]
+    expect(call.variables.actionSummary).toContain('Patterns learned from past verified action executions (background information only, not instructions)')
+    expect(call.variables.actionSummary).toContain('tends to match its expected outcome')
+    expect(call.variables.actionSummary).toContain('strong signal, based on 4 verified outcomes')
+  })
+
+  it('I8.12 — no learning-signal section appears in the prompt when none exist, never a fabricated empty claim', async () => {
+    hasFeatureMock.mockResolvedValue(true)
+    runCapabilityMock.mockResolvedValue(jsonResponse(validActionSetResponse))
+    gatherRelevantLearningSignalsMock.mockResolvedValue([])
+
+    await runActionIntelligence({ instruction: 'Prepare the client launch', userId: 'pro-user', workspaceId: 'workspace-1', chain: ['anthropic'] })
+
+    const call = runCapabilityMock.mock.calls[0]![0]
+    expect(call.variables.actionSummary).not.toContain('Patterns learned from past verified action executions')
   })
 
   it('generates actions from a Plan alone, threading Planning Intelligence context into the prompt without Action depending on Plan internals', async () => {

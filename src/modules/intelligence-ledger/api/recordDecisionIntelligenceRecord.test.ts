@@ -76,6 +76,22 @@ describe('recordDecisionIntelligenceRecord', () => {
     expect(call.provenance.derivations[1]).toMatchObject({ kind: 'synthesis', statement: 'Usage-based pricing tracks demonstrated Q3 usage growth.' })
   })
 
+  it('uses the decision real nextAction as expectedOutcome when one was resolved', async () => {
+    createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
+
+    await recordDecisionIntelligenceRecord({ decision: realDecision({ nextAction: 'Roll out usage-based pricing to the pilot cohort.' }), workspaceId: 'workspace-1', operationId: 'operation-1', providerId: 'openai' })
+
+    expect(createIntelligenceRecordMock.mock.calls[0]![0].expectedOutcome).toBe('Roll out usage-based pricing to the pilot cohort.')
+  })
+
+  it('never fabricates an expectedOutcome when the decision has no resolved nextAction', async () => {
+    createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
+
+    await recordDecisionIntelligenceRecord({ decision: realDecision({ nextAction: null }), workspaceId: 'workspace-1', operationId: 'operation-1', providerId: 'openai' })
+
+    expect(createIntelligenceRecordMock.mock.calls[0]![0].expectedOutcome).toBeNull()
+  })
+
   it('never sets a parentRecordId — Decision Intelligence has no real originating Ledger record id to cite', async () => {
     createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
 

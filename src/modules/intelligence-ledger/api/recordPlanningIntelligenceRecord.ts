@@ -19,5 +19,9 @@ export async function recordPlanningIntelligenceRecord(params: {
     provenance: planToProvenance(plan),
     operationId,
     providerId,
+    // I8.1/I8.17 — the plan's own real desired outcome, falling back to its
+    // stated success criteria when no single desiredOutcome narrative was
+    // given. Null (never recorded) when the plan genuinely has neither.
+    expectedOutcome: plan.desiredOutcome ?? (plan.successCriteria.length > 0 ? plan.successCriteria.join('; ') : null),
   })
 }
