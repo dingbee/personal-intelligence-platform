@@ -55,7 +55,7 @@ export default function PdfReaderView({
           onZoomChange={setZoom}
         />
       )}
-      <div ref={contentRef} onScroll={onScroll} className="relative flex-1 overflow-auto p-6">
+      <div ref={contentRef} onScroll={onScroll} className="relative flex-1 overflow-auto p-2 sm:p-6">
         <SelectionHighlightButton containerRef={contentRef} onHighlight={onHighlight} />
         {pdfQuery.isLoading ? (
           <div className="flex justify-center py-16">

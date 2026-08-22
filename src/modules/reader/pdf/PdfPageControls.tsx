@@ -43,13 +43,13 @@ export function PdfPageControls({
   }
 
   return (
-    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-2 text-sm">
-      <div className="flex items-center gap-2">
+    <div className="flex shrink-0 items-center justify-between gap-1.5 border-b border-[var(--color-border)] px-2 py-1.5 text-sm sm:gap-3 sm:px-4 sm:py-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         <button
           type="button"
           disabled={pageIndex === 0}
           onClick={() => onPageChange(pageIndex - 1)}
-          className="rounded-md px-2 py-1 text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)] disabled:pointer-events-none disabled:opacity-40"
+          className="rounded-md px-1.5 py-1 text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)] disabled:pointer-events-none disabled:opacity-40 sm:px-2"
           aria-label="Previous page"
         >
           ←
@@ -77,18 +77,18 @@ export function PdfPageControls({
           type="button"
           disabled={pageIndex >= pageCount - 1}
           onClick={() => onPageChange(pageIndex + 1)}
-          className="rounded-md px-2 py-1 text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)] disabled:pointer-events-none disabled:opacity-40"
+          className="rounded-md px-1.5 py-1 text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)] disabled:pointer-events-none disabled:opacity-40 sm:px-2"
           aria-label="Next page"
         >
           →
         </button>
       </div>
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-0.5 sm:gap-1.5">
         <button
           type="button"
           onClick={() => zoomBy(-ZOOM_STEP)}
-          className="rounded-md px-2 py-1 text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]"
+          className="rounded-md px-1.5 py-1 text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)] sm:px-2"
           aria-label="Zoom out"
         >
           −
@@ -97,7 +97,7 @@ export function PdfPageControls({
         <button
           type="button"
           onClick={() => zoomBy(ZOOM_STEP)}
-          className="rounded-md px-2 py-1 text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]"
+          className="rounded-md px-1.5 py-1 text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)] sm:px-2"
           aria-label="Zoom in"
         >
           +
@@ -105,7 +105,7 @@ export function PdfPageControls({
         <button
           type="button"
           onClick={() => onZoomChange({ type: 'fit-width' })}
-          className={`ml-1 rounded-md px-2 py-1 text-xs font-medium ${
+          className={`ml-0.5 rounded-md px-1.5 py-1 text-xs font-medium sm:ml-1 sm:px-2 ${
             zoom.type === 'fit-width'
               ? 'bg-[var(--color-ink)] text-[var(--color-canvas)]'
               : 'bg-[var(--color-canvas)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
