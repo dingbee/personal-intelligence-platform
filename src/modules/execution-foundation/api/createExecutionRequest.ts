@@ -14,6 +14,16 @@ const DEFAULT_TTL_SECONDS = 24 * 60 * 60
  * create_execution_request()'s own unique(user_id, idempotency_key)
  * constraint and returns the EXISTING row rather than creating a
  * duplicate — see sprint brief Phase 6.
+ *
+ * I7 fix — create_execution_request() itself now enforces
+ * has_feature(user, 'action_intelligence') server-side (0085_execution_
+ * foundation_entitlement_and_notifications.sql); previously nothing
+ * stopped a non-entitled user from reaching this RPC directly and fully
+ * executing an internal capability, bypassing Action Intelligence's own
+ * entitlement gate (which only ever covered action *generation*). ActionsPage.tsx
+ * already only renders the "Request execution" affordance behind
+ * useHasActionIntelligence(), so no client-side change was needed here —
+ * this doc note exists so the real, authoritative gate isn't missed.
  */
 export async function createExecutionRequest(params: {
   workspaceId: string | null

@@ -44,6 +44,7 @@ describe('adaptPlanForActionContext', () => {
     const context = adaptPlanForActionContext(plan)
 
     expect(context).toEqual({
+      planId: 'plan-1',
       planTitle: 'University Launch Plan',
       planObjective: 'Launch ARRIYIA at the university',
       relevantMilestones: ['Beta cohort onboarded'],

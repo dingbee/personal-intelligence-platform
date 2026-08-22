@@ -12,6 +12,7 @@ const {
   recordExecutionAttemptMock,
   startExecutionMock,
   recordExecutionIntelligenceRecordMock,
+  verifyOutcomeMock,
 } = vi.hoisted(() => ({
   getWorkspaceObjectiveMock: vi.fn(),
   addActionAsWorkspaceObjectiveMock: vi.fn(),
@@ -24,6 +25,7 @@ const {
   recordExecutionAttemptMock: vi.fn(),
   startExecutionMock: vi.fn(),
   recordExecutionIntelligenceRecordMock: vi.fn(),
+  verifyOutcomeMock: vi.fn(),
 }))
 
 vi.mock('@/modules/hub/api/objectives', () => ({ getWorkspaceObjective: getWorkspaceObjectiveMock }))
@@ -39,6 +41,10 @@ vi.mock('@/modules/execution-foundation/api/executionQueries', () => ({
 vi.mock('@/modules/execution-foundation/api/recordExecutionAttempt', () => ({ recordExecutionAttempt: recordExecutionAttemptMock }))
 vi.mock('@/modules/execution-foundation/api/startExecution', () => ({ startExecution: startExecutionMock }))
 vi.mock('@/modules/intelligence-ledger/api/recordExecutionIntelligenceRecord', () => ({ recordExecutionIntelligenceRecord: recordExecutionIntelligenceRecordMock }))
+// Outcome verification has its own dedicated test file (verifyOutcome.test.ts) covering
+// verified/mismatch/unverified per capability — mocked here so these tests stay focused
+// on execution/retry/failure-handling behavior.
+vi.mock('@/modules/execution-foundation/api/verifyOutcome', () => ({ verifyOutcome: verifyOutcomeMock }))
 
 import { CapabilityUnavailableError, executeCapability } from '@/modules/execution-foundation/api/executeCapability'
 import type { Action } from '@/modules/action-intelligence/action'
@@ -91,6 +97,7 @@ beforeEach(() => {
   listExecutionAuthorizationsMock.mockResolvedValue([])
   listExecutionAttemptsMock.mockResolvedValue([])
   recordExecutionIntelligenceRecordMock.mockResolvedValue(undefined)
+  verifyOutcomeMock.mockResolvedValue({ status: 'verified', checkedAt: '2026-01-01T00:00:01Z', details: 'Confirmed on re-read.' })
 })
 
 describe('executeCapability', () => {
@@ -117,7 +124,13 @@ describe('executeCapability', () => {
     const call = saveActionSetToNoteMock.mock.calls[0]![0]
     expect(call.actionSet.actions).toEqual([action])
     expect(call.userId).toBe('user-1')
-    expect(recordExecutionAttemptMock).toHaveBeenCalledWith({ executionRequestId: 'req-1', outcome: 'succeeded', result: { noteId: 'note-1' }, isFinal: true })
+    expect(verifyOutcomeMock).toHaveBeenCalledWith({ ...request, status: 'executing' }, { noteId: 'note-1' })
+    expect(recordExecutionAttemptMock).toHaveBeenCalledWith({
+      executionRequestId: 'req-1',
+      outcome: 'succeeded',
+      result: { noteId: 'note-1', verification: { status: 'verified', checkedAt: '2026-01-01T00:00:01Z', details: 'Confirmed on re-read.' } },
+      isFinal: true,
+    })
     expect(result.status).toBe('succeeded')
     expect(recordExecutionIntelligenceRecordMock).toHaveBeenCalledWith(
       expect.objectContaining({ request: expect.objectContaining({ status: 'succeeded' }) }),
@@ -167,7 +180,47 @@ describe('executeCapability', () => {
 
     expect(getWorkspaceObjectiveMock).toHaveBeenCalledWith('obj-1')
     expect(linkActionToWorkspaceObjectiveMock).toHaveBeenCalledWith({ objective, action })
-    expect(recordExecutionAttemptMock).toHaveBeenCalledWith({ executionRequestId: 'req-1', outcome: 'succeeded', result: { objectiveId: 'obj-1' }, isFinal: true })
+    expect(recordExecutionAttemptMock).toHaveBeenCalledWith({
+      executionRequestId: 'req-1',
+      outcome: 'succeeded',
+      result: { objectiveId: 'obj-1', verification: { status: 'verified', checkedAt: '2026-01-01T00:00:01Z', details: 'Confirmed on re-read.' } },
+      isFinal: true,
+    })
+  })
+
+  it('I7.13: a verification mismatch is recorded alongside, never instead of, the self-reported succeeded outcome', async () => {
+    const request = makeRequest()
+    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValue({ ...request, status: 'succeeded' })
+    startExecutionMock.mockResolvedValue({ ...request, status: 'executing' })
+    saveActionSetToNoteMock.mockResolvedValue({ id: 'note-1' })
+    verifyOutcomeMock.mockResolvedValueOnce({ status: 'mismatch', checkedAt: '2026-01-01T00:00:01Z', details: 'Reported noteId note-1 was not found on re-read.' })
+
+    const result = await executeCapability({ executionRequestId: 'req-1', userId: 'user-1' })
+
+    // The attempt's own outcome stays 'succeeded' (the self-reported execution
+    // result) — the disagreement is visible only in the nested verification,
+    // never by silently flipping the attempt to 'failed'.
+    expect(recordExecutionAttemptMock).toHaveBeenCalledWith({
+      executionRequestId: 'req-1',
+      outcome: 'succeeded',
+      result: { noteId: 'note-1', verification: { status: 'mismatch', checkedAt: '2026-01-01T00:00:01Z', details: 'Reported noteId note-1 was not found on re-read.' } },
+      isFinal: true,
+    })
+    expect(result.status).toBe('succeeded')
+  })
+
+  it('I7.18: the target objective was deleted between authorization and execution — re-validated fresh, execution fails honestly instead of fabricating success', async () => {
+    const request = makeRequest({ capability: 'link_action_to_workspace_objective', target: { objectiveId: 'obj-deleted' } })
+    getExecutionRequestMock.mockResolvedValueOnce(request).mockResolvedValue({ ...request, status: 'failed' })
+    startExecutionMock.mockResolvedValue({ ...request, status: 'executing' })
+    getWorkspaceObjectiveMock.mockRejectedValue({ code: 'PGRST116', message: 'no rows' })
+
+    const result = await executeCapability({ executionRequestId: 'req-1', userId: 'user-1' })
+
+    expect(getWorkspaceObjectiveMock).toHaveBeenCalledWith('obj-deleted')
+    expect(linkActionToWorkspaceObjectiveMock).not.toHaveBeenCalled()
+    expect(recordExecutionAttemptMock).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'failed' }))
+    expect(result.status).toBe('failed')
   })
 
   it('an unknown/unregistered capability id fails as capability_unavailable, never reaching a mutation path', async () => {

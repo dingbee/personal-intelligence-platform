@@ -48,7 +48,7 @@ describe('buildExecutionContract', () => {
 
   it('carries real, honest source provenance from the action, never fabricated', () => {
     const draft = buildExecutionContract({ action: mkAction({ source: { kind: 'decision', label: 'Which launch strategy?' } }), capability: 'save_action_to_notes' })
-    expect(draft.source).toEqual({ kind: 'action', actionId: 'action-1', actionSource: { kind: 'decision', label: 'Which launch strategy?' } })
+    expect(draft.source).toEqual({ kind: 'action', actionId: 'action-1', actionSource: { kind: 'decision', label: 'Which launch strategy?', planId: null, decisionId: null } })
   })
 
   it('freezes the full action as the actionSnapshot', () => {

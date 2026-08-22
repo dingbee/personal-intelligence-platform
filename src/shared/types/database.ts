@@ -152,6 +152,14 @@ export type FoundingProTransitionPayload = {
   transition_status: 'converted_to_pro' | 'expired_to_free'
 }
 
+/** `notifications.type in ('execution_succeeded','execution_failed','execution_authorization_rejected','execution_cancelled')` (0085_execution_foundation_entitlement_and_notifications.sql). `capability` is the raw internal capability id (e.g. 'save_action_to_notes') — never render it directly; map it via execution-foundation's own capabilityRegistry.ts (see NotificationBell.tsx). */
+export type ExecutionNotificationPayload = {
+  execution_request_id: string
+  capability: string
+  failure_kind?: string | null
+  reason?: string | null
+}
+
 export type Collection = {
   id: string
   user_id: string

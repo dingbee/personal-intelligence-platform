@@ -50,7 +50,11 @@ export function buildExecutionContract(params: BuildExecutionContractParams): Ex
     externalSideEffects: false,
   }
 
-  const source: ExecutionSource = { kind: 'action', actionId: action.id, actionSource: { kind: action.source.kind, label: action.source.label } }
+  const source: ExecutionSource = {
+    kind: 'action',
+    actionId: action.id,
+    actionSource: { kind: action.source.kind, label: action.source.label, planId: action.source.planId ?? null, decisionId: action.source.decisionId ?? null },
+  }
 
   return { contract, source, actionSnapshot: action as unknown as Record<string, unknown> }
 }
