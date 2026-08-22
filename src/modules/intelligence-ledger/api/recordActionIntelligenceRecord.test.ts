@@ -70,6 +70,29 @@ describe('recordActionIntelligenceRecord', () => {
     expect(call.provenance.derivations).toEqual([
       { id: 'action:action-1', kind: 'interpretation', evidenceIds: ['evidence-1'], basedOnDerivationIds: [], statement: 'Email the pilot customers about the new tier: Reach out per the Q3 usage findings', method: null },
     ])
+    expect(call.expectedOutcome).toBe('Pilot customers are informed')
+  })
+
+  it('joins multiple actions expected outcomes into one batch-level summary', async () => {
+    createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
+    const actionSet = realActionSet({
+      actions: [
+        realAction({ id: 'action-1', expectedOutput: { outcome: 'Pilot customers are informed', completionCriteria: null } }),
+        realAction({ id: 'action-2', expectedOutput: { outcome: 'Pricing page reflects the new tier', completionCriteria: null } }),
+      ],
+    })
+
+    await recordActionIntelligenceRecord({ actionSet, workspaceId: 'workspace-1', operationId: 'operation-1', providerId: 'anthropic' })
+
+    expect(createIntelligenceRecordMock.mock.calls[0]![0].expectedOutcome).toBe('Pilot customers are informed; Pricing page reflects the new tier')
+  })
+
+  it('never fabricates an expectedOutcome for an empty action set', async () => {
+    createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
+
+    await recordActionIntelligenceRecord({ actionSet: realActionSet({ actions: [] }), workspaceId: 'workspace-1', operationId: 'operation-1', providerId: 'anthropic' })
+
+    expect(createIntelligenceRecordMock.mock.calls[0]![0].expectedOutcome).toBeNull()
   })
 
   it('never sets a parentRecordId, even though this action set was decision-derived — no real upstream Ledger record id exists to cite', async () => {

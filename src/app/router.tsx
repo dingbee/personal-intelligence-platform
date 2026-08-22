@@ -37,6 +37,7 @@ import { PlanningPage } from '@/modules/planning-intelligence/pages/PlanningPage
 import { DecisionPage } from '@/modules/decision-intelligence/pages/DecisionPage'
 import { ActionsPage } from '@/modules/action-intelligence/pages/ActionsPage'
 import { ExecutionsPage } from '@/modules/execution-foundation/pages/ExecutionsPage'
+import { LearningPage } from '@/modules/learning-intelligence/pages/LearningPage'
 import { HistoryPage } from '@/modules/intelligence-ledger/pages/HistoryPage'
 import { IntelligenceRecordDetailPage } from '@/modules/intelligence-ledger/pages/IntelligenceRecordDetailPage'
 import { IntelligenceJourneyDetailPage } from '@/modules/intelligence-ledger/pages/IntelligenceJourneyDetailPage'
@@ -135,6 +136,7 @@ export const router = createBrowserRouter([
           { path: 'decisions', element: <DecisionPage /> },
           { path: 'actions', element: <ActionsPage /> },
           { path: 'executions', element: <ExecutionsPage /> },
+          { path: 'learning', element: <LearningPage /> },
           { path: 'history', element: <HistoryPage /> },
           { path: 'history/records/:recordId', element: <IntelligenceRecordDetailPage /> },
           { path: 'history/journeys/:journeyId', element: <IntelligenceJourneyDetailPage /> },

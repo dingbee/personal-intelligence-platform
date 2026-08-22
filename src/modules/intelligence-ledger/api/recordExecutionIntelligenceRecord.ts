@@ -1,7 +1,52 @@
 import { describeExecutionProvenance } from '@/shared/provenance/adapters/executionAdapter'
 import { writeIntelligenceRecord } from '@/modules/intelligence-ledger/api/writeIntelligenceRecord'
+import { writeIntelligenceOutcome } from '@/modules/learning-intelligence/api/writeIntelligenceOutcome'
+import { deriveExecutionPatternKey } from '@/modules/learning-intelligence/api/recordIntelligenceOutcome'
 import type { ExecutionAttempt, ExecutionAuthorization, ExecutionRequest } from '@/modules/execution-foundation/execution'
-import type { IntelligenceRecordStatus } from '@/shared/types/database'
+import type { IntelligenceRecordStatus, OutcomeComparisonResult } from '@/shared/types/database'
+
+/**
+ * I8.18's own action-outcome-learning integration point: "Action ->
+ * execution -> verification -> outcome -> learning signal. Do not learn
+ * from unverified execution claims." Reuses I7's own already-computed
+ * verifyOutcome.ts result (folded into the final attempt's own `result`
+ * jsonb by executeCapability.ts) — never re-implements verification.
+ *
+ * Deliberately returns null (no learning signal touched) for anything
+ * that isn't a genuinely terminal succeeded/failed request — an
+ * 'executing' mid-retry state has no real outcome yet to learn from.
+ */
+function deriveExecutionOutcome(
+  request: ExecutionRequest,
+  attempts: ExecutionAttempt[],
+): { actualOutcome: string; comparisonResult: OutcomeComparisonResult; executionSucceeded: boolean } | null {
+  const finalAttempt = attempts[attempts.length - 1]
+  if (!finalAttempt) return null
+
+  if (request.status === 'failed') {
+    return {
+      actualOutcome: finalAttempt.failureMessage ?? `Execution failed (${finalAttempt.failureKind ?? 'unknown reason'}).`,
+      comparisonResult: 'miss',
+      executionSucceeded: false,
+    }
+  }
+
+  if (request.status === 'succeeded') {
+    const verification = finalAttempt.result?.verification
+    if (verification && typeof verification === 'object' && 'status' in verification && 'details' in verification) {
+      const status = (verification as { status: unknown }).status
+      const details = (verification as { details: unknown }).details
+      if (typeof status === 'string' && typeof details === 'string') {
+        const comparisonResult: OutcomeComparisonResult = status === 'verified' ? 'match' : status === 'mismatch' ? 'contradiction' : 'unknown'
+        return { actualOutcome: details, comparisonResult, executionSucceeded: true }
+      }
+    }
+    // Never claim a match without a genuine verification record — an honest "we don't know."
+    return { actualOutcome: 'Execution reported success, but no independent verification was recorded.', comparisonResult: 'unknown', executionSucceeded: true }
+  }
+
+  return null
+}
 
 /**
  * Called from executeCapability.ts's own two exit points (a genuine
@@ -27,7 +72,7 @@ export async function recordExecutionIntelligenceRecord(params: {
   const { request, authorizations, attempts } = params
   const status: IntelligenceRecordStatus = request.status === 'succeeded' ? 'completed' : request.status === 'failed' ? 'failed' : 'running'
 
-  await writeIntelligenceRecord({
+  const record = await writeIntelligenceRecord({
     workspaceId: request.workspaceId,
     recordType: 'execution',
     status,
@@ -35,5 +80,22 @@ export async function recordExecutionIntelligenceRecord(params: {
     structuredOutput: { requestId: request.id, capability: request.capability, status: request.status, expectedEffect: request.expectedEffect } as unknown as Record<string, unknown>,
     provenance: describeExecutionProvenance(request, authorizations, attempts),
     executionRequestId: request.id,
+    // I8.1 — the execution's own real expected effect, already computed by buildExecutionContract.ts.
+    expectedOutcome: request.expectedEffect,
+  })
+
+  if (!record) return
+
+  const derived = deriveExecutionOutcome(request, attempts)
+  if (!derived) return
+
+  await writeIntelligenceOutcome({
+    recordId: record.id,
+    source: 'system_observed',
+    expectedOutcome: request.expectedEffect,
+    actualOutcome: derived.actualOutcome,
+    comparisonResult: derived.comparisonResult,
+    patternKey: deriveExecutionPatternKey(request.capability),
+    executionSucceeded: derived.executionSucceeded,
   })
 }

@@ -1,11 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import type { ExecutionAttempt, ExecutionAuthorization, ExecutionRequest } from '@/modules/execution-foundation/execution'
 
-const { createIntelligenceRecordMock } = vi.hoisted(() => ({
+const { createIntelligenceRecordMock, recordIntelligenceOutcomeMock } = vi.hoisted(() => ({
   createIntelligenceRecordMock: vi.fn(),
+  recordIntelligenceOutcomeMock: vi.fn(),
 }))
 
 vi.mock('@/modules/intelligence-ledger/api/createIntelligenceRecord', () => ({ createIntelligenceRecord: createIntelligenceRecordMock }))
+vi.mock('@/modules/learning-intelligence/api/recordIntelligenceOutcome', async () => {
+  const actual = await vi.importActual<typeof import('@/modules/learning-intelligence/api/recordIntelligenceOutcome')>('@/modules/learning-intelligence/api/recordIntelligenceOutcome')
+  return { ...actual, recordIntelligenceOutcome: recordIntelligenceOutcomeMock }
+})
 
 import { recordExecutionIntelligenceRecord } from '@/modules/intelligence-ledger/api/recordExecutionIntelligenceRecord'
 
@@ -64,7 +69,12 @@ function realAttempt(overrides: Partial<ExecutionAttempt> = {}): ExecutionAttemp
 }
 
 describe('recordExecutionIntelligenceRecord', () => {
-  beforeEach(() => createIntelligenceRecordMock.mockReset())
+  beforeEach(() => {
+    createIntelligenceRecordMock.mockReset()
+    recordIntelligenceOutcomeMock.mockReset()
+    recordIntelligenceOutcomeMock.mockResolvedValue({ id: 'evaluation-1' })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
 
   it('persists a real ExecutionRequest through the actual executionAdapter, using its own honest ExecutionProvenance shape', async () => {
     createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
@@ -78,6 +88,7 @@ describe('recordExecutionIntelligenceRecord', () => {
         status: 'completed',
         summary: 'Execution: save_action_to_notes (succeeded)',
         executionRequestId: 'exec-1',
+        expectedOutcome: 'A note is created summarizing the action',
       }),
     )
 
@@ -117,5 +128,79 @@ describe('recordExecutionIntelligenceRecord', () => {
     await recordExecutionIntelligenceRecord({ request: realRequest(), authorizations: [], attempts: [] })
 
     expect(createIntelligenceRecordMock.mock.calls[0]![0].parentRecordId).toBeUndefined()
+  })
+
+  describe('I8.18 — automatic execution outcome learning', () => {
+    it('a succeeded execution with a genuinely verified outcome records a match, execution_succeeded=true', async () => {
+      createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
+      const attempt = realAttempt({ result: { noteId: 'note-1', verification: { status: 'verified', checkedAt: '2026-01-01T00:03:00Z', details: 'Note note-1 confirmed to exist.' } } })
+
+      await recordExecutionIntelligenceRecord({ request: realRequest(), authorizations: [], attempts: [attempt] })
+
+      expect(recordIntelligenceOutcomeMock).toHaveBeenCalledWith({
+        recordId: 'record-1',
+        source: 'system_observed',
+        expectedOutcome: 'A note is created summarizing the action',
+        actualOutcome: 'Note note-1 confirmed to exist.',
+        comparisonResult: 'match',
+        patternKey: 'execution:capability:save_action_to_notes',
+        executionSucceeded: true,
+      })
+    })
+
+    it('a succeeded execution whose verification MISMATCHES records a contradiction — never a fabricated match', async () => {
+      createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
+      const attempt = realAttempt({ result: { noteId: 'note-1', verification: { status: 'mismatch', checkedAt: '2026-01-01T00:03:00Z', details: 'Reported noteId note-1 was not found on re-read.' } } })
+
+      await recordExecutionIntelligenceRecord({ request: realRequest(), authorizations: [], attempts: [attempt] })
+
+      expect(recordIntelligenceOutcomeMock).toHaveBeenCalledWith(
+        expect.objectContaining({ comparisonResult: 'contradiction', actualOutcome: 'Reported noteId note-1 was not found on re-read.', executionSucceeded: true }),
+      )
+    })
+
+    it('a succeeded execution with no verification recorded at all is honestly unknown, never assumed a match', async () => {
+      createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
+      const attempt = realAttempt({ result: { noteId: 'note-1' } })
+
+      await recordExecutionIntelligenceRecord({ request: realRequest(), authorizations: [], attempts: [attempt] })
+
+      expect(recordIntelligenceOutcomeMock).toHaveBeenCalledWith(expect.objectContaining({ comparisonResult: 'unknown', executionSucceeded: true }))
+    })
+
+    it('a failed execution records a miss, execution_succeeded=false, using the real failure message', async () => {
+      createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
+      const request = realRequest({ status: 'failed' })
+      const attempt = realAttempt({ outcome: 'failed', failureKind: 'permanent', failureMessage: 'Objective is missing an approval.', result: null })
+
+      await recordExecutionIntelligenceRecord({ request, authorizations: [], attempts: [attempt] })
+
+      expect(recordIntelligenceOutcomeMock).toHaveBeenCalledWith(
+        expect.objectContaining({ comparisonResult: 'miss', actualOutcome: 'Objective is missing an approval.', executionSucceeded: false }),
+      )
+    })
+
+    it('a non-terminal (executing) request never records an outcome — nothing to learn from yet', async () => {
+      createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
+
+      await recordExecutionIntelligenceRecord({ request: realRequest({ status: 'executing' }), authorizations: [], attempts: [] })
+
+      expect(recordIntelligenceOutcomeMock).not.toHaveBeenCalled()
+    })
+
+    it('a Ledger write failure (record is null) never attempts an outcome recording — nothing real to attach it to', async () => {
+      createIntelligenceRecordMock.mockRejectedValueOnce(new Error('RLS denied'))
+
+      await recordExecutionIntelligenceRecord({ request: realRequest(), authorizations: [], attempts: [realAttempt()] })
+
+      expect(recordIntelligenceOutcomeMock).not.toHaveBeenCalled()
+    })
+
+    it('a learning-layer failure never throws — the execution ledger write itself already succeeded', async () => {
+      createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
+      recordIntelligenceOutcomeMock.mockRejectedValueOnce(new Error('learning_intelligence not entitled'))
+
+      await expect(recordExecutionIntelligenceRecord({ request: realRequest(), authorizations: [], attempts: [realAttempt()] })).resolves.toBeUndefined()
+    })
   })
 })

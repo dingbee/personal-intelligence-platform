@@ -1,5 +1,7 @@
 import { listWorkspaceObjectives } from '@/modules/hub/api/objectives'
 import { gatherEvidence } from '@/modules/research-intelligence/gatherEvidence'
+import { gatherRelevantLearningSignals } from '@/modules/learning-intelligence/api/gatherRelevantLearningSignals'
+import type { RelevantLearningSignal } from '@/modules/learning-intelligence/api/gatherRelevantLearningSignals'
 import type { PlanDerivedActionContext } from '@/modules/action-intelligence/api/adaptPlanForActionContext'
 import type { DecisionDerivedActionContext } from '@/modules/action-intelligence/api/adaptDecisionForActionContext'
 import type { ActionContextSource, ActionContextSourceType } from '@/modules/action-intelligence/action'
@@ -16,6 +18,8 @@ export interface ActionContext {
   relevantEvidence: ActionContextSource[]
   planContext: PlanDerivedActionContext | null
   decisionContext: DecisionDerivedActionContext | null
+  /** I8.12 Adaptation — real, evidence-corroborated ('active' only, never a single-observation or contested/revoked one) patterns learned from actually-executed, actually-verified past actions. Never a hidden influence: see formatActionContextForPrompt.ts, which surfaces this as its own explicitly-labeled section. */
+  relevantLearningSignals: RelevantLearningSignal[]
 }
 
 /**
@@ -41,9 +45,10 @@ export async function buildActionContext(params: {
 
   const retrievalQuery = [instruction, objective, planContext?.planObjective, decisionContext?.decisionQuestion].filter((s): s is string => Boolean(s)).join(' ')
 
-  const [activeObjectives, evidence] = await Promise.all([
+  const [activeObjectives, evidence, relevantLearningSignals] = await Promise.all([
     workspaceId ? listWorkspaceObjectives(workspaceId) : Promise.resolve([]),
     retrievalQuery ? gatherEvidence({ query: retrievalQuery, userId, workspaceId }) : Promise.resolve([]),
+    gatherRelevantLearningSignals('execution:capability:'),
   ])
 
   return {
@@ -59,5 +64,6 @@ export async function buildActionContext(params: {
     relevantEvidence: evidence.map((e) => ({ id: e.id, type: e.source.type as ActionContextSourceType, title: e.source.title, excerpt: e.excerpt })),
     planContext,
     decisionContext,
+    relevantLearningSignals,
   }
 }

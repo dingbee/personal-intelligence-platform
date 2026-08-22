@@ -29,5 +29,11 @@ export async function recordActionIntelligenceRecord(params: {
     provenance: actionSetToProvenance(actionSet),
     operationId,
     providerId,
+    // I8.1 — a batch-level summary only, for display/traceability. An
+    // individual action's real fate is only knowable through its own
+    // execution (I7) — see recordExecutionIntelligenceRecord.ts, the
+    // actual I8.18 action-outcome-learning integration point. Null when
+    // the set has no actions to summarize (a declined/failed set).
+    expectedOutcome: actionSet.actions.length > 0 ? actionSet.actions.map((a) => a.expectedOutput.outcome).join('; ') : null,
   })
 }

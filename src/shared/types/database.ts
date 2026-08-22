@@ -653,6 +653,55 @@ export type IntelligenceRecordRow = {
   updated_at: string
 }
 
+/** I8 — closes the ledger's own reserved outcome-tracking hook. See 0087_learning_intelligence_foundation.sql. */
+export type OutcomeEvaluationSource = 'system_observed' | 'user_feedback'
+export type OutcomeComparisonResult = 'match' | 'partial_match' | 'miss' | 'contradiction' | 'unknown'
+export type LearningSignalDirection = 'positive' | 'negative'
+export type LearningSignalStrength = 'weak' | 'moderate' | 'strong'
+export type LearningSignalStatus = 'proposed' | 'active' | 'contested' | 'revoked'
+
+export type IntelligenceOutcomeEvaluationRow = {
+  id: string
+  user_id: string
+  workspace_id: string | null
+  record_id: string
+  source: OutcomeEvaluationSource
+  expected_outcome: string
+  actual_outcome: string
+  comparison_result: OutcomeComparisonResult
+  execution_succeeded: boolean | null
+  feedback_note: string | null
+  pattern_key: string
+  created_at: string
+}
+
+export type IntelligenceLearningSignalRow = {
+  id: string
+  user_id: string
+  workspace_id: string | null
+  record_type: IntelligenceRecordType
+  pattern_key: string
+  direction: LearningSignalDirection
+  statement: string
+  strength: LearningSignalStrength
+  status: LearningSignalStatus
+  evidence_count: number
+  contradicts_signal_id: string | null
+  revoked_reason: string | null
+  revoked_at: string | null
+  first_evidence_at: string
+  last_evidence_at: string
+  created_at: string
+  updated_at: string
+}
+
+export type IntelligenceLearningEvidenceRow = {
+  id: string
+  signal_id: string
+  evaluation_id: string
+  created_at: string
+}
+
 /** AI Experience Intelligence v1 — a user's dismissal of one proactive-intelligence item (a Hub IntelligenceItem or a dashboard-scope Recommendation), keyed by the caller-derived item_key. See 0037_dismissed_suggestions.sql. */
 export type DismissedSuggestion = {
   id: string
@@ -1488,6 +1537,24 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      intelligence_outcome_evaluations: {
+        Row: IntelligenceOutcomeEvaluationRow
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      intelligence_learning_signals: {
+        Row: IntelligenceLearningSignalRow
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      intelligence_learning_evidence: {
+        Row: IntelligenceLearningEvidenceRow
+        Insert: never
+        Update: never
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -1565,6 +1632,23 @@ export type Database = {
           p_expected_outcome?: string | null
         }
         Returns: IntelligenceRecordRow
+      }
+      record_intelligence_outcome: {
+        Args: {
+          p_record_id: string
+          p_source: OutcomeEvaluationSource
+          p_expected_outcome: string
+          p_actual_outcome: string
+          p_comparison_result: OutcomeComparisonResult
+          p_pattern_key: string
+          p_execution_succeeded?: boolean | null
+          p_feedback_note?: string | null
+        }
+        Returns: IntelligenceOutcomeEvaluationRow
+      }
+      revoke_learning_signal: {
+        Args: { p_signal_id: string; p_reason?: string | null }
+        Returns: IntelligenceLearningSignalRow
       }
       match_document_chunks: {
         Args: {
@@ -2082,6 +2166,11 @@ export type Database = {
       execution_failure_kind: ExecutionFailureKind
       intelligence_record_type: IntelligenceRecordType
       intelligence_record_status: IntelligenceRecordStatus
+      outcome_evaluation_source: OutcomeEvaluationSource
+      outcome_comparison_result: OutcomeComparisonResult
+      learning_signal_direction: LearningSignalDirection
+      learning_signal_strength: LearningSignalStrength
+      learning_signal_status: LearningSignalStatus
     }
   }
 }

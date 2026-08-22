@@ -30,5 +30,9 @@ export async function recordDecisionIntelligenceRecord(params: {
     provenance: decisionToProvenance(decision),
     operationId,
     providerId,
+    // I8.1/I8.16 — the decision's own real recommended next step, when one
+    // was resolved. Null (never recorded) when the decision genuinely has
+    // none — never a fabricated placeholder.
+    expectedOutcome: decision.nextAction ?? null,
   })
 }

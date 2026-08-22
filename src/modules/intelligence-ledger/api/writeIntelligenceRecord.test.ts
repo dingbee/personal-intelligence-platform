@@ -14,20 +14,21 @@ describe('writeIntelligenceRecord', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
-  it('delegates straight through to createIntelligenceRecord on success', async () => {
+  it('delegates straight through to createIntelligenceRecord on success and returns the created record', async () => {
     createIntelligenceRecordMock.mockResolvedValueOnce({ id: 'record-1' })
 
-    await writeIntelligenceRecord({ workspaceId: 'workspace-1', recordType: 'research', summary: 'x', structuredOutput: {} })
+    const result = await writeIntelligenceRecord({ workspaceId: 'workspace-1', recordType: 'research', summary: 'x', structuredOutput: {} })
 
     expect(createIntelligenceRecordMock).toHaveBeenCalledWith({ workspaceId: 'workspace-1', recordType: 'research', summary: 'x', structuredOutput: {} })
+    expect(result).toEqual({ id: 'record-1' })
   })
 
-  it('never throws when the Ledger write fails — a caller mid-return must not have its own success turned into a crash', async () => {
+  it('never throws when the Ledger write fails — a caller mid-return must not have its own success turned into a crash — and returns null', async () => {
     createIntelligenceRecordMock.mockRejectedValueOnce(new Error('RLS: workspace access denied'))
 
     await expect(
       writeIntelligenceRecord({ workspaceId: 'workspace-1', recordType: 'research', summary: 'x', structuredOutput: {} }),
-    ).resolves.toBeUndefined()
+    ).resolves.toBeNull()
   })
 
   it('logs the failure via console.error rather than swallowing it silently', async () => {

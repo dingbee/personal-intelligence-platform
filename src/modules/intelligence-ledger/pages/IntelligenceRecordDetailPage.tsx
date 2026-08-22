@@ -5,6 +5,7 @@ import { RecordTypeBadge } from '@/modules/intelligence-ledger/components/Record
 import { RecordStatusBadge } from '@/modules/intelligence-ledger/components/RecordStatusBadge'
 import { StructuredOutputView } from '@/modules/intelligence-ledger/components/StructuredOutputView'
 import { RecordProvenanceView } from '@/modules/intelligence-ledger/components/RecordProvenanceView'
+import { RecordOutcomeSection } from '@/modules/intelligence-ledger/components/RecordOutcomeSection'
 import { RECORD_TYPE_LABEL } from '@/modules/intelligence-ledger/recordDisplay'
 import { SectionHeader } from '@/shared/components/ui/layout/SectionHeader'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
@@ -100,6 +101,8 @@ export function IntelligenceRecordDetailPage() {
           <p className="mt-1 text-sm text-[var(--color-ink)]">{record.expectedOutcome}</p>
         </SurfaceCard>
       )}
+
+      <RecordOutcomeSection record={record} />
 
       <SurfaceCard>
         <SectionHeader title="Details" />
