@@ -14,16 +14,23 @@ function basePlan(overrides: Partial<Plan> = {}): Plan {
     gapAnalysis: null,
     assumptions: [],
     constraints: [{ id: 'con-1', constraint: 'No paid ads budget', type: 'budget', severity: 'hard', origin: 'known' }],
-    milestones: [{ id: 'm1', title: 'Beta cohort onboarded', description: '', target: null, sequence: 1, dependsOnMilestoneIds: [] }],
+    objectives: [],
+    workstreams: [],
+    milestones: [{ id: 'm1', title: 'Beta cohort onboarded', description: '', target: null, targetDate: null, sequence: 1, dependsOnMilestoneIds: [] }],
     tasks: [],
-    risks: [{ id: 'r1', risk: 'Low awareness', probability: 'medium', impact: 'medium', mitigation: null }],
+    risks: [{ id: 'r1', risk: 'Low awareness', probability: 'medium', impact: 'medium', mitigation: null, contingency: null }],
     decisions: [],
     outputs: [],
     successCriteria: [],
+    resources: [],
+    deadline: null,
+    criticalPath: [],
     contextEvidence: [],
     workspaceId: 'workspace-1',
     createdAt: new Date().toISOString(),
     validationIssues: [],
+    revisionOf: null,
+    revisionReason: null,
     budgetExhausted: false,
     generationFailed: false,
     declineReason: null,
@@ -49,7 +56,7 @@ describe('adaptPlanForDecisionContext', () => {
   it('does not mutate or reference the original Plan object after mapping', () => {
     const plan = basePlan()
     const context = adaptPlanForDecisionContext(plan)
-    plan.milestones.push({ id: 'm2', title: 'A later milestone', description: '', target: null, sequence: 2, dependsOnMilestoneIds: [] })
+    plan.milestones.push({ id: 'm2', title: 'A later milestone', description: '', target: null, targetDate: null, sequence: 2, dependsOnMilestoneIds: [] })
     // The already-produced context is a plain snapshot — it doesn't share array identity with the live Plan.
     expect(context.relevantMilestones).toEqual(['Beta cohort onboarded'])
   })

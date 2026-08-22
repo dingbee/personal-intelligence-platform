@@ -1,3 +1,4 @@
+import { computePlanSchedule } from '@/modules/planning-intelligence/api/computePlanSchedule'
 import type { ParsedPlanFields } from '@/modules/planning-intelligence/api/parsePlanningResponse'
 import type { PlanValidationIssue } from '@/modules/planning-intelligence/plan'
 
@@ -18,6 +19,13 @@ import type { PlanValidationIssue } from '@/modules/planning-intelligence/plan'
  * structural coherence (references resolve, no cycles, the plan has
  * actionable content) — see the final report's BACKLOG note on this
  * limit.
+ *
+ * I6 addition — timeline and resource checks, both over REAL structured
+ * data only (ISO dates, declared resource capacities), never over the
+ * free-text fields a human wrote in prose: checkTimeline() compares
+ * `deadline`/`targetDate` chronologically; checkResourceCapacity()
+ * delegates to computePlanSchedule.ts's own wave-scheduling arithmetic
+ * rather than reimplementing it.
  */
 export function validatePlan(objective: string, fields: ParsedPlanFields): PlanValidationIssue[] {
   const issues: PlanValidationIssue[] = []
@@ -32,6 +40,8 @@ export function validatePlan(objective: string, fields: ParsedPlanFields): PlanV
 
   const taskIds = new Set(fields.tasks.map((t) => t.id))
   const milestoneIds = new Set(fields.milestones.map((m) => m.id))
+  const workstreamIds = new Set(fields.workstreams.map((w) => w.id))
+  const resourceIds = new Set(fields.resources.map((r) => r.id))
 
   for (const task of fields.tasks) {
     for (const depId of task.dependsOnTaskIds) {
@@ -41,6 +51,14 @@ export function validatePlan(objective: string, fields: ParsedPlanFields): PlanV
     }
     if (task.milestoneId && !milestoneIds.has(task.milestoneId)) {
       issues.push({ kind: 'dangling_milestone_reference', message: `Task "${task.title}" references a milestone that does not exist in this plan.`, affectedIds: [task.id, task.milestoneId] })
+    }
+    if (task.workstreamId && !workstreamIds.has(task.workstreamId)) {
+      issues.push({ kind: 'dangling_workstream_reference', message: `Task "${task.title}" references a workstream that does not exist in this plan.`, affectedIds: [task.id, task.workstreamId] })
+    }
+    for (const req of task.resourceRequirements) {
+      if (!resourceIds.has(req.resourceId)) {
+        issues.push({ kind: 'dangling_resource_reference', message: `Task "${task.title}" references a resource that does not exist in this plan.`, affectedIds: [task.id, req.resourceId] })
+      }
     }
   }
 
@@ -55,7 +73,83 @@ export function validatePlan(objective: string, fields: ParsedPlanFields): PlanV
   issues.push(...findCycles(fields.tasks.map((t) => [t.id, t.dependsOnTaskIds.filter((d) => taskIds.has(d))] as const), fields.tasks, 'circular_task_dependency'))
   issues.push(...findCycles(fields.milestones.map((m) => [m.id, m.dependsOnMilestoneIds.filter((d) => milestoneIds.has(d))] as const), fields.milestones, 'circular_milestone_dependency'))
 
+  issues.push(...checkTimeline(fields))
+  issues.push(...checkResourceCapacity(fields))
+  issues.push(...checkOrphanTasks(fields))
+  issues.push(...checkUnreachableMilestones(fields))
+
   return issues
+}
+
+/** A task with no milestone, no workstream, no dependency in either direction — nothing in the plan's own structure connects it to anything else. Skipped entirely for a single-task plan (there is nothing to be disconnected FROM). */
+function checkOrphanTasks(fields: ParsedPlanFields): PlanValidationIssue[] {
+  if (fields.tasks.length <= 1) return []
+  const dependedOnIds = new Set(fields.tasks.flatMap((t) => t.dependsOnTaskIds))
+
+  return fields.tasks
+    .filter((t) => !t.milestoneId && !t.workstreamId && t.dependsOnTaskIds.length === 0 && !dependedOnIds.has(t.id))
+    .map((t) => ({ kind: 'orphan_task' as const, message: `Task "${t.title}" has no milestone, workstream, or dependency link to the rest of the plan.`, affectedIds: [t.id] }))
+}
+
+/** A milestone no task actually references via milestoneId — structurally, nothing in the plan will ever complete it. */
+function checkUnreachableMilestones(fields: ParsedPlanFields): PlanValidationIssue[] {
+  if (fields.tasks.length === 0) return []
+  const referencedMilestoneIds = new Set(fields.tasks.map((t) => t.milestoneId).filter((id): id is string => id !== null))
+
+  return fields.milestones
+    .filter((m) => !referencedMilestoneIds.has(m.id))
+    .map((m) => ({ kind: 'unreachable_milestone' as const, message: `Milestone "${m.title}" has no task that contributes to it.`, affectedIds: [m.id] }))
+}
+
+/**
+ * Chronological feasibility — only ever compares REAL structured dates
+ * (`deadline`/`targetDate`), never the free-text `target`/constraint
+ * prose (there is nothing deterministic to check a sentence against).
+ * A plan with no real dates at all produces no timeline issues — that is
+ * the honest answer, not a false "clean" one, since there is nothing to
+ * validate.
+ */
+function checkTimeline(fields: ParsedPlanFields): PlanValidationIssue[] {
+  const issues: PlanValidationIssue[] = []
+  const milestoneById = new Map(fields.milestones.map((m) => [m.id, m]))
+
+  if (fields.deadline) {
+    for (const m of fields.milestones) {
+      if (m.targetDate && m.targetDate > fields.deadline) {
+        issues.push({ kind: 'impossible_deadline', message: `Milestone "${m.title}" targets ${m.targetDate}, after the plan's own deadline of ${fields.deadline}.`, affectedIds: [m.id] })
+      }
+    }
+  }
+
+  for (const m of fields.milestones) {
+    if (!m.targetDate) continue
+    for (const depId of m.dependsOnMilestoneIds) {
+      const dep = milestoneById.get(depId)
+      if (dep?.targetDate && m.targetDate < dep.targetDate) {
+        issues.push({
+          kind: 'milestone_timeline_inconsistency',
+          message: `Milestone "${m.title}" targets ${m.targetDate}, before milestone "${dep.title}" (${dep.targetDate}) that it depends on.`,
+          affectedIds: [m.id, dep.id],
+        })
+      }
+    }
+  }
+
+  return issues
+}
+
+/** Delegates the actual wave/resource-usage arithmetic to computePlanSchedule.ts (the same function runPlanningIntelligence.ts uses for Plan.criticalPath) rather than reimplementing it — this function only translates its result into PlanValidationIssues. */
+function checkResourceCapacity(fields: ParsedPlanFields): PlanValidationIssue[] {
+  const { resourceUsage } = computePlanSchedule(fields.tasks, fields.resources)
+  const resourceById = new Map(fields.resources.map((r) => [r.id, r]))
+
+  return resourceUsage
+    .filter((u) => u.exceeded)
+    .map((u) => ({
+      kind: 'resource_capacity_exceeded' as const,
+      message: `Concurrent demand for "${resourceById.get(u.resourceId)?.name ?? u.resourceId}" (${u.required}${resourceById.get(u.resourceId)?.unit ? ` ${resourceById.get(u.resourceId)!.unit}` : ''}) exceeds its declared capacity of ${u.capacity}.`,
+      affectedIds: [u.resourceId],
+    }))
 }
 
 /** Standard white/gray/black DFS cycle detection over an id -> dependency-ids graph. Reports each distinct cycle once (by its sorted node set) even if reachable via multiple paths. */

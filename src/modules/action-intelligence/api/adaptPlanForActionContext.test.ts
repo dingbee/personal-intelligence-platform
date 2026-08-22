@@ -14,16 +14,23 @@ function basePlan(overrides: Partial<Plan> = {}): Plan {
     gapAnalysis: null,
     assumptions: [],
     constraints: [{ id: 'con-1', constraint: 'No paid ads budget', type: 'budget', severity: 'hard', origin: 'known' }],
-    milestones: [{ id: 'm1', title: 'Beta cohort onboarded', description: '', target: null, sequence: 1, dependsOnMilestoneIds: [] }],
-    tasks: [{ id: 't1', title: 'Draft outreach email', description: '', milestoneId: null, sequence: 1, dependsOnTaskIds: [], status: 'not_started', priority: 'medium', estimatedEffort: null, requiredResources: [] }],
+    objectives: [],
+    workstreams: [],
+    milestones: [{ id: 'm1', title: 'Beta cohort onboarded', description: '', target: null, targetDate: null, sequence: 1, dependsOnMilestoneIds: [] }],
+    tasks: [{ id: 't1', title: 'Draft outreach email', description: '', milestoneId: null, workstreamId: null, sequence: 1, dependsOnTaskIds: [], status: 'not_started', priority: 'medium', estimatedEffort: null, requiredResources: [], resourceRequirements: [] }],
     risks: [],
     decisions: [],
     outputs: [],
     successCriteria: [],
+    resources: [],
+    deadline: null,
+    criticalPath: [],
     contextEvidence: [],
     workspaceId: 'workspace-1',
     createdAt: new Date().toISOString(),
     validationIssues: [],
+    revisionOf: null,
+    revisionReason: null,
     budgetExhausted: false,
     generationFailed: false,
     declineReason: null,
@@ -48,7 +55,7 @@ describe('adaptPlanForActionContext', () => {
   it('does not mutate or reference the original Plan object after mapping', () => {
     const plan = basePlan()
     const context = adaptPlanForActionContext(plan)
-    plan.tasks.push({ id: 't2', title: 'A later task', description: '', milestoneId: null, sequence: 2, dependsOnTaskIds: [], status: 'not_started', priority: 'medium', estimatedEffort: null, requiredResources: [] })
+    plan.tasks.push({ id: 't2', title: 'A later task', description: '', milestoneId: null, workstreamId: null, sequence: 2, dependsOnTaskIds: [], status: 'not_started', priority: 'medium', estimatedEffort: null, requiredResources: [], resourceRequirements: [] })
     expect(context.relevantTasks).toEqual(['Draft outreach email'])
   })
 })
