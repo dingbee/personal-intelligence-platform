@@ -4,6 +4,7 @@ import { useProfile } from '@/modules/settings/hooks/useProfile'
 import { appConfig } from '@/app/appConfig'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { Button } from '@/shared/components/ui/Button'
+import { ArriyiaLogo } from '@/shared/components/branding/ArriyiaLogo'
 
 /**
  * First-Login Welcome Experience — shown exactly once, gated by
@@ -11,7 +12,7 @@ import { Button } from '@/shared/components/ui/Button'
  * 0079_onboarding_state.sql). Deliberately a single page, not a multi-step
  * wizard framework: the "guided orientation" and "progress" requirements
  * are both satisfied as static content on this one scrollable page rather
- * than as separate routes/steps a user could get stuck on — there is
+ * than as separate routes/steps a user could get stuck in — there is
  * nothing to "get stuck in" here by construction.
  *
  * Every primary action both marks onboarding complete AND navigates
@@ -54,7 +55,10 @@ export function WelcomePage() {
   return (
     <div className="min-h-screen min-h-dvh bg-[var(--color-canvas)]">
       <header className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-4 md:px-8">
-        <span className="text-sm font-semibold tracking-tight text-[var(--color-ink)]">{appConfig.productName}</span>
+        <div className="flex items-center gap-2">
+          <ArriyiaLogo className="h-8 w-8 rounded-lg" />
+          <span className="text-sm font-semibold tracking-tight text-[var(--color-ink)]">{appConfig.productName}</span>
+        </div>
         <Button variant="ghost" onClick={() => finish('/')}>
           Skip for now
         </Button>
