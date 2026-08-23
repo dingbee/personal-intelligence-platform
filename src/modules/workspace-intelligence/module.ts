@@ -1,21 +1,8 @@
 import { registerPlatformModule } from '@/modules/core/modules/registerPlatformModule'
 
-/**
- * ARRIYIA Professional Intelligence Phase P1 — Advanced AI Workspace.
- * Registers the first real Pro Intelligence capability: a workspace-wide
- * status briefing, synthesized from the same deterministic state the
- * Hub page already computes and shows (buildWorkspaceHubState) plus the
- * workspace's own objectives — no new retrieval, no second interpretation
- * of the same facts.
- *
- * requiredFeature: 'pro_intelligence' is the only plan boundary (see
- * runCapability.ts, Phase P0) — Free is denied here, Pro and Founding
- * Pro are admitted identically through the same has_feature resolution,
- * no plan-code branching anywhere in this module.
- *
- * Imported once, for its side effect, from app/App.tsx alongside
- * coreModule/knowledge-intelligence's module.ts.
- */
+/** UX-14.4 — Workspace Intelligence. Objective assistance is advisory only:
+ * it may assess progress from recorded workspace evidence, but it never
+ * changes objective state or executes an action without the user. */
 registerPlatformModule({
   id: 'workspace-intelligence',
   name: 'Workspace Intelligence',
@@ -24,6 +11,12 @@ registerPlatformModule({
       id: 'workspace-briefing',
       label: 'Workspace Briefing',
       description: "Synthesize a workspace's objectives, recent activity, and open gaps into a structured status briefing.",
+      requiredFeature: 'pro_intelligence',
+    },
+    {
+      id: 'workspace-objective-review',
+      label: 'Workspace Objective Review',
+      description: 'Assess active workspace objectives against recorded activity, established knowledge, gaps, and recommendations.',
       requiredFeature: 'pro_intelligence',
     },
   ],
@@ -43,6 +36,21 @@ registerPlatformModule({
         'Objectives:\n{{objectives}}\n\nRecent activity:\n{{recentActivity}}\n\n' +
         'Established (knowledge maturity and active concepts):\n{{established}}\n\n' +
         'Unresolved (open knowledge gaps):\n{{unresolved}}\n\nRecommended next steps:\n{{recommendedNext}}',
+    },
+    {
+      id: 'workspace-objective-review@1.0',
+      capabilityId: 'workspace-objective-review',
+      version: '1.0',
+      active: true,
+      template:
+        'Review the active objectives for "{{workspaceName}}" using only the supplied workspace evidence. ' +
+        'For each active objective, state: current evidence of progress, relevant unresolved gaps, and the most ' +
+        'useful next step. Distinguish evidence from inference. Never claim an objective is complete unless it is ' +
+        'explicitly recorded as completed. Do not change objective status, invent deadlines, invent activity, or ' +
+        'create actions. If there is insufficient evidence, say that clearly. Keep the review concise and practical.\n\n' +
+        'Active objectives:\n{{activeObjectives}}\n\nCompleted objectives:\n{{completedObjectives}}\n\n' +
+        'Recent activity:\n{{recentActivity}}\n\nEstablished knowledge:\n{{established}}\n\n' +
+        'Unresolved gaps:\n{{unresolved}}\n\nRecommended next steps:\n{{recommendedNext}}',
     },
   ],
 })
