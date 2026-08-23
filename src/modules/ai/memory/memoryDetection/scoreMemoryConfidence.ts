@@ -39,3 +39,10 @@ export function confidenceLabel(confidence: number): ConfidenceLabel {
   if (confidence >= 0.5) return 'Medium'
   return 'Low'
 }
+
+/** UX-14.2 — shared with MemoryCard's own confidence indicator, so the same score always reads as the same color/label everywhere it's shown, never a raw number. */
+export const CONFIDENCE_LABEL_VARIANT: Record<ConfidenceLabel, 'success' | 'info' | 'neutral'> = {
+  High: 'success',
+  Medium: 'info',
+  Low: 'neutral',
+}

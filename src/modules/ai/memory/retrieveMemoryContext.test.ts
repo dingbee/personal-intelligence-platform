@@ -20,6 +20,8 @@ function makeMemory(overrides: Partial<AiMemory> = {}): AiMemory {
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     confidence: null,
+    reinforcement_count: 0,
+    last_reinforced_at: null,
     ...overrides,
   }
 }
@@ -67,6 +69,13 @@ describe('retrieveMemoryContext', () => {
     listMemoriesMock.mockResolvedValueOnce([])
     await retrieveMemoryContext({ userId: 'user-1', workspaceId: 'workspace-1', text: 'hello' })
     expect(listMemoriesMock).toHaveBeenCalledWith({ workspaceId: 'workspace-1', limit: 200 })
+  })
+
+  it('UX-14.2: a disabled memory never returns — the fetch never requests includeInactive, so listMemories\' active-only default excludes it before ranking/decay even runs', async () => {
+    listMemoriesMock.mockResolvedValueOnce([])
+    await retrieveMemoryContext({ userId: 'user-1', workspaceId: null, text: 'hello' })
+    const callArgs = listMemoriesMock.mock.calls[0]![0]
+    expect(callArgs).not.toHaveProperty('includeInactive')
   })
 
   it('never throws — a listMemories failure returns null, same never-throws contract as retrieveGraphContext', async () => {

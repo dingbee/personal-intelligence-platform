@@ -508,6 +508,10 @@ export type AiMemory = {
   updated_at: string
   /** UX-14.3 — 0..1, from scoreMemoryConfidence at approval time. Null for every row created before this column existed, and for manually-authored memories/profile fields, which aren't inferences and have no natural confidence value. */
   confidence: number | null
+  /** UX-14.2 Memory Evolution — how many times a confirmed repeat has reinforced this row instead of creating a duplicate. 0 for every memory that has never been reinforced (the default for every row, including every one that existed before this column). */
+  reinforcement_count: number
+  /** UX-14.2 Memory Evolution — when this row was last reinforced. Null until the first reinforcement; used as computeEffectiveConfidence's decay reference in preference to updated_at once set. */
+  last_reinforced_at: string | null
 }
 
 export type ProviderOverride = {

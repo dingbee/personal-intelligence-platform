@@ -1,16 +1,10 @@
 import { useState } from 'react'
 import type { MemoryCandidate } from '@/modules/ai/memory/memoryDetection/types'
-import { confidenceLabel, type ConfidenceLabel } from '@/modules/ai/memory/memoryDetection/scoreMemoryConfidence'
+import { CONFIDENCE_LABEL_VARIANT, confidenceLabel } from '@/modules/ai/memory/memoryDetection/scoreMemoryConfidence'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
 import { Button } from '@/shared/components/ui/Button'
 import { ConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
-
-const CONFIDENCE_VARIANT: Record<ConfidenceLabel, 'success' | 'info' | 'neutral'> = {
-  High: 'success',
-  Medium: 'info',
-  Low: 'neutral',
-}
 
 function MemoryCandidateCard({
   candidate,
@@ -26,7 +20,7 @@ function MemoryCandidateCard({
 
   return (
     <SurfaceCard className="flex flex-col gap-3">
-      <StatusBadge label={`Confidence: ${label}`} variant={CONFIDENCE_VARIANT[label]} />
+      <StatusBadge label={`Confidence: ${label}`} variant={CONFIDENCE_LABEL_VARIANT[label]} />
       <p className="text-sm text-[var(--color-ink)]">{candidate.content}</p>
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={() => onDismiss(candidate)}>
