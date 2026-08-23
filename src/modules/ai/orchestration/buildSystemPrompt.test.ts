@@ -59,6 +59,11 @@ describe('buildSystemPrompt', () => {
     expect(result).toContain('trust the one listed first')
   })
 
+  it('UX-14.2: tells the model an explicit user statement outranks an inferred learned preference or conversation memory on conflict', () => {
+    const result = buildSystemPrompt([], null, '## What ARRIYIA knows about you\n- User lives in Arusha')
+    expect(result).toContain('an explicit statement from the user always outranks an inferred learned preference')
+  })
+
   it('produces no <personal_context> block when memoryContext is null, undefined, or empty', () => {
     expect(buildSystemPrompt([], null, null)).not.toContain('<personal_context>')
     expect(buildSystemPrompt([])).not.toContain('<personal_context>')

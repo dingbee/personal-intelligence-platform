@@ -93,3 +93,28 @@ export async function deleteAllMemories(workspaceId: string | null): Promise<voi
   const { error } = await query
   if (error) throw error
 }
+
+/**
+ * UX-14.2 Memory Evolution (Reinforcement) — a confirmed repeat, never a
+ * content edit: only confidence/reinforcement_count/last_reinforced_at
+ * change. `content`, `source`, `user_id`, `workspace_id`, and `created_at`
+ * are left completely untouched, so the memory's original provenance and
+ * ownership survive every reinforcement unchanged. A dedicated function
+ * rather than a call through updateMemory (whose typed shape deliberately
+ * only covers content/source/confidence) — same "one small function per
+ * distinct operation" precedent as setMemoryActive alongside updateMemory.
+ */
+export async function reinforceMemory(id: string, params: { newConfidence: number; newReinforcementCount: number }): Promise<AiMemory> {
+  const { data, error } = await supabase
+    .from('ai_memory')
+    .update({
+      confidence: params.newConfidence,
+      reinforcement_count: params.newReinforcementCount,
+      last_reinforced_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}

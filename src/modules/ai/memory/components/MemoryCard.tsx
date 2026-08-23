@@ -4,6 +4,8 @@ import { useMemories } from '@/modules/ai/memory/hooks/useMemories'
 import { formatMemorySource } from '@/modules/ai/memory/formatMemorySource'
 import { MEMORY_TYPE_BADGE_VARIANT, MEMORY_TYPE_LABELS } from '@/modules/ai/memory/memoryTypeLabels'
 import { isMemoryUsedByPrompt } from '@/modules/ai/memory/memoryPromptUsage'
+import { computeEffectiveConfidence } from '@/modules/ai/memory/computeEffectiveConfidence'
+import { CONFIDENCE_LABEL_VARIANT, confidenceLabel } from '@/modules/ai/memory/memoryDetection/scoreMemoryConfidence'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { InsetPanel } from '@/shared/components/ui/surface/InsetPanel'
 import { StatusBadge } from '@/shared/components/ui/feedback/StatusBadge'
@@ -25,6 +27,12 @@ export function MemoryCard({ memory, allMemories }: { memory: AiMemory; allMemor
   const [editing, setEditing] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const usedByPrompt = isMemoryUsedByPrompt(memory, allMemories)
+  // UX-14.2 Memory Evolution — effective confidence, not the raw stored
+  // value: a compact High/Medium/Low badge (never a bare 0..1 number,
+  // per the brief's "not raw implementation scores"), left off entirely
+  // for a memory with no confidence at all (manually-authored/profile —
+  // never fabricated) rather than shown as some fake "unscored" state.
+  const effectiveConfidence = computeEffectiveConfidence(memory)
 
   return (
     <SurfaceCard className="flex flex-col gap-3">
@@ -34,6 +42,12 @@ export function MemoryCard({ memory, allMemories }: { memory: AiMemory; allMemor
             label={MEMORY_TYPE_LABELS[memory.memory_type]}
             variant={MEMORY_TYPE_BADGE_VARIANT[memory.memory_type]}
           />
+          {effectiveConfidence !== null && (
+            <StatusBadge
+              label={`Confidence: ${confidenceLabel(effectiveConfidence)}`}
+              variant={CONFIDENCE_LABEL_VARIANT[confidenceLabel(effectiveConfidence)]}
+            />
+          )}
           {usedByPrompt ? (
             <span
               title="ARRIYIA can draw on this memory when building a response — for conversation memories, only when it's relevant to what you're asking."
@@ -83,6 +97,13 @@ export function MemoryCard({ memory, allMemories }: { memory: AiMemory; allMemor
 
       <p className="text-xs text-[var(--color-ink-muted)]">
         {formatMemorySource(memory.source)} · Added {formatRelativeTime(memory.created_at)}
+        {memory.reinforcement_count > 0 && memory.last_reinforced_at && (
+          <>
+            {' '}
+            · Reinforced {memory.reinforcement_count} {memory.reinforcement_count === 1 ? 'time' : 'times'} · last{' '}
+            {formatRelativeTime(memory.last_reinforced_at)}
+          </>
+        )}
       </p>
 
       <ConfirmDialog

@@ -7,6 +7,7 @@ import {
   updateMemory,
   type MemoryFilters,
 } from '@/modules/ai/memory/api/memory'
+import { rememberMemoryCandidate } from '@/modules/ai/memory/rememberMemoryCandidate'
 import { useAuth } from '@/modules/auth/useAuth'
 import { useWorkspace } from '@/modules/workspaces/useWorkspace'
 import type { AiMemoryType } from '@/shared/types/database'
@@ -59,10 +60,19 @@ export function useMemories(filters: Omit<MemoryFilters, 'workspaceId'> = {}) {
    * re-deriving the same createMemory params. Carries candidate.confidence
    * through — the exact discard point UX-14.3 fixed — so every caller gets
    * that for free rather than needing to remember to pass it themselves.
+   *
+   * UX-14.2 Memory Evolution — now goes through rememberMemoryCandidate
+   * rather than calling createMemory directly, so a confirmed repeat
+   * reinforces the existing memory instead of piling up a duplicate row.
    */
+  const remember = useMutation({
+    mutationFn: (candidate: MemoryCandidate) => rememberMemoryCandidate(candidate, { userId: user!.id, workspaceId: currentWorkspaceId }),
+    onSuccess: invalidate,
+  })
+
   function rememberCandidate(candidate: MemoryCandidate) {
-    create.mutate({ memoryType: candidate.type, content: candidate.content, source: 'conversation', confidence: candidate.confidence })
+    remember.mutate(candidate)
   }
 
-  return { ...query, create, update, remove, setCategoryActive, rememberCandidate }
+  return { ...query, create, update, remove, setCategoryActive, remember, rememberCandidate }
 }
