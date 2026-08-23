@@ -1,9 +1,11 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
 import { hasMemoryNeedingReview } from '@/modules/intelligence/orchestrator/signalEngine'
 import { generateRecommendations, type Recommendation } from '@/modules/intelligence/recommendations/recommendationEngine'
 import { listMemories } from '@/modules/ai/memory/api/memory'
 import { listKnowledgeNodes } from '@/modules/knowledge-intelligence/api/knowledgeNodes'
+import { persistProactiveRecommendations } from '@/modules/notifications/api/proactiveRecommendations'
 
 /**
  * UX-15.3 Phase 4 — the one reusable entry point onto `generateRecommendations`
@@ -36,12 +38,23 @@ export function useWorkspaceRecommendations(limit = 3): Recommendation[] {
     enabled: Boolean(workspaceId),
   })
 
-  if (!workspaceId) return []
+  const recommendations = workspaceId
+    ? generateRecommendations({
+        scope: 'dashboard',
+        commandContext,
+        hasGraphContext: conceptCount > 0,
+        hasMemoryToReview: hasMemoryNeedingReview(memories),
+      }).slice(0, limit)
+    : []
 
-  return generateRecommendations({
-    scope: 'dashboard',
-    commandContext,
-    hasGraphContext: conceptCount > 0,
-    hasMemoryToReview: hasMemoryNeedingReview(memories),
-  }).slice(0, limit)
+  useEffect(() => {
+    if (!workspaceId || recommendations.length === 0) return
+    void persistProactiveRecommendations(recommendations, workspaceId).catch((error) => {
+      // Proactive delivery is additive: a notification write failure must
+      // never break or delay the existing recommendation surface.
+      console.error('persistProactiveRecommendations failed', error)
+    })
+  }, [workspaceId, recommendations])
+
+  return recommendations
 }
