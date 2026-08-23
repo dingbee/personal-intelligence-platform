@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { appConfig } from '@/app/appConfig'
 import { WorkspaceSwitcher } from '@/modules/workspaces/components/WorkspaceSwitcher'
 import { usePlatformAdmin } from '@/modules/admin/hooks/usePlatformAdmin'
+import { ArriyiaLogo } from '@/shared/components/branding/ArriyiaLogo'
 
 // UX-15.2 — Dashboard and Evolution dropped from top-level nav: their
 // content folds into Hub's "Explore Deeper" zone as contextual links
@@ -47,9 +48,12 @@ export function SidebarNav() {
 
   return (
     <>
-      <span className="mb-4 px-2 text-sm font-semibold tracking-tight text-[var(--color-ink)]">
-        {appConfig.productName}
-      </span>
+      <div className="mb-4 flex items-center gap-2 px-2">
+        <ArriyiaLogo className="h-8 w-8 shrink-0 rounded-lg" />
+        <span className="truncate text-sm font-semibold tracking-tight text-[var(--color-ink)]">
+          {appConfig.productName}
+        </span>
+      </div>
       <WorkspaceSwitcher />
       {items.map((item) => (
         <NavLink
