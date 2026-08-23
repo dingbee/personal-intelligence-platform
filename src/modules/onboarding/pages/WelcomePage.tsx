@@ -12,7 +12,7 @@ import { ArriyiaLogo } from '@/shared/components/branding/ArriyiaLogo'
  * 0079_onboarding_state.sql). Deliberately a single page, not a multi-step
  * wizard framework: the "guided orientation" and "progress" requirements
  * are both satisfied as static content on this one scrollable page rather
- * than as separate routes/steps a user could get stuck in — there is
+ * than as separate routes/steps a user could get stuck on — there is
  * nothing to "get stuck in" here by construction.
  *
  * Every primary action both marks onboarding complete AND navigates
