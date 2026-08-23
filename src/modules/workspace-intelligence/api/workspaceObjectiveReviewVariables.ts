@@ -5,8 +5,10 @@ export function buildWorkspaceObjectiveReviewVariables(
   workspaceName: string,
   objectives: WorkspaceObjective[],
   hub: WorkspaceHubState,
+  goals: string[] = [],
 ): {
   workspaceName: string
+  userGoals: string
   activeObjectives: string
   completedObjectives: string
   recentActivity: string
@@ -18,6 +20,7 @@ export function buildWorkspaceObjectiveReviewVariables(
   const done = objectives.filter((objective) => objective.status === 'done')
   const activeObjectives = active.length > 0 ? active.map((objective) => `- ${objective.content}`).join('\n') : 'None recorded.'
   const completedObjectives = done.length > 0 ? done.map((objective) => `- ${objective.content}`).join('\n') : 'None recorded.'
+  const userGoals = goals.length > 0 ? goals.map((goal) => `- ${goal}`).join('\n') : 'No explicit user goals recorded.'
   const recentActivityLines = [
     ...hub.recentNotes.map((note) => `- Note: ${note.title || 'Untitled note'}`),
     ...hub.activeConversations.map((conversation) => `- Conversation: ${conversation.title || 'Untitled conversation'}`),
@@ -32,5 +35,5 @@ export function buildWorkspaceObjectiveReviewVariables(
     ? hub.recommendations.slice(0, 5).map((recommendation) => `- ${recommendation.reason}`).join('\n')
     : 'No specific recommendation available yet.'
 
-  return { workspaceName, activeObjectives, completedObjectives, recentActivity, established, unresolved, recommendedNext }
+  return { workspaceName, userGoals, activeObjectives, completedObjectives, recentActivity, established, unresolved, recommendedNext }
 }
