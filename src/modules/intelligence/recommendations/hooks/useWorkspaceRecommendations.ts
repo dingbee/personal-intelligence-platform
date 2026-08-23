@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useCommandContext } from '@/modules/commands/hooks/useCommandContext'
 import { hasMemoryNeedingReview } from '@/modules/intelligence/orchestrator/signalEngine'
@@ -7,21 +7,6 @@ import { listMemories } from '@/modules/ai/memory/api/memory'
 import { listKnowledgeNodes } from '@/modules/knowledge-intelligence/api/knowledgeNodes'
 import { persistProactiveRecommendations } from '@/modules/notifications/api/proactiveRecommendations'
 
-/**
- * UX-15.3 Phase 4 — the one reusable entry point onto `generateRecommendations`
- * for any surface that isn't Hub or the Dashboard (which already compose
- * their own full fetch — see hubData.ts/dashboardInteraction.ts). Wraps
- * just the two small, workspace-scoped fetches `generateRecommendations`'s
- * `'dashboard'` scope actually needs (memories for `hasMemoryToReview`,
- * knowledge node count for `hasGraphContext`) instead of every caller
- * hand-rolling that gating logic itself — this is what makes Command
- * Palette/Export Center/Knowledge Explorer "consumers of one recommendation
- * service" rather than three more copies of the same fetch-and-gate logic.
- * `informationOrganizationScore` is intentionally omitted here (defaults to
- * 100, never triggering "organize your library") — these three surfaces
- * aren't page-level dashboards; that recommendation already lives on
- * Hub/Dashboard, which do the fuller fetch it needs.
- */
 export function useWorkspaceRecommendations(limit = 3): Recommendation[] {
   const commandContext = useCommandContext()
   const workspaceId = commandContext.workspaceId
@@ -38,14 +23,20 @@ export function useWorkspaceRecommendations(limit = 3): Recommendation[] {
     enabled: Boolean(workspaceId),
   })
 
-  const recommendations = workspaceId
-    ? generateRecommendations({
-        scope: 'dashboard',
-        commandContext,
-        hasGraphContext: conceptCount > 0,
-        hasMemoryToReview: hasMemoryNeedingReview(memories),
-      }).slice(0, limit)
-    : []
+  const recommendations = useMemo(
+    () =>
+      workspaceId
+        ? generateRecommendations({
+            scope: 'dashboard',
+            commandContext,
+            hasGraphContext: conceptCount > 0,
+            hasMemoryToReview: hasMemoryNeedingReview(memories),
+          }).slice(0, limit)
+        : [],
+    [workspaceId, commandContext, conceptCount, memories, limit],
+  )
+
+  const recommendationKey = recommendations.map((recommendation) => `${recommendation.command.id}:${recommendation.reason}`).join('|')
 
   useEffect(() => {
     if (!workspaceId || recommendations.length === 0) return
@@ -54,7 +45,7 @@ export function useWorkspaceRecommendations(limit = 3): Recommendation[] {
       // never break or delay the existing recommendation surface.
       console.error('persistProactiveRecommendations failed', error)
     })
-  }, [workspaceId, recommendations])
+  }, [workspaceId, recommendationKey])
 
   return recommendations
 }
