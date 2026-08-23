@@ -16,7 +16,7 @@ registerPlatformModule({
     {
       id: 'workspace-objective-review',
       label: 'Workspace Objective Review',
-      description: 'Assess active workspace objectives against recorded activity, established knowledge, gaps, and recommendations.',
+      description: 'Assess active workspace objectives against recorded activity, established knowledge, gaps, user goals, and recommendations.',
       requiredFeature: 'pro_intelligence',
     },
   ],
@@ -43,14 +43,14 @@ registerPlatformModule({
       version: '1.0',
       active: true,
       template:
-        'Review the active objectives for "{{workspaceName}}" using only the supplied workspace evidence. ' +
-        'For each active objective, state: current evidence of progress, relevant unresolved gaps, and the most ' +
-        'useful next step. Distinguish evidence from inference. Never claim an objective is complete unless it is ' +
-        'explicitly recorded as completed. Do not change objective status, invent deadlines, invent activity, or ' +
-        'create actions. If there is insufficient evidence, say that clearly. Keep the review concise and practical.\n\n' +
-        'Active objectives:\n{{activeObjectives}}\n\nCompleted objectives:\n{{completedObjectives}}\n\n' +
-        'Recent activity:\n{{recentActivity}}\n\nEstablished knowledge:\n{{established}}\n\n' +
-        'Unresolved gaps:\n{{unresolved}}\n\nRecommended next steps:\n{{recommendedNext}}',
+        'Review the active objectives for "{{workspaceName}}" using only the supplied workspace evidence and the user\'s explicit goals. ' +
+        'For each active objective, state: alignment with the user\'s goals when evidence exists, current evidence of progress, ' +
+        'relevant unresolved gaps, and the most useful next step. Distinguish evidence from inference. Never claim an objective is ' +
+        'complete unless it is explicitly recorded as completed. Do not change objective status, invent deadlines, invent activity, ' +
+        'or create actions. If there is insufficient evidence, say that clearly. Keep the review concise and practical.\n\n' +
+        'User goals:\n{{userGoals}}\n\nActive objectives:\n{{activeObjectives}}\n\nCompleted objectives:\n{{completedObjectives}}\n\n' +
+        'Recent activity:\n{{recentActivity}}\n\nEstablished knowledge:\n{{established}}\n\nUnresolved gaps:\n{{unresolved}}\n\n' +
+        'Recommended next steps:\n{{recommendedNext}}',
     },
   ],
 })
