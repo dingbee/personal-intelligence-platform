@@ -4,6 +4,7 @@ import { useProfile } from '@/modules/settings/hooks/useProfile'
 import { appConfig } from '@/app/appConfig'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
 import { Button } from '@/shared/components/ui/Button'
+import { ArriyiaLogo } from '@/shared/components/branding/ArriyiaLogo'
 
 /**
  * First-Login Welcome Experience — shown exactly once, gated by
@@ -54,7 +55,10 @@ export function WelcomePage() {
   return (
     <div className="min-h-screen min-h-dvh bg-[var(--color-canvas)]">
       <header className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-4 md:px-8">
-        <span className="text-sm font-semibold tracking-tight text-[var(--color-ink)]">{appConfig.productName}</span>
+        <div className="flex items-center gap-2">
+          <ArriyiaLogo className="h-8 w-8 rounded-lg" />
+          <span className="text-sm font-semibold tracking-tight text-[var(--color-ink)]">{appConfig.productName}</span>
+        </div>
         <Button variant="ghost" onClick={() => finish('/')}>
           Skip for now
         </Button>

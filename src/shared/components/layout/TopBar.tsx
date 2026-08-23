@@ -4,6 +4,7 @@ import { NotificationBell } from '@/modules/notifications/components/Notificatio
 import { WorkspacePresence } from '@/modules/workspaces/components/WorkspacePresence'
 import { ProfileMenu } from '@/shared/components/layout/ProfileMenu'
 import { PlanIdentityBadge } from '@/modules/plans/components/PlanIdentityBadge'
+import { ArriyiaLogo } from '@/shared/components/branding/ArriyiaLogo'
 
 /**
  * The personal header (Phase UX-3) — replaces the old email + Sign out row
@@ -31,6 +32,10 @@ export function TopBar({
         >
           <span aria-hidden>☰</span>
         </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <ArriyiaLogo className="h-8 w-8 rounded-lg" />
+          <span className="text-sm font-semibold tracking-tight text-[var(--color-ink)]">ARRIYIA</span>
+        </div>
         <button
           type="button"
           onClick={onOpenCommandBar}
