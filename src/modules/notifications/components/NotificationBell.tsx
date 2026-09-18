@@ -71,7 +71,8 @@ export function NotificationBell() {
 
   return (
     <DropdownMenu
-      panelClassName="w-80"
+      panelClassName="md:w-80"
+      responsiveOnMobile
       trigger={
         <span className="relative flex h-8 w-8 items-center justify-center rounded-full text-sm text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--surface-base)] hover:text-[var(--color-ink)]">
           <span aria-hidden>🔔</span>
