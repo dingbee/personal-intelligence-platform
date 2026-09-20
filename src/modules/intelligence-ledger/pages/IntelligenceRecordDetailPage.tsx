@@ -111,20 +111,6 @@ export function IntelligenceRecordDetailPage() {
             <dt className="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-muted)]">Type</dt>
             <dd className="mt-0.5 text-sm text-[var(--color-ink)]">{RECORD_TYPE_LABEL[record.recordType]}</dd>
           </div>
-          {record.providerId && (
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-muted)]">Provider</dt>
-              <dd className="mt-0.5 text-sm text-[var(--color-ink)]">{record.providerId}</dd>
-            </div>
-          )}
-          {record.operationId && (
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-muted)]">Operation ID</dt>
-              <dd className="mt-0.5 truncate text-sm text-[var(--color-ink)]" title={record.operationId}>
-                {record.operationId}
-              </dd>
-            </div>
-          )}
         </dl>
       </SurfaceCard>
 
