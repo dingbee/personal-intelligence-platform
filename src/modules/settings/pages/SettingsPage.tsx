@@ -7,6 +7,7 @@ import { ProfileCard } from '@/modules/settings/components/ProfileCard'
 import { ChangePasswordCard } from '@/modules/settings/components/ChangePasswordCard'
 import { DeleteAccountCard } from '@/modules/settings/components/DeleteAccountCard'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
+import { useTheme, type ThemePreference } from '@/shared/hooks/useTheme'
 
 export function SettingsPage() {
   const { user } = useAuth()
@@ -16,6 +17,7 @@ export function SettingsPage() {
   // comment). No plan code ever grants this link anymore.
   const { data: isAdmin } = usePlatformAdmin()
   const showAdvancedSettings = isAdmin
+  const { preference, setTheme } = useTheme()
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,6 +29,42 @@ export function SettingsPage() {
       <ProfileCard email={user?.email ?? ''} userId={user?.id ?? ''} profile={profile} loading={profileLoading} />
 
       <ChangePasswordCard />
+
+      <SurfaceCard className="max-w-md">
+        <div>
+          <h2 className="text-sm font-medium text-[var(--color-ink)]">Appearance</h2>
+          <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+            Choose how ARRIYIA should display. System follows your device preference automatically.
+          </p>
+        </div>
+        <div className="mt-5 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Appearance mode">
+          {([
+            ['system', 'System', 'Follow device'],
+            ['light', 'Light', 'Always light'],
+            ['dark', 'Dark', 'Always dark'],
+          ] as const).map(([value, label, description]) => {
+            const selected = preference === value
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => setTheme(value as ThemePreference)}
+                className={
+                  'rounded-xl border px-3 py-3 text-left transition-colors ' +
+                  (selected
+                    ? 'border-[var(--color-accent)] bg-[var(--color-canvas)] text-[var(--color-ink)]'
+                    : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-ink-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]')
+                }
+              >
+                <span className="block text-sm font-medium">{label}</span>
+                <span className="mt-1 block text-[10px] leading-4">{description}</span>
+              </button>
+            )
+          })}
+        </div>
+      </SurfaceCard>
 
       <BillingCard />
 
