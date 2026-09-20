@@ -3,6 +3,7 @@ import { appConfig } from '@/app/appConfig'
 import { WorkspaceSwitcher } from '@/modules/workspaces/components/WorkspaceSwitcher'
 import { usePlatformAdmin } from '@/modules/admin/hooks/usePlatformAdmin'
 import { ArriyiaLogo } from '@/shared/components/branding/ArriyiaLogo'
+import { useTheme } from '@/shared/hooks/useTheme'
 
 // UX-15.2 — Dashboard and Evolution dropped from top-level nav: their
 // content folds into Hub's "Explore Deeper" zone as contextual links
@@ -26,15 +27,37 @@ const navItems = [
   { to: '/learning', label: 'Learning' },
   { to: '/history', label: 'History' },
   { to: '/chat', label: 'Chat' },
-  // Phase 5C — the only reachable path to /pricing was previously typing
-  // the URL directly; nothing in primary nav, Settings, or anywhere else
-  // linked to it. This is the single, minimal nav entry point Task 10
-  // requires — not duplicated as a second "Upgrade" item, since the
-  // existing quota/collaboration-denial CTAs and BillingCard's "View
-  // plans" link already cover the in-context upgrade moments.
   { to: '/pricing', label: 'Pricing' },
   { to: '/settings', label: 'Settings' },
 ]
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme()
+  const isDark = theme === 'dark'
+
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={isDark ? 'Light mode' : 'Dark mode'}
+      className="mt-3 flex w-full items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--surface-raised)] px-3 py-2 text-sm font-medium text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]"
+    >
+      <span className="flex items-center gap-2">
+        <span aria-hidden="true" className="text-[var(--color-accent)]">
+          {isDark ? '☀' : '☾'}
+        </span>
+        <span>{isDark ? 'Light mode' : 'Dark mode'}</span>
+      </span>
+      <span
+        aria-hidden="true"
+        className="rounded-full border border-[var(--color-border)] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]"
+      >
+        {isDark ? 'On' : 'Off'}
+      </span>
+    </button>
+  )
+}
 
 /**
  * The actual nav content — one navItems array, one set of markup, shared by
@@ -70,6 +93,7 @@ export function SidebarNav() {
           {item.label}
         </NavLink>
       ))}
+      <ThemeToggle />
     </>
   )
 }
