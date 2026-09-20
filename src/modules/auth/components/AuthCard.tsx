@@ -22,26 +22,6 @@ const featureIcons = {
   ),
 } as const
 
-const featureIcons = {
-  Knowledge: (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
-      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20M8 7h8M8 10h6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  ),
-  Intelligence: (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
-      <circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M12 4.5V8M19.5 12H16M12 19.5V16M4.5 12H8M9.5 9.5 12 12l2.5-2.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  Action: (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
-      <path d="m13 3-8 11h6l-1 7 8-11h-6l1-7Z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
-  ),
-} as const
-
 export function AuthCard({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   const features = [
     ['Knowledge', 'Keep what matters organised and accessible.'],
