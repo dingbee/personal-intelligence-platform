@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { ArriyiaLogo } from '@/shared/components/branding/ArriyiaLogo'
+import { ThemeToggle } from '@/shared/components/theme/ThemeToggle'
 
 const featureIcons = {
   Knowledge: (
@@ -29,7 +30,11 @@ export function AuthCard({ title, subtitle, children }: { title: string; subtitl
   ] as const
 
   return (
-    <main className="min-h-screen min-h-dvh bg-[var(--color-canvas)] text-[var(--color-ink)]">
+    <main className="relative min-h-screen min-h-dvh bg-[var(--color-canvas)] text-[var(--color-ink)]">
+      <div className="absolute right-5 top-5 z-10 sm:right-7 sm:top-7">
+        <ThemeToggle />
+      </div>
+
       <div className="mx-auto grid min-h-screen min-h-dvh max-w-7xl lg:grid-cols-[1.05fr_0.95fr]">
         <section className="hidden flex-col justify-between px-10 py-10 lg:flex xl:px-16">
           <div className="max-w-xl pt-20">
