@@ -10,7 +10,7 @@ export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
 
   return (
-    <div role="group" aria-label="Appearance" className="flex h-9 w-full items-center rounded-full border border-[var(--color-border)] bg-[var(--surface-inset)] p-0.5">
+    <div data-testid="appearance-control" role="group" aria-label="Appearance" className="flex h-9 w-full items-center rounded-full border border-[var(--color-border)] bg-[var(--surface-inset)] p-0.5">
       {options.map((option) => {
         const active = theme === option.value
         return (
