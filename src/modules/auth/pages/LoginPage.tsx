@@ -28,7 +28,7 @@ export function LoginPage() {
   }
 
   return (
-    <AuthCard title="Welcome back" subtitle="Log in to your knowledge base">
+    <AuthCard title="Welcome back" subtitle="Sign in to your ARRIYIA workspace">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
           label="Email"
@@ -52,14 +52,14 @@ export function LoginPage() {
           </p>
         )}
         <Button type="submit" loading={submitting} className="mt-2 w-full">
-          Log in
+          Sign in
         </Button>
       </form>
-      <div className="mt-4 flex justify-between text-sm">
+      <div className="mt-5 flex items-center justify-between gap-4 text-sm">
         <Link to="/forgot-password" className="text-[var(--color-accent)] hover:underline">
           Forgot password?
         </Link>
-        <Link to="/signup" className="text-[var(--color-accent)] hover:underline">
+        <Link to="/signup" className="font-medium text-[var(--color-accent)] hover:underline">
           Create account
         </Link>
       </div>
