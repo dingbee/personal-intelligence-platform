@@ -37,7 +37,7 @@ export function SidebarNav() {
 
   return (
     <>
-      <div className="mb-4 flex items-center gap-2 px-2">
+      <div className="sticky top-0 z-10 mb-4 flex items-center gap-2 rounded-lg bg-[var(--surface-raised)] px-2 py-1">
         <ArriyiaLogo className="h-8 w-8 shrink-0 rounded-lg" />
         <span className="truncate text-sm font-semibold tracking-tight text-[var(--color-ink)]">
           {appConfig.productName}
@@ -72,7 +72,7 @@ export function Sidebar() {
   return (
     <nav
       aria-label="Primary"
-      className="hidden h-full w-56 shrink-0 flex-col gap-1 border-r border-[var(--color-border)] bg-[var(--surface-raised)] p-4 md:flex"
+      className="hidden h-full w-56 shrink-0 flex-col gap-1 overflow-y-auto border-r border-[var(--color-border)] bg-[var(--surface-raised)] p-4 md:flex"
     >
       <SidebarNav />
     </nav>
