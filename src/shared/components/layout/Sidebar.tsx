@@ -3,6 +3,7 @@ import { appConfig } from '@/app/appConfig'
 import { WorkspaceSwitcher } from '@/modules/workspaces/components/WorkspaceSwitcher'
 import { usePlatformAdmin } from '@/modules/admin/hooks/usePlatformAdmin'
 import { ArriyiaLogo } from '@/shared/components/branding/ArriyiaLogo'
+import { ThemeToggle } from '@/shared/components/theme/ThemeToggle'
 
 // UX-15.2 — Dashboard and Evolution dropped from top-level nav: their
 // content folds into Hub's "Explore Deeper" zone as contextual links
@@ -26,22 +27,10 @@ const navItems = [
   { to: '/learning', label: 'Learning' },
   { to: '/history', label: 'History' },
   { to: '/chat', label: 'Chat' },
-  // Phase 5C — the only reachable path to /pricing was previously typing
-  // the URL directly; nothing in primary nav, Settings, or anywhere else
-  // linked to it. This is the single, minimal nav entry point Task 10
-  // requires — not duplicated as a second "Upgrade" item, since the
-  // existing quota/collaboration-denial CTAs and BillingCard's "View
-  // plans" link already cover the in-context upgrade moments.
   { to: '/pricing', label: 'Pricing' },
   { to: '/settings', label: 'Settings' },
 ]
 
-/**
- * The actual nav content — one navItems array, one set of markup, shared by
- * the persistent desktop Sidebar below and MobileNavDrawer. Neither wraps
- * this in its own <nav>; each supplies the surrounding chrome (fixed column
- * vs. dialog-drawer) appropriate to where it renders.
- */
 export function SidebarNav() {
   const { data: isAdmin } = usePlatformAdmin()
   const items = isAdmin ? [...navItems, { to: '/admin', label: 'Admin' }] : navItems
@@ -55,6 +44,10 @@ export function SidebarNav() {
         </span>
       </div>
       <WorkspaceSwitcher />
+      <div className="mb-3 mt-2 rounded-xl border border-[var(--color-border)] bg-[var(--surface-inset)] p-2">
+        <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">Appearance</p>
+        <ThemeToggle />
+      </div>
       {items.map((item) => (
         <NavLink
           key={item.to}
