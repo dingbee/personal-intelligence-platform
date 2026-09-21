@@ -119,8 +119,8 @@
  * their brighter 300–400-equivalent shades (standard dark-UI practice —
  * saturated 600-shades read as muddy/low-contrast on a dark surface).
  */
-@media (prefers-color-scheme: dark) {\n  :root:not([data-theme]) {
-  :root {
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
     --color-canvas: #1c1917;
     --color-surface: #292524;
     /* stone-500, not stone-700 (the naive "one step darker than canvas"
