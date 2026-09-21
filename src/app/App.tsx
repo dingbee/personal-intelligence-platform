@@ -30,7 +30,8 @@ export function App() {
   }, [])
 
   return (
-    <ThemeProvider>\n      <AppErrorBoundary>
+    <ThemeProvider>
+      <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <WorkspaceProvider>
