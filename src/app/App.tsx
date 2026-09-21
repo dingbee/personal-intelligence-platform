@@ -6,7 +6,7 @@ import { WorkspaceProvider } from '@/modules/workspaces/context/WorkspaceProvide
 import { queryClient } from '@/shared/lib/queryClient'
 import { router } from '@/app/router'
 import { appConfig } from '@/app/appConfig'
-import { AppErrorBoundary } from '@/shared/components/errors/AppErrorBoundary'
+import { AppErrorBoundary } from '@/shared/components/errors/AppErrorBoundary'\nimport { ThemeProvider } from '@/shared/components/theme/ThemeProvider'
 // Side-effect imports: register built-in platform/search providers before
 // anything tries to read from those registries. See modules/core/README.md.
 import '@/modules/core/modules/coreModule'
@@ -30,7 +30,7 @@ export function App() {
   }, [])
 
   return (
-    <AppErrorBoundary>
+    <ThemeProvider>\n      <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <WorkspaceProvider>
