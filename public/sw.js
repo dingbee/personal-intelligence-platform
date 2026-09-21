@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arriyia-shell-v1'
+const CACHE_NAME = 'arriyia-shell-v2'
 
 self.addEventListener('install', () => {
   self.skipWaiting()
