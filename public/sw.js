@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arriyia-shell-v4'
+const CACHE_NAME = 'arriyia-shell-v5'
 
 self.addEventListener('install', () => {
   self.skipWaiting()
@@ -20,10 +20,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
 
-  // Never cache authenticated/API data, Supabase traffic, or document bytes.
   if (url.pathname.startsWith('/rest/') || url.pathname.startsWith('/auth/') || url.pathname.startsWith('/storage/') || url.pathname.startsWith('/functions/')) return
 
-  // Navigation: prefer the live deployment, fall back to the cached app shell offline.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -39,8 +37,6 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Static same-origin assets: network first, then cache. This preserves fresh deployments
-  // while allowing an already-installed app shell to reopen without network access.
   if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/') || url.pathname === '/arriyia-logo.svg' || url.pathname === '/manifest.webmanifest') {
     event.respondWith(
       fetch(request)
