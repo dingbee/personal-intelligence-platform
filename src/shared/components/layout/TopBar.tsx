@@ -6,7 +6,6 @@ import { ProfileMenu } from '@/shared/components/layout/ProfileMenu'
 import { PlanIdentityBadge } from '@/modules/plans/components/PlanIdentityBadge'
 import { ArriyiaLogo } from '@/shared/components/branding/ArriyiaLogo'
 import { PwaInstallButton } from '@/shared/components/pwa/PwaInstallButton'
-import { ThemeToggle } from '@/shared/components/theme/ThemeToggle'
 
 /**
  * The personal header (Phase UX-3) — replaces the old email + Sign out row
@@ -51,7 +50,6 @@ export function TopBar({
         </button>
         <div className="ml-auto flex items-center gap-1 md:ml-1">
           <PwaInstallButton />
-          <ThemeToggle />
           <button
             type="button"
             onClick={onOpenCommandBar}
