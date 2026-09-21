@@ -1,26 +1,33 @@
-import { useTheme } from '@/shared/components/theme/ThemeProvider'
+import { useTheme, type ThemePreference } from '@/shared/components/theme/ThemeProvider'
 
-const meta = {
-  system: { label: 'System', icon: '◐' },
-  light: { label: 'Light', icon: '☼' },
-  dark: { label: 'Dark', icon: '◐' },
-} as const
+const options: Array<{ value: ThemePreference; label: string; icon: string }> = [
+  { value: 'system', label: 'System', icon: '◐' },
+  { value: 'light', label: 'Light', icon: '☼' },
+  { value: 'dark', label: 'Dark', icon: '◐' },
+]
 
 export function ThemeToggle() {
-  const { theme, cycleTheme } = useTheme()
-  const current = meta[theme]
-  const next = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system'
+  const { theme, setTheme } = useTheme()
 
   return (
-    <button
-      type="button"
-      onClick={cycleTheme}
-      aria-label={`Theme: ${current.label}. Switch to ${meta[next].label}`}
-      title={`Theme: ${current.label} · switch to ${meta[next].label}`}
-      className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--surface-raised)] px-3 text-xs font-medium text-[var(--color-ink-muted)] shadow-sm transition-colors hover:bg-[var(--surface-base)] hover:text-[var(--color-ink)]"
-    >
-      <span className="text-sm leading-none" aria-hidden="true">{current.icon}</span>
-      <span>{current.label}</span>
-    </button>
+    <div role="group" aria-label="Theme" className="inline-flex h-9 items-center rounded-full border border-[var(--color-border)] bg-[var(--surface-inset)] p-0.5 shadow-inset">
+      {options.map((option) => {
+        const active = theme === option.value
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setTheme(option.value)}
+            aria-pressed={active}
+            aria-label={`${option.label} theme`}
+            title={`${option.label} theme`}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors ${active ? 'bg-[var(--surface-raised)] text-[var(--color-ink)] shadow-sm' : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'}`}
+          >
+            <span aria-hidden="true">{option.icon}</span>
+            <span className="hidden xl:inline">{option.label}</span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
