@@ -34,11 +34,11 @@ export function App() {
     <ThemeProvider>
       <AppErrorBoundary>
         <QueryClientProvider client={queryClient}>
-        <AuthProvider>
+          <AuthProvider>
           <WorkspaceProvider>
             <RouterProvider router={router} />
           </WorkspaceProvider>
-        </AuthProvider>
+          </AuthProvider>
         </QueryClientProvider>
       </AppErrorBoundary>
     </ThemeProvider>
