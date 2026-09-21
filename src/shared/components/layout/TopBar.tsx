@@ -5,7 +5,7 @@ import { WorkspacePresence } from '@/modules/workspaces/components/WorkspacePres
 import { ProfileMenu } from '@/shared/components/layout/ProfileMenu'
 import { PlanIdentityBadge } from '@/modules/plans/components/PlanIdentityBadge'
 import { ArriyiaLogo } from '@/shared/components/branding/ArriyiaLogo'
-import { PwaInstallButton } from '@/shared/components/pwa/PwaInstallButton'
+import { PwaInstallButton } from '@/shared/components/pwa/PwaInstallButton'\nimport { ThemeToggle } from '@/shared/components/theme/ThemeToggle'
 
 /**
  * The personal header (Phase UX-3) — replaces the old email + Sign out row
@@ -49,7 +49,7 @@ export function TopBar({
           </kbd>
         </button>
         <div className="ml-auto flex items-center gap-1 md:ml-1">
-          <PwaInstallButton />
+          <PwaInstallButton />\n          <ThemeToggle />
           <button
             type="button"
             onClick={onOpenCommandBar}
