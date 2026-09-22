@@ -7,7 +7,7 @@ import { ProfileCard } from '@/modules/settings/components/ProfileCard'
 import { ChangePasswordCard } from '@/modules/settings/components/ChangePasswordCard'
 import { DeleteAccountCard } from '@/modules/settings/components/DeleteAccountCard'
 import { SurfaceCard } from '@/shared/components/ui/surface/SurfaceCard'
-import { useTheme, type ThemePreference } from '@/shared/hooks/useTheme'
+import { useTheme, type ThemePreference } from '@/shared/components/theme/ThemeProvider'
 
 export function SettingsPage() {
   const { user } = useAuth()
@@ -17,7 +17,7 @@ export function SettingsPage() {
   // comment). No plan code ever grants this link anymore.
   const { data: isAdmin } = usePlatformAdmin()
   const showAdvancedSettings = isAdmin
-  const { preference, setTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,7 +43,7 @@ export function SettingsPage() {
             ['light', 'Light', 'Always light'],
             ['dark', 'Dark', 'Always dark'],
           ] as const).map(([value, label, description]) => {
-            const selected = preference === value
+            const selected = theme === value
             return (
               <button
                 key={value}
