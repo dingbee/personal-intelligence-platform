@@ -30,8 +30,6 @@ export function AuthCard({ title, subtitle, children }: { title: string; subtitl
   ] as const
 
   return (
-    {/* RECON-MARKER[AuthCard.shell]: kept main's post-rebase ThemeToggle wiring (already-deployed
-        theme system) and layered PR30's feature-icon-box layout + logo sizing on top. Not deployed. */}
     <main className="relative min-h-screen min-h-dvh bg-[var(--color-canvas)] text-[var(--color-ink)]">
       <div className="absolute right-5 top-5 z-10 sm:right-7 sm:top-7">
         <ThemeToggle />
