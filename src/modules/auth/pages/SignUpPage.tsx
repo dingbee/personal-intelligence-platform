@@ -24,12 +24,13 @@ import { Button } from '@/shared/components/ui/Button'
  * applies).
  */
 export function SignUpPage() {
-  const { signUpWithPassword } = useAuth()
+  const { signUpWithPassword, signInWithGoogle } = useAuth()
   const [searchParams] = useSearchParams()
   const [email, setEmail] = useState(() => searchParams.get('email') ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [googleSubmitting, setGoogleSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
   async function handleSubmit(event: FormEvent) {
@@ -43,6 +44,16 @@ export function SignUpPage() {
       setSubmitted(true)
     }
     setSubmitting(false)
+  }
+
+  async function handleGoogleSignUp() {
+    setGoogleSubmitting(true)
+    setError(null)
+    const { error } = await signInWithGoogle()
+    if (error) {
+      setError(error)
+      setGoogleSubmitting(false)
+    }
   }
 
   if (submitted) {
@@ -61,33 +72,52 @@ export function SignUpPage() {
 
   return (
     <AuthCard title="Create your account" subtitle="Free to start — no invitation required.">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <Input
-          label="Email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Input
-          label="Password"
-          type="password"
-          autoComplete="new-password"
-          minLength={8}
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error && (
-          <p role="alert" className="text-sm text-[var(--color-danger)]">
-            {error}
-          </p>
-        )}
-        <Button type="submit" loading={submitting} className="mt-2 w-full">
-          Sign up
+      <div className="flex flex-col gap-4">
+        <Button
+          type="button"
+          variant="secondary"
+          loading={googleSubmitting}
+          disabled={submitting}
+          onClick={handleGoogleSignUp}
+          className="w-full"
+        >
+          Continue with Google
         </Button>
-      </form>
+
+        <div className="flex items-center gap-3 text-xs text-[var(--color-ink-muted)]">
+          <span className="h-px flex-1 bg-[var(--color-border)]" />
+          <span>or</span>
+          <span className="h-px flex-1 bg-[var(--color-border)]" />
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <Input
+            label="Email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Input
+            label="Password"
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {error && (
+            <p role="alert" className="text-sm text-[var(--color-danger)]">
+              {error}
+            </p>
+          )}
+          <Button type="submit" loading={submitting} disabled={googleSubmitting} className="mt-2 w-full">
+            Sign up
+          </Button>
+        </form>
+      </div>
       <p className="mt-4 text-sm text-[var(--color-ink-muted)]">
         Already have an account?{' '}
         <Link to="/login" className="text-[var(--color-accent)] hover:underline">

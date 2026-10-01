@@ -16,8 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      # Supabase URL and publishable key are intentionally public client configuration.
+      # Keep CI self-contained; secrets are not required for the browser test suite.
+      VITE_SUPABASE_URL: https://uzshazetfkjkrdnxwjtl.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_-sHXfUg6uahuVY_m1jJJMA_qKGYpD1j
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,6 +45,21 @@ jobs:
       - name: Production build
         run: npm run build
 
+      - name: Google Auth configuration smoke test
+        run: |
+          settings="$(curl -fsS \
+            -H "apikey: $VITE_SUPABASE_ANON_KEY" \
+            "https://uzshazetfkjkrdnxwjtl.supabase.co/auth/v1/settings")"
+          echo "$settings"
+          echo "$settings" | grep -q '"google":true'
+          curl -fsS -D /tmp/google-auth-headers -o /dev/null \
+            -H "apikey: $VITE_SUPABASE_ANON_KEY" \
+            --get \
+            --data-urlencode "provider=google" \
+            --data-urlencode "redirect_to=https://arriyia.nolmark.co" \
+            "https://uzshazetfkjkrdnxwjtl.supabase.co/auth/v1/authorize"
+          grep -qi '^location: https://accounts.google.com/' /tmp/google-auth-headers
+
       - name: Bundle verification
         run: npm run verify:bundle
 
@@ -52,8 +69,10 @@ jobs:
     timeout-minutes: 15
     continue-on-error: true
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      # Supabase URL and publishable key are intentionally public client configuration.
+      # Keep CI self-contained; secrets are not required for the browser test suite.
+      VITE_SUPABASE_URL: https://uzshazetfkjkrdnxwjtl.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_-sHXfUg6uahuVY_m1jJJMA_qKGYpD1j
     steps:
       - name: Checkout
         uses: actions/checkout@v4

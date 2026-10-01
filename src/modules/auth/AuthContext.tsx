@@ -14,7 +14,11 @@ import { AuthContext, type AuthContextValue } from '@/modules/auth/context'
 // constant) so it stays correct if the env value is ever unavailable at
 // module-evaluation time.
 function canonicalSiteUrl(): string {
-  return import.meta.env.VITE_SITE_URL?.replace(/\/$/, '') || window.location.origin
+  const configured = import.meta.env.VITE_SITE_URL?.replace(/\/$/, '')
+  // app.nolmark.co is a legacy redirect host. Never use it as an OAuth/email
+  // destination because its 307 to arriyia.nolmark.co can discard URL fragments.
+  if (configured === 'https://app.nolmark.co') return 'https://arriyia.nolmark.co'
+  return configured || window.location.origin
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -49,39 +53,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       loading,
       passwordRecovery,
+      async signInWithGoogle() {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: canonicalSiteUrl(),
+          },
+        })
+        return { error: error?.message ?? null }
+      },
       async signUpWithPassword(email, password) {
-  // V1 Free Access — open registration. No pre-check gates this call:
-  // enforce_signup_authorization (0071_free_access_and_collaboration.sql)
-  // no longer rejects an account for lacking an invitation, so there is
-  // nothing left to pre-check before attempting signUp() — a client-only
-  // gate here would just be dead weight (and, if it ever drifted from
-  // the database's own behavior, a bug). Supabase Auth's own
-  // email-confirmation requirement is untouched and is the real
-  // remaining step before the account is usable.
-  //
-  // ARRIYIA Product Completion Phase 2 — previously called with no
-  // options at all, so the confirmation email's redirect fell back
-  // entirely to Supabase's dashboard-configured Site URL rather than
-  // this app's own canonical-domain logic. Same helper and same
-  // reasoning as sendPasswordReset below (Phase 5.2): pin it to
-  // VITE_SITE_URL when configured instead of leaving it to whichever
-  // domain happens to be set server-side.
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { emailRedirectTo: canonicalSiteUrl() },
-  })
+        // V1 Free Access — open registration. No pre-check gates this call:
+        // enforce_signup_authorization (0071_free_access_and_collaboration.sql)
+        // no longer rejects an account for lacking an invitation, so there is
+        // nothing left to pre-check before attempting signUp() — a client-only
+        // gate here would just be dead weight (and, if it ever drifted from
+        // the database's own behavior, a bug). Supabase Auth's own
+        // email-confirmation requirement is untouched and is the real
+        // remaining step before the account is usable.
+        //
+        // ARRIYIA Product Completion Phase 2 — previously called with no
+        // options at all, so the confirmation email's redirect fell back
+        // entirely to Supabase's dashboard-configured Site URL rather than
+        // this app's own canonical-domain logic. Same helper and same
+        // reasoning as sendPasswordReset below (Phase 5.2): pin it to
+        // VITE_SITE_URL when configured instead of leaving it to whichever
+        // domain happens to be set server-side.
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: canonicalSiteUrl() },
+        })
 
-  return { error: error?.message ?? null }
-},
+        return { error: error?.message ?? null }
+      },
       async signInWithPassword(email, password) {
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
 
-  return { error: error?.message ?? null }
-},
+        return { error: error?.message ?? null }
+      },
       async signInWithMagicLink(email) {
         // ARRIYIA Product Completion Phase 2 — same canonical-domain fix as
         // sendPasswordReset (Phase 5.2): window.location.origin alone
