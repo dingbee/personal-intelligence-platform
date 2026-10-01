@@ -14,6 +14,7 @@ export interface AuthContextValue {
    * but only the former is a genuine recovery flow.
    */
   passwordRecovery: boolean
+  signInWithGoogle: () => Promise<{ error: string | null }>
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
   /**
    * V1 Free Access — open registration. No pre-check gates this call
