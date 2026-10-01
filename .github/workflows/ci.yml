@@ -45,6 +45,21 @@ jobs:
       - name: Production build
         run: npm run build
 
+      - name: Google Auth configuration smoke test
+        run: |
+          settings="$(curl -fsS \
+            -H "apikey: $VITE_SUPABASE_ANON_KEY" \
+            "https://uzshazetfkjkrdnxwjtl.supabase.co/auth/v1/settings")"
+          echo "$settings"
+          echo "$settings" | grep -q '"google":true'
+          curl -fsS -D /tmp/google-auth-headers -o /dev/null \
+            -H "apikey: $VITE_SUPABASE_ANON_KEY" \
+            --get \
+            --data-urlencode "provider=google" \
+            --data-urlencode "redirect_to=https://arriyia.nolmark.co" \
+            "https://uzshazetfkjkrdnxwjtl.supabase.co/auth/v1/authorize"
+          grep -qi '^location: https://accounts.google.com/' /tmp/google-auth-headers
+
       - name: Bundle verification
         run: npm run verify:bundle
 
