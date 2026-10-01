@@ -14,7 +14,11 @@ import { AuthContext, type AuthContextValue } from '@/modules/auth/context'
 // constant) so it stays correct if the env value is ever unavailable at
 // module-evaluation time.
 function canonicalSiteUrl(): string {
-  return import.meta.env.VITE_SITE_URL?.replace(/\/$/, '') || window.location.origin
+  const configured = import.meta.env.VITE_SITE_URL?.replace(/\/$/, '')
+  // app.nolmark.co is a legacy redirect host. Never use it as an OAuth/email
+  // destination because its 307 to arriyia.nolmark.co can discard URL fragments.
+  if (configured === 'https://app.nolmark.co') return 'https://arriyia.nolmark.co'
+  return configured || window.location.origin
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
