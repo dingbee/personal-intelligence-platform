@@ -16,8 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      # Supabase URL and publishable key are intentionally public client configuration.
+      # Keep CI self-contained; secrets are not required for the browser test suite.
+      VITE_SUPABASE_URL: https://uzshazetfkjkrdnxwjtl.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_-sHXfUg6uahuVY_m1jJJMA_qKGYpD1j
     steps:
       - name: Checkout
         uses: actions/checkout@v4
