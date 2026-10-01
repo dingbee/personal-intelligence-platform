@@ -154,7 +154,7 @@ describe('AuthContext.signUpWithPassword', () => {
     expect(signUpMock).toHaveBeenCalledWith({
       email: 'newperson@example.com',
       password: 'password123',
-      options: { emailRedirectTo: 'https://app.nolmark.co' },
+      options: { emailRedirectTo: 'https://arriyia.nolmark.co' },
     })
     vi.unstubAllEnvs()
   })
@@ -236,7 +236,7 @@ describe('AuthContext.signInWithMagicLink', () => {
 
     expect(signInWithOtpMock).toHaveBeenCalledWith({
       email: 'user@example.com',
-      options: { emailRedirectTo: 'https://app.nolmark.co' },
+      options: { emailRedirectTo: 'https://arriyia.nolmark.co' },
     })
   })
 })
@@ -274,7 +274,7 @@ describe('AuthContext.sendPasswordReset', () => {
     await result.current.sendPasswordReset('user@example.com')
 
     expect(resetPasswordForEmailMock).toHaveBeenCalledWith('user@example.com', {
-      redirectTo: 'https://app.nolmark.co/reset-password',
+      redirectTo: 'https://arriyia.nolmark.co/reset-password',
     })
   })
 })
