@@ -32,11 +32,12 @@ const { rpcMock, signUpMock, getSessionMock, onAuthStateChangeMock, capturedAuth
   }
 })
 
-const { signOutMock, resetPasswordForEmailMock, updateUserMock, signInWithOtpMock } = vi.hoisted(() => ({
+const { signOutMock, resetPasswordForEmailMock, updateUserMock, signInWithOtpMock, signInWithOAuthMock } = vi.hoisted(() => ({
   signOutMock: vi.fn(async () => ({ error: null })),
   resetPasswordForEmailMock: vi.fn(async () => ({ error: null })),
   updateUserMock: vi.fn().mockResolvedValue({ error: null }),
   signInWithOtpMock: vi.fn(async () => ({ error: null })),
+  signInWithOAuthMock: vi.fn(async () => ({ error: null })),
 }))
 
 vi.mock('@/shared/lib/supabase', () => ({
@@ -49,6 +50,7 @@ vi.mock('@/shared/lib/supabase', () => ({
       resetPasswordForEmail: resetPasswordForEmailMock,
       updateUser: updateUserMock,
       signInWithOtp: signInWithOtpMock,
+      signInWithOAuth: signInWithOAuthMock,
     },
     rpc: rpcMock,
   },
@@ -59,6 +61,50 @@ let queryClient: QueryClient
 function wrapper({ children }: { children: ReactNode }) {
   return createElement(QueryClientProvider, { client: queryClient }, createElement(AuthProvider, null, children))
 }
+
+describe('AuthContext.signInWithGoogle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    queryClient = new QueryClient()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('starts Google OAuth and returns no error by default', async () => {
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    const outcome = await result.current.signInWithGoogle()
+
+    expect(signInWithOAuthMock).toHaveBeenCalledWith({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    })
+    expect(outcome).toEqual({ error: null })
+  })
+
+  it('uses VITE_SITE_URL as the Google OAuth redirect when configured', async () => {
+    vi.stubEnv('VITE_SITE_URL', 'https://arriyia.nolmark.co/')
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    await result.current.signInWithGoogle()
+
+    expect(signInWithOAuthMock).toHaveBeenCalledWith({
+      provider: 'google',
+      options: { redirectTo: 'https://arriyia.nolmark.co' },
+    })
+  })
+
+  it('surfaces a Google OAuth initiation error without throwing', async () => {
+    signInWithOAuthMock.mockResolvedValueOnce({ error: { message: 'Google provider is not enabled' } })
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    const outcome = await result.current.signInWithGoogle()
+
+    expect(outcome).toEqual({ error: 'Google provider is not enabled' })
+  })
+})
 
 describe('AuthContext.signUpWithPassword', () => {
   beforeEach(() => {
