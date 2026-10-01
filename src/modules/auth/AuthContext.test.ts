@@ -37,7 +37,7 @@ const { signOutMock, resetPasswordForEmailMock, updateUserMock, signInWithOtpMoc
   resetPasswordForEmailMock: vi.fn(async () => ({ error: null })),
   updateUserMock: vi.fn().mockResolvedValue({ error: null }),
   signInWithOtpMock: vi.fn(async () => ({ error: null })),
-  signInWithOAuthMock: vi.fn(async () => ({ error: null })),
+  signInWithOAuthMock: vi.fn(async (): Promise<{ error: { message: string } | null }> => ({ error: null })),
 }))
 
 vi.mock('@/shared/lib/supabase', () => ({
