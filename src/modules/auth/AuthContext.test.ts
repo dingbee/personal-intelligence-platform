@@ -96,6 +96,18 @@ describe('AuthContext.signInWithGoogle', () => {
     })
   })
 
+  it('normalizes the legacy app.nolmark.co host to the canonical ARRIYIA origin', async () => {
+    vi.stubEnv('VITE_SITE_URL', 'https://app.nolmark.co/')
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    await result.current.signInWithGoogle()
+
+    expect(signInWithOAuthMock).toHaveBeenCalledWith({
+      provider: 'google',
+      options: { redirectTo: 'https://arriyia.nolmark.co' },
+    })
+  })
+
   it('surfaces a Google OAuth initiation error without throwing', async () => {
     signInWithOAuthMock.mockResolvedValueOnce({ error: { message: 'Google provider is not enabled' } })
     const { result } = renderHook(() => useAuth(), { wrapper })
