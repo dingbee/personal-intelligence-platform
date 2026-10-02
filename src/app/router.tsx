@@ -56,6 +56,7 @@ import { AdminUsageQuotasPage } from '@/modules/admin/pages/AdminUsageQuotasPage
 import { AdminSystemHealthPage } from '@/modules/admin/pages/AdminSystemHealthPage'
 import { RequireAdmin } from '@/modules/admin/RequireAdmin'
 import { V2FoundationPage } from '@/modules/v2/pages/V2FoundationPage'
+import { V2CommandCentrePage } from '@/modules/v2/pages/V2CommandCentrePage'
 
 export const router = createBrowserRouter([
   // Post-10/10 Phase 5 (Application Hardening & App Experience) — a single
@@ -84,6 +85,14 @@ export const router = createBrowserRouter([
       { path: '/pricing', element: <PricingPage /> },
       {
         path: '/v2',
+        element: (
+          <ProtectedRoute>
+            <V2CommandCentrePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/v2/foundation',
         element: (
           <ProtectedRoute>
             <V2FoundationPage />
