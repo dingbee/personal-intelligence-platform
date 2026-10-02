@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { V2ControlPlaneStore } from '../control-plane/store'
 import { createTeamMembership, createWorkspaceMembership, resolveWorkspaceAccess } from './service'
+import { setWorkspaceStatus } from './lifecycle'
 
 const meta = { createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-02T00:00:00Z' }
 
@@ -76,6 +77,25 @@ describe('V2 enterprise workspace contracts', () => {
       workspaceId: 'ws-1',
       userId: 'user-1',
     })).toEqual({ allowed: false, reason: 'membership_inactive' })
+
+    store.replace('workspace', {
+      ...store.get('workspace', 'ws-1')!,
+      status: 'archived',
+      updatedAt: '2026-10-02T00:01:00Z',
+    })
+    expect(resolveWorkspaceAccess(store, 'ws-1', 'user-1', {
+      organizationId: 'org-1',
+      workspaceId: 'ws-1',
+      userId: 'user-1',
+    })).toEqual({ allowed: false, reason: 'workspace_inactive' })
+
+    setWorkspaceStatus(store, 'ws-1', 'active', { updatedAt: '2026-10-02T00:02:00Z' })
+    store.replace('workspaceMembership', { ...store.get('workspaceMembership', 'ws-1:user-1')!, status: 'active' })
+    expect(resolveWorkspaceAccess(store, 'ws-1', 'user-1', {
+      organizationId: 'org-1',
+      workspaceId: 'ws-1',
+      userId: 'user-1',
+    }).allowed).toBe(true)
   })
 
   it('keeps team membership inside the workspace boundary', () => {
