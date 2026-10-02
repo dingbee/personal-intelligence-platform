@@ -57,6 +57,9 @@ export function V2CommandCentrePage() {
               <Link to="/v2" className="rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm font-medium text-[var(--text-primary)]">
                 Command Centre
               </Link>
+              <Link to="/v2/intelligence" className="rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]">
+                Intelligence
+              </Link>
               <Link to="/v2/foundation" className="rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]">
                 Foundation
               </Link>
@@ -126,7 +129,7 @@ export function V2CommandCentrePage() {
               <h2 className="text-lg font-semibold text-[var(--text-primary)]">Intelligence</h2>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">Observe → Understand → Reason → Recommend → Act → Learn.</p>
             </div>
-            <span className="text-xs text-[var(--text-secondary)]">V2-04 builds the dedicated Intelligence Centre</span>
+            <Link to="/v2/intelligence" className="text-xs font-medium text-[var(--text-primary)] underline-offset-4 hover:underline">Open Intelligence Centre →</Link>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {intelligence.map((item) => (
