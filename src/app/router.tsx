@@ -56,6 +56,7 @@ import { AdminBillingPage } from '@/modules/admin/pages/AdminBillingPage'
 import { AdminUsageQuotasPage } from '@/modules/admin/pages/AdminUsageQuotasPage'
 import { AdminSystemHealthPage } from '@/modules/admin/pages/AdminSystemHealthPage'
 import { RequireAdmin } from '@/modules/admin/RequireAdmin'
+import { V2FoundationPage } from '@/modules/v2/pages/V2FoundationPage'
 
 export const router = createBrowserRouter([
   // Post-10/10 Phase 5 (Application Hardening & App Experience) — a single
@@ -82,6 +83,14 @@ export const router = createBrowserRouter([
       // AppShell. Not nested under '/' on purpose — it must never depend
       // on ProtectedRoute's auth gate.
       { path: '/pricing', element: <PricingPage /> },
+      {
+        path: '/v2',
+        element: (
+          <ProtectedRoute>
+            <V2FoundationPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: '/welcome',
         element: (
