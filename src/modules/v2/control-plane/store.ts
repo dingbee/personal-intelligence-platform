@@ -190,8 +190,21 @@ export class V2ControlPlaneStore {
         this.assertParent('organization', resource.organizationId, resource.organizationId)
         break
       }
-      case 'workspaceMembership':
-      case 'teamMembership':
+      case 'workspaceMembership': {
+        this.assertParent('workspace', resource.workspaceId, resource.organizationId)
+        this.assertParent('user', resource.userId, resource.organizationId)
+        this.assertParent('role', resource.roleId, resource.organizationId)
+        break
+      }
+      case 'teamMembership': {
+        this.assertParent('workspace', resource.workspaceId, resource.organizationId)
+        this.assertParent('team', resource.teamId, resource.organizationId)
+        if (this.get('team', resource.teamId)?.workspaceId !== resource.workspaceId) {
+          throw new Error('V2 team membership must belong to the same workspace as its team.')
+        }
+        this.assertParent('user', resource.userId, resource.organizationId)
+        break
+      }
       case 'businessUnit':
       case 'team':
       case 'project':
