@@ -123,7 +123,7 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         children: [
-          { index: true, element: <HomeRedirect /> },
+          { index: true, element: <Navigate to="/v2" replace /> },
           { path: 'dashboard', element: <ExecutiveDashboardPage /> },
           { path: 'evolution', element: <WorkspaceEvolutionPage /> },
           { path: 'hub', element: <WorkspaceIntelligenceHubPage /> },
