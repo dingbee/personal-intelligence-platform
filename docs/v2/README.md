@@ -1,5 +1,7 @@
 # ARRIYIA V2
 
+> V2-01 Preview synchronization checkpoint.
+
 V2 is the enterprise intelligence and execution control plane built on the V1 foundation.
 
 ## Current sprint
