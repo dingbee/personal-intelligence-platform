@@ -1,4 +1,4 @@
-import type { ResourceMetadata, TeamMembership, UUID, WorkspaceMembership } from '../domain/model'
+import type { ResourceMetadata, TeamMembership, UUID, WorkspaceMembership, WorkspaceMembershipStatus } from '../domain/model'
 import type { V2ScopeContext } from '../domain/scope'
 import { assertScope } from '../domain/scope'
 import { V2ControlPlaneStore } from '../control-plane/store'
@@ -7,10 +7,12 @@ export type WorkspaceAccessDecision =
   | { allowed: true; membership: WorkspaceMembership }
   | { allowed: false; reason: 'no_membership' | 'membership_inactive' }
 
+type MembershipMetadata = Pick<ResourceMetadata, 'createdAt' | 'updatedAt'>
+
 export function createWorkspaceMembership(
   store: V2ControlPlaneStore,
-  input: { organizationId: UUID; workspaceId: UUID; userId: UUID; roleId: UUID },
-  metadata: Pick<ResourceMetadata, 'createdAt' | 'updatedAt'>,
+  input: { organizationId: UUID; workspaceId: UUID; userId: UUID; roleId: UUID; invitedBy?: UUID; status?: WorkspaceMembershipStatus },
+  metadata: MembershipMetadata,
 ): WorkspaceMembership {
   const membership: WorkspaceMembership = {
     id: input.workspaceId + ':' + input.userId,
@@ -18,7 +20,8 @@ export function createWorkspaceMembership(
     workspaceId: input.workspaceId,
     userId: input.userId,
     roleId: input.roleId,
-    status: 'active',
+    status: input.status ?? 'active',
+    invitedBy: input.invitedBy,
     createdAt: metadata.createdAt,
     updatedAt: metadata.updatedAt,
   }
@@ -26,10 +29,39 @@ export function createWorkspaceMembership(
   return membership
 }
 
+export function updateWorkspaceMembership(
+  store: V2ControlPlaneStore,
+  membershipId: UUID,
+  input: { roleId?: UUID; status?: WorkspaceMembershipStatus; invitedBy?: UUID },
+  metadata: Pick<ResourceMetadata, 'updatedAt'>,
+): WorkspaceMembership {
+  const membership = store.get('workspaceMembership', membershipId)
+  if (!membership) throw new Error('V2 workspace membership does not exist.')
+
+  const updated: WorkspaceMembership = {
+    ...membership,
+    roleId: input.roleId ?? membership.roleId,
+    status: input.status ?? membership.status,
+    invitedBy: input.invitedBy ?? membership.invitedBy,
+    updatedAt: metadata.updatedAt,
+  }
+  store.replace('workspaceMembership', updated)
+  return updated
+}
+
+export function setWorkspaceMembershipStatus(
+  store: V2ControlPlaneStore,
+  membershipId: UUID,
+  status: WorkspaceMembershipStatus,
+  metadata: Pick<ResourceMetadata, 'updatedAt'>,
+): WorkspaceMembership {
+  return updateWorkspaceMembership(store, membershipId, { status }, metadata)
+}
+
 export function createTeamMembership(
   store: V2ControlPlaneStore,
   input: { organizationId: UUID; workspaceId: UUID; teamId: UUID; userId: UUID; roleId?: UUID },
-  metadata: Pick<ResourceMetadata, 'createdAt' | 'updatedAt'>,
+  metadata: MembershipMetadata,
 ): TeamMembership {
   const membership: TeamMembership = {
     id: input.teamId + ':' + input.userId,
