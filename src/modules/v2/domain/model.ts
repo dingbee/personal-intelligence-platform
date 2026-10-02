@@ -83,6 +83,7 @@ export interface User extends ResourceMetadata {
 export type WorkspaceMembershipStatus = 'active' | 'invited' | 'suspended' | 'removed'
 
 export interface WorkspaceMembership extends ResourceScope, ResourceOwner {
+  id: UUID
   workspaceId: UUID
   userId: UUID
   roleId: UUID
@@ -93,6 +94,7 @@ export interface WorkspaceMembership extends ResourceScope, ResourceOwner {
 }
 
 export interface TeamMembership extends ResourceScope, ResourceOwner {
+  id: UUID
   workspaceId: UUID
   teamId: UUID
   userId: UUID
