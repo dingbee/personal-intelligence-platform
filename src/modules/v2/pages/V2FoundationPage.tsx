@@ -78,6 +78,11 @@ export function V2FoundationPage() {
                   Open Command Centre →
                 </Link>
               )}
+              {area.title === 'Intelligence' && (
+                <Link to="/v2/intelligence" className="mt-4 inline-flex text-xs font-medium text-[var(--text-primary)] underline-offset-4 hover:underline">
+                  Open Intelligence Centre →
+                </Link>
+              )}
             </article>
           ))}
         </section>
@@ -89,10 +94,10 @@ export function V2FoundationPage() {
                 Current milestone
               </p>
               <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">
-                V2-01 · Foundation
+                V2-04 · Intelligence Centre
               </h2>
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                Architecture, boundaries, domain model, inventory and technical-debt baseline are established.
+                The Intelligence Centre now exposes the canonical intelligence loop and its control-plane resource model.
               </p>
             </div>
             <div className="rounded-2xl border border-[var(--border-subtle)] px-5 py-4 text-sm">
