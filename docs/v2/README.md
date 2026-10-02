@@ -1,11 +1,11 @@
 # ARRIYIA V2
 
-> V2-01 Preview synchronization checkpoint.
+> V2-03 Command Centre implementation checkpoint.
 
 V2 is the enterprise intelligence and execution control plane built on the V1 foundation.
 
 ## Current sprint
-**V2-01 — Foundation**
+**V2-03 — Command Centre**
 
 ## Working branch
 `v2-development`
