@@ -178,7 +178,7 @@ export class V2ControlPlaneStore {
 
   private assertResourceIntegrity<K extends ResourceType>(
     type: K,
-    resource: ResourceOf<K>,
+    resource: ResourceOf<K> & { id: string; organizationId: string },
   ): void {
     if (!resource.id) throw new Error(`V2 ${type} requires an id.`)
     if (!resource.organizationId) {
