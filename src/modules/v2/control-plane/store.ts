@@ -25,6 +25,8 @@ import type {
   User,
   Workflow,
   Workspace,
+  WorkspaceMembership,
+  TeamMembership,
   V2DomainResource,
 } from '../domain/model'
 import type { V2ScopeContext } from '../domain/scope'
