@@ -14,6 +14,9 @@ V2 is the enterprise intelligence and execution control plane built on the V1 fo
 ## First implementation surface
 `/v2`
 
+## Preview
+The V2 foundation is visible at the authenticated `/v2` route on the Vercel Preview deployment for `v2-development`.
+
 ## Safety
 V2 preview work must not modify production Supabase schema or deploy to production.
 
