@@ -5,7 +5,7 @@ import { V2ControlPlaneStore } from '../control-plane/store'
 
 export type WorkspaceAccessDecision =
   | { allowed: true; membership: WorkspaceMembership }
-  | { allowed: false; reason: 'no_membership' | 'membership_inactive' }
+  | { allowed: false; reason: 'no_membership' | 'membership_inactive' | 'workspace_inactive' }
 
 type MembershipMetadata = Pick<ResourceMetadata, 'createdAt' | 'updatedAt'>
 
@@ -86,6 +86,9 @@ export function resolveWorkspaceAccess(
 ): WorkspaceAccessDecision {
   const workspace = store.getScoped('workspace', workspaceId, context)
   if (!workspace) return { allowed: false, reason: 'no_membership' }
+  if (workspace.status !== 'active') {
+    return { allowed: false, reason: 'workspace_inactive' }
+  }
 
   const memberships = store.list('workspaceMembership', {
     organizationId: context.organizationId,
