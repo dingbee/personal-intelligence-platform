@@ -88,6 +88,8 @@ export interface WorkspaceMembership extends ResourceScope, ResourceOwner {
   roleId: UUID
   status: WorkspaceMembershipStatus
   invitedBy?: UUID
+  createdAt: string
+  updatedAt: string
 }
 
 export interface TeamMembership extends ResourceScope, ResourceOwner {
@@ -95,6 +97,9 @@ export interface TeamMembership extends ResourceScope, ResourceOwner {
   teamId: UUID
   userId: UUID
   roleId?: UUID
+  status: 'active'
+  createdAt: string
+  updatedAt: string
 }
 
 export interface Role extends ResourceMetadata {
