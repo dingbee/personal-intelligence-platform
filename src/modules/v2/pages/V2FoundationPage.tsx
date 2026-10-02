@@ -4,12 +4,12 @@ const foundationAreas = [
   {
     title: 'Command Centre',
     description: 'Operational control surface for runs, approvals, intelligence and actions.',
-    status: 'Next',
+    status: 'Live',
   },
   {
     title: 'Intelligence',
     description: 'Signals, insights, recommendations, predictions, actions and outcomes.',
-    status: 'Architecture ready',
+    status: 'Next',
   },
   {
     title: 'Agents',
@@ -24,12 +24,12 @@ const foundationAreas = [
   {
     title: 'Knowledge + Memory',
     description: 'Persistent context with provenance, scope and lifecycle.',
-    status: 'Existing foundation',
+    status: 'Ready',
   },
   {
     title: 'NoVA Core',
     description: 'Execution plane behind a stable runtime contract.',
-    status: 'Contract phase',
+    status: 'V2-08',
   },
 ]
 
@@ -73,6 +73,11 @@ export function V2FoundationPage() {
                 </span>
               </div>
               <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{area.description}</p>
+              {area.title === 'Command Centre' && (
+                <Link to="/v2" className="mt-4 inline-flex text-xs font-medium text-[var(--text-primary)] underline-offset-4 hover:underline">
+                  Open Command Centre →
+                </Link>
+              )}
             </article>
           ))}
         </section>
