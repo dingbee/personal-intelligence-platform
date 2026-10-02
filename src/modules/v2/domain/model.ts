@@ -308,6 +308,8 @@ export const V2_DOMAIN_RESOURCES = [
   'businessUnit',
   'team',
   'user',
+  'workspaceMembership',
+  'teamMembership',
   'role',
   'permission',
   'policy',
