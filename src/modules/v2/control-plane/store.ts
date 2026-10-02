@@ -1,3 +1,4 @@
+import type { WorkspaceMembership, TeamMembership } from '../domain/model'
 import type {
   Agent,
   Action,
@@ -56,6 +57,8 @@ export interface V2ResourceMap {
   outcome: Outcome
   approval: Approval
   run: Run
+  workspaceMembership: WorkspaceMembership
+  teamMembership: TeamMembership
 }
 
 type ResourceType = V2DomainResource
@@ -87,6 +90,8 @@ const RESOURCE_TYPES: ResourceType[] = [
   'outcome',
   'approval',
   'run',
+  'workspaceMembership',
+  'teamMembership',
 ]
 
 type ResourceBuckets = {
