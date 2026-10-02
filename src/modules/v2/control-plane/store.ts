@@ -1,4 +1,3 @@
-import type { WorkspaceMembership, TeamMembership } from '../domain/model'
 import type {
   Agent,
   Action,
@@ -191,6 +190,8 @@ export class V2ControlPlaneStore {
         this.assertParent('organization', resource.organizationId, resource.organizationId)
         break
       }
+      case 'workspaceMembership':
+      case 'teamMembership':
       case 'businessUnit':
       case 'team':
       case 'project':
