@@ -80,6 +80,23 @@ export interface User extends ResourceMetadata {
   displayName: string
 }
 
+export type WorkspaceMembershipStatus = 'active' | 'invited' | 'suspended' | 'removed'
+
+export interface WorkspaceMembership extends ResourceMetadata {
+  workspaceId: UUID
+  userId: UUID
+  roleId: UUID
+  status: WorkspaceMembershipStatus
+  invitedBy?: UUID
+}
+
+export interface TeamMembership extends ResourceMetadata {
+  workspaceId: UUID
+  teamId: UUID
+  userId: UUID
+  roleId?: UUID
+}
+
 export interface Role extends ResourceMetadata {
   name: string
   permissions: UUID[]
