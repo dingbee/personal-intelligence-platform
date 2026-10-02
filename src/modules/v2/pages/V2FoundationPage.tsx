@@ -9,7 +9,7 @@ const foundationAreas = [
   {
     title: 'Intelligence',
     description: 'Signals, insights, recommendations, predictions, actions and outcomes.',
-    status: 'Next',
+    status: 'Live',
   },
   {
     title: 'Agents',
