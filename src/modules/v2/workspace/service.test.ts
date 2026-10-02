@@ -16,11 +16,21 @@ function team(id: string, organizationId: string, workspaceId: string) {
   return { id, organizationId, workspaceId, name: 'Team', status: 'active' as const, createdAt: meta.createdAt, updatedAt: meta.updatedAt }
 }
 
+function user(id: string, organizationId: string) {
+  return { id, organizationId, email: id + '@example.com', displayName: id, status: 'active' as const, createdAt: meta.createdAt, updatedAt: meta.updatedAt }
+}
+
+function role(id: string, organizationId: string) {
+  return { id, organizationId, name: id, permissions: [], status: 'active' as const, createdAt: meta.createdAt, updatedAt: meta.updatedAt }
+}
+
 describe('V2 enterprise workspace contracts', () => {
   it('creates workspace membership and resolves active access', () => {
     const store = new V2ControlPlaneStore()
     store.save('organization', organization('org-1'))
     store.save('workspace', workspace('ws-1', 'org-1'))
+    store.save('user', user('user-1', 'org-1'))
+    store.save('role', role('role-owner', 'org-1'))
 
     const membership = createWorkspaceMembership(store, {
       organizationId: 'org-1',
@@ -42,6 +52,8 @@ describe('V2 enterprise workspace contracts', () => {
     store.save('organization', organization('org-1'))
     store.save('organization', organization('org-2'))
     store.save('workspace', workspace('ws-1', 'org-1'))
+    store.save('user', user('user-1', 'org-1'))
+    store.save('role', role('role-editor', 'org-1'))
 
     createWorkspaceMembership(store, {
       organizationId: 'org-1',
@@ -71,6 +83,7 @@ describe('V2 enterprise workspace contracts', () => {
     store.save('organization', organization('org-1'))
     store.save('workspace', workspace('ws-1', 'org-1'))
     store.save('team', team('team-1', 'org-1', 'ws-1'))
+    store.save('user', user('user-1', 'org-1'))
 
     const membership = createTeamMembership(store, {
       organizationId: 'org-1',
