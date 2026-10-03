@@ -50,6 +50,7 @@ export type GovernanceRequest = {
     workspaceId?: UUID
     resourceType: string
     action: string
+    resourceId?: UUID
   }
   context: V2ScopeContext
   requestedAutonomy?: AutonomyLevel
@@ -186,7 +187,9 @@ export function govern(
     }
 
     const approval = store.getScoped('approval', request.approvalId, request.context)
-    if (!approval || approval.decision !== 'approved') {
+    const approvalMatchesResource = approval && approval.subjectType === request.resource.resourceType && (!request.resource.resourceId || approval.subjectId === request.resource.resourceId)
+
+    if (!approvalMatchesResource || approval.decision !== 'approved') {
       return {
         allowed: false,
         decision: 'approval_required',
