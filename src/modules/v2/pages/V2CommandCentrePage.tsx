@@ -17,7 +17,7 @@ const runs = [
 
 const approvals = [
   { title: 'Runtime action approval', detail: 'Execution contract is not connected yet.', status: 'Waiting' as Status },
-  { title: 'Workspace policy review', detail: 'Governance policy layer is scheduled for V2-09.', status: 'Waiting' as Status },
+  { title: 'Workspace policy review', detail: 'Governance policy layer is active; learning feedback is captured separately.', status: 'Waiting' as Status },
 ]
 
 const intelligence = [
@@ -68,6 +68,9 @@ export function V2CommandCentrePage() {
               </Link>
               <Link to="/v2/workflows" className="rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]">
                 Workflows
+              </Link>
+              <Link to="/v2/learning" className="rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]">
+                Learning
               </Link>
               <Link to="/dashboard" className="rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]">
                 V1
