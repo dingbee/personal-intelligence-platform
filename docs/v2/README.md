@@ -5,7 +5,7 @@
 V2 is the enterprise intelligence and execution control plane built on the V1 foundation.
 
 ## Current sprint
-**V2-09 — Governance + Security**
+**V2-10 — Learning Loop**
 
 ## Working branch
 `v2-development`
@@ -40,6 +40,14 @@ V2 preview work must not modify production Supabase schema or deploy to producti
   - policy-owned autonomy ceilings
   - approval-state and approval-subject validation
   - governance audit records
+  - NoVA execution boundary preserved
+- V2-10 Learning Loop — implemented
+  - feedback capture
+  - intervention tracking
+  - recommendation effectiveness
+  - outcome correlation
+  - evidence-backed learning signals
+  - workspace-scoped fail-closed evaluation
   - NoVA execution boundary preserved
 
 ## Roadmap
