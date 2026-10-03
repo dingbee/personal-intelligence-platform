@@ -187,9 +187,14 @@ export function govern(
     }
 
     const approval = store.getScoped('approval', request.approvalId, request.context)
-    const approvalMatchesResource = approval && approval.subjectType === request.resource.resourceType && Boolean(request.resource.resourceId) && approval.subjectId === request.resource.resourceId
+    const approvalMatchesResource = Boolean(
+      approval &&
+      approval.subjectType === request.resource.resourceType &&
+      request.resource.resourceId &&
+      approval.subjectId === request.resource.resourceId,
+    )
 
-    if (!approvalMatchesResource || approval.decision !== 'approved') {
+    if (!approval || !approvalMatchesResource || approval.decision !== 'approved') {
       return {
         allowed: false,
         decision: 'approval_required',
