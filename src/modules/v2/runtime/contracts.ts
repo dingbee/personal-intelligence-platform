@@ -108,6 +108,7 @@ export interface NoVARuntimeAdapter {
 }
 
 export function assertRuntimeScope(request: RuntimeCorrelationEnvelope): void {
+  if (request.contractVersion !== NOVA_RUNTIME_CONTRACT_VERSION) throw new Error('Unsupported NoVA runtime contract version.')
   if (!request.organizationId) throw new Error('NoVA runtime request requires organization scope.')
   if (!request.correlationId) throw new Error('NoVA runtime request requires correlationId.')
   if (!request.idempotencyKey) throw new Error('NoVA runtime request requires idempotencyKey.')
