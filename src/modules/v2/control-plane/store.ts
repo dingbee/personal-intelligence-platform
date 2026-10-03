@@ -10,6 +10,9 @@ import type {
   Objective,
   Organization,
   Outcome,
+  Feedback,
+  Intervention,
+  LearningSignal,
   Permission,
   Policy,
   Prediction,
@@ -56,6 +59,9 @@ export interface V2ResourceMap {
   prediction: Prediction
   action: Action
   outcome: Outcome
+  feedback: Feedback
+  intervention: Intervention
+  learningSignal: LearningSignal
   approval: Approval
   run: Run
   workspaceMembership: WorkspaceMembership
@@ -89,6 +95,9 @@ const RESOURCE_TYPES: ResourceType[] = [
   'prediction',
   'action',
   'outcome',
+  'feedback',
+  'intervention',
+  'learningSignal',
   'approval',
   'run',
   'workspaceMembership',
@@ -215,6 +224,9 @@ export class V2ControlPlaneStore {
       case 'workflow':
       case 'context':
       case 'action':
+      case 'feedback':
+      case 'intervention':
+      case 'learningSignal':
       case 'approval':
       case 'run': {
         const workspaceId = resource.workspaceId
