@@ -2,6 +2,8 @@ import type {
   AgentExecutionRequest,
   ApprovalDecision,
   ApprovalRequest,
+  CapabilityNegotiationRequest,
+  CapabilityNegotiationResult,
   NoVARuntimeAdapter,
   RuntimeCorrelationEnvelope,
   RuntimeExecutionReference,
@@ -67,5 +69,10 @@ export class ValidatingNoVARuntimeAdapter implements NoVARuntimeAdapter {
     validateRuntimeRequest(decision)
     if (!decision.approvalId) throw new Error('NoVA approval decision requires approvalId.')
     return this.delegate.resolveApproval(decision)
+  }
+
+  negotiateCapabilities(request: CapabilityNegotiationRequest): Promise<CapabilityNegotiationResult> {
+    validateRuntimeRequest(request)
+    return this.delegate.negotiateCapabilities(request)
   }
 }
