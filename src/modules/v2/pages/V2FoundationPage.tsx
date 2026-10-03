@@ -83,6 +83,11 @@ export function V2FoundationPage() {
                   Open Intelligence Centre →
                 </Link>
               )}
+              {area.title === 'Knowledge + Memory' && (
+                <Link to="/v2/knowledge-memory" className="mt-4 inline-flex text-xs font-medium text-[var(--text-primary)] underline-offset-4 hover:underline">
+                  Open Knowledge + Memory →
+                </Link>
+              )}
             </article>
           ))}
         </section>
