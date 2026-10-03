@@ -48,6 +48,8 @@ export function recordFeedback(
   if (input.rating !== undefined && (!Number.isFinite(input.rating) || input.rating < 0 || input.rating > 1)) {
     throw new Error('V2 feedback rating must be between 0 and 1.')
   }
+  const subject = store.getScoped(input.subjectType, input.subjectId, { organizationId: input.organizationId, workspaceId: input.workspaceId })
+  if (!subject) throw new Error('V2 feedback subject is not in scope.')
 
   const feedback: Feedback = {
     id: input.id,
@@ -95,6 +97,12 @@ export function recordIntervention(
       workspaceId: input.workspaceId,
     })
     if (!recommendation) throw new Error('V2 intervention recommendation is not in scope.')
+  }
+  if (input.actionId && !store.getScoped('action', input.actionId, { organizationId: input.organizationId, workspaceId: input.workspaceId })) {
+    throw new Error('V2 intervention action is not in scope.')
+  }
+  if (input.runId && !store.getScoped('run', input.runId, { organizationId: input.organizationId, workspaceId: input.workspaceId })) {
+    throw new Error('V2 intervention run is not in scope.')
   }
 
   const intervention: Intervention = {
