@@ -118,6 +118,8 @@ export interface Policy extends ResourceMetadata {
   name: string
   effect: 'allow' | 'deny'
   rules: PolicyRule[]
+  /** Maximum autonomy this policy permits for matching actions. */
+  maximumAutonomy?: 'manual' | 'assisted' | 'bounded' | 'autonomous'
 }
 
 export interface PolicyRule {
