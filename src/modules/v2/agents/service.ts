@@ -12,15 +12,17 @@ function assertDefinition(store: V2ControlPlaneStore, workspaceId: UUID, definit
   if (new Set(definition.policyIds).size !== definition.policyIds.length) throw new Error('V2 agent policy references must be unique.')
 
   for (const toolId of definition.toolIds) {
-    const tool = store.get('tool', toolId)
-    if (!tool) throw new Error('V2 agent tool "' + toolId + '" does not exist.')
+    const organizationId = store.get('workspace', workspaceId)?.organizationId ?? ''
+    const tool = store.getScoped('tool', toolId, { organizationId, workspaceId })
+    if (!tool) throw new Error('V2 agent tool "' + toolId + '" does not exist in the active workspace.')
     if (tool.status !== 'active') throw new Error('V2 agent tool "' + toolId + '" is not active.')
     if (tool.workspaceId && tool.workspaceId !== workspaceId) throw new Error('V2 agent cannot reference a tool from another workspace.')
   }
 
   for (const policyId of definition.policyIds) {
-    const policy = store.get('policy', policyId)
-    if (!policy) throw new Error('V2 agent policy "' + policyId + '" does not exist.')
+    const organizationId = store.get('workspace', workspaceId)?.organizationId ?? ''
+    const policy = store.getScoped('policy', policyId, { organizationId, workspaceId })
+    if (!policy) throw new Error('V2 agent policy "' + policyId + '" does not exist in the active workspace.')
     if (policy.status !== 'active') throw new Error('V2 agent policy "' + policyId + '" is not active.')
     if (policy.workspaceId && policy.workspaceId !== workspaceId) throw new Error('V2 agent cannot reference a policy from another workspace.')
   }
