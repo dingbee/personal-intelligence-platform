@@ -1,11 +1,11 @@
 # ARRIYIA V2
 
-> V2-08 NoVA Runtime Contract — contract discovery checkpoint.
+ > V2-09 Governance + Security — closure checkpoint.
 
 V2 is the enterprise intelligence and execution control plane built on the V1 foundation.
 
 ## Current sprint
-**V2-08 — NoVA Runtime Contract**
+**V2-09 — Governance + Security**
 
 ## Working branch
 `v2-development`
@@ -31,8 +31,16 @@ V2 preview work must not modify production Supabase schema or deploy to producti
 - V2-06 Agent Management — implemented
 - V2-07 Workflow Studio — implemented
 - V2-08A NoVA Contract Discovery — complete
-- V2-08B Thin Contract Implementation — implemented; verification pending
-- V2-08C Boundary Verification — pending
+- V2-08B Thin Contract Implementation — complete
+- V2-08C Boundary Verification — complete
+- V2-09 Governance + Security — implemented and adversarially covered
+  - RBAC + policy evaluation
+  - explicit deny precedence
+  - tenant-scope fail-closed enforcement
+  - policy-owned autonomy ceilings
+  - approval-state and approval-subject validation
+  - governance audit records
+  - NoVA execution boundary preserved
 
 ## Roadmap
 1. Foundation
