@@ -7,7 +7,7 @@ const metadata = { createdAt: '2026-10-03T00:00:00Z', updatedAt: '2026-10-03T00:
 
 function seed() {
   const store = new V2ControlPlaneStore()
-  const organization: Organization = { id: 'org-1', name: 'Nolmark', slug: 'nolmark', status: 'active', createdAt: metadata.createdAt, updatedAt: metadata.updatedAt }
+  const organization: Organization = { id: 'org-1', organizationId: 'org-1', name: 'Nolmark', slug: 'nolmark', status: 'active', createdAt: metadata.createdAt, updatedAt: metadata.updatedAt }
   const workspace: Workspace = { id: 'ws-1', organizationId: 'org-1', name: 'ARRIYIA', slug: 'arriyia', status: 'active', createdAt: metadata.createdAt, updatedAt: metadata.updatedAt }
   const tool: Tool = { id: 'tool-1', organizationId: 'org-1', workspaceId: 'ws-1', name: 'Research', inputSchema: {}, capability: 'research', requiredPermissions: [], status: 'active', createdAt: metadata.createdAt, updatedAt: metadata.updatedAt }
   const policy: Policy = { id: 'policy-1', organizationId: 'org-1', workspaceId: 'ws-1', name: 'Research policy', effect: 'allow', rules: [], status: 'active', createdAt: metadata.createdAt, updatedAt: metadata.updatedAt }
