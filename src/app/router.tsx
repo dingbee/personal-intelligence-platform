@@ -59,6 +59,7 @@ import { V2FoundationPage } from '@/modules/v2/pages/V2FoundationPage'
 import { V2CommandCentrePage } from '@/modules/v2/pages/V2CommandCentrePage'
 import { V2IntelligenceCentrePage } from '@/modules/v2/pages/V2IntelligenceCentrePage'
 import { V2KnowledgeMemoryPage } from '@/modules/v2/pages/V2KnowledgeMemoryPage'
+import { V2LearningCentrePage } from '../modules/v2/pages/V2LearningCentrePage'
 import { V2AgentManagementPage } from '@/modules/v2/pages/V2AgentManagementPage'
 import { V2WorkflowStudioPage } from '@/modules/v2/pages/V2WorkflowStudioPage'
 
@@ -116,6 +117,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <V2KnowledgeMemoryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/v2/learning',
+        element: (
+          <ProtectedRoute>
+            <V2LearningCentrePage />
           </ProtectedRoute>
         ),
       },
