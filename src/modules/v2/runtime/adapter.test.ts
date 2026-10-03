@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AgentExecutionRequest } from './contracts'
+import type { AgentExecutionRequest, ToolInvocationRequest, WorkflowExecutionRequest } from './contracts'
 import { MockNoVARuntimeAdapter } from './mock-adapter'
 import { ValidatingNoVARuntimeAdapter, validateAgentExecutionRequest } from './adapter'
 
@@ -43,9 +43,11 @@ describe('V2 NoVA runtime contract', () => {
   it('uses the same contract for workflow and tool requests', async () => {
     const mock = new MockNoVARuntimeAdapter()
     const adapter = new ValidatingNoVARuntimeAdapter(mock)
-    const workflow = await adapter.startWorkflow({ ...request, workflowId: 'workflow-1' } as any)
-    const tool = await adapter.invokeTool({ ...request, toolId: 'tool-1', input: { q: 'x' } } as any)
-    expect(workflow.state).toBe('accepted')
-    expect(tool.state).toBe('accepted')
+    const workflow: WorkflowExecutionRequest = { ...request, workflowId: 'workflow-1' }
+    const tool: ToolInvocationRequest = { ...request, toolId: 'tool-1', input: { q: 'x' } }
+    const workflowReference = await adapter.startWorkflow(workflow)
+    const toolReference = await adapter.invokeTool(tool)
+    expect(workflowReference.state).toBe('accepted')
+    expect(toolReference.state).toBe('accepted')
   })
 })
