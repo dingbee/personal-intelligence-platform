@@ -22,6 +22,7 @@ describe('V2 NoVA runtime contract', () => {
     expect(() => validateAgentExecutionRequest({ ...request, organizationId: '' })).toThrow(/organization scope/)
     expect(() => validateAgentExecutionRequest({ ...request, correlationId: '' })).toThrow(/correlationId/)
     expect(() => validateAgentExecutionRequest({ ...request, idempotencyKey: '' })).toThrow(/idempotencyKey/)
+    expect(() => validateAgentExecutionRequest({ ...request, contractVersion: '2.0.0' as '1.0.0' })).toThrow(/contract version/)
   })
 
   it('preserves correlation and provenance through the validating adapter', async () => {
@@ -53,6 +54,26 @@ describe('V2 NoVA runtime contract', () => {
     })
     expect(result.supported).toEqual(['agent.execute'])
     expect(result.rejected).toEqual(['unsupported.capability'])
+  })
+
+  it('keeps approval correlation explicit', async () => {
+    const mock = new MockNoVARuntimeAdapter()
+    const adapter = new ValidatingNoVARuntimeAdapter(mock)
+    const approval = await adapter.requestApproval({
+      ...request,
+      approvalId: 'approval-1',
+      subjectType: 'action',
+      subjectId: 'action-1',
+      requestedBy: 'user-1',
+    })
+    const decision = await adapter.resolveApproval({
+      ...request,
+      approvalId: approval.approvalId,
+      decision: 'approved',
+      decidedBy: 'user-1',
+      decidedAt: '2026-10-03T03:00:00Z',
+    })
+    expect(decision.approvalId).toBe('approval-1')
   })
 
   it('uses the same contract for workflow and tool requests', async () => {
