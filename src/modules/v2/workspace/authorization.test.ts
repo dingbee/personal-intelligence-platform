@@ -92,6 +92,7 @@ describe('V2 governance and security', () => {
       workspaceId: 'ws-1',
       resourceType: 'action',
       action: 'execute',
+      resourceId: 'action-1',
     },
     context: { organizationId: 'org-1', workspaceId: 'ws-1', userId: 'user-1' },
     requestedAutonomy: 'manual' as const,
@@ -208,6 +209,20 @@ describe('V2 governance and security', () => {
       requestedAutonomy: 'bounded',
     }))
     expect(approved).toMatchObject({ allowed: true, decision: 'allowed' })
+
+    const mismatched = govern(store, governanceRequest({
+      requiresApproval: true,
+      approvalId: 'approval-1',
+      requestedAutonomy: 'bounded',
+      resource: {
+        organizationId: 'org-1',
+        workspaceId: 'ws-1',
+        resourceType: 'action',
+        action: 'execute',
+        resourceId: 'action-2',
+      },
+    }))
+    expect(mismatched).toMatchObject({ allowed: false, decision: 'approval_required', reason: 'approval_not_granted' })
   })
 
   it('fails closed when the resource organization differs from the governance context', () => {
