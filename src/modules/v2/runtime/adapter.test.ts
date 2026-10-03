@@ -40,6 +40,21 @@ describe('V2 NoVA runtime contract', () => {
     expect(reference.state).not.toBe('succeeded')
   })
 
+  it('fails closed for unsupported runtime capabilities', async () => {
+    const mock = new MockNoVARuntimeAdapter()
+    const adapter = new ValidatingNoVARuntimeAdapter(mock)
+    const result = await adapter.negotiateCapabilities({
+      contractVersion: '1.0.0',
+      organizationId: 'org-1',
+      workspaceId: 'ws-1',
+      correlationId: 'run-2',
+      idempotencyKey: 'idem-2',
+      requestedCapabilities: ['agent.execute', 'unsupported.capability'],
+    })
+    expect(result.supported).toEqual(['agent.execute'])
+    expect(result.rejected).toEqual(['unsupported.capability'])
+  })
+
   it('uses the same contract for workflow and tool requests', async () => {
     const mock = new MockNoVARuntimeAdapter()
     const adapter = new ValidatingNoVARuntimeAdapter(mock)
