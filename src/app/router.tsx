@@ -58,6 +58,7 @@ import { RequireAdmin } from '@/modules/admin/RequireAdmin'
 import { V2FoundationPage } from '@/modules/v2/pages/V2FoundationPage'
 import { V2CommandCentrePage } from '@/modules/v2/pages/V2CommandCentrePage'
 import { V2IntelligenceCentrePage } from '@/modules/v2/pages/V2IntelligenceCentrePage'
+import { V2KnowledgeMemoryPage } from '@/modules/v2/pages/V2KnowledgeMemoryPage'
 
 export const router = createBrowserRouter([
   // Post-10/10 Phase 5 (Application Hardening & App Experience) — a single
@@ -105,6 +106,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <V2IntelligenceCentrePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/v2/knowledge-memory',
+        element: (
+          <ProtectedRoute>
+            <V2KnowledgeMemoryPage />
           </ProtectedRoute>
         ),
       },
