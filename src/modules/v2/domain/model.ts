@@ -273,6 +273,44 @@ export interface Outcome extends ResourceMetadata {
   impact?: Record<string, unknown>
 }
 
+export type FeedbackType = 'accepted' | 'rejected' | 'corrected' | 'irrelevant' | 'positive' | 'negative'
+
+export interface Feedback extends ResourceMetadata {
+  workspaceId: UUID
+  subjectType: 'recommendation' | 'action' | 'outcome' | 'run'
+  subjectId: UUID
+  submittedBy: UUID
+  type: FeedbackType
+  rating?: number
+  comment?: string
+  correction?: Record<string, unknown>
+}
+
+export type InterventionType = 'accepted' | 'modified' | 'rejected' | 'overridden' | 'cancelled'
+
+export interface Intervention extends ResourceMetadata {
+  workspaceId: UUID
+  recommendationId?: UUID
+  actionId?: UUID
+  runId?: UUID
+  intervenedBy: UUID
+  type: InterventionType
+  reason?: string
+  occurredAt: string
+}
+
+export interface LearningSignal extends ResourceMetadata {
+  workspaceId: UUID
+  signalType: string
+  sourceType: 'feedback' | 'intervention' | 'outcome' | 'effectiveness'
+  sourceId: UUID
+  subjectType: 'recommendation' | 'action' | 'agent' | 'workflow' | 'tool'
+  subjectId: UUID
+  value: number
+  confidence?: number
+  evidenceIds: UUID[]
+}
+
 export interface Approval extends ResourceMetadata {
   workspaceId: UUID
   subjectType: string
@@ -337,6 +375,9 @@ export const V2_DOMAIN_RESOURCES = [
   'prediction',
   'action',
   'outcome',
+  'feedback',
+  'intervention',
+  'learningSignal',
   'approval',
   'run',
 ] as const
