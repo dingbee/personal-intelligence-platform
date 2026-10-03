@@ -2,6 +2,8 @@ import type {
   AgentExecutionRequest,
   ApprovalDecision,
   ApprovalRequest,
+  CapabilityNegotiationRequest,
+  CapabilityNegotiationResult,
   NoVARuntimeAdapter,
   RuntimeExecutionReference,
   RuntimeExecutionResult,
@@ -42,6 +44,12 @@ export class MockNoVARuntimeAdapter implements NoVARuntimeAdapter {
 
   async resolveApproval(decision: ApprovalDecision): Promise<ApprovalDecision> {
     return decision
+  }
+
+  async negotiateCapabilities(request: CapabilityNegotiationRequest): Promise<CapabilityNegotiationResult> {
+    const supported = request.requestedCapabilities.filter((capability) => capability === 'agent.execute' || capability === 'workflow.execute' || capability === 'tool.invoke')
+    const rejected = request.requestedCapabilities.filter((capability) => !supported.includes(capability))
+    return { supported, rejected }
   }
 
   private accept(
