@@ -1,6 +1,6 @@
 # ARRIYIA V2
 
- > V2-09 Governance + Security — closure checkpoint.
+ > V2-11 Integrations — implementation checkpoint.
 
 V2 is the enterprise intelligence and execution control plane built on the V1 foundation.
 
