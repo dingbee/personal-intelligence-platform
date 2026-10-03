@@ -31,7 +31,7 @@ V2 preview work must not modify production Supabase schema or deploy to producti
 - V2-06 Agent Management — implemented
 - V2-07 Workflow Studio — implemented
 - V2-08A NoVA Contract Discovery — complete
-- V2-08B Thin Contract Implementation — next
+- V2-08B Thin Contract Implementation — implemented; verification pending
 - V2-08C Boundary Verification — pending
 
 ## Roadmap
