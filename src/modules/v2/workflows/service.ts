@@ -22,22 +22,25 @@ function assertDefinition(store: V2ControlPlaneStore, workspaceId: UUID, definit
     if (node.type === 'agent') {
       const agentId = typeof node.config.agentId === 'string' ? node.config.agentId : undefined
       if (!agentId) throw new Error('V2 agent nodes require config.agentId.')
-      const agent = store.get('agent', agentId)
-      if (!agent) throw new Error('V2 workflow agent "' + agentId + '" does not exist.')
+      const organizationId = store.get('workspace', workspaceId)?.organizationId ?? ''
+      const agent = store.getScoped('agent', agentId, { organizationId, workspaceId })
+      if (!agent) throw new Error('V2 workflow agent "' + agentId + '" does not exist in the active workspace.')
       if (agent.workspaceId !== workspaceId) throw new Error('V2 workflow cannot reference an agent from another workspace.')
       if (agent.status !== 'active') throw new Error('V2 workflow agent "' + agentId + '" is not active.')
     }
     if (node.type === 'tool') {
       const toolId = typeof node.config.toolId === 'string' ? node.config.toolId : undefined
       if (!toolId) throw new Error('V2 tool nodes require config.toolId.')
-      const tool = store.get('tool', toolId)
-      if (!tool) throw new Error('V2 workflow tool "' + toolId + '" does not exist.')
+      const organizationId = store.get('workspace', workspaceId)?.organizationId ?? ''
+      const tool = store.getScoped('tool', toolId, { organizationId, workspaceId })
+      if (!tool) throw new Error('V2 workflow tool "' + toolId + '" does not exist in the active workspace.')
       if (tool.workspaceId && tool.workspaceId !== workspaceId) throw new Error('V2 workflow cannot reference a tool from another workspace.')
       if (tool.status !== 'active') throw new Error('V2 workflow tool "' + toolId + '" is not active.')
     }
     if (node.type === 'approval' && node.config.approvalId) {
-      const approval = store.get('approval', String(node.config.approvalId))
-      if (!approval) throw new Error('V2 workflow approval "' + node.config.approvalId + '" does not exist.')
+      const organizationId = store.get('workspace', workspaceId)?.organizationId ?? ''
+      const approval = store.getScoped('approval', String(node.config.approvalId), { organizationId, workspaceId })
+      if (!approval) throw new Error('V2 workflow approval "' + node.config.approvalId + '" does not exist in the active workspace.')
       if (approval.workspaceId !== workspaceId) throw new Error('V2 workflow cannot reference an approval from another workspace.')
     }
   }
