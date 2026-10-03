@@ -1,11 +1,11 @@
 # ARRIYIA V2
 
-> V2-06 Agent Management implementation checkpoint.
+> V2-07 Workflow Studio implementation checkpoint.
 
 V2 is the enterprise intelligence and execution control plane built on the V1 foundation.
 
 ## Current sprint
-**V2-06 — Agent Management**
+**V2-07 — Workflow Studio**
 
 ## Working branch
 `v2-development`
