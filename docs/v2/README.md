@@ -1,11 +1,11 @@
 # ARRIYIA V2
 
-> V2-05 Knowledge + Memory implementation checkpoint.
+> V2-06 Agent Management implementation checkpoint.
 
 V2 is the enterprise intelligence and execution control plane built on the V1 foundation.
 
 ## Current sprint
-**V2-05 — Knowledge + Memory**
+**V2-06 — Agent Management**
 
 ## Working branch
 `v2-development`
@@ -21,6 +21,17 @@ The V2 foundation is visible at the authenticated `/v2` route on the Vercel Prev
 
 ## Safety
 V2 preview work must not modify production Supabase schema or deploy to production.
+
+## Current implementation path
+- V2-06 Agent Management — implemented
+- V2-07 Workflow Studio — next
+- V2-08 NoVA Core Runtime Contract
+- V2-09 Governance + Security
+- V2-10 Learning Loop
+- V2-11 Integrations
+- V2-12 Vertical Intelligence
+- V2-13 Bounded Autonomy
+- V2-14 Production Certification
 
 ## Roadmap
 1. Foundation

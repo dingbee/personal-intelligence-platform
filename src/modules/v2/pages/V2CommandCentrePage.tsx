@@ -63,6 +63,9 @@ export function V2CommandCentrePage() {
               <Link to="/v2/foundation" className="rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]">
                 Foundation
               </Link>
+              <Link to="/v2/agents" className="rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]">
+                Agents
+              </Link>
               <Link to="/dashboard" className="rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]">
                 V1
               </Link>
