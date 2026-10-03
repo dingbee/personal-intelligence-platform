@@ -92,6 +92,11 @@ export function setAgentStatus(
 ): Agent {
   const agent = store.get('agent', agentId)
   if (!agent) throw new Error('V2 agent does not exist.')
+
+  if (status === 'active') {
+    assertDefinition(store, agent.workspaceId, agent.definition)
+  }
+
   const updated: Agent = { ...agent, status, updatedAt: metadata.updatedAt }
   store.replace('agent', updated)
   return updated
