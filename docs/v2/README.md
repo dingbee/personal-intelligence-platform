@@ -1,11 +1,11 @@
 # ARRIYIA V2
 
-> V2-04 Intelligence Centre implementation checkpoint.
+> V2-05 Knowledge + Memory implementation checkpoint.
 
 V2 is the enterprise intelligence and execution control plane built on the V1 foundation.
 
 ## Current sprint
-**V2-04 — Intelligence Centre**
+**V2-05 — Knowledge + Memory**
 
 ## Working branch
 `v2-development`
