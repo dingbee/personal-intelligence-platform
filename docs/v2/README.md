@@ -1,11 +1,11 @@
 # ARRIYIA V2
 
-> V2-07 Workflow Studio implementation checkpoint.
+> V2-08 NoVA Runtime Contract — contract discovery checkpoint.
 
 V2 is the enterprise intelligence and execution control plane built on the V1 foundation.
 
 ## Current sprint
-**V2-07 — Workflow Studio**
+**V2-08 — NoVA Runtime Contract**
 
 ## Working branch
 `v2-development`
@@ -17,21 +17,22 @@ V2 is the enterprise intelligence and execution control plane built on the V1 fo
 `/v2`
 
 ## Preview
-The V2 foundation is visible at the authenticated `/v2` route on the Vercel Preview deployment for `v2-development`.
+V2 work is preview-only on `v2-development`. Production `main` remains the V1 baseline.
 
 ## Safety
 V2 preview work must not modify production Supabase schema or deploy to production.
 
-## Current implementation path
+## Current checkpoint
+- V2-01 Foundation — implemented
+- V2-02 Enterprise Workspace — implemented
+- V2-03 Command Centre — implemented
+- V2-04 Intelligence Centre — implemented
+- V2-05 Knowledge + Memory — implemented
 - V2-06 Agent Management — implemented
-- V2-07 Workflow Studio — next
-- V2-08 NoVA Core Runtime Contract
-- V2-09 Governance + Security
-- V2-10 Learning Loop
-- V2-11 Integrations
-- V2-12 Vertical Intelligence
-- V2-13 Bounded Autonomy
-- V2-14 Production Certification
+- V2-07 Workflow Studio — implemented
+- V2-08A NoVA Contract Discovery — complete
+- V2-08B Thin Contract Implementation — next
+- V2-08C Boundary Verification — pending
 
 ## Roadmap
 1. Foundation
