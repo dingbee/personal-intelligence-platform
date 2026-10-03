@@ -53,7 +53,6 @@ export type GovernanceRequest = {
   }
   context: V2ScopeContext
   requestedAutonomy?: AutonomyLevel
-  maximumAutonomy?: AutonomyLevel
   requiresApproval?: boolean
   approvalId?: UUID
   attributes?: Record<string, unknown>
@@ -82,6 +81,7 @@ export type GovernanceReason =
   | 'policy_not_satisfied'
   | 'autonomy_exceeded'
   | 'approval_required'
+  | 'approval_not_granted'
 
 /**
  * V2-09 governance is a control-plane decision layer.
@@ -158,7 +158,12 @@ export function govern(
   }
 
   const requested = request.requestedAutonomy ?? 'manual'
-  const maximum = request.maximumAutonomy ?? 'manual'
+  const maximum = allowingPolicies.length === 0
+    ? 'manual'
+    : allowingPolicies.reduce<AutonomyLevel>((ceiling, policy) => {
+        const policyCeiling = policy.maximumAutonomy ?? 'manual'
+        return AUTONOMY_RANK[policyCeiling] < AUTONOMY_RANK[ceiling] ? policyCeiling : ceiling
+      }, 'autonomous')
 
   if (AUTONOMY_RANK[requested] > AUTONOMY_RANK[maximum]) {
     return denied(
@@ -169,13 +174,26 @@ export function govern(
     )
   }
 
-  if (request.requiresApproval && !request.approvalId) {
-    return {
-      allowed: false,
-      decision: 'approval_required',
-      reason: 'approval_required',
-      policyIds: allowingPolicies.map((policy) => policy.id),
-      audit: audit(request, 'approval_required', 'approval_required', authorization.roleId, allowingPolicies),
+  if (request.requiresApproval) {
+    if (!request.approvalId) {
+      return {
+        allowed: false,
+        decision: 'approval_required',
+        reason: 'approval_required',
+        policyIds: allowingPolicies.map((policy) => policy.id),
+        audit: audit(request, 'approval_required', 'approval_required', authorization.roleId, allowingPolicies),
+      }
+    }
+
+    const approval = store.getScoped('approval', request.approvalId, request.context)
+    if (!approval || approval.decision !== 'approved') {
+      return {
+        allowed: false,
+        decision: 'approval_required',
+        reason: 'approval_not_granted',
+        policyIds: allowingPolicies.map((policy) => policy.id),
+        audit: audit(request, 'approval_required', 'approval_not_granted', authorization.roleId, allowingPolicies),
+      }
     }
   }
 
