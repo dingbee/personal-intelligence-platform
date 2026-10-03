@@ -24,17 +24,28 @@ export interface RuntimeCorrelationEnvelope {
   definitionVersion?: number
 }
 
+export interface CapabilityNegotiationRequest extends RuntimeCorrelationEnvelope {
+  requestedCapabilities: string[]
+}
+
+export interface CapabilityNegotiationResult {
+  supported: string[]
+  rejected: string[]
+}
+
 export interface AgentExecutionRequest extends RuntimeCorrelationEnvelope {
   agentId: UUID
   input?: Record<string, unknown>
   contextIds?: UUID[]
   approvalId?: UUID
+  capabilities?: string[]
 }
 
 export interface WorkflowExecutionRequest extends RuntimeCorrelationEnvelope {
   workflowId: UUID
   input?: Record<string, unknown>
   approvalId?: UUID
+  capabilities?: string[]
 }
 
 export interface ToolInvocationRequest extends RuntimeCorrelationEnvelope {
@@ -93,6 +104,7 @@ export interface NoVARuntimeAdapter {
   getRun(runId: UUID, scope: Pick<RuntimeCorrelationEnvelope, 'organizationId' | 'workspaceId' | 'correlationId' | 'idempotencyKey'>): Promise<RuntimeExecutionReference | RuntimeExecutionResult | undefined>
   requestApproval(request: ApprovalRequest): Promise<ApprovalRequest>
   resolveApproval(decision: ApprovalDecision): Promise<ApprovalDecision>
+  negotiateCapabilities(request: CapabilityNegotiationRequest): Promise<CapabilityNegotiationResult>
 }
 
 export function assertRuntimeScope(request: RuntimeCorrelationEnvelope): void {
