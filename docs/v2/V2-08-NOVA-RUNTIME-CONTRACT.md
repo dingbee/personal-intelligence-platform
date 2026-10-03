@@ -18,9 +18,9 @@ NoVA Core owns agent execution, workflow execution, tool invocation, model/provi
 Produced `docs/v2/NOVA-INTEGRATION-CONTRACT.md` with the ownership map, execution flow, correlation/provenance rules, approval boundary, workflow/agent/tool boundaries, failure semantics, idempotency, tenant isolation, version/capability negotiation, current NoVA constraints and explicit non-goals.
 
 ### V2-08B — Thin Contract Implementation
-**Status: next**
+**Status: implemented; verification pending**
 
-Target:
+Implemented:
 - execution request contracts
 - workflow execution request contracts
 - governed tool invocation contracts
@@ -28,10 +28,13 @@ Target:
 - approval contracts
 - result/outcome contracts
 - correlation/provenance envelope
-- contract versioning
+- contract version enforcement
+- capability negotiation contract
 - mock NoVA adapter
-- mapping and validation functions
+- validating adapter boundary
 - contract tests
+
+Still pending in V2-08C: boundary verification and live NoVA integration.
 
 ### V2-08C — Boundary Verification
 **Status: pending**
