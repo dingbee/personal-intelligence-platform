@@ -87,6 +87,9 @@ export function V2IntelligenceCentrePage() {
               <Link to="/v2/intelligence" className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-2 text-sm font-medium text-[var(--text-primary)]">
                 Intelligence
               </Link>
+              <Link to="/v2/knowledge-memory" className="rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]">
+                Knowledge + Memory
+              </Link>
               <Link to="/v2/foundation" className="rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]">
                 Foundation
               </Link>
