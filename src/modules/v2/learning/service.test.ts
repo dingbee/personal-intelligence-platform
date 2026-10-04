@@ -45,7 +45,6 @@ function base() {
     id: 'rec-1',
     organizationId: 'org-1',
     workspaceId: 'ws-1',
-    name: 'Recommendation',
     insightIds: [],
     actionType: 'action.execute',
     rationale: 'Test',

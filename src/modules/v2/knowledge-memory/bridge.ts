@@ -13,7 +13,11 @@ import type {
  * No V2 persistence or duplicate retrieval engine is introduced here.
  */
 export class V2KnowledgeMemoryBridge {
-  constructor(private readonly adapter: KnowledgeMemoryAdapter) {}
+  private readonly adapter: KnowledgeMemoryAdapter
+
+  constructor(adapter: KnowledgeMemoryAdapter) {
+    this.adapter = adapter
+  }
 
   retrieveKnowledge(query: KnowledgeQuery): Promise<KnowledgeRetrievalResult> {
     return this.adapter.retrieveKnowledge(query)

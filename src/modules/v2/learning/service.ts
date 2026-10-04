@@ -4,7 +4,6 @@ import type {
   Intervention,
   InterventionType,
   LearningSignal,
-  Outcome,
   Recommendation,
   UUID,
 } from '../domain/model'

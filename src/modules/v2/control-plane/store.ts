@@ -196,24 +196,28 @@ export class V2ControlPlaneStore {
       throw new Error(`V2 ${type} requires an organization scope.`)
     }
 
+    const scoped = resource as ResourceOf<K> & { workspaceId?: string; userId?: string; roleId?: string; teamId?: string; projectId?: string }
+
     switch (type) {
       case 'workspace': {
         this.assertParent('organization', resource.organizationId, resource.organizationId)
         break
       }
       case 'workspaceMembership': {
-        this.assertParent('workspace', resource.workspaceId, resource.organizationId)
-        this.assertParent('user', resource.userId, resource.organizationId)
-        this.assertParent('role', resource.roleId, resource.organizationId)
+        if (!scoped.workspaceId || !scoped.userId || !scoped.roleId) throw new Error('V2 workspace membership requires workspace, user and role references.')
+        this.assertParent('workspace', scoped.workspaceId, resource.organizationId)
+        this.assertParent('user', scoped.userId, resource.organizationId)
+        this.assertParent('role', scoped.roleId, resource.organizationId)
         break
       }
       case 'teamMembership': {
-        this.assertParent('workspace', resource.workspaceId, resource.organizationId)
-        this.assertParent('team', resource.teamId, resource.organizationId)
-        if (this.get('team', resource.teamId)?.workspaceId !== resource.workspaceId) {
+        if (!scoped.workspaceId || !scoped.teamId || !scoped.userId) throw new Error('V2 team membership requires workspace, team and user references.')
+        this.assertParent('workspace', scoped.workspaceId, resource.organizationId)
+        this.assertParent('team', scoped.teamId, resource.organizationId)
+        if (this.get('team', scoped.teamId)?.workspaceId !== scoped.workspaceId) {
           throw new Error('V2 team membership must belong to the same workspace as its team.')
         }
-        this.assertParent('user', resource.userId, resource.organizationId)
+        this.assertParent('user', scoped.userId!, resource.organizationId)
         break
       }
       case 'businessUnit':
@@ -229,7 +233,7 @@ export class V2ControlPlaneStore {
       case 'learningSignal':
       case 'approval':
       case 'run': {
-        const workspaceId = resource.workspaceId
+        const workspaceId = scoped.workspaceId
         if (!workspaceId) {
           throw new Error(`V2 ${type} requires a workspace scope.`)
         }
@@ -237,9 +241,10 @@ export class V2ControlPlaneStore {
         break
       }
       case 'objective': {
-        this.assertParent('project', resource.projectId, resource.organizationId)
-        const project = this.get('project', resource.projectId)
-        if (project?.workspaceId !== resource.workspaceId) {
+        if (!scoped.projectId || !scoped.workspaceId) throw new Error('V2 objective requires project and workspace references.')
+        this.assertParent('project', scoped.projectId, resource.organizationId)
+        const project = this.get('project', scoped.projectId)
+        if (project?.workspaceId !== scoped.workspaceId) {
           throw new Error('V2 objective must belong to the same workspace as its project.')
         }
         break

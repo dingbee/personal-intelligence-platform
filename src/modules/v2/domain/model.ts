@@ -327,7 +327,7 @@ export interface Approval extends ResourceMetadata {
   expiresAt?: string
 }
 
-export interface Run extends ResourceMetadata {
+export interface Run extends Omit<ResourceMetadata, 'status'> {
   workspaceId: UUID
   status: RunStatus
   agentId?: UUID
