@@ -136,7 +136,7 @@ describe('V2 governance and security', () => {
       workspaceId: 'ws-1',
       name: 'Allow action',
       effect: 'allow',
-      maximumAutonomy: 'bounded',
+      maximumAutonomy: 'prepare',
       rules: [{ resource: 'action', action: 'execute' }],
       status: 'active',
       createdAt: meta.createdAt,

@@ -324,6 +324,7 @@ export interface Approval extends ResourceMetadata {
   decidedBy?: UUID
   decidedAt?: string
   reason?: string
+  expiresAt?: string
 }
 
 export interface Run extends ResourceMetadata {
