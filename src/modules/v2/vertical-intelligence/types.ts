@@ -24,6 +24,13 @@ export interface VerticalSignalDefinition {
   entityIds?: string[]
 }
 
+/** Authoritative vertical tool metadata used by the control-plane binding. */
+export interface VerticalToolDefinition {
+  id: string
+  description?: string
+  requiresApproval: boolean
+}
+
 export interface VerticalAgentDefinition {
   id: string
   name: string
@@ -41,5 +48,6 @@ export interface VerticalIntelligenceDefinition {
   description: string
   entities: VerticalEntityDefinition[]
   signals: VerticalSignalDefinition[]
+  tools: VerticalToolDefinition[]
   agents: VerticalAgentDefinition[]
 }
