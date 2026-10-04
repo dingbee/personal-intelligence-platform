@@ -3,7 +3,6 @@ import type {
   VerticalAgentDefinition,
   VerticalId,
   VerticalIntelligenceDefinition,
-  VerticalToolDefinition,
 } from './types'
 
 /**
@@ -48,18 +47,6 @@ export interface VerticalAgentContractBinding {
   approvalRequiredForConsequentialActions: true
   executionAuthority: 'nova-core'
   executionEnabled: false
-}
-
-const CONSEQUENTIAL_TOOL_PATTERNS = [
-  'tasks',
-  'purchasing',
-  'purchase-orders',
-  'payments',
-  'kitchen',
-]
-
-function isConsequentialTool(toolId: string): boolean {
-  return CONSEQUENTIAL_TOOL_PATTERNS.some((pattern) => toolId === pattern)
 }
 
 function buildContextContract(
@@ -199,6 +186,10 @@ export function validateVerticalAgentContractBinding(
 
     if (tool.executionAuthority !== 'nova-core') {
       errors.push(`Tool has invalid execution authority: ${tool.toolId}`)
+    }
+
+    if (tool.consequential !== tool.requiresApproval) {
+      errors.push(`Tool approval metadata is inconsistent: ${tool.toolId}`)
     }
   }
 
