@@ -3,6 +3,7 @@ import type {
   VerticalAgentDefinition,
   VerticalId,
   VerticalIntelligenceDefinition,
+  VerticalToolDefinition,
 } from './types'
 
 /**
@@ -34,6 +35,7 @@ export interface VerticalToolContract {
   toolId: string
   executionAuthority: 'nova-core'
   consequential: boolean
+  requiresApproval: boolean
 }
 
 export interface VerticalAgentContractBinding {
@@ -145,13 +147,18 @@ export function bindVerticalAgentContract(
 ): VerticalAgentContractBinding {
   const context = buildContextContract(vertical, agent)
 
-  const tools = agent.allowedTools.map((toolId) => ({
-    id: `v2:tool:${vertical.id}:${toolId}`,
-    verticalId: vertical.id,
-    toolId,
-    executionAuthority: 'nova-core' as const,
-    consequential: isConsequentialTool(toolId),
-  }))
+  const tools = agent.allowedTools.map((toolId) => {
+    const definition = vertical.tools.find((tool) => tool.id === toolId)
+    if (!definition) throw new Error(`Vertical tool metadata is missing: ${vertical.id}/${toolId}`)
+    return {
+      id: `v2:tool:${vertical.id}:${toolId}`,
+      verticalId: vertical.id,
+      toolId,
+      executionAuthority: 'nova-core' as const,
+      consequential: definition.requiresApproval,
+      requiresApproval: definition.requiresApproval,
+    }
+  })
 
   return {
     agentId: agent.id,
