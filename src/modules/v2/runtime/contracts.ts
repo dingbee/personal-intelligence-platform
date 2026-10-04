@@ -1,3 +1,4 @@
+import type { AuthorizationEnvelope } from '../agents/authorization'
 import type { UUID } from '../domain/model'
 
 export const NOVA_RUNTIME_CONTRACT_VERSION = '1.0.0' as const
@@ -51,7 +52,7 @@ export interface WorkflowExecutionRequest extends RuntimeCorrelationEnvelope {
 export interface ToolInvocationRequest extends RuntimeCorrelationEnvelope {
   toolId: UUID
   input: Record<string, unknown>
-  approvalId?: UUID
+  authorization: AuthorizationEnvelope
 }
 
 export interface RuntimeEvent extends RuntimeCorrelationEnvelope {
