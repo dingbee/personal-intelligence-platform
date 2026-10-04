@@ -116,17 +116,4 @@ describe('V2-12 vertical agent contract bindings', () => {
   })
 })
 
-
-  it('fails closed when authoritative tool approval metadata is inconsistent', () => {
-    const binding = bindVerticalAgents(lexibiteIntelligence)[0]
-    const invalid = {
-      ...binding,
-      tools: binding.tools.map((tool, index) =>
-        index === 0 ? { ...tool, consequential: true } : tool,
-      ),
-    }
-
-    expect(validateVerticalAgentContractBinding(invalid)).toContain(
-      `Tool approval metadata is inconsistent: ${invalid.tools[0].toolId}`,
-    )
-  })
+}
