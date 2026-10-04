@@ -53,81 +53,32 @@ function buildContextContract(
   vertical: VerticalIntelligenceDefinition,
   agent: VerticalAgentDefinition,
 ): VerticalContextContract {
-  const entityIds = new Set<string>()
-  const signalIds = new Set<string>()
+  const entityIds = Array.from(new Set(agent.context.entityIds))
+  const signalIds = Array.from(new Set(agent.context.signalIds))
 
-  // The agent's declared intelligence kind is the primary domain anchor.
-  // Signals without explicit entity links are intentionally included only
-  // when their description is relevant to the agent's declared capability.
-  const capabilityText = [
-    agent.intelligenceKind,
-    ...agent.capabilities,
-  ].join(' ').toLowerCase()
+  const knownEntities = new Set(vertical.entities.map((entity) => entity.id))
+  const knownSignals = new Set(vertical.signals.map((signal) => signal.id))
 
-  for (const signal of vertical.signals) {
-    const signalText = [
-      signal.id,
-      signal.label,
-      signal.description,
-    ].join(' ').toLowerCase()
-
-    if (
-      signal.entityIds?.some((entityId) => entityTextMatches(vertical, entityId, capabilityText)) ||
-      signalText.split(/[^a-z0-9-]+/).some((token) => token && capabilityText.includes(token))
-    ) {
-      signalIds.add(signal.id)
-      signal.entityIds?.forEach((entityId) => entityIds.add(entityId))
+  for (const entityId of entityIds) {
+    if (!knownEntities.has(entityId)) {
+      throw new Error('Agent context references unknown entity: ' + vertical.id + '/' + entityId)
     }
   }
 
-  // Every binding must at least expose the vertical's explicit domain entities
-  // that can be inferred from its tool surface. This remains deterministic.
-  for (const entity of vertical.entities) {
-    const entityText = [entity.id, entity.label, entity.description]
-      .join(' ')
-      .toLowerCase()
-
-    if (
-      agent.allowedTools.some((tool) => entityText.includes(tool.replace(/-/g, ' '))) ||
-      capabilityText.includes(entity.id.replace(/-/g, ' '))
-    ) {
-      entityIds.add(entity.id)
+  for (const signalId of signalIds) {
+    if (!knownSignals.has(signalId)) {
+      throw new Error('Agent context references unknown signal: ' + vertical.id + '/' + signalId)
     }
-  }
-
-  // Do not manufacture an empty context for a valid agent. The vertical
-  // remains the hard tenant/domain boundary.
-  if (entityIds.size === 0) {
-    vertical.entities.forEach((entity) => entityIds.add(entity.id))
   }
 
   return {
-    id: `v2:context:${vertical.id}:${agent.id}`,
+    id: 'v2:context:' + vertical.id + ':' + agent.id,
     verticalId: vertical.id,
-    entityIds: Array.from(entityIds),
-    signalIds: Array.from(signalIds),
-    memoryScopes: [
-      `workspace:${vertical.id}`,
-      `agent:${agent.id}`,
-    ],
+    entityIds,
+    signalIds,
+    memoryScopes: ['workspace:' + vertical.id, 'agent:' + agent.id],
   }
 }
-
-function entityTextMatches(
-  vertical: VerticalIntelligenceDefinition,
-  entityId: string,
-  capabilityText: string,
-): boolean {
-  const entity = vertical.entities.find((candidate) => candidate.id === entityId)
-  if (!entity) return false
-
-  return [entity.id, entity.label]
-    .join(' ')
-    .toLowerCase()
-    .split(/[^a-z0-9-]+/)
-    .some((token) => token.length > 2 && capabilityText.includes(token))
-}
-
 export function bindVerticalAgentContract(
   vertical: VerticalIntelligenceDefinition,
   agent: VerticalAgentDefinition,
