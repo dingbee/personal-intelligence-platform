@@ -34,7 +34,7 @@ export class MockNoVARuntimeAdapter implements NoVARuntimeAdapter {
     return this.accept(request, request.toolId)
   }
 
-  async getRun(runId: UUID): Promise<RuntimeExecutionReference | RuntimeExecutionResult | undefined> {
+  async getRun(runId: UUID, _scope: Parameters<NoVARuntimeAdapter['getRun']>[1]): Promise<RuntimeExecutionReference | RuntimeExecutionResult | undefined> {
     return this.runs.get(runId)
   }
 
@@ -47,8 +47,9 @@ export class MockNoVARuntimeAdapter implements NoVARuntimeAdapter {
   }
 
   async negotiateCapabilities(request: CapabilityNegotiationRequest): Promise<CapabilityNegotiationResult> {
-    const supported = request.requestedCapabilities.filter((capability) => capability === 'agent.execute' || capability === 'workflow.execute' || capability === 'tool.invoke')
-    const rejected = request.requestedCapabilities.filter((capability) => !supported.includes(capability))
+    const supportedCapabilities = ['agent.execute', 'workflow.execute', 'tool.invoke'] as const
+    const supported = request.requestedCapabilities.filter((capability): capability is typeof supportedCapabilities[number] => supportedCapabilities.includes(capability as typeof supportedCapabilities[number]))
+    const rejected = request.requestedCapabilities.filter((capability) => !supported.includes(capability as typeof supported[number]))
     return { supported, rejected }
   }
 

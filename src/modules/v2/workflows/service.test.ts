@@ -11,7 +11,7 @@ function seed() {
   const workspace: Workspace = { id: 'ws-1', organizationId: 'org-1', name: 'ARRIYIA', slug: 'arriyia', status: 'active', createdAt: metadata.createdAt, updatedAt: metadata.updatedAt }
   const tool: Tool = { id: 'tool-1', organizationId: 'org-1', workspaceId: 'ws-1', name: 'Research', inputSchema: {}, capability: 'research', requiredPermissions: [], status: 'active', createdAt: metadata.createdAt, updatedAt: metadata.updatedAt }
   const policy: Policy = { id: 'policy-1', organizationId: 'org-1', workspaceId: 'ws-1', name: 'Policy', effect: 'allow', rules: [], status: 'active', createdAt: metadata.createdAt, updatedAt: metadata.updatedAt }
-  const agentDefinition: AgentDefinition = { version: 1, systemPurpose: 'Research.', capabilities: ['research'], toolIds: ['tool-1'], memoryScopes: ['workspace'], policyIds: ['policy-1'] }
+  const agentDefinition: AgentDefinition = { version: 1, systemPurpose: 'Research.', capabilities: ['research'], toolIds: ['tool-1'], memoryScopes: ['workspace'], policyIds: ['policy-1'], autonomyCeiling: 'prepare' }
   const agent: Agent = { id: 'agent-1', organizationId: 'org-1', workspaceId: 'ws-1', name: 'Research Agent', definition: agentDefinition, status: 'active', createdAt: metadata.createdAt, updatedAt: metadata.updatedAt }
   store.save('organization', organization); store.save('workspace', workspace); store.save('tool', tool); store.save('policy', policy); store.save('agent', agent)
   return store
@@ -34,7 +34,7 @@ describe('V2 workflow studio', () => {
   })
   it('rejects missing graph references', () => {
     const store = seed()
-    expect(validateWorkflowDefinition(store, 'ws-1', { ...definition, nodes: [{ ...definition.nodes[0], next: ['missing'] }] }).valid).toBe(false)
+    expect(validateWorkflowDefinition(store, 'ws-1', { ...definition, nodes: [{ ...definition.nodes[0]!, next: ['missing'] }] }).valid).toBe(false)
   })
   it('requires increasing definition versions', () => {
     const store = seed()

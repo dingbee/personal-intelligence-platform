@@ -85,6 +85,8 @@ describe('V2-12 vertical agent contract bindings', () => {
 
   it('rejects a binding with an invalid autonomy ceiling', () => {
     const binding = bindVerticalAgents(staynasIntelligence)[0]
+    expect(binding).toBeDefined()
+    if (!binding) throw new Error('Expected a StayNas binding fixture.')
     const invalid = { ...binding, autonomyCeiling: 'autonomous' as never }
     expect(validateVerticalAgentContractBinding(invalid)).toContain('Binding contains an invalid autonomy ceiling')
   })
@@ -103,6 +105,8 @@ describe('V2-12 vertical agent contract bindings', () => {
 
   it('rejects a binding whose tool contract crosses the vertical boundary', () => {
     const binding = bindVerticalAgents(lexibiteIntelligence)[0]
+    expect(binding).toBeDefined()
+    if (!binding) throw new Error('Expected a LexiBite binding fixture.')
     const invalid = {
       ...binding,
       tools: binding.tools.map((tool, index) =>

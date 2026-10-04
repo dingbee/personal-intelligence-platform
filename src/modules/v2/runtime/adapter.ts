@@ -41,7 +41,7 @@ export class ValidatingNoVARuntimeAdapter implements NoVARuntimeAdapter {
   startWorkflow(request: WorkflowExecutionRequest): Promise<RuntimeExecutionReference> { validateWorkflowExecutionRequest(request); return this.delegate.startWorkflow(request) }
   invokeTool(request: ToolInvocationRequest): Promise<RuntimeExecutionReference> { validateToolInvocationRequest(request); return this.delegate.invokeTool(request) }
   getRun(runId: UUID, scope: Pick<RuntimeCorrelationEnvelope, 'contractVersion' | 'organizationId' | 'workspaceId' | 'correlationId' | 'idempotencyKey'>): Promise<RuntimeExecutionReference | RuntimeExecutionResult | undefined> {
-    validateRuntimeRequest({ contractVersion: scope.contractVersion ?? '1.0.0', ...scope })
+    validateRuntimeRequest(scope)
     if (!runId) throw new Error('NoVA runtime lookup requires runId.')
     return this.delegate.getRun(runId, scope)
   }
