@@ -31,6 +31,11 @@ export interface VerticalToolDefinition {
   requiresApproval: boolean
 }
 
+export interface VerticalAgentContextDefinition {
+  entityIds: string[]
+  signalIds: string[]
+}
+
 export interface VerticalAgentDefinition {
   id: string
   name: string
@@ -38,6 +43,7 @@ export interface VerticalAgentDefinition {
   intelligenceKind: VerticalIntelligenceKind
   capabilities: string[]
   allowedTools: string[]
+  context: VerticalAgentContextDefinition
   /** Declarative ceiling; approval remains a separate governance gate. */
   autonomy: AutonomyLevel
 }
