@@ -22,6 +22,12 @@ V2 work is preview-only on `v2-development`. Production `main` remains the V1 ba
 ## Safety
 V2 preview work must not modify production Supabase schema or deploy to production.
 
+## V2-12 implementation checkpoint
+- Vertical intelligence contract established
+- StayNas and LexiBite definitions registered
+- Vertical agent autonomy is declarative and does not bypass governance or NoVA execution contracts
+- No production Supabase schema changes
+
 ## Current checkpoint
 - V2-01 Foundation — implemented
 - V2-02 Enterprise Workspace — implemented
