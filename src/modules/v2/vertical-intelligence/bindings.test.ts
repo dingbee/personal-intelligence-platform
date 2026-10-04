@@ -70,7 +70,9 @@ describe('V2-12 vertical agent contract bindings', () => {
     const purchaseOrdersTool = binding?.tools.find((tool) => tool.toolId === 'purchase-orders')
 
     expect(purchasingTool?.consequential).toBe(true)
+    expect(purchasingTool?.requiresApproval).toBe(true)
     expect(purchaseOrdersTool?.consequential).toBe(true)
+    expect(purchaseOrdersTool?.requiresApproval).toBe(true)
     expect(binding?.governanceRequired).toBe(true)
     expect(binding?.approvalRequiredForConsequentialActions).toBe(true)
     expect(binding?.executionEnabled).toBe(false)
@@ -113,3 +115,18 @@ describe('V2-12 vertical agent contract bindings', () => {
     )
   })
 })
+
+
+  it('fails closed when authoritative tool approval metadata is inconsistent', () => {
+    const binding = bindVerticalAgents(lexibiteIntelligence)[0]
+    const invalid = {
+      ...binding,
+      tools: binding.tools.map((tool, index) =>
+        index === 0 ? { ...tool, consequential: true } : tool,
+      ),
+    }
+
+    expect(validateVerticalAgentContractBinding(invalid)).toContain(
+      `Tool approval metadata is inconsistent: ${invalid.tools[0].toolId}`,
+    )
+  })
