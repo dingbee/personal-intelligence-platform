@@ -5,7 +5,7 @@
 V2 is the enterprise intelligence and execution control plane built on the V1 foundation.
 
 ## Current sprint
-**V2-10 — Learning Loop**
+**V2-12 — Vertical Intelligence**
 
 ## Working branch
 `v2-development`
@@ -61,7 +61,7 @@ V2 preview work must not modify production Supabase schema or deploy to producti
 8. NoVA Core Runtime Contract
 9. Governance + Security
 10. Learning Loop
-11. Integrations
-12. Vertical Intelligence
+11. Integrations — complete
+12. Vertical Intelligence — active
 13. Bounded Autonomy
 14. Production Certification
