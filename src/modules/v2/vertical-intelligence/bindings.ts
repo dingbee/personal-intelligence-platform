@@ -1,3 +1,4 @@
+import { isAutonomyLevel } from '../domain/autonomy'
 import type {
   VerticalAgentDefinition,
   VerticalId,
@@ -193,6 +194,8 @@ export function validateVerticalAgentContractBinding(
       errors.push(`Tool has invalid execution authority: ${tool.toolId}`)
     }
   }
+
+  if (!isAutonomyLevel(binding.autonomyCeiling)) errors.push('Binding contains an invalid autonomy ceiling')
 
   if (binding.governanceRequired !== true) {
     errors.push('Governance must remain mandatory')

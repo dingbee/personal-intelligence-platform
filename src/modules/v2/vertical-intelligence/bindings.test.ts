@@ -76,6 +76,17 @@ describe('V2-12 vertical agent contract bindings', () => {
     expect(binding?.executionEnabled).toBe(false)
   })
 
+  it('treats approval as a governance gate rather than an autonomy level', () => {
+    const bindings = bindVerticalAgents(staynasIntelligence)
+    expect(bindings.every((binding) => binding.autonomyCeiling !== ('approve' as never))).toBe(true)
+  })
+
+  it('rejects a binding with an invalid autonomy ceiling', () => {
+    const binding = bindVerticalAgents(staynasIntelligence)[0]
+    const invalid = { ...binding, autonomyCeiling: 'autonomous' as never }
+    expect(validateVerticalAgentContractBinding(invalid)).toContain('Binding contains an invalid autonomy ceiling')
+  })
+
   it('rejects a binding that attempts to bypass the governance boundary', () => {
     const binding = bindVerticalAgents(staynasIntelligence)[0]
     const invalid = {

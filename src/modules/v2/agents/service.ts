@@ -1,5 +1,6 @@
 import { createRegistry, type Registry } from '@/modules/core/registry'
 import type { Agent, AgentDefinition, Policy, ResourceMetadata, Tool, UUID } from '../domain/model'
+import { autonomyAtMost } from '../domain/autonomy'
 import { V2ControlPlaneStore } from '../control-plane/store'
 
 type AgentMetadata = Pick<ResourceMetadata, 'createdAt' | 'updatedAt'>
@@ -25,6 +26,7 @@ function assertDefinition(store: V2ControlPlaneStore, workspaceId: UUID, definit
     if (!policy) throw new Error('V2 agent policy "' + policyId + '" does not exist in the active workspace.')
     if (policy.status !== 'active') throw new Error('V2 agent policy "' + policyId + '" is not active.')
     if (policy.workspaceId && policy.workspaceId !== workspaceId) throw new Error('V2 agent cannot reference a policy from another workspace.')
+    if (policy.maximumAutonomy && !autonomyAtMost(policy.maximumAutonomy, definition.autonomyCeiling)) throw new Error('V2 agent autonomy ceiling is below policy maximum autonomy.')
   }
 }
 

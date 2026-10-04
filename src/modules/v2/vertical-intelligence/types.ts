@@ -1,3 +1,5 @@
+import type { AutonomyLevel } from '../domain/autonomy'
+
 export type VerticalId = 'staynas' | 'lexibite'
 
 export type VerticalIntelligenceKind =
@@ -29,7 +31,8 @@ export interface VerticalAgentDefinition {
   intelligenceKind: VerticalIntelligenceKind
   capabilities: string[]
   allowedTools: string[]
-  autonomy: 'inform' | 'recommend' | 'prepare' | 'approve' | 'bounded'
+  /** Declarative ceiling; approval remains a separate governance gate. */
+  autonomy: AutonomyLevel
 }
 
 export interface VerticalIntelligenceDefinition {

@@ -25,6 +25,7 @@ const definition: AgentDefinition = {
   toolIds: ['tool-1'],
   memoryScopes: ['workspace', 'project'],
   policyIds: ['policy-1'],
+  autonomyCeiling: 'prepare',
 }
 
 describe('V2 agent management', () => {
@@ -51,6 +52,20 @@ describe('V2 agent management', () => {
     const updated = updateAgentDefinition(store, 'agent-1', { ...definition, version: 2, capabilities: ['research', 'synthesis', 'planning'] }, { updatedAt: '2026-10-03T01:00:00Z' })
     expect(updated.definition.version).toBe(2)
     expect(updated.status).toBe('draft')
+  })
+
+  it('rejects a policy maximum above the agent autonomy ceiling', () => {
+    const store = seed()
+    const policy = store.get('policy', 'policy-1')!
+    store.replace('policy', { ...policy, maximumAutonomy: 'bounded' })
+    expect(validateAgentDefinition(store, 'ws-1', definition)).toEqual({ valid: false, reason: 'V2 agent autonomy ceiling is below policy maximum autonomy.' })
+  })
+
+  it('accepts a policy maximum at or below the agent autonomy ceiling', () => {
+    const store = seed()
+    const policy = store.get('policy', 'policy-1')!
+    store.replace('policy', { ...policy, maximumAutonomy: 'recommend' })
+    expect(validateAgentDefinition(store, 'ws-1', definition)).toEqual({ valid: true })
   })
 
   it('reuses the existing core registry for the agent catalogue', () => {

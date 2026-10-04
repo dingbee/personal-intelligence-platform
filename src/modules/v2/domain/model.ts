@@ -6,6 +6,8 @@
  * production Supabase schema.
  */
 
+import type { AutonomyLevel } from './autonomy'
+
 export type UUID = string
 
 export type ResourceStatus =
@@ -119,7 +121,7 @@ export interface Policy extends ResourceMetadata {
   effect: 'allow' | 'deny'
   rules: PolicyRule[]
   /** Maximum autonomy this policy permits for matching actions. */
-  maximumAutonomy?: 'manual' | 'assisted' | 'bounded' | 'autonomous'
+  maximumAutonomy?: AutonomyLevel
 }
 
 export interface PolicyRule {
@@ -156,6 +158,8 @@ export interface AgentDefinition {
   toolIds: UUID[]
   memoryScopes: MemoryScope[]
   policyIds: UUID[]
+  /** Highest autonomy this agent may request; never grants execution authority. */
+  autonomyCeiling: AutonomyLevel
 }
 
 export interface Task extends ResourceMetadata {
