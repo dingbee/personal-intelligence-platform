@@ -1,11 +1,11 @@
 # ARRIYIA V2
 
- > V2-11 Integrations — implementation checkpoint.
+ > V2-14 Governance & Enterprise Control — implementation checkpoint.
 
 V2 is the enterprise intelligence and execution control plane built on the V1 foundation.
 
-## Current sprint
-**V2-12 — Vertical Intelligence**
+## Completed V2 gates
+**V2-14 — Governance & Enterprise Control — implementation complete**
 
 ## Working branch
 `v2-development`
@@ -55,6 +55,12 @@ V2 preview work must not modify production Supabase schema or deploy to producti
   - evidence-backed learning signals
   - workspace-scoped fail-closed evaluation
   - NoVA execution boundary preserved
+
+## Certification status
+- V2-12 Vertical Intelligence — complete
+- V2-13 Bounded Autonomy — complete
+- V2-14 Governance & Enterprise Control — complete
+- Final release certification — pending deep engineering audit and Preview verification
 
 ## Roadmap
 1. Foundation

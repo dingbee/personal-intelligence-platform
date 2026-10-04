@@ -95,11 +95,11 @@ describe('V2 governance and security', () => {
       resourceId: 'action-1',
     },
     context: { organizationId: 'org-1', workspaceId: 'ws-1', userId: 'user-1' },
-    requestedAutonomy: 'manual' as const,
+    requestedAutonomy: 'inform' as const,
     ...overrides,
   })
 
-  it('derives the autonomy ceiling from policy, not caller input', () => {
+  it('rejects a request above the policy autonomy ceiling', () => {
     const store = governedBase()
     store.save('policy', {
       id: 'policy-bounded',
@@ -115,15 +115,15 @@ describe('V2 governance and security', () => {
     })
 
     const decision = govern(store, governanceRequest({
-      requestedAutonomy: 'autonomous',
+      requestedAutonomy: 'bounded',
     }))
     expect(decision).toMatchObject({ allowed: false, decision: 'denied', reason: 'autonomy_exceeded' })
   })
 
-  it('fails closed when an elevated autonomy request has no governing policy ceiling', () => {
+  it('fails closed when a non-inform request has no governing policy ceiling', () => {
     const store = governedBase()
     const decision = govern(store, governanceRequest({
-      requestedAutonomy: 'assisted',
+      requestedAutonomy: 'recommend',
     }))
     expect(decision).toMatchObject({ allowed: false, decision: 'denied', reason: 'autonomy_exceeded' })
   })

@@ -50,7 +50,7 @@ export function V2CommandCentrePage() {
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)] md:text-base">
                 One operational surface for system state, runs, approvals and intelligence.
-                V2 is establishing the control plane before runtime execution is connected.
+                V2 control-plane governance is established; runtime execution remains exclusively delegated to NoVA Core.
               </p>
             </div>
             <nav className="flex flex-wrap gap-2">
@@ -155,7 +155,7 @@ export function V2CommandCentrePage() {
           <article className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-5">
             <div className="text-xs uppercase tracking-[0.16em] text-[var(--text-secondary)]">Actions</div>
             <h2 className="mt-2 font-semibold text-[var(--text-primary)]">Governed action plane</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Actions are defined, scoped and approval-aware. Runtime execution arrives in V2-08.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Actions are defined, scoped and approval-aware. Runtime execution remains behind the V2-14 governance boundary and NoVA Core contract.</p>
           </article>
           <article className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-5">
             <div className="text-xs uppercase tracking-[0.16em] text-[var(--text-secondary)]">Alerts</div>
