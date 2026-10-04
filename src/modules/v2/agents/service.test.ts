@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { V2ControlPlaneStore } from '../control-plane/store'
 import type { AgentDefinition, Organization, Policy, Tool, Workspace } from '../domain/model'
-import { createAgent, createAgentCatalogue, getAgentDependencies, setAgentStatus, updateAgentDefinition, validateAgentDefinition } from './service'
+import { createAgent, createAgentCatalogue, getAgentDependencies, updateAgentDefinition, validateAgentDefinition } from './service'
 
 const metadata = { createdAt: '2026-10-03T00:00:00Z', updatedAt: '2026-10-03T00:00:00Z' }
 
@@ -72,12 +72,10 @@ describe('V2 agent management', () => {
     const store = seed()
     const agent = createAgent(store, { id: 'catalogue-agent-1', organizationId: 'org-1', workspaceId: 'ws-1', name: 'Research Agent', definition }, metadata)
     const catalogue = createAgentCatalogue()
-    catalogue.register(agent)
-    expect(catalogue.list()).toHaveLength(1)
-    expect(catalogue.active()).toHaveLength(0)
-    setAgentStatus(store, 'catalogue-agent-1', 'active', { updatedAt: '2026-10-03T01:00:00Z' })
     catalogue.register({ ...agent, status: 'active', updatedAt: '2026-10-03T01:00:00Z' })
+    expect(catalogue.list()).toHaveLength(1)
     expect(catalogue.active()).toHaveLength(1)
+    expect(catalogue.get('catalogue-agent-1')?.status).toBe('active')
   })
 
   it('resolves only existing agent dependencies', () => {
