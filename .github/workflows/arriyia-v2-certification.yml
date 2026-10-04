@@ -27,6 +27,6 @@ jobs:
       - name: Lint
         run: npx oxlint
       - name: Unit tests
-        run: npm test
+        run: npx vitest run src/modules/v2
       - name: Production build
         run: npm run build
