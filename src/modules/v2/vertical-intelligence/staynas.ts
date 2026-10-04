@@ -15,6 +15,16 @@ export const staynasIntelligence: VerticalIntelligenceDefinition = {
     { id: 'occupancy-pressure', label: 'Occupancy Pressure', description: 'Signals indicating changing occupancy and room demand.', entityIds: ['room', 'property'] },
     { id: 'operational-exception', label: 'Operational Exception', description: 'Signals indicating unresolved property operations issues.', entityIds: ['room', 'reservation'] },
   ],
+  tools: [
+    { id: 'guest-data', description: 'Guest data access.', requiresApproval: false },
+    { id: 'reservation-data', description: 'Reservation data access.', requiresApproval: false },
+    { id: 'knowledge', description: 'Hospitality knowledge access.', requiresApproval: false },
+    { id: 'operations-data', description: 'Operations data access.', requiresApproval: false },
+    { id: 'tasks', description: 'Operational task management.', requiresApproval: true },
+    { id: 'property-data', description: 'Property data access.', requiresApproval: false },
+    { id: 'revenue-data', description: 'Revenue data access.', requiresApproval: false },
+    { id: 'intelligence-ledger', description: 'Intelligence ledger access.', requiresApproval: false },
+  ],
   agents: [
     { id: 'staynas-guest-intelligence', name: 'Guest Intelligence Agent', description: 'Understands guest context and recommends service actions.', intelligenceKind: 'guest', capabilities: ['guest-context', 'experience-analysis', 'service-recommendation'], allowedTools: ['guest-data', 'reservation-data', 'knowledge'], autonomy: 'recommend' },
     { id: 'staynas-operations-intelligence', name: 'Operations Intelligence Agent', description: 'Detects operational exceptions and coordinates recommended responses.', intelligenceKind: 'operations', capabilities: ['exception-detection', 'operations-analysis', 'task-preparation'], allowedTools: ['operations-data', 'tasks', 'knowledge'], autonomy: 'prepare' },
