@@ -36,7 +36,11 @@ export function validateToolInvocationRequest(request: ToolInvocationRequest): v
 }
 
 export class ValidatingNoVARuntimeAdapter implements NoVARuntimeAdapter {
-  constructor(private readonly delegate: NoVARuntimeAdapter) {}
+  private readonly delegate: NoVARuntimeAdapter
+
+  constructor(delegate: NoVARuntimeAdapter) {
+    this.delegate = delegate
+  }
   startAgent(request: AgentExecutionRequest): Promise<RuntimeExecutionReference> { validateAgentExecutionRequest(request); return this.delegate.startAgent(request) }
   startWorkflow(request: WorkflowExecutionRequest): Promise<RuntimeExecutionReference> { validateWorkflowExecutionRequest(request); return this.delegate.startWorkflow(request) }
   invokeTool(request: ToolInvocationRequest): Promise<RuntimeExecutionReference> { validateToolInvocationRequest(request); return this.delegate.invokeTool(request) }

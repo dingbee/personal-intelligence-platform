@@ -1,7 +1,6 @@
 import type { Permission, Policy, Role, UUID, WorkspaceMembership } from '../domain/model'
 import type { AutonomyLevel } from '../domain/autonomy'
 import { autonomyAtMost } from '../domain/autonomy'
-import type { AutonomyLevel } from '../domain/autonomy'
 export type { AutonomyLevel } from '../domain/autonomy'
 import type { V2ScopeContext } from '../domain/scope'
 import { assertScope } from '../domain/scope'

@@ -93,6 +93,8 @@ describe('V2-12 vertical agent contract bindings', () => {
 
   it('rejects a binding that attempts to bypass the governance boundary', () => {
     const binding = bindVerticalAgents(staynasIntelligence)[0]
+    expect(binding).toBeDefined()
+    if (!binding) throw new Error('Expected a StayNas binding fixture.')
     const invalid = {
       ...binding,
       executionEnabled: true as false,
@@ -114,8 +116,11 @@ describe('V2-12 vertical agent contract bindings', () => {
       ),
     }
 
+    const firstTool = invalid.tools[0]
+    expect(firstTool).toBeDefined()
+    if (!firstTool) throw new Error('Expected a tool fixture.')
     expect(validateVerticalAgentContractBinding(invalid)).toContain(
-      `Tool contract crosses vertical boundary: ${invalid.tools[0].toolId}`,
+      `Tool contract crosses vertical boundary: ${firstTool.toolId}`,
     )
   })
 })

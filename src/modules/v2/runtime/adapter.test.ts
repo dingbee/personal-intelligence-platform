@@ -19,6 +19,7 @@ const request: ToolInvocationRequest = {
     requestedAutonomy: 'prepare',
     agentAutonomyCeiling: 'prepare',
     decision: 'authorized',
+    requiresApproval: false,
     contextIds: [],
     provenanceIds: [],
     correlationId: 'corr-1',
