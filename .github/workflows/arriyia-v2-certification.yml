@@ -22,6 +22,8 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
       - name: TypeScript
         run: npx tsc -b
       - name: Lint
