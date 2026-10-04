@@ -70,12 +70,12 @@ describe('V2 agent management', () => {
 
   it('reuses the existing core registry for the agent catalogue', () => {
     const store = seed()
-    const agent = createAgent(store, { id: 'agent-1', organizationId: 'org-1', workspaceId: 'ws-1', name: 'Research Agent', definition }, metadata)
+    const agent = createAgent(store, { id: 'catalogue-agent-1', organizationId: 'org-1', workspaceId: 'ws-1', name: 'Research Agent', definition }, metadata)
     const catalogue = createAgentCatalogue()
     catalogue.register(agent)
     expect(catalogue.list()).toHaveLength(1)
     expect(catalogue.active()).toHaveLength(0)
-    setAgentStatus(store, 'agent-1', 'active', { updatedAt: '2026-10-03T01:00:00Z' })
+    setAgentStatus(store, 'catalogue-agent-1', 'active', { updatedAt: '2026-10-03T01:00:00Z' })
     catalogue.register({ ...agent, status: 'active', updatedAt: '2026-10-03T01:00:00Z' })
     expect(catalogue.active()).toHaveLength(1)
   })

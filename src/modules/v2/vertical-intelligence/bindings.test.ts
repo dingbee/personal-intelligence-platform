@@ -61,21 +61,23 @@ describe('V2-12 vertical agent contract bindings', () => {
   })
 
   it('requires approval when a consequential tool is declared', () => {
-    const binding = bindVerticalAgents(lexibiteIntelligence).find(
-      (candidate) => candidate.agentId === 'lexibite-procurement-intelligence',
-    )
-    expect(binding).toBeDefined()
+    const bindings = bindVerticalAgents(lexibiteIntelligence)
+    const inventoryBinding = bindings.find((candidate) => candidate.agentId === 'lexibite-inventory-intelligence')
+    const procurementBinding = bindings.find((candidate) => candidate.agentId === 'lexibite-procurement-intelligence')
+    expect(inventoryBinding).toBeDefined()
+    expect(procurementBinding).toBeDefined()
+    if (!inventoryBinding || !procurementBinding) throw new Error('Expected LexiBite procurement fixtures.')
 
-    const purchasingTool = binding?.tools.find((tool) => tool.toolId === 'purchasing')
-    const purchaseOrdersTool = binding?.tools.find((tool) => tool.toolId === 'purchase-orders')
+    const purchasingTool = inventoryBinding.tools.find((tool) => tool.toolId === 'purchasing')
+    const purchaseOrdersTool = procurementBinding.tools.find((tool) => tool.toolId === 'purchase-orders')
 
     expect(purchasingTool?.consequential).toBe(true)
     expect(purchasingTool?.requiresApproval).toBe(true)
     expect(purchaseOrdersTool?.consequential).toBe(true)
     expect(purchaseOrdersTool?.requiresApproval).toBe(true)
-    expect(binding?.governanceRequired).toBe(true)
-    expect(binding?.approvalRequiredForConsequentialActions).toBe(true)
-    expect(binding?.executionEnabled).toBe(false)
+    expect(inventoryBinding.governanceRequired).toBe(true)
+    expect(procurementBinding.approvalRequiredForConsequentialActions).toBe(true)
+    expect(inventoryBinding.executionEnabled).toBe(false)
   })
 
   it('treats approval as a governance gate rather than an autonomy level', () => {
