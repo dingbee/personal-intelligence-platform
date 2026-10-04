@@ -116,4 +116,3 @@ describe('V2-12 vertical agent contract bindings', () => {
   })
 })
 
-}
