@@ -1,0 +1,76 @@
+import { describe, expect, it } from 'vitest'
+import { evaluateAuthorizationEnvelope } from './agents/authorization'
+import { validateToolInvocationRequest } from './runtime/adapter'
+import type { ToolInvocationRequest } from './runtime/contracts'
+import { autonomyAtMost, AUTONOMY_LEVELS } from './domain/autonomy'
+import { bindVerticalAgents, validateVerticalAgentContractBinding } from './vertical-intelligence/bindings'
+import { lexibiteIntelligence } from './vertical-intelligence/lexibite'
+
+describe('ARRIYIA V2 release certification fixtures', () => {
+  it('uses one canonical autonomy vocabulary', () => {
+    expect(AUTONOMY_LEVELS).toEqual(['inform', 'recommend', 'prepare', 'bounded'])
+    expect(autonomyAtMost('prepare', 'bounded')).toBe(true)
+    expect(autonomyAtMost('bounded', 'prepare')).toBe(false)
+  })
+
+  it('keeps every LexiBite vertical binding non-executing and NoVA-owned', () => {
+    for (const binding of bindVerticalAgents(lexibiteIntelligence)) {
+      expect(validateVerticalAgentContractBinding(binding)).toEqual([])
+      expect(binding.executionEnabled).toBe(false)
+      expect(binding.executionAuthority).toBe('nova-core')
+      expect(binding.governanceRequired).toBe(true)
+    }
+  })
+
+  it('blocks consequential authorization without exact active approval', () => {
+    const result = evaluateAuthorizationEnvelope({
+      organizationId: 'org-1',
+      workspaceId: 'ws-1',
+      agentId: 'agent-1',
+      actionId: 'action-1',
+      requestedAutonomy: 'prepare',
+      agentAutonomyCeiling: 'prepare',
+      tool: {
+        id: 'purchase-orders',
+        organizationId: 'org-1',
+        workspaceId: 'ws-1',
+        requiresApproval: true,
+      },
+      correlationId: 'corr-1',
+    })
+    expect(result.decision).toBe('requires_approval')
+    expect(result.envelope.requiresApproval).toBe(true)
+  })
+
+  it('requires the runtime handoff to carry an authorized governance envelope', () => {
+    const request: ToolInvocationRequest = {
+      contractVersion: '1.0.0',
+      organizationId: 'org-1',
+      workspaceId: 'ws-1',
+      correlationId: 'corr-1',
+      idempotencyKey: 'idem-1',
+      toolId: 'purchase-orders',
+      input: {},
+      authorization: {
+        organizationId: 'org-1',
+        workspaceId: 'ws-1',
+        agentId: 'agent-1',
+        actionId: 'action-1',
+        toolId: 'purchase-orders',
+        requestedAutonomy: 'prepare',
+        agentAutonomyCeiling: 'prepare',
+        decision: 'authorized',
+        requiresApproval: true,
+        approvalId: 'approval-1',
+        contextIds: ['ctx-1'],
+        provenanceIds: ['source-1'],
+        correlationId: 'corr-1',
+      },
+    }
+    expect(() => validateToolInvocationRequest(request)).not.toThrow()
+    expect(() => validateToolInvocationRequest({
+      ...request,
+      authorization: { ...request.authorization, approvalId: undefined },
+    })).toThrow('approval reference')
+  })
+})

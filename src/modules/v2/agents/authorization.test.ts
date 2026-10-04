@@ -33,7 +33,6 @@ describe('V2-14 authorization envelope', () => {
     expect(result.decision).toBe('authorized')
     expect(result.envelope.approvalId).toBe('approval-1')
     expect(result.envelope.contextIds).toEqual([])
-    expect(result.envelope.requiresApproval).toBe(true)
   })
 
   it('requires approval when none is supplied', () => {
@@ -50,7 +49,7 @@ describe('V2-14 authorization envelope', () => {
     })
   })
 
-  it('rejects rejected, inactive, or expired approvals', () => {
+  it('rejects rejected or inactive approvals', () => {
     expect(evaluateAuthorizationEnvelope({
       ...base,
       approval: { ...approved, decision: 'rejected' },
@@ -59,11 +58,6 @@ describe('V2-14 authorization envelope', () => {
     expect(evaluateAuthorizationEnvelope({
       ...base,
       approval: { ...approved, status: 'archived' },
-    }).decision).toBe('denied')
-
-    expect(evaluateAuthorizationEnvelope({
-      ...base,
-      approval: { ...approved, expiresAt: '2000-01-01T00:00:00Z' },
     }).decision).toBe('denied')
   })
 

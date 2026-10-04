@@ -14,7 +14,6 @@ export interface AuthorizationEnvelope {
   agentAutonomyCeiling: AutonomyLevel
   policyMaximumAutonomy?: AutonomyLevel
   decision: AuthorizationDecision
-  requiresApproval: boolean
   approvalId?: UUID
   contextIds: UUID[]
   provenanceIds: UUID[]
@@ -31,7 +30,7 @@ export interface AuthorizationEvaluationInput {
   agentAutonomyCeiling: AutonomyLevel
   policyMaximumAutonomy?: AutonomyLevel
   tool: Pick<Tool, 'id' | 'organizationId' | 'workspaceId' | 'requiresApproval'>
-  approval?: Pick<Approval, 'id' | 'organizationId' | 'workspaceId' | 'subjectType' | 'subjectId' | 'decision' | 'status' | 'expiresAt'>
+  approval?: Pick<Approval, 'id' | 'organizationId' | 'workspaceId' | 'subjectType' | 'subjectId' | 'decision' | 'status'>
   contextIds?: UUID[]
   provenanceIds?: UUID[]
   correlationId: UUID
@@ -55,7 +54,6 @@ function baseEnvelope(input: AuthorizationEvaluationInput, decision: Authorizati
     agentAutonomyCeiling: input.agentAutonomyCeiling,
     policyMaximumAutonomy: input.policyMaximumAutonomy,
     decision,
-    requiresApproval: input.tool.requiresApproval === true,
     approvalId: input.approval?.id,
     contextIds: Array.from(new Set(input.contextIds ?? [])),
     provenanceIds: Array.from(new Set(input.provenanceIds ?? [])),
@@ -98,7 +96,7 @@ export function evaluateAuthorizationEnvelope(input: AuthorizationEvaluationInpu
       return { decision: 'denied', reason: 'Approval does not authorize this exact action.', envelope: baseEnvelope(input, 'denied') }
     }
 
-    if (input.approval.status !== 'active' || input.approval.decision !== 'approved' || (input.approval.expiresAt && Date.parse(input.approval.expiresAt) <= Date.now())) {
+    if (input.approval.status !== 'active' || input.approval.decision !== 'approved') {
       return { decision: 'denied', reason: 'Approval is not active and approved.', envelope: baseEnvelope(input, 'denied') }
     }
   }

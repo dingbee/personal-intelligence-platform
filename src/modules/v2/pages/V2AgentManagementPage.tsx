@@ -12,7 +12,7 @@ const boundaries = [
   ['Catalogue', 'Reuses ARRIYIA existing registry abstraction; no competing registry engine.'],
   ['Capabilities', 'Declared capabilities remain descriptive until runtime binding.'],
   ['Tools', 'References are validated and governed; execution remains outside V2.'],
-  ['Policies', 'Policy references are explicit and ready for V2-14 governance enforcement.'],
+  ['Policies', 'Policy references are explicit and ready for V2-09 enforcement.'],
   ['Versions', 'Definition version is monotonic; changes return the agent to draft.'],
 ]
 

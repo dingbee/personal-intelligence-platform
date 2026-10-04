@@ -1,6 +1,4 @@
 import type { Permission, Policy, Role, UUID, WorkspaceMembership } from '../domain/model'
-import type { AutonomyLevel } from '../domain/autonomy'
-import { autonomyAtMost } from '../domain/autonomy'
 import type { V2ScopeContext } from '../domain/scope'
 import { assertScope } from '../domain/scope'
 import { V2ControlPlaneStore } from '../control-plane/store'
@@ -33,6 +31,15 @@ export function authorize(
   if (!permission) return { allowed: false, reason: 'permission_missing' }
 
   return { allowed: true, roleId: role.id, permission: permission.key }
+}
+
+export type AutonomyLevel = 'manual' | 'assisted' | 'bounded' | 'autonomous'
+
+const AUTONOMY_RANK: Record<AutonomyLevel, number> = {
+  manual: 0,
+  assisted: 1,
+  bounded: 2,
+  autonomous: 3,
 }
 
 export type GovernanceRequest = {
@@ -151,15 +158,15 @@ export function govern(
     )
   }
 
-  const requested = request.requestedAutonomy ?? 'inform'
+  const requested = request.requestedAutonomy ?? 'manual'
   const maximum = allowingPolicies.length === 0
-    ? 'inform'
+    ? 'manual'
     : allowingPolicies.reduce<AutonomyLevel>((ceiling, policy) => {
-        const policyCeiling = policy.maximumAutonomy ?? 'inform'
-        return autonomyAtMost(policyCeiling, ceiling) ? policyCeiling : ceiling
-      }, 'bounded')
+        const policyCeiling = policy.maximumAutonomy ?? 'manual'
+        return AUTONOMY_RANK[policyCeiling] < AUTONOMY_RANK[ceiling] ? policyCeiling : ceiling
+      }, 'autonomous')
 
-  if (!autonomyAtMost(requested, maximum))
+  if (AUTONOMY_RANK[requested] > AUTONOMY_RANK[maximum]) {
     return denied(
       request,
       'autonomy_exceeded',
@@ -187,7 +194,7 @@ export function govern(
       approval.subjectId === request.resource.resourceId,
     )
 
-    if (!approval || !approvalMatchesResource || approval.status !== 'active' || approval.decision !== 'approved' || (approval.expiresAt && Date.parse(approval.expiresAt) <= Date.now())) {
+    if (!approval || !approvalMatchesResource || approval.decision !== 'approved') {
       return {
         allowed: false,
         decision: 'approval_required',

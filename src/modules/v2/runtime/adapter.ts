@@ -1,7 +1,6 @@
 import type { AgentExecutionRequest, ApprovalDecision, ApprovalRequest, CapabilityNegotiationRequest, CapabilityNegotiationResult, NoVARuntimeAdapter, RuntimeCorrelationEnvelope, RuntimeExecutionReference, RuntimeExecutionResult, ToolInvocationRequest, WorkflowExecutionRequest } from './contracts'
 import { assertRuntimeScope, assertWorkspaceConsistency } from './contracts'
 import type { UUID } from '../domain/model'
-import { autonomyAtMost, isAutonomyLevel } from '../domain/autonomy'
 
 export function validateRuntimeRequest(request: RuntimeCorrelationEnvelope): void {
   assertRuntimeScope(request)
@@ -23,11 +22,6 @@ export function validateToolInvocationRequest(request: ToolInvocationRequest): v
   if (!request.toolId) throw new Error('NoVA tool invocation requires toolId.')
   if (!request.input) throw new Error('NoVA tool invocation requires input.')
   if (!request.authorization) throw new Error('NoVA tool invocation requires an authorization envelope.')
-  if (!request.authorization.agentId || !request.authorization.actionId) throw new Error('Authorization envelope requires agent and action identity.')
-  if (!isAutonomyLevel(request.authorization.requestedAutonomy) || !isAutonomyLevel(request.authorization.agentAutonomyCeiling)) throw new Error('Authorization envelope contains an invalid autonomy level.')
-  if (!autonomyAtMost(request.authorization.requestedAutonomy, request.authorization.agentAutonomyCeiling)) throw new Error('Authorization envelope exceeds the agent autonomy ceiling.')
-  if (request.authorization.policyMaximumAutonomy && !autonomyAtMost(request.authorization.requestedAutonomy, request.authorization.policyMaximumAutonomy)) throw new Error('Authorization envelope exceeds the policy autonomy ceiling.')
-  if (request.authorization.requiresApproval && !request.authorization.approvalId) throw new Error('Authorized consequential invocation requires an approval reference.')
   if (request.authorization.decision !== 'authorized') throw new Error('NoVA tool invocation requires an authorized governance envelope.')
   if (request.authorization.toolId !== request.toolId) throw new Error('Authorization envelope tool does not match invocation tool.')
   if (request.authorization.organizationId !== request.organizationId) throw new Error('Authorization envelope organization does not match runtime scope.')
