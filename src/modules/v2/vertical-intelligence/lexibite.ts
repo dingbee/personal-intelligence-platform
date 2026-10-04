@@ -28,6 +28,7 @@ export const lexibiteIntelligence: VerticalIntelligenceDefinition = {
     { id: 'menu', description: 'Menu data and operations.', requiresApproval: false },
     { id: 'payments', description: 'Payment data and operations.', requiresApproval: true },
     { id: 'tables', description: 'Table and seating operations.', requiresApproval: false },
+    { id: 'tasks', description: 'Operational task management.', requiresApproval: true },
     { id: 'kitchen', description: 'Kitchen and fulfilment operations.', requiresApproval: true },
     { id: 'property-data', description: 'Property data access.', requiresApproval: false },
     { id: 'intelligence-ledger', description: 'Intelligence ledger access.', requiresApproval: false },
