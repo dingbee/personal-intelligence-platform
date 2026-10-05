@@ -1,31 +1,45 @@
-# V2-12 Vertical Intelligence
+# V2 Vertical Contract Boundary
 
-V2-12 establishes the domain-intelligence contract without coupling vertical products to the ARRIYIA UI or execution runtime.
+ARRIYIA V2 is a control plane. It does not own StayNas, LexiBite, KATBOD, or any other vertical product implementation.
 
-## Boundary
+## Ownership
 
-- **ARRIYIA** owns vertical definitions, governance, context contracts, agent configuration, and intelligence presentation.
-- **NoVA Core** owns durable agent/workflow/tool execution through the V2-08 contract boundary.
-- **StayNas** and **LexiBite** remain independently deployable products.
-- Vertical intelligence must not require a production Supabase schema change during this checkpoint.
+- **ARRIYIA:** workspace-scoped intelligence control, agent configuration, governance, authorization, approval and delegation.
+- **Vertical product:** domain entities, signals, agent definitions, tool contracts and domain intelligence implementation.
+- **NoVA Core:** runtime planning, orchestration, tool execution, workers, retries and consequential execution.
+- **External systems:** the actual vertical/product systems acted upon by NoVA Core.
 
-## Initial verticals
+## Contract rule
 
-### StayNas
-Guest, operations, revenue, and executive intelligence.
+A vertical publishes a generic `VerticalRegistration` containing its identity, contract version, capabilities, domain declarations, agent declarations, governance requirements and execution authority.
 
-### LexiBite
-Inventory, procurement, sales, operations, revenue, and executive intelligence.
+ARRIYIA consumes that contract; it does not compile a concrete vertical into the application bundle.
 
-## Autonomy boundary
+## Invariants
 
-Vertical agents declare a maximum autonomy level. Runtime execution must still pass through governance and the NoVA contract boundary; this definition is not an execution bypass.
+1. No product-specific vertical IDs are hard-coded into the V2 type system.
+2. No StayNas/LexiBite intelligence definitions ship inside ARRIYIA.
+3. No vertical-product registration occurs at application startup.
+4. Consequential actions remain approval-gated.
+5. V2 bindings always declare `executionAuthority: 'nova-core'`.
+6. V2 bindings never enable execution.
+7. The V2 UI does not present vertical products as ARRIYIA modules.
 
-## V2-12 sequence
+## Runtime boundary
 
-1. Establish vertical contract.
-2. Register initial verticals.
-3. Surface vertical catalogue in the V2 workspace.
-4. Connect agents to authorised context and tool contracts.
-5. Verify governance, isolation, and execution boundaries.
-6. E2E certify before V2-13.
+```
+Vertical product
+      │ publishes contract
+      ▼
+ARRIYIA
+  authorize / govern / delegate
+      │
+      ▼
+NoVA Core
+  plan / orchestrate / execute
+      │
+      ▼
+Vertical system / external tools
+```
+
+This boundary must be certified before V2-15 or additional runtime capability work proceeds.
