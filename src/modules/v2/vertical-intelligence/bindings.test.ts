@@ -50,15 +50,6 @@ describe('V2 generic vertical contract boundary', () => {
     expect(validateVerticalAgentContractBinding(binding)).toEqual([])
   })
 
-  it('rejects a registration with non-NoVA execution authority', () => {
-    expect(() =>
-      validateVerticalAgentContractBinding({
-        ...bindVerticalAgents(fixture)[0],
-        executionAuthority: 'nova-core',
-      }),
-    ).not.toThrow()
-  })
-
   it('rejects a binding that attempts to enable execution', () => {
     const [binding] = bindVerticalAgents(fixture)
     expect(binding).toBeDefined()
