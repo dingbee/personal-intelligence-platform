@@ -2,22 +2,17 @@ import { isAutonomyLevel } from '../domain/autonomy'
 import type {
   VerticalAgentDefinition,
   VerticalId,
-  VerticalIntelligenceDefinition,
+  VerticalRegistration,
 } from './types'
 
 /**
- * V2-12 Slice 3 — Context & Tool Contract Binding
+ * V2 control-plane binding.
  *
- * This is a control-plane binding manifest, not an execution registry.
- * It converts a vertical agent's domain declaration into the references
- * that a future NoVA Core invocation may validate.
+ * This converts an externally supplied vertical contract into references that
+ * a future NoVA Core invocation may validate. It never executes a tool.
  *
- * Invariants:
- * - no tool invocation occurs here
- * - no credentials or provider configuration live here
- * - vertical autonomy is only a ceiling
- * - consequential execution remains behind V2 governance + approval policy
- * - NoVA Core remains the execution authority
+ * Boundary:
+ *   ARRIYIA -> authorize/govern/delegate -> NoVA Core -> execute -> vertical
  */
 
 export interface VerticalContextContract {
@@ -50,7 +45,7 @@ export interface VerticalAgentContractBinding {
 }
 
 function buildContextContract(
-  vertical: VerticalIntelligenceDefinition,
+  vertical: VerticalRegistration,
   agent: VerticalAgentDefinition,
 ): VerticalContextContract {
   const entityIds = Array.from(new Set(agent.context.entityIds))
@@ -61,36 +56,40 @@ function buildContextContract(
 
   for (const entityId of entityIds) {
     if (!knownEntities.has(entityId)) {
-      throw new Error('Agent context references unknown entity: ' + vertical.id + '/' + entityId)
+      throw new Error('Agent context references unknown entity: ' + vertical.verticalId + '/' + entityId)
     }
   }
 
   for (const signalId of signalIds) {
     if (!knownSignals.has(signalId)) {
-      throw new Error('Agent context references unknown signal: ' + vertical.id + '/' + signalId)
+      throw new Error('Agent context references unknown signal: ' + vertical.verticalId + '/' + signalId)
     }
   }
 
   return {
-    id: 'v2:context:' + vertical.id + ':' + agent.id,
-    verticalId: vertical.id,
+    id: 'v2:context:' + vertical.verticalId + ':' + agent.id,
+    verticalId: vertical.verticalId,
     entityIds,
     signalIds,
-    memoryScopes: ['workspace:' + vertical.id, 'agent:' + agent.id],
+    memoryScopes: ['workspace:' + vertical.verticalId, 'agent:' + agent.id],
   }
 }
+
 export function bindVerticalAgentContract(
-  vertical: VerticalIntelligenceDefinition,
+  vertical: VerticalRegistration,
   agent: VerticalAgentDefinition,
 ): VerticalAgentContractBinding {
   const context = buildContextContract(vertical, agent)
 
   const tools = agent.allowedTools.map((toolId) => {
     const definition = vertical.tools.find((tool) => tool.id === toolId)
-    if (!definition) throw new Error(`Vertical tool metadata is missing: ${vertical.id}/${toolId}`)
+    if (!definition) {
+      throw new Error(`Vertical tool metadata is missing: ${vertical.verticalId}/${toolId}`)
+    }
+
     return {
-      id: `v2:tool:${vertical.id}:${toolId}`,
-      verticalId: vertical.id,
+      id: `v2:tool:${vertical.verticalId}:${toolId}`,
+      verticalId: vertical.verticalId,
       toolId,
       executionAuthority: 'nova-core' as const,
       consequential: definition.requiresApproval,
@@ -100,7 +99,7 @@ export function bindVerticalAgentContract(
 
   return {
     agentId: agent.id,
-    verticalId: vertical.id,
+    verticalId: vertical.verticalId,
     context,
     tools,
     autonomyCeiling: agent.autonomy,
@@ -112,14 +111,14 @@ export function bindVerticalAgentContract(
 }
 
 export function bindVerticalAgents(
-  vertical: VerticalIntelligenceDefinition,
+  vertical: VerticalRegistration,
 ): VerticalAgentContractBinding[] {
   return vertical.agents.map((agent) => bindVerticalAgentContract(vertical, agent))
 }
 
 /**
- * Boundary verification used before a binding can be handed to a runtime.
- * It intentionally validates references only; it never executes anything.
+ * Boundary verification before a binding can be handed to NoVA Core.
+ * It validates references only; it never executes anything.
  */
 export function validateVerticalAgentContractBinding(
   binding: VerticalAgentContractBinding,
@@ -144,7 +143,9 @@ export function validateVerticalAgentContractBinding(
     }
   }
 
-  if (!isAutonomyLevel(binding.autonomyCeiling)) errors.push('Binding contains an invalid autonomy ceiling')
+  if (!isAutonomyLevel(binding.autonomyCeiling)) {
+    errors.push('Binding contains an invalid autonomy ceiling')
+  }
 
   if (binding.governanceRequired !== true) {
     errors.push('Governance must remain mandatory')
@@ -155,7 +156,7 @@ export function validateVerticalAgentContractBinding(
   }
 
   if (binding.executionEnabled !== false) {
-    errors.push('V2-12 binding must not enable execution')
+    errors.push('V2 binding must not enable execution')
   }
 
   return errors
