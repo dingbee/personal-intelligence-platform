@@ -3,6 +3,11 @@ import type { UUID } from '../domain/model'
 
 export const NOVA_RUNTIME_CONTRACT_VERSION = '1.0.0' as const
 
+/** Opaque identifiers crossing the ARRIYIA → NoVA boundary. */
+export type RuntimeCapabilityId = string
+export type RuntimeRunId = string
+export type RuntimeApprovalId = string
+
 export type RuntimeExecutionState =
   | 'accepted'
   | 'queued'
@@ -35,22 +40,22 @@ export interface CapabilityNegotiationResult {
 }
 
 export interface AgentExecutionRequest extends RuntimeCorrelationEnvelope {
-  agentId: UUID
+  agentId: RuntimeCapabilityId
   input?: Record<string, unknown>
-  contextIds?: UUID[]
-  approvalId?: UUID
+  contextIds?: RuntimeCapabilityId[]
+  approvalId?: RuntimeApprovalId
   capabilities?: string[]
 }
 
 export interface WorkflowExecutionRequest extends RuntimeCorrelationEnvelope {
-  workflowId: UUID
+  workflowId: RuntimeCapabilityId
   input?: Record<string, unknown>
-  approvalId?: UUID
+  approvalId?: RuntimeApprovalId
   capabilities?: string[]
 }
 
 export interface ToolInvocationRequest extends RuntimeCorrelationEnvelope {
-  toolId: UUID
+  toolId: RuntimeCapabilityId
   input: Record<string, unknown>
   authorization: AuthorizationEnvelope
 }
@@ -60,38 +65,38 @@ export interface RuntimeEvent extends RuntimeCorrelationEnvelope {
   type: string
   occurredAt: string
   state?: RuntimeExecutionState
-  runId?: UUID
-  agentId?: UUID
-  workflowId?: UUID
-  toolId?: UUID
-  approvalId?: UUID
+  runId?: RuntimeRunId
+  agentId?: RuntimeCapabilityId
+  workflowId?: RuntimeCapabilityId
+  toolId?: RuntimeCapabilityId
+  approvalId?: RuntimeApprovalId
   payload: Record<string, unknown>
 }
 
 export interface ApprovalRequest extends RuntimeCorrelationEnvelope {
-  approvalId: UUID
+  approvalId: RuntimeApprovalId
   subjectType: string
-  subjectId: UUID
-  requestedBy: UUID
+  subjectId: RuntimeCapabilityId
+  requestedBy: RuntimeCapabilityId
   reason?: string
 }
 
 export interface ApprovalDecision extends RuntimeCorrelationEnvelope {
-  approvalId: UUID
+  approvalId: RuntimeApprovalId
   decision: 'approved' | 'rejected'
-  decidedBy: UUID
+  decidedBy: RuntimeCapabilityId
   decidedAt: string
   reason?: string
 }
 
 export interface RuntimeExecutionReference {
-  runId: UUID
+  runId: RuntimeRunId
   state: RuntimeExecutionState
   acceptedAt: string
 }
 
 export interface RuntimeExecutionResult {
-  runId: UUID
+  runId: RuntimeRunId
   state: Exclude<RuntimeExecutionState, 'accepted' | 'queued' | 'running' | 'waiting_approval' | 'unknown'>
   output?: Record<string, unknown>
   error?: string
@@ -102,7 +107,10 @@ export interface NoVARuntimeAdapter {
   startAgent(request: AgentExecutionRequest): Promise<RuntimeExecutionReference>
   startWorkflow(request: WorkflowExecutionRequest): Promise<RuntimeExecutionReference>
   invokeTool(request: ToolInvocationRequest): Promise<RuntimeExecutionReference>
-  getRun(runId: UUID, scope: Pick<RuntimeCorrelationEnvelope, 'organizationId' | 'workspaceId' | 'correlationId' | 'idempotencyKey'>): Promise<RuntimeExecutionReference | RuntimeExecutionResult | undefined>
+  getRun(
+    runId: RuntimeRunId,
+    scope: Pick<RuntimeCorrelationEnvelope, 'contractVersion' | 'organizationId' | 'workspaceId' | 'correlationId' | 'idempotencyKey'>,
+  ): Promise<RuntimeExecutionReference | RuntimeExecutionResult | undefined>
   requestApproval(request: ApprovalRequest): Promise<ApprovalRequest>
   resolveApproval(decision: ApprovalDecision): Promise<ApprovalDecision>
   negotiateCapabilities(request: CapabilityNegotiationRequest): Promise<CapabilityNegotiationResult>
