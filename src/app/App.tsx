@@ -24,7 +24,6 @@ import '@/modules/action-intelligence/module'
 import '@/modules/search/registerBuiltInProviders'
 import '@/modules/commands/registerBuiltInCommands'
 import '@/modules/workspace-actions/registerBuiltInWorkspaceActions'
-import '@/modules/v2/vertical-intelligence/module'
 
 export function App() {
   useEffect(() => {
