@@ -43,3 +43,8 @@ Vertical system / external tools
 ```
 
 This boundary must be certified before V2-15 or additional runtime capability work proceeds.
+
+
+## CI gate
+
+V2 development changes are covered by the repository CI quality gate on pull requests and pushes targeting `v2-development` as well as `main`.
