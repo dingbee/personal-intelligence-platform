@@ -62,7 +62,6 @@ import { V2KnowledgeMemoryPage } from '@/modules/v2/pages/V2KnowledgeMemoryPage'
 import { V2LearningCentrePage } from '../modules/v2/pages/V2LearningCentrePage'
 import { V2AgentManagementPage } from '@/modules/v2/pages/V2AgentManagementPage'
 import { V2WorkflowStudioPage } from '@/modules/v2/pages/V2WorkflowStudioPage'
-import { V2VerticalIntelligencePage } from '@/modules/v2/pages/V2VerticalIntelligencePage'
 
 export const router = createBrowserRouter([
   // Post-10/10 Phase 5 (Application Hardening & App Experience) — a single
@@ -126,14 +125,6 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <V2LearningCentrePage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/verticals',
-        element: (
-          <ProtectedRoute>
-            <V2VerticalIntelligencePage />
           </ProtectedRoute>
         ),
       },
