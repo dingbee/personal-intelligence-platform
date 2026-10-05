@@ -1,6 +1,10 @@
 import type { AutonomyLevel } from '../domain/autonomy'
 
-export type VerticalId = 'staynas' | 'lexibite'
+/**
+ * Generic vertical identity. ARRIYIA does not compile product names into its
+ * control-plane type system.
+ */
+export type VerticalId = string
 
 export type VerticalIntelligenceKind =
   | 'guest'
@@ -10,6 +14,7 @@ export type VerticalIntelligenceKind =
   | 'procurement'
   | 'sales'
   | 'executive'
+  | 'custom'
 
 export interface VerticalEntityDefinition {
   id: string
@@ -24,7 +29,7 @@ export interface VerticalSignalDefinition {
   entityIds?: string[]
 }
 
-/** Authoritative vertical tool metadata used by the control-plane binding. */
+/** Declarative metadata only. No executable implementation is carried here. */
 export interface VerticalToolDefinition {
   id: string
   description?: string
@@ -48,12 +53,26 @@ export interface VerticalAgentDefinition {
   autonomy: AutonomyLevel
 }
 
-export interface VerticalIntelligenceDefinition {
-  id: VerticalId
-  name: string
-  description: string
+/**
+ * Generic registration contract consumed by ARRIYIA's control plane.
+ *
+ * A vertical product owns the intelligence implementation and publishes this
+ * contract. ARRIYIA owns governance, authorization and delegation only.
+ */
+export interface VerticalRegistration {
+  verticalId: VerticalId
+  displayName: string
+  contractVersion: string
+  capabilities: string[]
   entities: VerticalEntityDefinition[]
   signals: VerticalSignalDefinition[]
   tools: VerticalToolDefinition[]
   agents: VerticalAgentDefinition[]
+  governanceRequirements: {
+    approvalForConsequentialActions: true
+  }
+  executionAuthority: 'nova-core'
 }
+
+/** @deprecated Prefer VerticalRegistration. Kept as a compatibility alias for contract consumers. */
+export type VerticalIntelligenceDefinition = VerticalRegistration
