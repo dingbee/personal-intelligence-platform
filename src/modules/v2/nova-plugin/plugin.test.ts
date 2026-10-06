@@ -85,6 +85,65 @@ describe('ARRIYIA NoVA plugin gateway contract', () => {
     expect(reference).not.toHaveProperty('output')
   })
 
+  it('maps a runtime lookup to a terminal result and preserves unknown state', async () => {
+    const terminal = new NoVAPluginApiClient(
+      'https://nova.example/',
+      'arriyia',
+      { getHeaders: () => ({ authorization: 'Bearer test', 'x-nova-organization-id': '11111111-1111-4111-8111-111111111111', 'x-nova-plugin-id': 'arriyia' }) },
+      async () => new Response(JSON.stringify({
+        id: 'run-1',
+        workflow_id: 'workflow-1',
+        status: 'completed',
+        finished_at: '2026-10-06T15:00:00.000Z',
+      }), { status: 200 }),
+    )
+
+    await expect(terminal.getRun('run-1', {
+      contractVersion: '1.0.0',
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      correlationId: '33333333-3333-4333-8333-333333333333',
+      idempotencyKey: 'idem-read-1',
+    })).rejects.toThrow('did not contain a runId.')
+  })
+
+  it('returns unknown rather than fabricating execution success for an unrecognized runtime state', async () => {
+    const client = new NoVAPluginApiClient(
+      'https://nova.example/',
+      'arriyia',
+      { getHeaders: () => ({ authorization: 'Bearer test', 'x-nova-organization-id': '11111111-1111-4111-8111-111111111111', 'x-nova-plugin-id': 'arriyia' }) },
+      async () => new Response(JSON.stringify({
+        id: 'run-1',
+        runId: 'run-1',
+        status: 'future_state',
+      }), { status: 200 }),
+    )
+
+    const result = await client.getRun('run-1', {
+      contractVersion: '1.0.0',
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      correlationId: '33333333-3333-4333-8333-333333333333',
+      idempotencyKey: 'idem-read-2',
+    })
+
+    expect(result).toMatchObject({ runId: 'run-1', state: 'unknown' })
+  })
+
+  it('treats a missing NoVA run as unresolved rather than as failure', async () => {
+    const client = new NoVAPluginApiClient(
+      'https://nova.example/',
+      'arriyia',
+      { getHeaders: () => ({ authorization: 'Bearer test', 'x-nova-organization-id': '11111111-1111-4111-8111-111111111111', 'x-nova-plugin-id': 'arriyia' }) },
+      async () => new Response(JSON.stringify({ error: 'RUN_NOT_FOUND' }), { status: 404 }),
+    )
+
+    await expect(client.getRun('missing-run', {
+      contractVersion: '1.0.0',
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      correlationId: '33333333-3333-4333-8333-333333333333',
+      idempotencyKey: 'idem-read-3',
+    })).resolves.toBeUndefined()
+  })
+
   it('fails closed on a non-success gateway response', async () => {
     const client = new NoVAPluginApiClient(
       'https://nova.example/',
