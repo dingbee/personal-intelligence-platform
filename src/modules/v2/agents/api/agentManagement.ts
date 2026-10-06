@@ -1,8 +1,9 @@
 import { supabase } from '@/shared/lib/supabase'
+import type { AutonomyLevel } from '@/modules/v2/domain/autonomy'
 
 export type V2AgentStatus = 'draft' | 'validated' | 'active' | 'paused' | 'archived'
 export type V2AgentVersionStatus = 'draft' | 'validated' | 'active' | 'retired'
-export type V2AgentAutonomy = 'supervised' | 'bounded' | 'delegated'
+export type V2AgentAutonomy = AutonomyLevel
 
 export interface V2AgentDefinition {
   version: number
@@ -11,7 +12,7 @@ export interface V2AgentDefinition {
   toolIds: string[]
   memoryScopes: string[]
   policyIds: string[]
-  autonomy: V2AgentAutonomy
+  autonomyCeiling: V2AgentAutonomy
 }
 
 export interface V2Agent {
@@ -81,7 +82,7 @@ export function normalizeAgentDefinition(value: unknown): V2AgentDefinition {
     toolIds: Array.isArray(input.toolIds) ? input.toolIds.filter((v): v is string => typeof v === 'string') : [],
     memoryScopes: Array.isArray(input.memoryScopes) ? input.memoryScopes.filter((v): v is string => typeof v === 'string') : [],
     policyIds: Array.isArray(input.policyIds) ? input.policyIds.filter((v): v is string => typeof v === 'string') : [],
-    autonomy: autonomy === 'bounded' || autonomy === 'delegated' ? autonomy : 'supervised',
+    autonomyCeiling: autonomy === 'inform' || autonomy === 'prepare' || autonomy === 'bounded' ? autonomy : 'recommend',
   }
 }
 
