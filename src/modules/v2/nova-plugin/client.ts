@@ -69,7 +69,7 @@ export class NoVAPluginApiClient implements NoVAPluginTransport {
       action: 'agent.run',
       agentId: request.agentId,
       userInput: typeof request.input?.userInput === 'string' ? request.input.userInput : JSON.stringify(request.input ?? {}),
-      userId: typeof request.input?.userId === 'string' ? request.input.userId : undefined,
+      userId: request.actorUserId,
       subjectId: typeof request.input?.subjectId === 'string' ? request.input.subjectId : undefined,
       input: request.input,
       contextIds: request.contextIds,
@@ -85,7 +85,7 @@ export class NoVAPluginApiClient implements NoVAPluginTransport {
     return this.startAcceptedRun(request.organizationId, {
       action: 'workflow.run',
       workflowId: request.workflowId,
-      userId: typeof request.input?.userId === 'string' ? request.input.userId : undefined,
+      userId: request.actorUserId,
       input: request.input,
       approvalId: request.approvalId,
       capabilities: request.capabilities,
@@ -99,7 +99,7 @@ export class NoVAPluginApiClient implements NoVAPluginTransport {
     return this.startAcceptedRun(request.organizationId, {
       action: 'tool.invoke',
       toolId: request.toolId,
-      userId: typeof request.authorization.agentId === 'string' ? request.authorization.agentId : undefined,
+      userId: request.actorUserId,
       input: request.input,
       approved: request.authorization.decision === 'authorized',
       approvalId: request.authorization.approvalId,
