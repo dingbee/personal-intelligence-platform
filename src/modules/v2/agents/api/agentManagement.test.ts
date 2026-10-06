@@ -10,7 +10,7 @@ describe('V2 agent management contract', () => {
       toolIds: ['search'],
       memoryScopes: ['workspace'],
       policyIds: ['approval-required'],
-      autonomy: 'bounded',
+      autonomyCeiling: 'bounded',
     })
 
     expect(definition).toEqual({
@@ -32,14 +32,14 @@ describe('V2 agent management contract', () => {
       toolIds: [],
       memoryScopes: [],
       policyIds: [],
-      autonomy: 'supervised',
+      autonomyCeiling: 'recommend',
     })
   })
 
   it('does not invent delegated autonomy from unknown input', () => {
     expect(normalizeAgentDefinition({
       version: 1,
-      autonomy: 'unbounded',
-    }).autonomy).toBe('supervised')
+      autonomyCeiling: 'unbounded',
+    }).autonomyCeiling).toBe('recommend')
   })
 })
