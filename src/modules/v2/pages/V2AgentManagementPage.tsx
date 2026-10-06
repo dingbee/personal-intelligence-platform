@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useV2Space } from '../workspace/SpaceContext'
@@ -70,6 +70,16 @@ export function V2AgentManagementPage() {
     queryFn: () => getV2AgentVersions(selectedAgent!.id),
     enabled: Boolean(selectedAgent),
   })
+
+  useEffect(() => {
+    const latest = versionsQuery.data?.[0]
+    if (!latest || !selectedAgent) return
+    setDefinition(latest.definition)
+    setCapabilitiesText(latest.definition.capabilities.join(', '))
+    setToolIdsText(latest.definition.toolIds.join(', '))
+    setMemoryScopesText(latest.definition.memoryScopes.join(', '))
+    setPolicyIdsText(latest.definition.policyIds.join(', '))
+  }, [selectedAgent?.id, versionsQuery.data])
 
   const createMutation = useMutation({
     mutationFn: () => createV2Agent({
