@@ -276,6 +276,25 @@ begin
     raise exception 'Workflow requires exactly one start node';
   end if;
 
+  if exists (
+    with recursive edges as (
+      select
+        value->>'id' as from_id,
+        jsonb_array_elements_text(value->'next') as to_id
+      from jsonb_array_elements(result.definition->'nodes')
+    ),
+    reach(from_id, to_id) as (
+      select from_id, to_id from edges
+      union
+      select reach.from_id, edges.to_id
+      from reach
+      join edges on edges.from_id = reach.to_id
+    )
+    select 1 from reach where from_id = to_id
+  ) then
+    raise exception 'Workflow graph cannot contain cycles';
+  end if;
+
   for node in select value from jsonb_array_elements(result.definition->'nodes') loop
     for next_id in select jsonb_array_elements_text(node->'next') loop
       if not next_id = any(node_ids) then
