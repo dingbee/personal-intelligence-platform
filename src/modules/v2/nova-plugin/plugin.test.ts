@@ -98,12 +98,17 @@ describe('ARRIYIA NoVA plugin gateway contract', () => {
       }), { status: 200 }),
     )
 
-    await expect(terminal.getRun('run-1', {
+    const result = await terminal.getRun('run-1', {
       contractVersion: '1.0.0',
       organizationId: '11111111-1111-4111-8111-111111111111',
       correlationId: '33333333-3333-4333-8333-333333333333',
       idempotencyKey: 'idem-read-1',
-    })).rejects.toThrow('did not contain a runId.')
+    })
+    expect(result).toMatchObject({
+      runId: 'run-1',
+      state: 'succeeded',
+      completedAt: '2026-10-06T15:00:00.000Z',
+    })
   })
 
   it('returns unknown rather than fabricating execution success for an unrecognized runtime state', async () => {
