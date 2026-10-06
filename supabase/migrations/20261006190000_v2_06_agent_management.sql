@@ -5,8 +5,8 @@
 create table if not exists public.v2_agents (
   id uuid primary key default gen_random_uuid(),
   owner_user_id uuid not null references auth.users(id) on delete cascade,
-  workspace_id uuid null references public.workspaces(id) on delete cascade,
-  organization_id uuid null,
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  organization_id uuid not null,
   name text not null,
   slug text not null,
   description text not null default '',
@@ -17,19 +17,10 @@ create table if not exists public.v2_agents (
   updated_at timestamptz not null default now(),
   constraint v2_agents_name_not_blank check (length(trim(name)) > 0),
   constraint v2_agents_slug_format check (slug ~ '^[a-z0-9][a-z0-9-]{1,62}$'),
-  constraint v2_agents_personal_or_business check (
-    (workspace_id is null and organization_id is null)
-    or (workspace_id is not null and organization_id is not null)
-  )
-);
-
-create unique index if not exists v2_agents_personal_slug_uidx
-  on public.v2_agents (owner_user_id, slug)
-  where workspace_id is null;
+); 
 
 create unique index if not exists v2_agents_workspace_slug_uidx
-  on public.v2_agents (workspace_id, slug)
-  where workspace_id is not null;
+  on public.v2_agents (workspace_id, slug);
 
 create index if not exists v2_agents_workspace_idx
   on public.v2_agents (workspace_id, updated_at desc);
@@ -63,11 +54,8 @@ as $$
     from public.v2_agents a
     where a.id = p_agent_id
       and (
-        (a.workspace_id is null and a.owner_user_id = auth.uid())
-        or (
-          a.workspace_id is not null
-          and public.has_workspace_role(a.workspace_id, p_min_role)
-        )
+        a.workspace_id is not null
+        and public.has_workspace_role(a.workspace_id, p_min_role)
       )
   );
 $$;
@@ -106,19 +94,20 @@ declare
   v_org uuid;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
-  if p_workspace_id is not null then
-    if not public.has_workspace_role(p_workspace_id, 'editor') then
-      raise exception 'Workspace editor access required';
-    end if;
-    select w.v2_organization_id into v_org
-      from public.workspaces w
-     where w.id = p_workspace_id
-       and w.v2_kind = 'business'
-       and w.v2_subscription = 'enterprise'
-       and w.v2_status = 'active';
-    if v_org is null then
-      raise exception 'Active ARRIYIA Business Space required';
-    end if;
+  if p_workspace_id is null then
+    raise exception 'Agent Management requires an ARRIYIA Business Space';
+  end if;
+  if not public.has_workspace_role(p_workspace_id, 'editor') then
+    raise exception 'Workspace editor access required';
+  end if;
+  select w.v2_organization_id into v_org
+    from public.workspaces w
+   where w.id = p_workspace_id
+     and w.v2_kind = 'business'
+     and w.v2_subscription = 'enterprise'
+     and w.v2_status = 'active';
+  if v_org is null then
+    raise exception 'Active ARRIYIA Business Space required';
   end if;
 
   insert into public.v2_agents(
@@ -137,9 +126,9 @@ begin
       'systemPurpose', trim(p_description),
       'capabilities', '[]'::jsonb,
       'toolIds', '[]'::jsonb,
-      'memoryScopes', case when p_workspace_id is null then '["personal"]'::jsonb else '["workspace"]'::jsonb end,
+      'memoryScopes', '["workspace"]'::jsonb,
       'policyIds', '[]'::jsonb,
-      'autonomy', 'supervised'
+      'autonomyCeiling', 'recommend'
     ),
     auth.uid()
   );
@@ -191,6 +180,10 @@ begin
   if not (p_definition ? 'policyIds')
      or jsonb_typeof(p_definition->'policyIds') <> 'array' then
     raise exception 'Agent definition requires policyIds[]';
+  end if;
+  if not (p_definition ? 'autonomyCeiling')
+     or p_definition->>'autonomyCeiling' not in ('inform','recommend','prepare','bounded') then
+    raise exception 'Agent definition requires a valid autonomyCeiling';
   end if;
 
   select coalesce(max(version), 0) + 1 into v_next
@@ -279,10 +272,8 @@ begin
   select * into v_latest from public.v2_agent_versions where agent_id = p_agent_id order by version desc limit 1;
 
   if p_status = 'active' then
-    if result.workspace_id is not null then
-      if not public.has_workspace_role(result.workspace_id, 'owner') then
-        raise exception 'Only the Business Space owner can activate an agent';
-      end if;
+    if not public.has_workspace_role(result.workspace_id, 'owner') then
+      raise exception 'Only the Business Space owner can activate an agent';
     end if;
     if v_latest.id is null or v_latest.status <> 'validated' then
       raise exception 'Agent must be validated before activation';
