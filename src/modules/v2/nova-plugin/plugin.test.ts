@@ -9,7 +9,7 @@ describe('ARRIYIA NoVA plugin gateway contract', () => {
     expect(ARRIYIA_NOVA_PLUGIN_MANIFEST.metadata).toMatchObject({
       integration: 'nova-core',
       executionAuthority: 'nova-core',
-      executionTransport: 'api-webhook',
+      executionTransport: 'api-gateway',
     })
   })
 
