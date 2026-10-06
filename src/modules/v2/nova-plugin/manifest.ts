@@ -47,7 +47,7 @@ export const ARRIYIA_NOVA_PLUGIN_MANIFEST: PluginManifest = {
     product: 'arriyia',
     integration: 'nova-core',
     executionAuthority: 'nova-core',
-    executionTransport: 'api-webhook',
+    executionTransport: 'api-gateway',
   },
 }
 
