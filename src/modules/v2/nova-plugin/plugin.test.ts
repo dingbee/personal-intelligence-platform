@@ -58,6 +58,31 @@ describe('ARRIYIA NoVA plugin gateway contract', () => {
     })
   })
 
+  it('normalizes NoVA capability negotiation into the V2 contract', async () => {
+    const client = new NoVAPluginApiClient(
+      'https://nova.example/',
+      'arriyia',
+      { getHeaders: () => ({ authorization: 'Bearer test', 'x-nova-organization-id': '11111111-1111-4111-8111-111111111111', 'x-nova-plugin-id': 'arriyia' }) },
+      async () => new Response(JSON.stringify({
+        capabilities: [
+          { id: 'core.agent.run', supported: true },
+          { id: 'core.workflow.run', supported: false },
+        ],
+      }), { status: 200 }),
+    )
+
+    await expect(client.negotiateCapabilities({
+      contractVersion: '1.0.0',
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      correlationId: '33333333-3333-4333-8333-333333333333',
+      idempotencyKey: 'idem-cap-1',
+      requestedCapabilities: ['core.agent.run', 'core.workflow.run', 'core.tool.invoke'],
+    })).resolves.toEqual({
+      supported: ['core.agent.run'],
+      rejected: ['core.workflow.run', 'core.tool.invoke'],
+    })
+  })
+
   it('maps an acknowledged agent response to accepted rather than falsely claiming success', async () => {
     const client = new NoVAPluginApiClient(
       'https://nova.example/',
