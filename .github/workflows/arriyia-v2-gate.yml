@@ -25,6 +25,6 @@ jobs:
       - name: Lint
         run: npm run lint
       - name: V2 tests
-        run: npx vitest run 'src/modules/v2/**/*.test.ts'
+        run: npx vitest run src/modules/v2
       - name: Production build
         run: npm run build
