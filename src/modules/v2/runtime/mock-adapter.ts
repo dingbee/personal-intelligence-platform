@@ -10,8 +10,6 @@ import type {
   ToolInvocationRequest,
   WorkflowExecutionRequest,
 } from './contracts'
-import type { UUID } from '../domain/model'
-
 /**
  * Contract-only test double.
  *
@@ -20,7 +18,7 @@ import type { UUID } from '../domain/model'
  */
 export class MockNoVARuntimeAdapter implements NoVARuntimeAdapter {
   readonly requests: Array<AgentExecutionRequest | WorkflowExecutionRequest | ToolInvocationRequest> = []
-  private readonly runs = new Map<UUID, RuntimeExecutionReference>()
+  private readonly runs = new Map<string, RuntimeExecutionReference>()
 
   async startAgent(request: AgentExecutionRequest): Promise<RuntimeExecutionReference> {
     return this.accept(request, request.agentId)
@@ -34,7 +32,7 @@ export class MockNoVARuntimeAdapter implements NoVARuntimeAdapter {
     return this.accept(request, request.toolId)
   }
 
-  async getRun(runId: UUID, _scope: Parameters<NoVARuntimeAdapter['getRun']>[1]): Promise<RuntimeExecutionReference | RuntimeExecutionResult | undefined> {
+  async getRun(runId: string, _scope: Parameters<NoVARuntimeAdapter['getRun']>[1]): Promise<RuntimeExecutionReference | RuntimeExecutionResult | undefined> {
     return this.runs.get(runId)
   }
 
@@ -55,7 +53,7 @@ export class MockNoVARuntimeAdapter implements NoVARuntimeAdapter {
 
   private accept(
     request: AgentExecutionRequest | WorkflowExecutionRequest | ToolInvocationRequest,
-    _subjectId: UUID,
+    _subjectId: string,
   ): RuntimeExecutionReference {
     this.requests.push(request)
     const reference: RuntimeExecutionReference = {

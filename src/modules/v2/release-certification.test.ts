@@ -3,8 +3,32 @@ import { evaluateAuthorizationEnvelope } from './agents/authorization'
 import { validateToolInvocationRequest } from './runtime/adapter'
 import type { ToolInvocationRequest } from './runtime/contracts'
 import { autonomyAtMost, AUTONOMY_LEVELS } from './domain/autonomy'
-import { bindVerticalAgents, validateVerticalAgentContractBinding } from './vertical-intelligence/bindings'
-import { lexibiteIntelligence } from './vertical-intelligence/lexibite'
+import { compilePluginContractToNoVARuntimeManifest, type NoVAPluginContract } from './runtime/manifest'
+
+const pluginFixture: NoVAPluginContract = {
+  pluginId: 'example-plugin',
+  displayName: 'Example Vertical',
+  contractVersion: '1.0',
+  capabilities: ['example-intelligence'],
+  entities: [{ id: 'account', label: 'Account', description: 'Example account context.' }],
+  signals: [{ id: 'account-risk', label: 'Account Risk', description: 'Example risk signal.', entityIds: ['account'] }],
+  tools: [
+    { id: 'account-data', description: 'Read account data.', requiresApproval: false },
+    { id: 'account-action', description: 'Prepare an account action.', requiresApproval: true },
+  ],
+  agents: [{
+    id: 'example-agent',
+    name: 'Example Agent',
+    description: 'Example vertical intelligence agent.',
+    intelligenceKind: 'custom' as const,
+    capabilities: ['analysis'],
+    allowedTools: ['account-data', 'account-action'],
+    context: { entityIds: ['account'], signalIds: ['account-risk'] },
+    autonomy: 'prepare' as const,
+  }],
+  governanceRequirements: { approvalForConsequentialActions: true },
+  executionAuthority: 'nova-core' as const,
+}
 
 describe('ARRIYIA V2 release certification fixtures', () => {
   it('uses one canonical autonomy vocabulary', () => {
@@ -13,13 +37,11 @@ describe('ARRIYIA V2 release certification fixtures', () => {
     expect(autonomyAtMost('bounded', 'prepare')).toBe(false)
   })
 
-  it('keeps every LexiBite vertical binding non-executing and NoVA-owned', () => {
-    for (const binding of bindVerticalAgents(lexibiteIntelligence)) {
-      expect(validateVerticalAgentContractBinding(binding)).toEqual([])
-      expect(binding.executionEnabled).toBe(false)
-      expect(binding.executionAuthority).toBe('nova-core')
-      expect(binding.governanceRequired).toBe(true)
-    }
+  it('keeps external plugin metadata declarative and NoVA-owned', () => {
+    const manifest = compilePluginContractToNoVARuntimeManifest(pluginFixture)
+    expect(manifest.plugin.id).toBe('example-plugin')
+    expect(manifest.plugin.executionAuthority).toBe('nova-core')
+    expect(manifest.governance.approvalForConsequentialActions).toBe(true)
   })
 
   it('blocks consequential authorization without exact active approval', () => {

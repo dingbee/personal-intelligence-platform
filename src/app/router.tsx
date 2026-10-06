@@ -62,7 +62,7 @@ import { V2KnowledgeMemoryPage } from '@/modules/v2/pages/V2KnowledgeMemoryPage'
 import { V2LearningCentrePage } from '../modules/v2/pages/V2LearningCentrePage'
 import { V2AgentManagementPage } from '@/modules/v2/pages/V2AgentManagementPage'
 import { V2WorkflowStudioPage } from '@/modules/v2/pages/V2WorkflowStudioPage'
-import { V2VerticalIntelligencePage } from '@/modules/v2/pages/V2VerticalIntelligencePage'
+import { RequireArriyiaEnterprise } from '@/modules/v2/RequireArriyiaEnterprise'
 
 export const router = createBrowserRouter([
   // Post-10/10 Phase 5 (Application Hardening & App Experience) — a single
@@ -92,65 +92,43 @@ export const router = createBrowserRouter([
       {
         path: '/v2',
         element: (
-          <ProtectedRoute>
-            <V2CommandCentrePage />
-          </ProtectedRoute>
+          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2CommandCentrePage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
         ),
       },
       {
         path: '/v2/foundation',
         element: (
-          <ProtectedRoute>
-            <V2FoundationPage />
-          </ProtectedRoute>
+          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2FoundationPage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
         ),
       },
       {
         path: '/v2/intelligence',
         element: (
-          <ProtectedRoute>
-            <V2IntelligenceCentrePage />
-          </ProtectedRoute>
+          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2IntelligenceCentrePage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
         ),
       },
       {
         path: '/v2/knowledge-memory',
         element: (
-          <ProtectedRoute>
-            <V2KnowledgeMemoryPage />
-          </ProtectedRoute>
+          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2KnowledgeMemoryPage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
         ),
       },
       {
         path: '/v2/learning',
         element: (
-          <ProtectedRoute>
-            <V2LearningCentrePage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/verticals',
-        element: (
-          <ProtectedRoute>
-            <V2VerticalIntelligencePage />
-          </ProtectedRoute>
+          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2LearningCentrePage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
         ),
       },
       {
         path: '/v2/workflows',
         element: (
-          <ProtectedRoute>
-            <V2WorkflowStudioPage />
-          </ProtectedRoute>
+          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2WorkflowStudioPage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
         ),
       },
       {
         path: '/v2/agents',
         element: (
-          <ProtectedRoute>
-            <V2AgentManagementPage />
-          </ProtectedRoute>
+          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2AgentManagementPage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
         ),
       },
       {
