@@ -45,7 +45,7 @@ export class MockNoVARuntimeAdapter implements NoVARuntimeAdapter {
   }
 
   async negotiateCapabilities(request: CapabilityNegotiationRequest): Promise<CapabilityNegotiationResult> {
-    const supportedCapabilities = ['agent.execute', 'workflow.execute', 'tool.invoke'] as const
+    const supportedCapabilities = ['core.agent.run', 'core.workflow.run', 'core.tool.invoke'] as const
     const supported = request.requestedCapabilities.filter((capability): capability is typeof supportedCapabilities[number] => supportedCapabilities.includes(capability as typeof supportedCapabilities[number]))
     const rejected = request.requestedCapabilities.filter((capability) => !supported.includes(capability as typeof supported[number]))
     return { supported, rejected }
