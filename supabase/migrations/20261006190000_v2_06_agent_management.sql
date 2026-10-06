@@ -59,6 +59,7 @@ as $$
   );
 $$;
 
+revoke execute on function public.v2_agent_access from anon, public;
 grant execute on function public.v2_agent_access(uuid, text) to authenticated;
 
 alter table public.v2_agents enable row level security;
@@ -314,9 +315,13 @@ begin
 end;
 $$;
 
+revoke execute on function public.v2_create_agent from anon, public;
 grant execute on function public.v2_create_agent(uuid, text, text, text) to authenticated;
+revoke execute on function public.v2_save_agent_version from anon, public;
 grant execute on function public.v2_save_agent_version(uuid, jsonb) to authenticated;
+revoke execute on function public.v2_validate_agent from anon, public;
 grant execute on function public.v2_validate_agent(uuid) to authenticated;
+revoke execute on function public.v2_set_agent_status from anon, public;
 grant execute on function public.v2_set_agent_status(uuid, text) to authenticated;
 
 create or replace function public.v2_touch_agent_updated_at()
