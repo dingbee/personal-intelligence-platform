@@ -3,7 +3,8 @@ name: ARRIYIA V2 Gate
 on:
   push:
     branches:
-      - feat/v2-architectural-boundary-correction
+      - 'feat/v2-*'
+      - v2-development
   workflow_dispatch:
 
 jobs:
