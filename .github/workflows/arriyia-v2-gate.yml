@@ -5,6 +5,9 @@ on:
     branches:
       - 'feat/v2-*'
       - v2-development
+  pull_request:
+    branches:
+      - v2-development
   workflow_dispatch:
 
 jobs:
