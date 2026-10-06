@@ -14,6 +14,9 @@
 - Existing-code inventory: complete
 - Technical-debt inventory: complete
 - V2 application shell: implemented
+- First-class V2 Space context: implemented
+- V2 Space switcher: implemented
+- V1 localStorage workspace preference: explicitly excluded from V2 context state
 
 ## V2 principle
 ARRIYIA V2 extends the existing V1 intelligence foundation. It does not rewrite the AI, knowledge, memory, workspace, or intelligence modules merely to introduce a new architecture.
@@ -42,3 +45,9 @@ NoVA Core executes:
 
 ## Sprint acceptance
 V2-01 is accepted when the branch contains the foundation documentation and a navigable V2 shell that can evolve without changing V1 route behavior.
+
+## V2 Space context
+
+V2 treats Space as an operating context attached to one ARRIYIA identity. Personal and Business spaces are distinct context kinds; the active Space governs subscription tier and, as later phases are implemented, the knowledge, memory, intelligence, agents, tools and permissions available to that context.
+
+The V2 shell owns its active Space context and does not reuse the V1 WorkspaceProvider localStorage selection. The V1 workspace selector remains a legacy library-filter mechanism until V2-02 replaces it with persistent Business Space lifecycle and membership data.

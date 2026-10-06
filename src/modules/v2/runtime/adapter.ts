@@ -1,6 +1,18 @@
-import type { AgentExecutionRequest, ApprovalDecision, ApprovalRequest, CapabilityNegotiationRequest, CapabilityNegotiationResult, NoVARuntimeAdapter, RuntimeCorrelationEnvelope, RuntimeExecutionReference, RuntimeExecutionResult, ToolInvocationRequest, WorkflowExecutionRequest } from './contracts'
+import type {
+  AgentExecutionRequest,
+  ApprovalDecision,
+  ApprovalRequest,
+  CapabilityNegotiationRequest,
+  CapabilityNegotiationResult,
+  NoVARuntimeAdapter,
+  RuntimeCorrelationEnvelope,
+  RuntimeExecutionReference,
+  RuntimeExecutionResult,
+  RuntimeRunId,
+  ToolInvocationRequest,
+  WorkflowExecutionRequest,
+} from './contracts'
 import { assertRuntimeScope, assertWorkspaceConsistency } from './contracts'
-import type { UUID } from '../domain/model'
 import { autonomyAtMost, isAutonomyLevel } from '../domain/autonomy'
 
 export function validateRuntimeRequest(request: RuntimeCorrelationEnvelope): void {
@@ -41,24 +53,43 @@ export class ValidatingNoVARuntimeAdapter implements NoVARuntimeAdapter {
   constructor(delegate: NoVARuntimeAdapter) {
     this.delegate = delegate
   }
-  startAgent(request: AgentExecutionRequest): Promise<RuntimeExecutionReference> { validateAgentExecutionRequest(request); return this.delegate.startAgent(request) }
-  startWorkflow(request: WorkflowExecutionRequest): Promise<RuntimeExecutionReference> { validateWorkflowExecutionRequest(request); return this.delegate.startWorkflow(request) }
-  invokeTool(request: ToolInvocationRequest): Promise<RuntimeExecutionReference> { validateToolInvocationRequest(request); return this.delegate.invokeTool(request) }
-  getRun(runId: UUID, scope: Pick<RuntimeCorrelationEnvelope, 'contractVersion' | 'organizationId' | 'workspaceId' | 'correlationId' | 'idempotencyKey'>): Promise<RuntimeExecutionReference | RuntimeExecutionResult | undefined> {
+
+  startAgent(request: AgentExecutionRequest): Promise<RuntimeExecutionReference> {
+    validateAgentExecutionRequest(request)
+    return this.delegate.startAgent(request)
+  }
+
+  startWorkflow(request: WorkflowExecutionRequest): Promise<RuntimeExecutionReference> {
+    validateWorkflowExecutionRequest(request)
+    return this.delegate.startWorkflow(request)
+  }
+
+  invokeTool(request: ToolInvocationRequest): Promise<RuntimeExecutionReference> {
+    validateToolInvocationRequest(request)
+    return this.delegate.invokeTool(request)
+  }
+
+  getRun(
+    runId: RuntimeRunId,
+    scope: Pick<RuntimeCorrelationEnvelope, 'contractVersion' | 'organizationId' | 'workspaceId' | 'correlationId' | 'idempotencyKey'>,
+  ): Promise<RuntimeExecutionReference | RuntimeExecutionResult | undefined> {
     validateRuntimeRequest(scope)
     if (!runId) throw new Error('NoVA runtime lookup requires runId.')
     return this.delegate.getRun(runId, scope)
   }
+
   requestApproval(request: ApprovalRequest): Promise<ApprovalRequest> {
     validateRuntimeRequest(request)
     if (!request.approvalId) throw new Error('NoVA approval request requires approvalId.')
     return this.delegate.requestApproval(request)
   }
+
   resolveApproval(decision: ApprovalDecision): Promise<ApprovalDecision> {
     validateRuntimeRequest(decision)
     if (!decision.approvalId) throw new Error('NoVA approval decision requires approvalId.')
     return this.delegate.resolveApproval(decision)
   }
+
   negotiateCapabilities(request: CapabilityNegotiationRequest): Promise<CapabilityNegotiationResult> {
     validateRuntimeRequest(request)
     return this.delegate.negotiateCapabilities(request)

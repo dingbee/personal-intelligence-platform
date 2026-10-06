@@ -135,9 +135,33 @@ Future NoVA Core 05/06 work remains outside this implementation step: plugin lif
 
 ARRIYIA control-plane contracts → NoVA Runtime Adapter → NoVA Core.
 
+The current NoVA Core P0-4 transport target is the single gateway endpoint:
+
+/api/public/core/plugin-gateway
+
+with action messages:
+
+- register
+- negotiate
+- agent.run
+- workflow.run
+- tool.invoke
+
+The gateway authenticates external plugins using organization/plugin headers plus the configured plugin secret. ARRIYIA's transport therefore receives credentials from a host boundary rather than embedding a secret in the application contract.
+
+The adapter treats command responses as acknowledgements. It does not convert a returned agent/tool/workflow status into an ARRIYIA success outcome without authoritative runtime reconciliation.
+
+## 18. Current runtime-read limitation
+
+P0-4 currently exposes generic gateway run lookup through the workflow_runs store. Agent execution is currently in-memory and tool execution does not yet expose a generic durable run-read path through the gateway.
+
+ARRIYIA must therefore return unknown or unresolved state when authoritative reconciliation is unavailable. It must not create a parallel runtime ledger or infer success from an acknowledgement.
+
+The missing generic agent/tool run-read path is a NoVA Core runtime hardening item, not an ARRIYIA runtime responsibility.
+
 The adapter translates and validates contracts. It does not execute the work.
 
-## 18. V2-08A acceptance
+## 19. V2-08A acceptance
 
 - ownership boundaries explicit
 - resource mapping explicit

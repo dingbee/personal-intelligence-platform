@@ -1,0 +1,33 @@
+name: ARRIYIA V2 Gate
+
+on:
+  push:
+    branches:
+      - 'feat/v2-*'
+      - v2-development
+  pull_request:
+    branches:
+      - v2-development
+  workflow_dispatch:
+
+jobs:
+  v2-gate:
+    runs-on: ubuntu-latest
+    env:
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_ANON_KEY: test-anon-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc -b
+      - name: Lint
+        run: npm run lint
+      - name: V2 tests
+        run: npx vitest run src/modules/v2
+      - name: Production build
+        run: npm run build

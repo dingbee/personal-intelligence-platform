@@ -62,7 +62,8 @@ import { V2KnowledgeMemoryPage } from '@/modules/v2/pages/V2KnowledgeMemoryPage'
 import { V2LearningCentrePage } from '../modules/v2/pages/V2LearningCentrePage'
 import { V2AgentManagementPage } from '@/modules/v2/pages/V2AgentManagementPage'
 import { V2WorkflowStudioPage } from '@/modules/v2/pages/V2WorkflowStudioPage'
-import { V2VerticalIntelligencePage } from '@/modules/v2/pages/V2VerticalIntelligencePage'
+import { RequireArriyiaEnterprise } from '@/modules/v2/RequireArriyiaEnterprise'
+import { V2Shell } from '@/modules/v2/V2Shell'
 
 export const router = createBrowserRouter([
   // Post-10/10 Phase 5 (Application Hardening & App Experience) — a single
@@ -93,65 +94,20 @@ export const router = createBrowserRouter([
         path: '/v2',
         element: (
           <ProtectedRoute>
-            <V2CommandCentrePage />
+            <RequireArriyiaEnterprise>
+              <V2Shell />
+            </RequireArriyiaEnterprise>
           </ProtectedRoute>
         ),
-      },
-      {
-        path: '/v2/foundation',
-        element: (
-          <ProtectedRoute>
-            <V2FoundationPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/intelligence',
-        element: (
-          <ProtectedRoute>
-            <V2IntelligenceCentrePage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/knowledge-memory',
-        element: (
-          <ProtectedRoute>
-            <V2KnowledgeMemoryPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/learning',
-        element: (
-          <ProtectedRoute>
-            <V2LearningCentrePage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/verticals',
-        element: (
-          <ProtectedRoute>
-            <V2VerticalIntelligencePage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/workflows',
-        element: (
-          <ProtectedRoute>
-            <V2WorkflowStudioPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/agents',
-        element: (
-          <ProtectedRoute>
-            <V2AgentManagementPage />
-          </ProtectedRoute>
-        ),
+        children: [
+          { index: true, element: <V2CommandCentrePage /> },
+          { path: 'foundation', element: <V2FoundationPage /> },
+          { path: 'intelligence', element: <V2IntelligenceCentrePage /> },
+          { path: 'knowledge-memory', element: <V2KnowledgeMemoryPage /> },
+          { path: 'learning', element: <V2LearningCentrePage /> },
+          { path: 'workflows', element: <V2WorkflowStudioPage /> },
+          { path: 'agents', element: <V2AgentManagementPage /> },
+        ],
       },
       {
         path: '/welcome',

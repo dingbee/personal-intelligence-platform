@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { V2SpaceLifecyclePanel } from '../components/V2SpaceLifecyclePanel'
 
 const foundationAreas = [
   {
@@ -29,7 +30,7 @@ const foundationAreas = [
   {
     title: 'NoVA Core',
     description: 'Execution plane behind a stable runtime contract.',
-    status: 'V2-08',
+    status: 'External runtime',
   },
 ]
 
@@ -92,6 +93,8 @@ export function V2FoundationPage() {
           ))}
         </section>
 
+        <V2SpaceLifecyclePanel />
+
         <section className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-6 md:p-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -99,10 +102,12 @@ export function V2FoundationPage() {
                 Current milestone
               </p>
               <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">
-                V2-04 · Intelligence Centre
+                V2-02 · Enterprise Space Lifecycle
               </h2>
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                The Intelligence Centre now exposes the canonical intelligence loop and its control-plane resource model.
+                Persistent Business Spaces, Enterprise entitlement, membership-backed switching, and
+                lifecycle controls are now part of the V2 foundation. Personal Space remains the default
+                identity context.
               </p>
             </div>
             <div className="rounded-2xl border border-[var(--border-subtle)] px-5 py-4 text-sm">
