@@ -216,6 +216,9 @@ begin
   if jsonb_typeof(result.definition->'trigger') <> 'object' then
     raise exception 'Workflow requires trigger{}';
   end if;
+  if coalesce(result.definition->'trigger'->>'type','') not in ('manual','event','schedule','webhook') then
+    raise exception 'Unsupported workflow trigger type';
+  end if;
 
   for node in select value from jsonb_array_elements(result.definition->'nodes') loop
     node_id := node->>'id';
@@ -252,6 +255,10 @@ begin
     elsif (node->>'type') = 'approval' then
       if coalesce(node->'config'->>'mode','') not in ('human','policy') then
         raise exception 'Approval node % requires mode human or policy', node_id;
+      end if;
+    elsif (node->>'type') = 'condition' then
+      if coalesce(length(trim(node->'config'->>'expression')),0) = 0 then
+        raise exception 'Condition node % requires expression', node_id;
       end if;
     elsif (node->>'type') = 'action' then
       if coalesce(length(trim(node->'config'->>'actionId')),0) = 0 then
@@ -302,6 +309,22 @@ begin
       end if;
     end loop;
   end loop;
+
+  if exists (
+    with recursive reachable(node_id) as (
+      select 'start'
+      union
+      select jsonb_array_elements_text(n.value->'next')
+      from reachable r
+      join jsonb_array_elements(result.definition->'nodes') n(value)
+        on n.value->>'id' = r.node_id
+    )
+    select 1
+    from unnest(node_ids) as ids(node_id)
+    where not exists (select 1 from reachable where reachable.node_id = ids.node_id)
+  ) then
+    raise exception 'Workflow contains a node that is unreachable from start';
+  end if;
 
   update public.v2_workflow_versions set status = 'validated'
    where id = result.id
