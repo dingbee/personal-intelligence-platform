@@ -45,7 +45,7 @@ describe('V2 Space context', () => {
   })
 
   it('rejects inactive spaces', () => {
-    expect(
+    expect(() =>
       toActiveSpaceContext({ ...business, status: 'paused' }, 'user-1'),
     ).toThrow('V2 space is not active.')
   })
