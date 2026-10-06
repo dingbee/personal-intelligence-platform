@@ -1,24 +1,75 @@
 import type { AutonomyLevel } from '../domain/autonomy'
-import type {
-  VerticalAgentDefinition,
-  VerticalRegistration,
-} from '../vertical-intelligence/types'
 
 export const NOVA_RUNTIME_MANIFEST_VERSION = '1.0.0' as const
 
+export interface NoVAPluginEntityContract {
+  id: string
+  label: string
+  description: string
+}
+
+export interface NoVAPluginSignalContract {
+  id: string
+  label: string
+  description: string
+  entityIds?: string[]
+}
+
+export interface NoVAPluginToolContract {
+  id: string
+  description?: string
+  requiresApproval: boolean
+}
+
+export interface NoVAPluginAgentContract {
+  id: string
+  name: string
+  description: string
+  intelligenceKind: 'guest' | 'operations' | 'revenue' | 'inventory' | 'procurement' | 'sales' | 'executive' | 'custom'
+  capabilities: string[]
+  allowedTools: string[]
+  context: {
+    entityIds: string[]
+    signalIds: string[]
+  }
+  autonomy: AutonomyLevel
+}
+
+/**
+ * External plugin contract accepted by ARRIYIA as declarative metadata.
+ *
+ * The plugin implementation is owned by the external product and registered
+ * with NoVA Core. ARRIYIA stores/uses only the contract required for
+ * governance and delegation; it does not register or execute the plugin.
+ */
+export interface NoVAPluginContract {
+  pluginId: string
+  displayName: string
+  contractVersion: string
+  capabilities: string[]
+  entities: NoVAPluginEntityContract[]
+  signals: NoVAPluginSignalContract[]
+  tools: NoVAPluginToolContract[]
+  agents: NoVAPluginAgentContract[]
+  governanceRequirements: {
+    approvalForConsequentialActions: true
+  }
+  executionAuthority: 'nova-core'
+}
+
 export interface NoVARuntimeToolManifest {
   id: string
-  verticalId: string
+  pluginId: string
   description?: string
   requiresApproval: boolean
 }
 
 export interface NoVARuntimeAgentManifest {
   id: string
-  verticalId: string
+  pluginId: string
   name: string
   description: string
-  intelligenceKind: VerticalAgentDefinition['intelligenceKind']
+  intelligenceKind: NoVAPluginAgentContract['intelligenceKind']
   capabilities: string[]
   toolIds: string[]
   contextEntityIds: string[]
@@ -29,7 +80,7 @@ export interface NoVARuntimeAgentManifest {
 export interface NoVARuntimeManifest {
   manifestVersion: typeof NOVA_RUNTIME_MANIFEST_VERSION
   contractVersion: string
-  vertical: {
+  plugin: {
     id: string
     displayName: string
     capabilities: string[]
@@ -43,21 +94,21 @@ export interface NoVARuntimeManifest {
 }
 
 /**
- * Compile declarative ARRIYIA metadata into a NoVA-facing runtime manifest.
+ * Compile declarative plugin metadata into a NoVA-facing runtime manifest.
  *
  * This compiler carries identity/capability/governance metadata only. It does
- * not execute anything and must not import a vertical product implementation.
+ * not execute anything and does not register the plugin in NoVA Core.
  */
-export function compileVerticalRegistrationToNoVARuntimeManifest(
-  registration: VerticalRegistration,
+export function compilePluginContractToNoVARuntimeManifest(
+  registration: NoVAPluginContract,
 ): NoVARuntimeManifest {
-  if (!registration.verticalId) throw new Error('Vertical contract requires verticalId.')
-  if (!registration.contractVersion) throw new Error('Vertical contract requires contractVersion.')
+  if (!registration.pluginId) throw new Error('Plugin contract requires pluginId.')
+  if (!registration.contractVersion) throw new Error('Plugin contract requires contractVersion.')
   if (registration.executionAuthority !== 'nova-core') {
-    throw new Error('Vertical contract execution authority must remain nova-core.')
+    throw new Error('Plugin contract execution authority must remain nova-core.')
   }
   if (registration.governanceRequirements.approvalForConsequentialActions !== true) {
-    throw new Error('Consequential vertical actions must remain approval-gated.')
+    throw new Error('Consequential plugin actions must remain approval-gated.')
   }
 
   const entityIds = new Set(registration.entities.map((entity) => entity.id))
@@ -93,21 +144,21 @@ export function compileVerticalRegistrationToNoVARuntimeManifest(
   return {
     manifestVersion: NOVA_RUNTIME_MANIFEST_VERSION,
     contractVersion: registration.contractVersion,
-    vertical: {
-      id: registration.verticalId,
+    plugin: {
+      id: registration.pluginId,
       displayName: registration.displayName,
       capabilities: [...registration.capabilities],
       executionAuthority: registration.executionAuthority,
     },
     tools: registration.tools.map((tool) => ({
       id: tool.id,
-      verticalId: registration.verticalId,
+      pluginId: registration.pluginId,
       description: tool.description,
       requiresApproval: tool.requiresApproval,
     })),
     agents: registration.agents.map((agent) => ({
       id: agent.id,
-      verticalId: registration.verticalId,
+      pluginId: registration.pluginId,
       name: agent.name,
       description: agent.description,
       intelligenceKind: agent.intelligenceKind,
