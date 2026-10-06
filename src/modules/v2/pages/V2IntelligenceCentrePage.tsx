@@ -64,7 +64,7 @@ export function V2IntelligenceCentrePage() {
 
   const learningQuery = useQuery({
     queryKey: ['v2-learning-signals', workspaceId],
-    queryFn: () => listLearningSignals(),
+    queryFn: () => listLearningSignals({ workspaceId }),
     enabled: Boolean(activeSpace),
     staleTime: 15_000,
   })
