@@ -171,6 +171,7 @@ export function validateWorkflowDefinitionClient(definition: V2WorkflowDefinitio
     if (node.type === 'agent' && typeof node.config.agentId !== 'string') errors.push(`Agent node ${node.id} requires agentId.`)
     if (node.type === 'tool' && typeof node.config.toolId !== 'string') errors.push(`Tool node ${node.id} requires toolId.`)
     if (node.type === 'approval' && node.config.mode !== 'human' && node.config.mode !== 'policy') errors.push(`Approval node ${node.id} requires human or policy mode.`)
+    if (node.type === 'condition' && typeof node.config.expression !== 'string') errors.push(`Condition node ${node.id} requires expression.`)
     if (node.type === 'action' && typeof node.config.actionId !== 'string') errors.push(`Action node ${node.id} requires actionId.`)
   }
 
@@ -190,6 +191,22 @@ export function validateWorkflowDefinitionClient(definition: V2WorkflowDefinitio
   }
   if (definition.nodes.some((node) => visit(node.id))) {
     errors.push('Workflow graph cannot contain cycles.')
+  }
+
+  const start = definition.nodes.find((node) => node.type === 'start')
+  if (start) {
+    const reachable = new Set<string>()
+    const queue = [start.id]
+    while (queue.length > 0) {
+      const id = queue.shift()!
+      if (reachable.has(id)) continue
+      reachable.add(id)
+      const node = definition.nodes.find((candidate) => candidate.id === id)
+      for (const next of node?.next ?? []) queue.push(next)
+    }
+    if (reachable.size !== definition.nodes.length) {
+      errors.push('Workflow contains a node that is unreachable from start.')
+    }
   }
 
   return errors
