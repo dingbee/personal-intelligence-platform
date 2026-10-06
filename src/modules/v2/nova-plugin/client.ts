@@ -57,11 +57,29 @@ export class NoVAPluginApiClient implements NoVAPluginTransport {
     await this.post(organizationId, { action: 'register', manifest })
   }
 
-  negotiateCapabilities(request: CapabilityNegotiationRequest): Promise<CapabilityNegotiationResult> {
-    return this.post(request.organizationId, {
+  async negotiateCapabilities(request: CapabilityNegotiationRequest): Promise<CapabilityNegotiationResult> {
+    const response = await this.post<Record<string, unknown>>(request.organizationId, {
       action: 'negotiate',
       capabilities: request.requestedCapabilities,
     })
+    const entries = Array.isArray(response.capabilities) ? response.capabilities : []
+    const supported: string[] = []
+    const rejected: string[] = []
+
+    for (const entry of entries) {
+      if (!isRecord(entry) || typeof entry.id !== 'string' || typeof entry.supported !== 'boolean') {
+        throw new Error('NoVA Core gateway returned an invalid capability negotiation response.')
+      }
+      if (entry.supported) supported.push(entry.id)
+      else rejected.push(entry.id)
+    }
+
+    const returned = new Set([...supported, ...rejected])
+    for (const requested of request.requestedCapabilities) {
+      if (!returned.has(requested)) rejected.push(requested)
+    }
+
+    return { supported, rejected }
   }
 
   startAgent(request: AgentExecutionRequest): Promise<RuntimeExecutionReference> {
