@@ -18,6 +18,12 @@ const business: SpaceDescriptor = {
   status: 'active',
   ownerUserId: 'user-1',
   organizationId: 'org-1',
+  membershipRole: 'owner',
+}
+
+const businessMember: SpaceDescriptor = {
+  ...business,
+  membershipRole: 'editor',
 }
 
 describe('V2 Space context', () => {
@@ -35,13 +41,23 @@ describe('V2 Space context', () => {
       subscription: 'enterprise',
       organizationId: 'org-1',
       userId: 'user-1',
+      membershipRole: 'owner',
     })
   })
 
-  it('rejects a space owned by another identity', () => {
-    expect(() => toActiveSpaceContext(business, 'user-2')).toThrow(
-      'V2 space does not belong to the active identity.',
-    )
+  it('allows a business member without requiring ownership', () => {
+    expect(toActiveSpaceContext(businessMember, 'user-2')).toMatchObject({
+      spaceId: 'space-nolmark',
+      kind: 'business',
+      membershipRole: 'editor',
+      userId: 'user-2',
+    })
+  })
+
+  it('rejects a space with no active membership', () => {
+    expect(() =>
+      toActiveSpaceContext({ ...business, membershipRole: null }, 'user-2'),
+    ).toThrow('V2 space is not available to the active identity.')
   })
 
   it('rejects inactive spaces', () => {
@@ -54,6 +70,7 @@ describe('V2 Space context', () => {
     expect(personal.kind).toBe('personal')
     expect(business.kind).toBe('business')
     expect(canAccessSpace(personal, 'user-1')).toBe(true)
-    expect(canAccessSpace(business, 'user-2')).toBe(false)
+    expect(canAccessSpace(businessMember, 'user-2')).toBe(true)
+    expect(canAccessSpace({ ...businessMember, membershipRole: null }, 'user-2')).toBe(false)
   })
 })
