@@ -167,14 +167,19 @@ export class NoVAPluginApiClient implements NoVAPluginTransport {
   ): Promise<RuntimeExecutionReference | RuntimeExecutionResult | undefined> {
     if (response.status === 404) return undefined
     const body = await this.parseResponse<Record<string, unknown>>(response, organizationId)
-    if (!body || typeof body.runId !== 'string') {
+    const runId = typeof body?.runId === 'string'
+      ? body.runId
+      : typeof body?.id === 'string'
+        ? body.id
+        : null
+    if (!runId) {
       throw new Error('NoVA Core run response did not contain a runId.')
     }
 
     const state = mapRuntimeState(body.status)
     if (state === 'succeeded' || state === 'failed' || state === 'cancelled') {
       return {
-        runId: body.runId,
+        runId,
         state,
         output: isRecord(body.output) ? body.output : undefined,
         error: typeof body.error === 'string'
@@ -191,7 +196,7 @@ export class NoVAPluginApiClient implements NoVAPluginTransport {
     }
 
     return {
-      runId: body.runId,
+      runId,
       state,
       acceptedAt: typeof body.started_at === 'string'
         ? body.started_at
