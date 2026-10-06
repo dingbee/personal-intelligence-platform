@@ -37,14 +37,14 @@ export function V2SpaceLifecyclePanel() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
             Active Business Space
           </p>
-          <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{activeSpace.spaceId}</h2>
+          <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{activeSpace.name}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
             This Space is persistent, Enterprise-entitled and membership-backed. Its organization namespace
             is passed to NoVA Core when V2 execution integration is wired.
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
             <span className="rounded-full bg-[var(--surface-muted)] px-3 py-1.5">
-              Status: {activeSpace.kind === 'business' ? 'Business' : 'Personal'}
+              Status: {activeSpace.status}
             </span>
             <span className="rounded-full bg-[var(--surface-muted)] px-3 py-1.5">
               Tier: {activeSpace.subscription}
