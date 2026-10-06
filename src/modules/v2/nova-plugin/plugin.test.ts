@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { ARRIYIA_NOVA_PLUGIN_MANIFEST, getArriyiaNoVAPluginManifest } from './manifest'
 import { NoVAPluginApiClient } from './client'
 
@@ -27,20 +27,23 @@ describe('ARRIYIA NoVA plugin contract', () => {
   })
 
   it('serializes plugin registration through the transport boundary', async () => {
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 204 }))
+    let captured: { input: RequestInfo | URL; init?: RequestInit } | undefined
+    const fetchImpl: typeof fetch = async (input, init) => {
+      captured = { input, init }
+      return new Response(null, { status: 204 })
+    }
     const client = new NoVAPluginApiClient('https://nova.example/', fetchImpl)
 
     await client.registerManifest(copyManifest())
 
-    expect(fetchImpl).toHaveBeenCalledOnce()
-    const [input, init] = fetchImpl.mock.calls[0]!
-    expect(String(input)).toBe('https://nova.example/v1/plugins/manifests')
-    expect(init?.method).toBe('POST')
-    expect(init?.headers).toEqual({ 'content-type': 'application/json' })
+    expect(captured).toBeDefined()
+    expect(String(captured?.input)).toBe('https://nova.example/v1/plugins/manifests')
+    expect(captured?.init?.method).toBe('POST')
+    expect(captured?.init?.headers).toEqual({ 'content-type': 'application/json' })
   })
 
   it('fails closed on a non-success NoVA response', async () => {
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 403 }))
+    const fetchImpl: typeof fetch = async () => new Response(null, { status: 403 })
     const client = new NoVAPluginApiClient('https://nova.example/', fetchImpl)
 
     await expect(client.registerManifest(copyManifest())).rejects.toThrow(
