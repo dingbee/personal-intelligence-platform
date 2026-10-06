@@ -14,14 +14,14 @@ import {
   type V2AgentStatus,
 } from '../agents/api/agentManagement'
 
-const emptyDefinition = (personal: boolean): V2AgentDefinition => ({
+const emptyDefinition = (): V2AgentDefinition => ({
   version: 1,
   systemPurpose: '',
   capabilities: [],
   toolIds: [],
-  memoryScopes: [personal ? 'personal' : 'workspace'],
+  memoryScopes: ['workspace'],
   policyIds: [],
-  autonomy: 'supervised',
+  autonomyCeiling: 'recommend',
 })
 
 const statusLabel: Record<V2AgentStatus, string> = {
@@ -47,12 +47,10 @@ export function V2AgentManagementPage() {
   const [error, setError] = useState<string | null>(null)
 
   const workspaceId = activeSpace?.kind === 'business' ? activeSpace.spaceId : null
-  const canEdit = activeSpace?.kind === 'personal'
-    ? true
-    : activeSpace?.membershipRole === 'editor' || activeSpace?.membershipRole === 'owner'
-  const canActivate = activeSpace?.kind === 'personal'
-    ? true
-    : activeSpace?.membershipRole === 'owner'
+  const canEdit = activeSpace?.kind === 'business'
+    && (activeSpace.membershipRole === 'editor' || activeSpace.membershipRole === 'owner')
+  const canActivate = activeSpace?.kind === 'business'
+    && activeSpace.membershipRole === 'owner'
 
   const agentsQuery = useQuery({
     queryKey: ['v2-agents', workspaceId],
@@ -83,7 +81,7 @@ export function V2AgentManagementPage() {
 
   const createMutation = useMutation({
     mutationFn: () => createV2Agent({
-      workspaceId,
+      workspaceId: workspaceId!,
       name,
       slug,
       description,
@@ -146,10 +144,10 @@ export function V2AgentManagementPage() {
       setMemoryScopesText(latest.definition.memoryScopes.join(', '))
       setPolicyIdsText(latest.definition.policyIds.join(', '))
     } else {
-      setDefinition(emptyDefinition(agent.workspaceId === null))
+      setDefinition(emptyDefinition())
       setCapabilitiesText('')
       setToolIdsText('')
-      setMemoryScopesText(agent.workspaceId === null ? 'personal' : 'workspace')
+      setMemoryScopesText('workspace')
       setPolicyIdsText('')
     }
     setError(null)
@@ -291,10 +289,11 @@ export function V2AgentManagementPage() {
                       <input className="w-full rounded-xl border bg-transparent px-3 py-2 text-sm" placeholder="Tool IDs, comma separated" value={toolIdsText} onChange={(e) => setToolIdsText(e.target.value)} />
                       <input className="w-full rounded-xl border bg-transparent px-3 py-2 text-sm" placeholder="Memory scopes, comma separated" value={memoryScopesText} onChange={(e) => setMemoryScopesText(e.target.value)} />
                       <input className="w-full rounded-xl border bg-transparent px-3 py-2 text-sm" placeholder="Policy IDs, comma separated" value={policyIdsText} onChange={(e) => setPolicyIdsText(e.target.value)} />
-                      <select className="w-full rounded-xl border bg-transparent px-3 py-2 text-sm" value={definition.autonomy} onChange={(e) => setDefinition({ ...definition, autonomy: e.target.value as V2AgentDefinition['autonomy'] })}>
-                        <option value="supervised">Supervised — human approval remains explicit</option>
-                        <option value="bounded">Bounded — execution limits will be enforced by runtime</option>
-                        <option value="delegated">Delegated — governance policy required</option>
+                      <select className="w-full rounded-xl border bg-transparent px-3 py-2 text-sm" value={definition.autonomyCeiling} onChange={(e) => setDefinition({ ...definition, autonomyCeiling: e.target.value as V2AgentDefinition['autonomyCeiling'] })}>
+                        <option value="inform">Inform — no action preparation</option>
+                        <option value="recommend">Recommend — proposes governed next steps</option>
+                        <option value="prepare">Prepare — prepares an action for approval</option>
+                        <option value="bounded">Bounded — bounded execution when later authorized by policy</option>
                       </select>
                       <button type="button" disabled={!canEdit || saveMutation.isPending} onClick={() => saveMutation.mutate()} className="rounded-xl bg-[var(--text-primary)] px-4 py-2 text-sm font-medium text-[var(--surface-base)] disabled:opacity-40">
                         {saveMutation.isPending ? 'Saving version…' : 'Save new version'}
