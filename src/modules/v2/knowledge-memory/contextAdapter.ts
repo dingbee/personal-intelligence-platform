@@ -3,7 +3,7 @@ import { retrieveContext } from '@/modules/ai/orchestration/retrieveContext'
 import { retrieveNoteContext, type NoteContextMatch } from '@/modules/ai/orchestration/retrieveNoteContext'
 import { retrieveAssetContext, type AssetContextMatch } from '@/modules/ai/orchestration/retrieveAssetContext'
 import { filterMemoriesByRelevance } from '@/modules/ai/memory/filterMemoriesByRelevance'
-import { listMemories } from '@/modules/ai/memory/api/memory'
+import { listMemories, listPersonalMemories } from '@/modules/ai/memory/api/memory'
 import { listKnowledgeNodes } from '@/modules/knowledge-intelligence/api/knowledgeNodes'
 import { listKnowledgeCollections } from '@/modules/knowledge-intelligence/api/knowledgeCollections'
 import type { AiMemory, KnowledgeCollection, KnowledgeNode } from '@/shared/types/database'
@@ -40,7 +40,7 @@ export async function getV2KnowledgeMemorySummary(workspaceId: string | null): P
   const [knowledgeNodes, collections, memories] = await Promise.all([
     listKnowledgeNodes({ workspaceId, limit: 100 }),
     listKnowledgeCollections({ workspaceId }),
-    listMemories({ workspaceId, limit: 100 }),
+    workspaceId ? listMemories({ workspaceId, limit: 100 }) : listPersonalMemories(100),
   ])
   return { knowledgeNodes, collections, memories }
 }
@@ -70,7 +70,7 @@ export async function retrieveV2Context(params: {
     retrieveContext({ query, userId: params.userId, workspaceId: params.workspaceId, embedding }).catch(() => [] as VectorMatch[]),
     retrieveNoteContext({ query, userId: params.userId, workspaceId: params.workspaceId, embedding }).catch(() => [] as NoteContextMatch[]),
     retrieveAssetContext({ query, userId: params.userId, workspaceId: params.workspaceId, embedding }).catch(() => [] as AssetContextMatch[]),
-    listMemories({ workspaceId: params.workspaceId, limit: 200 }).then((rows) => filterMemoriesByRelevance(rows, query)).catch(() => [] as AiMemory[]),
+    (params.workspaceId ? listMemories({ workspaceId: params.workspaceId, limit: 200 }) : listPersonalMemories(200)).then((rows) => filterMemoriesByRelevance(rows, query)).catch(() => [] as AiMemory[]),
   ])
 
   const evidence: V2ContextEvidence[] = [
