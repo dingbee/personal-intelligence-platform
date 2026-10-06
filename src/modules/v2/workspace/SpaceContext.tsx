@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { UUID } from '../domain/model'
 import { toActiveSpaceContext, type ActiveSpaceContext, type SpaceDescriptor } from './space'
 
@@ -23,6 +23,12 @@ export function V2SpaceProvider({
     spaces[0]?.id ?? '',
   )
 
+  useEffect(() => {
+    if (!spaces.some((space) => space.id === activeSpaceId)) {
+      setActiveSpaceIdState(spaces[0]?.id ?? '')
+    }
+  }, [activeSpaceId, spaces])
+
   const activeSpace = useMemo(() => {
     const space = spaces.find((candidate) => candidate.id === activeSpaceId)
     return space ? toActiveSpaceContext(space, userId) : null
@@ -35,10 +41,13 @@ export function V2SpaceProvider({
       setActiveSpaceId: (spaceId) => {
         const next = spaces.find((space) => space.id === spaceId)
         if (!next) throw new Error('V2 space is not available to the active identity.')
+        if (!toActiveSpaceContext(next, userId)) {
+          throw new Error('V2 space is not available to the active identity.')
+        }
         setActiveSpaceIdState(spaceId)
       },
     }),
-    [spaces, activeSpace],
+    [spaces, activeSpace, userId],
   )
 
   return <V2SpaceContext.Provider value={value}>{children}</V2SpaceContext.Provider>
