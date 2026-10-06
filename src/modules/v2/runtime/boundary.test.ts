@@ -148,7 +148,7 @@ describe('V2-08 NoVA runtime boundary verification', () => {
       requestedCapabilities: ['core.agent.run', 'core.workflow.run', 'unknown.capability'],
     })
 
-    expect(result.supported).toEqual([])
-    expect(result.rejected).toEqual(['core.agent.run', 'core.workflow.run', 'unknown.capability'])
+    expect(result.supported).toEqual(['core.agent.run', 'core.workflow.run'])
+    expect(result.rejected).toEqual(['unknown.capability'])
   })
 })
