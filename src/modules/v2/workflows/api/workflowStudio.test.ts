@@ -53,6 +53,28 @@ describe('V2 Workflow Studio graph contract', () => {
     expect(validateWorkflowDefinitionClient(invalid)).toContain('Workflow requires exactly one start node.')
   })
 
+  it('rejects disconnected nodes', () => {
+    const disconnected: V2WorkflowDefinition = {
+      ...base,
+      nodes: [
+        ...base.nodes,
+        { id: 'orphan', type: 'verify', config: {}, next: [] },
+      ],
+    }
+    expect(validateWorkflowDefinitionClient(disconnected)).toContain('Workflow contains a node that is unreachable from start.')
+  })
+
+  it('requires a condition expression', () => {
+    const invalid: V2WorkflowDefinition = {
+      ...base,
+      nodes: [
+        { id: 'start', type: 'start', config: {}, next: ['condition'] },
+        { id: 'condition', type: 'condition', config: {}, next: [] },
+      ],
+    }
+    expect(validateWorkflowDefinitionClient(invalid)).toContain('Condition node condition requires expression.')
+  })
+
   it('requires governed dependencies for agent, tool, approval and action nodes', () => {
     const invalid: V2WorkflowDefinition = {
       ...base,
