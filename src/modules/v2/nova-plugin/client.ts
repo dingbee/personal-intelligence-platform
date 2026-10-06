@@ -23,11 +23,13 @@ export interface NoVAPluginTransport {
 }
 
 export class NoVAPluginApiClient implements NoVAPluginTransport {
-  constructor(
-    private readonly baseUrl: string,
-    private readonly fetchImpl: typeof fetch = fetch,
-  ) {
+  private readonly baseUrl: string
+  private readonly fetchImpl: typeof fetch
+
+  constructor(baseUrl: string, fetchImpl: typeof fetch = fetch) {
     if (!baseUrl.trim()) throw new Error('NoVA Core API base URL is required.')
+    this.baseUrl = baseUrl
+    this.fetchImpl = fetchImpl
   }
 
   async registerManifest(manifest: PluginManifest): Promise<void> {
