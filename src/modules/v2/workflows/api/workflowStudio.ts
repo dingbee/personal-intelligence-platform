@@ -175,5 +175,22 @@ export function validateWorkflowDefinitionClient(definition: V2WorkflowDefinitio
   }
 
   if (startCount !== 1) errors.push('Workflow requires exactly one start node.')
+
+  const visiting = new Set<string>()
+  const visited = new Set<string>()
+  const visit = (id: string): boolean => {
+    if (visiting.has(id)) return true
+    if (visited.has(id)) return false
+    visiting.add(id)
+    const node = definition.nodes.find((candidate) => candidate.id === id)
+    const hasCycle = node?.next.some(visit) ?? false
+    visiting.delete(id)
+    visited.add(id)
+    return hasCycle
+  }
+  if (definition.nodes.some((node) => visit(node.id))) {
+    errors.push('Workflow graph cannot contain cycles.')
+  }
+
   return errors
 }
