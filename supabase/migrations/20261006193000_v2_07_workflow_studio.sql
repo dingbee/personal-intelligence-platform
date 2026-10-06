@@ -194,6 +194,7 @@ declare
   next_id text;
   node_ids text[] := '{}';
   start_count integer := 0;
+  start_node_id text;
   agent_id uuid;
   agent_workspace uuid;
   agent_status text;
@@ -230,7 +231,10 @@ begin
     end if;
     node_ids := array_append(node_ids, node_id);
 
-    if (node->>'type') = 'start' then start_count := start_count + 1; end if;
+    if (node->>'type') = 'start' then
+      start_count := start_count + 1;
+      start_node_id := node_id;
+    end if;
 
     if (node->>'type') = 'agent' then
       begin
@@ -312,7 +316,7 @@ begin
 
   if exists (
     with recursive reachable(node_id) as (
-      select 'start'
+      select start_node_id
       union
       select jsonb_array_elements_text(n.value->'next')
       from reachable r
