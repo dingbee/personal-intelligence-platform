@@ -18,8 +18,8 @@ export interface V2AgentDefinition {
 export interface V2Agent {
   id: string
   ownerUserId: string
-  workspaceId: string | null
-  organizationId: string | null
+  workspaceId: string
+  organizationId: string
   name: string
   slug: string
   description: string
@@ -74,7 +74,7 @@ function mapVersion(row: AgentVersionRow): V2AgentVersion {
 
 export function normalizeAgentDefinition(value: unknown): V2AgentDefinition {
   const input = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
-  const autonomy = input.autonomy
+  const autonomy = input.autonomyCeiling
   return {
     version: Number(input.version ?? 1),
     systemPurpose: typeof input.systemPurpose === 'string' ? input.systemPurpose : '',
@@ -87,8 +87,8 @@ export function normalizeAgentDefinition(value: unknown): V2AgentDefinition {
 }
 
 export async function listV2Agents(workspaceId: string | null): Promise<V2Agent[]> {
-  let query = db.from('v2_agents').select('*').order('updated_at', { ascending: false })
-  query = workspaceId ? query.eq('workspace_id', workspaceId) : query.is('workspace_id', null)
+  if (!workspaceId) return []
+  const query = db.from('v2_agents').select('*').eq('workspace_id', workspaceId).order('updated_at', { ascending: false })
   const { data, error } = await query
   if (error) throw error
   return (data ?? []).map(mapAgent)
@@ -105,7 +105,7 @@ export async function getV2AgentVersions(agentId: string): Promise<V2AgentVersio
 }
 
 export async function createV2Agent(params: {
-  workspaceId: string | null
+  workspaceId: string
   name: string
   slug: string
   description?: string
