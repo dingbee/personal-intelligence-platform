@@ -3,10 +3,10 @@ import { evaluateAuthorizationEnvelope } from './agents/authorization'
 import { validateToolInvocationRequest } from './runtime/adapter'
 import type { ToolInvocationRequest } from './runtime/contracts'
 import { autonomyAtMost, AUTONOMY_LEVELS } from './domain/autonomy'
-import { bindVerticalAgents, validateVerticalAgentContractBinding } from './vertical-intelligence/bindings'
+import { compilePluginContractToNoVARuntimeManifest } from './runtime/manifest'
 
-const verticalFixture = {
-  verticalId: 'example-vertical',
+const pluginFixture = {
+  pluginId: 'example-plugin',
   displayName: 'Example Vertical',
   contractVersion: '1.0',
   capabilities: ['example-intelligence'],
@@ -37,13 +37,11 @@ describe('ARRIYIA V2 release certification fixtures', () => {
     expect(autonomyAtMost('bounded', 'prepare')).toBe(false)
   })
 
-  it('keeps every external vertical binding generic, non-executing and NoVA-owned', () => {
-    for (const binding of bindVerticalAgents(verticalFixture)) {
-      expect(validateVerticalAgentContractBinding(binding)).toEqual([])
-      expect(binding.executionEnabled).toBe(false)
-      expect(binding.executionAuthority).toBe('nova-core')
-      expect(binding.governanceRequired).toBe(true)
-    }
+  it('keeps external plugin metadata declarative and NoVA-owned', () => {
+    const manifest = compilePluginContractToNoVARuntimeManifest(pluginFixture)
+    expect(manifest.plugin.id).toBe('example-plugin')
+    expect(manifest.plugin.executionAuthority).toBe('nova-core')
+    expect(manifest.governance.approvalForConsequentialActions).toBe(true)
   })
 
   it('blocks consequential authorization without exact active approval', () => {
