@@ -63,6 +63,7 @@ import { V2LearningCentrePage } from '../modules/v2/pages/V2LearningCentrePage'
 import { V2AgentManagementPage } from '@/modules/v2/pages/V2AgentManagementPage'
 import { V2WorkflowStudioPage } from '@/modules/v2/pages/V2WorkflowStudioPage'
 import { RequireArriyiaEnterprise } from '@/modules/v2/RequireArriyiaEnterprise'
+import { V2Shell } from '@/modules/v2/V2Shell'
 
 export const router = createBrowserRouter([
   // Post-10/10 Phase 5 (Application Hardening & App Experience) — a single
