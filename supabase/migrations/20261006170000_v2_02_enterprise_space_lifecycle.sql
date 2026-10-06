@@ -169,7 +169,10 @@ set search_path = public
 as $$
 begin
   perform public.sync_arriyia_v2_business_spaces(coalesce(new.user_id, old.user_id));
-  return coalesce(new, old);
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
 end;
 $$;
 
