@@ -3,9 +3,9 @@ import { evaluateAuthorizationEnvelope } from './agents/authorization'
 import { validateToolInvocationRequest } from './runtime/adapter'
 import type { ToolInvocationRequest } from './runtime/contracts'
 import { autonomyAtMost, AUTONOMY_LEVELS } from './domain/autonomy'
-import { compilePluginContractToNoVARuntimeManifest } from './runtime/manifest'
+import { compilePluginContractToNoVARuntimeManifest, type NoVAPluginContract } from './runtime/manifest'
 
-const pluginFixture = {
+const pluginFixture: NoVAPluginContract = {
   pluginId: 'example-plugin',
   displayName: 'Example Vertical',
   contractVersion: '1.0',
