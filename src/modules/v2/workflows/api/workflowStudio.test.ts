@@ -31,6 +31,19 @@ describe('V2 Workflow Studio graph contract', () => {
     ]))
   })
 
+  it('rejects cyclic graphs before save', () => {
+    const cyclic: V2WorkflowDefinition = {
+      ...base,
+      nodes: [
+        { id: 'start', type: 'start', config: {}, next: ['a'] },
+        { id: 'a', type: 'understand', config: {}, next: ['b'] },
+        { id: 'b', type: 'verify', config: {}, next: ['a'] },
+      ],
+    }
+
+    expect(validateWorkflowDefinitionClient(cyclic)).toContain('Workflow graph cannot contain cycles.')
+  })
+
   it('requires exactly one start node', () => {
     const invalid = {
       ...base,
