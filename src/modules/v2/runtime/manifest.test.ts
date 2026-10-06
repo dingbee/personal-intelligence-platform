@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { compileVerticalRegistrationToNoVARuntimeManifest } from './manifest'
-import type { VerticalRegistration } from '../vertical-intelligence/types'
+import { compilePluginContractToNoVARuntimeManifest } from './manifest'
+import type { NoVAPluginContract } from './manifest'
 
-const fixture: VerticalRegistration = {
-  verticalId: 'example-vertical',
+const fixture: NoVAPluginContract = {
+  pluginId: 'example-plugin',
   displayName: 'Example Vertical',
   contractVersion: '1.0.0',
   capabilities: ['account.read'],
@@ -28,9 +28,9 @@ describe('NoVA runtime manifest compiler', () => {
   it('compiles generic vertical metadata without product ownership', () => {
     const manifest = compileVerticalRegistrationToNoVARuntimeManifest(fixture)
     expect(manifest.manifestVersion).toBe('1.0.0')
-    expect(manifest.vertical.id).toBe('example-vertical')
-    expect(manifest.vertical.executionAuthority).toBe('nova-core')
-    expect(manifest.tools[0]).toMatchObject({ id: 'account-read', verticalId: 'example-vertical', requiresApproval: false })
+    expect(manifest.plugin.id).toBe('example-vertical')
+    expect(manifest.plugin.executionAuthority).toBe('nova-core')
+    expect(manifest.tools[0]).toMatchObject({ id: 'account-read', pluginId: 'example-plugin', requiresApproval: false })
     expect(manifest.agents[0]).toMatchObject({ id: 'account-agent', verticalId: 'example-vertical', toolIds: ['account-read'], autonomyCeiling: 'inform' })
     expect(manifest.governance.approvalForConsequentialActions).toBe(true)
   })
