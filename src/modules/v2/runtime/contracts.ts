@@ -22,6 +22,7 @@ export interface RuntimeCorrelationEnvelope {
   contractVersion: typeof NOVA_RUNTIME_CONTRACT_VERSION
   organizationId: UUID
   workspaceId?: UUID
+  actorUserId?: UUID
   correlationId: UUID
   causationId?: UUID
   idempotencyKey: string
