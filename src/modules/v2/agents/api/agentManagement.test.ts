@@ -20,7 +20,7 @@ describe('V2 agent management contract', () => {
       toolIds: ['search'],
       memoryScopes: ['workspace'],
       policyIds: ['approval-required'],
-      autonomy: 'bounded',
+      autonomyCeiling: 'bounded',
     })
   })
 
@@ -36,7 +36,7 @@ describe('V2 agent management contract', () => {
     })
   })
 
-  it('does not invent delegated autonomy from unknown input', () => {
+  it('does not invent unsupported autonomy from unknown input', () => {
     expect(normalizeAgentDefinition({
       version: 1,
       autonomyCeiling: 'unbounded',
