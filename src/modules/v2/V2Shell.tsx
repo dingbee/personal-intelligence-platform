@@ -49,6 +49,13 @@ export function V2Shell() {
                 </div>
               </div>
             </div>
+            <nav className="hidden items-center gap-1 overflow-x-auto md:flex" aria-label="ARRIYIA V2">
+              {['/', '/intelligence', '/knowledge-memory', '/learning', '/agents', '/workflows', '/governance'].map((path) => (
+                <a key={path} href={path === '/' ? '/v2' : `/v2${path}`} className="whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-secondary)] hover:bg-[var(--surface-base)] hover:text-[var(--text-primary)]">
+                  {path === '/' ? 'Command' : path.slice(1).replaceAll('-', ' ')}
+                </a>
+              ))}
+            </nav>
             <V2SpaceSwitcher
               canCreateBusinessSpace={canCreateBusinessSpace}
               onBusinessSpaceCreated={() =>
