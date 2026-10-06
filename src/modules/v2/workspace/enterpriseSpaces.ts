@@ -101,7 +101,7 @@ export async function pauseArriyiaBusinessSpace(spaceId: string): Promise<void> 
     .from('workspaces')
     .update({ v2_status: 'paused' } as never)
     .eq('id', spaceId)
-    .eq('v2_kind', 'business' as never)
+    .eq('v2_kind' as never, 'business' as never)
 
   if (error) throw error
 }
@@ -111,7 +111,7 @@ export async function resumeArriyiaBusinessSpace(spaceId: string): Promise<void>
     .from('workspaces')
     .update({ v2_status: 'active' } as never)
     .eq('id', spaceId)
-    .eq('v2_kind', 'business' as never)
+    .eq('v2_kind' as never, 'business' as never)
 
   if (error) throw error
 }
@@ -121,7 +121,7 @@ export async function archiveArriyiaBusinessSpace(spaceId: string): Promise<void
     .from('workspaces')
     .update({ v2_status: 'archived', archived_at: new Date().toISOString() } as never)
     .eq('id', spaceId)
-    .eq('v2_kind', 'business' as never)
+    .eq('v2_kind' as never, 'business' as never)
 
   if (error) throw error
 }
