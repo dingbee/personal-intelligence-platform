@@ -20,7 +20,12 @@ export interface V2BusinessSpaceRow {
 function asBusinessRows(data: unknown): V2BusinessSpaceRow[] {
   return (Array.isArray(data) ? data : []).filter(
     (row): row is V2BusinessSpaceRow =>
-      Boolean(row && typeof row === 'object' && (row as V2BusinessSpaceRow).v2_kind === 'business'),
+      Boolean(
+        row &&
+          typeof row === 'object' &&
+          (row as V2BusinessSpaceRow).v2_kind === 'business' &&
+          (row as V2BusinessSpaceRow).v2_status !== 'archived',
+      ),
   )
 }
 
