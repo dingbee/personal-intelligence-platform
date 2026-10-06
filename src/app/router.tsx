@@ -92,44 +92,21 @@ export const router = createBrowserRouter([
       {
         path: '/v2',
         element: (
-          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2CommandCentrePage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
+          <ProtectedRoute>
+            <RequireArriyiaEnterprise>
+              <V2Shell />
+            </RequireArriyiaEnterprise>
+          </ProtectedRoute>
         ),
-      },
-      {
-        path: '/v2/foundation',
-        element: (
-          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2FoundationPage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/intelligence',
-        element: (
-          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2IntelligenceCentrePage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/knowledge-memory',
-        element: (
-          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2KnowledgeMemoryPage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/learning',
-        element: (
-          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2LearningCentrePage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/workflows',
-        element: (
-          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2WorkflowStudioPage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/v2/agents',
-        element: (
-          <ProtectedRoute>\n            <RequireArriyiaEnterprise>\n              <V2AgentManagementPage />\n            </RequireArriyiaEnterprise>\n          </ProtectedRoute>
-        ),
+        children: [
+          { index: true, element: <V2CommandCentrePage /> },
+          { path: 'foundation', element: <V2FoundationPage /> },
+          { path: 'intelligence', element: <V2IntelligenceCentrePage /> },
+          { path: 'knowledge-memory', element: <V2KnowledgeMemoryPage /> },
+          { path: 'learning', element: <V2LearningCentrePage /> },
+          { path: 'workflows', element: <V2WorkflowStudioPage /> },
+          { path: 'agents', element: <V2AgentManagementPage /> },
+        ],
       },
       {
         path: '/welcome',
