@@ -29,9 +29,9 @@ export interface ActiveSpaceContext {
 }
 
 /**
- * V2 Space is the active operating context for identity-scoped enterprise
- * features. Business Spaces are persistent membership-backed contexts;
- * Personal Space is identity-owned.
+ * V2 Space is the operating context for identity-scoped enterprise features.
+ * A paused Business Space remains selectable for lifecycle management but
+ * cannot be treated as an active execution context by downstream features.
  */
 export function toActiveSpaceContext(
   space: SpaceDescriptor,
@@ -46,8 +46,8 @@ export function toActiveSpaceContext(
     throw new Error('V2 space is not available to the active identity.')
   }
 
-  if (space.status !== 'active') {
-    throw new Error('V2 space is not active.')
+  if (space.status === 'archived') {
+    throw new Error('V2 space is archived.')
   }
 
   return {
@@ -71,5 +71,5 @@ export function canAccessSpace(
       ? space.ownerUserId === userId
       : Boolean(space.membershipRole)
 
-  return identityCanAccess && space.status === 'active'
+  return identityCanAccess && space.status !== 'archived'
 }
