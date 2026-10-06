@@ -37,13 +37,13 @@ describe('NoVA runtime manifest compiler', () => {
 
   it('rejects references to unknown contract entities, signals or tools', () => {
     expect(() => compilePluginContractToNoVARuntimeManifest({
-      ...fixture, agents: [{ ...fixture.agents[0], allowedTools: ['missing-tool'] }],
+      ...fixture, agents: [{ ...fixture.agents[0], allowedTools: ['missing-tool'] } as NoVAPluginContract['agents'][number]],
     })).toThrow('references unknown tool')
     expect(() => compilePluginContractToNoVARuntimeManifest({
-      ...fixture, agents: [{ ...fixture.agents[0], context: { entityIds: ['missing-entity'], signalIds: [] } }],
+      ...fixture, agents: [{ ...fixture.agents[0], context: { entityIds: ['missing-entity'], signalIds: [] } } as NoVAPluginContract['agents'][number]],
     })).toThrow('references unknown entity')
     expect(() => compilePluginContractToNoVARuntimeManifest({
-      ...fixture, signals: [{ ...fixture.signals[0], entityIds: ['missing-entity'] }],
+      ...fixture, signals: [{ ...fixture.signals[0], entityIds: ['missing-entity'] } as NoVAPluginContract['signals'][number]],
     })).toThrow('references unknown entity')
   })
 
