@@ -22,6 +22,18 @@ export async function listMemories(filters: MemoryFilters = {}): Promise<AiMemor
   return data
 }
 
+export async function listPersonalMemories(limit = 100): Promise<AiMemory[]> {
+  const { data, error } = await supabase
+    .from('ai_memory')
+    .select('*')
+    .is('workspace_id', null)
+    .eq('is_active', true)
+    .order('updated_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data
+}
+
 export async function createMemory(params: {
   userId: string
   workspaceId: string | null
