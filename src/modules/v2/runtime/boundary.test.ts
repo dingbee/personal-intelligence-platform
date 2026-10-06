@@ -13,6 +13,7 @@ const scope = {
   contractVersion: '1.0.0' as const,
   organizationId: 'org-1',
   workspaceId: 'workspace-1',
+  actorUserId: 'user-1',
   correlationId: 'correlation-1',
   idempotencyKey: 'idem-1',
 }
