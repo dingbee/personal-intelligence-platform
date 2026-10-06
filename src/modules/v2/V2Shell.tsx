@@ -29,7 +29,11 @@ export function V2Shell() {
     ownerUserId: user.id,
   }
 
-  const spaces = [personalSpace, ...(spacesQuery.data ?? [])]
+  const businessSpaces = spacesQuery.data ?? []
+  const spaces = [personalSpace, ...businessSpaces]
+  const canCreateBusinessSpace = !businessSpaces.some(
+    (space) => space.ownerUserId === user.id,
+  )
 
   return (
     <V2SpaceProvider userId={user.id} spaces={spaces}>
@@ -46,6 +50,7 @@ export function V2Shell() {
               </div>
             </div>
             <V2SpaceSwitcher
+              canCreateBusinessSpace={canCreateBusinessSpace}
               onBusinessSpaceCreated={() =>
                 queryClient.invalidateQueries({ queryKey: ['arriyia-v2-spaces', user.id] })
               }
