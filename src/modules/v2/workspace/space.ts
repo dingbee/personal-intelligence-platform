@@ -4,6 +4,8 @@ export type SpaceKind = 'personal' | 'business'
 export type SpaceStatus = 'active' | 'paused' | 'archived'
 export type SpaceSubscription = 'pro' | 'enterprise'
 
+export type SpaceMembershipRole = 'viewer' | 'editor' | 'owner'
+
 export interface SpaceDescriptor {
   id: UUID
   kind: SpaceKind
@@ -12,6 +14,7 @@ export interface SpaceDescriptor {
   status: SpaceStatus
   ownerUserId: UUID
   organizationId?: UUID
+  membershipRole?: SpaceMembershipRole | null
 }
 
 export interface ActiveSpaceContext {
@@ -20,19 +23,25 @@ export interface ActiveSpaceContext {
   organizationId?: UUID
   subscription: SpaceSubscription
   userId: UUID
+  membershipRole?: SpaceMembershipRole | null
 }
 
 /**
  * V2 Space is the active operating context for identity-scoped enterprise
- * features. This is deliberately separate from the legacy V1 workspace
- * preference, which is a client-side library filter.
+ * features. Business Spaces are persistent membership-backed contexts;
+ * Personal Space is identity-owned.
  */
 export function toActiveSpaceContext(
   space: SpaceDescriptor,
   userId: UUID,
 ): ActiveSpaceContext {
-  if (space.ownerUserId !== userId) {
-    throw new Error('V2 space does not belong to the active identity.')
+  const canAccess =
+    space.kind === 'personal'
+      ? space.ownerUserId === userId
+      : Boolean(space.membershipRole)
+
+  if (!canAccess) {
+    throw new Error('V2 space is not available to the active identity.')
   }
 
   if (space.status !== 'active') {
@@ -45,6 +54,7 @@ export function toActiveSpaceContext(
     organizationId: space.organizationId,
     subscription: space.subscription,
     userId,
+    membershipRole: space.membershipRole ?? null,
   }
 }
 
@@ -52,5 +62,10 @@ export function canAccessSpace(
   space: SpaceDescriptor,
   userId: UUID,
 ): boolean {
-  return space.ownerUserId === userId && space.status === 'active'
+  const identityCanAccess =
+    space.kind === 'personal'
+      ? space.ownerUserId === userId
+      : Boolean(space.membershipRole)
+
+  return identityCanAccess && space.status === 'active'
 }
