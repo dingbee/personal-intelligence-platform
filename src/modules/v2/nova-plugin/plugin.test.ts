@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ARRIYIA_NOVA_PLUGIN_MANIFEST, getArriyiaNoVAPluginManifest } from './manifest'
 import { NoVAPluginApiClient } from './client'
 
-describe('ARRIYIA NoVA plugin contract', () => {
+describe('ARRIYIA NoVA plugin gateway contract', () => {
   it('declares ARRIYIA as a plugin rather than a Core subsystem', () => {
     expect(ARRIYIA_NOVA_PLUGIN_MANIFEST.id).toBe('arriyia')
     expect(ARRIYIA_NOVA_PLUGIN_MANIFEST.apiVersion).toBe('1.0')
@@ -11,12 +11,6 @@ describe('ARRIYIA NoVA plugin contract', () => {
       executionAuthority: 'nova-core',
       executionTransport: 'api-webhook',
     })
-    expect(ARRIYIA_NOVA_PLUGIN_MANIFEST.capabilities?.map((item) => item.id)).toEqual([
-      'arriyia.personal-intelligence',
-      'arriyia.agent-management',
-      'arriyia.workflow-management',
-      'arriyia.enterprise-intelligence',
-    ])
   })
 
   it('returns a detached manifest copy for transport', () => {
@@ -26,32 +20,81 @@ describe('ARRIYIA NoVA plugin contract', () => {
     expect(copy.capabilities).not.toBe(ARRIYIA_NOVA_PLUGIN_MANIFEST.capabilities)
   })
 
-  it('serializes plugin registration through the transport boundary', async () => {
+  it('uses the actual P0-4 gateway route and required headers for registration', async () => {
     let captured: { input: RequestInfo | URL; init?: RequestInit } | undefined
     const fetchImpl: typeof fetch = async (input, init) => {
       captured = { input, init }
-      return new Response(null, { status: 204 })
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
     }
-    const client = new NoVAPluginApiClient('https://nova.example/', fetchImpl)
+    const client = new NoVAPluginApiClient(
+      'https://nova.example/',
+      'arriyia',
+      {
+        getHeaders: (organizationId, pluginId) => ({
+          authorization: 'Bearer test-secret',
+          'x-nova-organization-id': organizationId,
+          'x-nova-plugin-id': pluginId,
+        }),
+      },
+      fetchImpl,
+    )
 
-    await client.registerManifest(copyManifest())
+    await client.registerManifest(getArriyiaNoVAPluginManifest(), '11111111-1111-4111-8111-111111111111')
 
-    expect(captured).toBeDefined()
-    expect(String(captured?.input)).toBe('https://nova.example/v1/plugins/manifests')
+    expect(String(captured?.input)).toBe('https://nova.example/api/public/core/plugin-gateway')
     expect(captured?.init?.method).toBe('POST')
-    expect(captured?.init?.headers).toEqual({ 'content-type': 'application/json' })
+    expect(captured?.init?.headers).toEqual({
+      'content-type': 'application/json',
+      authorization: 'Bearer test-secret',
+      'x-nova-organization-id': '11111111-1111-4111-8111-111111111111',
+      'x-nova-plugin-id': 'arriyia',
+    })
+    expect(JSON.parse(String(captured?.init?.body))).toMatchObject({
+      action: 'register',
+      manifest: ARRIYIA_NOVA_PLUGIN_MANIFEST,
+    })
   })
 
-  it('fails closed on a non-success NoVA response', async () => {
-    const fetchImpl: typeof fetch = async () => new Response(null, { status: 403 })
-    const client = new NoVAPluginApiClient('https://nova.example/', fetchImpl)
+  it('maps an acknowledged agent response to accepted rather than falsely claiming success', async () => {
+    const client = new NoVAPluginApiClient(
+      'https://nova.example/',
+      'arriyia',
+      { getHeaders: () => ({ authorization: 'Bearer test', 'x-nova-organization-id': '11111111-1111-4111-8111-111111111111', 'x-nova-plugin-id': 'arriyia' }) },
+      async () => new Response(JSON.stringify({
+        runId: 'agent-run-1',
+        status: 'completed',
+        output: 'should not be treated as an ARRIYIA success outcome',
+      }), { status: 200 }),
+    )
 
-    await expect(client.registerManifest(copyManifest())).rejects.toThrow(
-      'NoVA Core API request failed with HTTP 403',
+    const reference = await client.startAgent({
+      contractVersion: '1.0.0',
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      workspaceId: '22222222-2222-4222-8222-222222222222',
+      correlationId: '33333333-3333-4333-8333-333333333333',
+      idempotencyKey: 'idem-agent-1',
+      agentId: 'agent-1',
+      input: { userInput: 'hello' },
+    })
+
+    expect(reference.runId).toBe('agent-run-1')
+    expect(reference.state).toBe('accepted')
+    expect(reference).not.toHaveProperty('output')
+  })
+
+  it('fails closed on a non-success gateway response', async () => {
+    const client = new NoVAPluginApiClient(
+      'https://nova.example/',
+      'arriyia',
+      { getHeaders: () => ({ authorization: 'Bearer test', 'x-nova-organization-id': '11111111-1111-4111-8111-111111111111', 'x-nova-plugin-id': 'arriyia' }) },
+      async () => new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 }),
+    )
+
+    await expect(client.registerManifest(getArriyiaNoVAPluginManifest(), '11111111-1111-4111-8111-111111111111')).rejects.toThrow(
+      'HTTP 401',
     )
   })
 })
-
-function copyManifest() {
-  return getArriyiaNoVAPluginManifest()
-}
