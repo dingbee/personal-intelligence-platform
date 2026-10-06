@@ -82,12 +82,6 @@ create policy "V2 agents readable in space"
   on public.v2_agents for select
   using (public.v2_agent_access(id, 'viewer'));
 
-drop policy if exists "V2 agents writable in space" on public.v2_agents;
-create policy "V2 agents writable in space"
-  on public.v2_agents for update
-  using (public.v2_agent_access(id, 'editor'))
-  with check (public.v2_agent_access(id, 'editor'));
-
 drop policy if exists "V2 agent versions readable in space" on public.v2_agent_versions;
 create policy "V2 agent versions readable in space"
   on public.v2_agent_versions for select
@@ -207,6 +201,10 @@ begin
   values (p_agent_id, v_next, jsonb_set(p_definition, '{version}', to_jsonb(v_next), true), auth.uid())
   returning * into result;
 
+  update public.v2_agent_versions
+     set status = 'retired'
+   where agent_id = p_agent_id and status in ('active','validated');
+
   update public.v2_agents
      set status = 'draft',
          active_version = null,
@@ -313,7 +311,12 @@ begin
     end if;
     update public.v2_agents set status = 'validated', updated_at = now() where id = p_agent_id;
   else
-    update public.v2_agents set status = 'draft', active_version = null, updated_at = now() where id = p_agent_id;
+    update public.v2_agent_versions
+       set status = 'retired'
+     where agent_id = p_agent_id and status = 'active';
+    update public.v2_agents
+       set status = 'draft', active_version = null, updated_at = now()
+     where id = p_agent_id;
   end if;
 
   select * into result from public.v2_agents where id = p_agent_id;
