@@ -39,10 +39,10 @@ export function V2AgentManagementPage() {
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [description, setDescription] = useState('')
-  const [definition, setDefinition] = useState<V2AgentDefinition>(() => emptyDefinition(true))
+  const [definition, setDefinition] = useState<V2AgentDefinition>(() => emptyDefinition())
   const [capabilitiesText, setCapabilitiesText] = useState('')
   const [toolIdsText, setToolIdsText] = useState('')
-  const [memoryScopesText, setMemoryScopesText] = useState('personal')
+  const [memoryScopesText, setMemoryScopesText] = useState('workspace')
   const [policyIdsText, setPolicyIdsText] = useState('')
   const [error, setError] = useState<string | null>(null)
 
