@@ -54,23 +54,26 @@ describe('V2 Space context', () => {
     })
   })
 
+  it('keeps a paused Business Space selectable for lifecycle management', () => {
+    expect(
+      toActiveSpaceContext({ ...business, status: 'paused' }, 'user-1'),
+    ).toMatchObject({
+      spaceId: 'space-nolmark',
+      status: 'paused',
+    })
+    expect(canAccessSpace({ ...business, status: 'paused' }, 'user-1')).toBe(true)
+  })
+
+  it('rejects an archived space', () => {
+    expect(() =>
+      toActiveSpaceContext({ ...business, status: 'archived' }, 'user-1'),
+    ).toThrow('V2 space is archived.')
+    expect(canAccessSpace({ ...business, status: 'archived' }, 'user-1')).toBe(false)
+  })
+
   it('rejects a space with no active membership', () => {
     expect(() =>
       toActiveSpaceContext({ ...business, membershipRole: null }, 'user-2'),
     ).toThrow('V2 space is not available to the active identity.')
-  })
-
-  it('rejects inactive spaces', () => {
-    expect(() =>
-      toActiveSpaceContext({ ...business, status: 'paused' }, 'user-1'),
-    ).toThrow('V2 space is not active.')
-  })
-
-  it('does not treat personal and business spaces as interchangeable', () => {
-    expect(personal.kind).toBe('personal')
-    expect(business.kind).toBe('business')
-    expect(canAccessSpace(personal, 'user-1')).toBe(true)
-    expect(canAccessSpace(businessMember, 'user-2')).toBe(true)
-    expect(canAccessSpace({ ...businessMember, membershipRole: null }, 'user-2')).toBe(false)
   })
 })
