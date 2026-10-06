@@ -62,6 +62,7 @@ import { V2KnowledgeMemoryPage } from '@/modules/v2/pages/V2KnowledgeMemoryPage'
 import { V2LearningCentrePage } from '../modules/v2/pages/V2LearningCentrePage'
 import { V2AgentManagementPage } from '@/modules/v2/pages/V2AgentManagementPage'
 import { V2WorkflowStudioPage } from '@/modules/v2/pages/V2WorkflowStudioPage'
+import { V2GovernancePage } from '@/modules/v2/pages/V2GovernancePage'
 import { RequireArriyiaEnterprise } from '@/modules/v2/RequireArriyiaEnterprise'
 import { V2Shell } from '@/modules/v2/V2Shell'
 
@@ -107,6 +108,7 @@ export const router = createBrowserRouter([
           { path: 'learning', element: <V2LearningCentrePage /> },
           { path: 'workflows', element: <V2WorkflowStudioPage /> },
           { path: 'agents', element: <V2AgentManagementPage /> },
+          { path: 'governance', element: <V2GovernancePage /> },
         ],
       },
       {
