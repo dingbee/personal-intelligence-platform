@@ -94,7 +94,7 @@ The Business Space's `v2_organization_id` is the context identifier passed acros
 - [x] Entitlement loss pauses Business Space automatically.
 - [x] Entitlement restoration can reactivate entitlement-paused Business Space.
 - [x] No `localStorage` dependency introduced.
-- [x] No StayNas, LexiBite, or KATBOD dependency introduced.
+- [x] No vertical-product dependency introduced.
 - [x] No NoVA Core runtime embedded in ARRIYIA.
 - [ ] Live Supabase migration/security certification.
 - [ ] Branch CI gate green on the final V2-02 head.
