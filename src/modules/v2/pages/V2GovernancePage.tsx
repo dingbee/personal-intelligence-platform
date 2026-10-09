@@ -7,6 +7,7 @@ import {
   updateGovernancePolicy,
   type GovernanceApprovalMode,
   type GovernanceAutonomy,
+  type V2GovernancePolicy,
 } from '../governance/api/governance'
 
 const autonomy: GovernanceAutonomy[] = ['inform', 'recommend', 'prepare', 'bounded']
@@ -14,7 +15,7 @@ const approvals: GovernanceApprovalMode[] = ['never', 'consequential', 'always']
 
 export function V2GovernancePage() {
   const { activeSpace } = useV2Space()
-  const [policies, setPolicies] = useState<Awaited<ReturnType<typeof listGovernancePolicies>>>([])
+  const [policies, setPolicies] = useState<V2GovernancePolicy[]>([])
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
