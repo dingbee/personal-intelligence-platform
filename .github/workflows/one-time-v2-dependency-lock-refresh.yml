@@ -6,7 +6,7 @@ on:
       - fix/v2-08-dependency-lock-refresh
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   refresh:
@@ -23,30 +23,33 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Pin the official patched SheetJS release and refresh lockfile
+      - name: Resolve patched production dependencies
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs'
           const path = 'package.json'
           const pkg = JSON.parse(fs.readFileSync(path, 'utf8'))
           pkg.dependencies.xlsx = 'https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz'
+          pkg.overrides = {
+            ...(pkg.overrides ?? {}),
+            '@xmldom/xmldom': '^0.8.15',
+            'dompurify': '^3.4.16',
+            'react-router': '^7.18.2'
+          }
           fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n')
           NODE
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          npm update --package-lock-only --ignore-scripts --no-audit --no-fund
           npm ci --ignore-scripts --no-audit --no-fund
           npm audit --omit=dev --audit-level=high || true
-      - name: Commit reviewed dependency resolution to integration branch
-        env:
-          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+      - name: Export generated lockfile for API update
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          if git diff --cached --quiet; then
-            echo "No dependency changes to commit."
-            exit 0
-          fi
-          git commit -m "fix(deps): patch spreadsheet parser and refresh lockfile"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/dingbee/personal-intelligence-platform.git"
-          git push origin HEAD:feat/v2-08-live-nova-transport
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs'
+          const encoded = Buffer.from(fs.readFileSync('package-lock.json')).toString('base64')
+          const chunkSize = 5000
+          for (let offset = 0, index = 0; offset < encoded.length; offset += chunkSize, index++) {
+            console.log('LOCK_CHUNK_' + String(index).padStart(3, '0') + ':' + encoded.slice(offset, offset + chunkSize))
+          }
+          const pkg = Buffer.from(fs.readFileSync('package.json')).toString('base64')
+          console.log('PACKAGE_JSON_BASE64:' + pkg)
+          NODE
