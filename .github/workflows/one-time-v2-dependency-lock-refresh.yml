@@ -33,7 +33,7 @@ jobs:
           fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n')
           NODE
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          npm audit fix --package-lock-only --ignore-scripts --no-fund || true
+          npm update --package-lock-only --ignore-scripts --no-audit --no-fund
           npm ci --ignore-scripts --no-audit --no-fund
           npm audit --omit=dev --audit-level=high || true
       - name: Commit reviewed dependency resolution to integration branch
