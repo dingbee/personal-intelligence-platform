@@ -44,7 +44,7 @@ export function checkMembershipEligibility(row: { status: string } | null): Invi
  * gate if they aren't already signed in).
  */
 export function buildAcceptUrl(siteUrl: string, kind: 'invitation' | 'membership', email: string): string {
-  const base = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl
+  const base = siteUrl.replace(/\/$/, '')
   if (kind === 'invitation') return `${base}/signup?email=${encodeURIComponent(email)}`
   return `${base}/settings/workspaces`
 }
