@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from 'react-router-dom'
 import { AuthProvider } from '@/modules/auth/AuthContext'
@@ -36,7 +36,9 @@ export function App() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
           <WorkspaceProvider>
-            <RouterProvider router={router} />
+            <Suspense fallback={null}>
+              <RouterProvider router={router} />
+            </Suspense>
           </WorkspaceProvider>
           </AuthProvider>
         </QueryClientProvider>
