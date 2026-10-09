@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import { AuthContext, type AuthContextValue } from '@/modules/auth/context'
+
 // Phase 5.2 — mirrors the edge functions' existing SITE_URL-with-origin-
 // fallback pattern (supabase/functions/send-*-invitation) on the client
 // side. window.location.origin alone breaks if the app is ever reachable
@@ -15,16 +16,19 @@ import { AuthContext, type AuthContextValue } from '@/modules/auth/context'
 function canonicalSiteUrl(): string {
   return import.meta.env.VITE_SITE_URL?.replace(/\/$/, '') || window.location.origin
 }
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [passwordRecovery, setPasswordRecovery] = useState(false)
   const queryClient = useQueryClient()
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setLoading(false)
     })
+
     const { data: subscription } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession)
       setLoading(false)
@@ -35,8 +39,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
       else if (event === 'SIGNED_OUT') setPasswordRecovery(false)
     })
+
     return () => subscription.subscription.unsubscribe()
   }, [])
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
@@ -65,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password,
     options: { emailRedirectTo: canonicalSiteUrl() },
   })
+
   return { error: error?.message ?? null }
 },
       async signInWithPassword(email, password) {
@@ -72,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email,
     password,
   })
+
   return { error: error?.message ?? null }
 },
       async signInWithMagicLink(email) {
@@ -108,5 +116,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [session, loading, passwordRecovery, queryClient],
   )
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
