@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/v2-08-dependency-lock-refresh
+  pull_request:
 
 permissions:
   contents: read
