@@ -14,7 +14,9 @@ import { AuthContext, type AuthContextValue } from '@/modules/auth/context'
 // constant) so it stays correct if the env value is ever unavailable at
 // module-evaluation time.
 function canonicalSiteUrl(): string {
-  return import.meta.env.VITE_SITE_URL?.replace(/\/$/, '') || window.location.origin
+  const configuredUrl = import.meta.env.VITE_SITE_URL
+  const normalizedUrl = configuredUrl?.endsWith('/') ? configuredUrl.slice(0, -1) : configuredUrl
+  return normalizedUrl || window.location.origin
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
