@@ -37,7 +37,7 @@ const toneClass: Record<StatusTone, string> = {
 function requestLabel(request: ExecutionRequest): string {
   const snapshot = request.actionSnapshot
   if (snapshot && typeof snapshot.title === 'string' && snapshot.title.trim()) return snapshot.title
-  if (request.source.kind === 'action' && request.source.actionSource.label) return request.source.actionSource.label
+  if (request.source.kind === 'action') return request.source.actionSource.label
   return request.source.label
 }
 
