@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createElement } from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { ThemeProvider } from '@/shared/components/theme/ThemeProvider'
 
 /**
  * V1 Free Access — open registration. SignUpPage no longer distinguishes
@@ -16,7 +17,7 @@ vi.mock('@/modules/auth/useAuth', () => ({ useAuth: () => ({ signUpWithPassword:
 import { SignUpPage } from '@/modules/auth/pages/SignUpPage'
 
 function renderPage(initialEntry = '/signup') {
-  return render(createElement(MemoryRouter, { initialEntries: [initialEntry] }, createElement(SignUpPage)))
+  return render(createElement(ThemeProvider, null, createElement(MemoryRouter, { initialEntries: [initialEntry] }, createElement(SignUpPage))))
 }
 
 afterEach(cleanup)

@@ -1,69 +1,130 @@
+import { lazy } from 'react'
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { ProtectedRoute } from '@/modules/auth/ProtectedRoute'
 import { RouteErrorBoundary } from '@/shared/components/errors/RouteErrorBoundary'
 import { AppShell } from '@/shared/components/layout/AppShell'
-import { LoginPage } from '@/modules/auth/pages/LoginPage'
-import { SignUpPage } from '@/modules/auth/pages/SignUpPage'
-import { ForgotPasswordPage } from '@/modules/auth/pages/ForgotPasswordPage'
-import { ResetPasswordPage } from '@/modules/auth/pages/ResetPasswordPage'
-import { LibraryPage } from '@/modules/library/pages/LibraryPage'
-import { DocumentDetailPage } from '@/modules/library/pages/DocumentDetailPage'
-import { NotesPage } from '@/modules/notes/pages/NotesPage'
-import { NoteDetailPage } from '@/modules/notes/pages/NoteDetailPage'
-import { KnowledgePage } from '@/modules/knowledge/pages/KnowledgePage'
-import { KnowledgeGraphPage } from '@/modules/knowledge-graph/pages/KnowledgeGraphPage'
-import { KnowledgeExplorerPage } from '@/modules/knowledge-intelligence/pages/KnowledgeExplorerPage'
-import { KnowledgeNodeDetailPage } from '@/modules/knowledge-intelligence/pages/KnowledgeNodeDetailPage'
-import { KnowledgeCollectionsPage } from '@/modules/knowledge-intelligence/pages/KnowledgeCollectionsPage'
-import { KnowledgeCollectionDetailPage } from '@/modules/knowledge-intelligence/pages/KnowledgeCollectionDetailPage'
-import { SearchPage } from '@/modules/search/pages/SearchPage'
-import { ChatPage } from '@/modules/ai/chat/pages/ChatPage'
-import { SettingsPage } from '@/modules/settings/pages/SettingsPage'
-import { AdvancedSettingsPage } from '@/modules/settings/pages/AdvancedSettingsPage'
-import { WorkspaceManagementPage } from '@/modules/workspaces/pages/WorkspaceManagementPage'
-import { WorkspaceMembersPage } from '@/modules/workspaces/pages/WorkspaceMembersPage'
-import { WorkspaceCollaborationPage } from '@/modules/workspaces/pages/WorkspaceCollaborationPage'
-import { MemoryManagementPage } from '@/modules/ai/memory/pages/MemoryManagementPage'
-import { AiHealthPage } from '@/modules/ai/observability/pages/AiHealthPage'
-import { ProviderHealthDetailPage } from '@/modules/ai/observability/pages/ProviderHealthDetailPage'
-import { ReaderPage } from '@/modules/reader/pages/ReaderPage'
-import { ImageReaderPage } from '@/modules/assets/pages/ImageReaderPage'
-import { ExecutiveDashboardPage } from '@/modules/intelligence/dashboard/pages/ExecutiveDashboardPage'
-import { WorkspaceEvolutionPage } from '@/modules/evolution/pages/WorkspaceEvolutionPage'
-import { WorkspaceIntelligenceHubPage } from '@/modules/hub/pages/WorkspaceIntelligenceHubPage'
-import { ExportCenterPage } from '@/modules/export/pages/ExportCenterPage'
-import { ResearchPage } from '@/modules/research-intelligence/pages/ResearchPage'
-import { PlanningPage } from '@/modules/planning-intelligence/pages/PlanningPage'
-import { DecisionPage } from '@/modules/decision-intelligence/pages/DecisionPage'
-import { ActionsPage } from '@/modules/action-intelligence/pages/ActionsPage'
-import { ExecutionsPage } from '@/modules/execution-foundation/pages/ExecutionsPage'
-import { LearningPage } from '@/modules/learning-intelligence/pages/LearningPage'
-import { HistoryPage } from '@/modules/intelligence-ledger/pages/HistoryPage'
-import { IntelligenceRecordDetailPage } from '@/modules/intelligence-ledger/pages/IntelligenceRecordDetailPage'
-import { IntelligenceJourneyDetailPage } from '@/modules/intelligence-ledger/pages/IntelligenceJourneyDetailPage'
-import { WelcomePage } from '@/modules/onboarding/pages/WelcomePage'
-import { PricingPage } from '@/modules/billing/pages/PricingPage'
-import { BillingReturnPage } from '@/modules/billing/pages/BillingReturnPage'
-import { FoundingProApplyPage } from '@/modules/founding-pro/pages/FoundingProApplyPage'
-import { FoundingProInvitationPage } from '@/modules/founding-pro/pages/FoundingProInvitationPage'
-import { AdminDashboardPage } from '@/modules/admin/pages/AdminDashboardPage'
-import { AdminUsersPage } from '@/modules/admin/pages/AdminUsersPage'
-import { AdminPlansPage } from '@/modules/admin/pages/AdminPlansPage'
-import { AdminAiGovernancePage } from '@/modules/admin/pages/AdminAiGovernancePage'
-import { AdminFoundingProPage } from '@/modules/admin/pages/AdminFoundingProPage'
-import { AdminBillingPage } from '@/modules/admin/pages/AdminBillingPage'
-import { AdminUsageQuotasPage } from '@/modules/admin/pages/AdminUsageQuotasPage'
-import { AdminSystemHealthPage } from '@/modules/admin/pages/AdminSystemHealthPage'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { RequireAdmin } from '@/modules/admin/RequireAdmin'
-import { V2FoundationPage } from '@/modules/v2/pages/V2FoundationPage'
-import { V2CommandCentrePage } from '@/modules/v2/pages/V2CommandCentrePage'
-import { V2IntelligenceCentrePage } from '@/modules/v2/pages/V2IntelligenceCentrePage'
-import { V2KnowledgeMemoryPage } from '@/modules/v2/pages/V2KnowledgeMemoryPage'
-import { V2LearningCentrePage } from '../modules/v2/pages/V2LearningCentrePage'
-import { V2AgentManagementPage } from '@/modules/v2/pages/V2AgentManagementPage'
-import { V2WorkflowStudioPage } from '@/modules/v2/pages/V2WorkflowStudioPage'
+
+
+
+
+
+
+
 import { RequireArriyiaEnterprise } from '@/modules/v2/RequireArriyiaEnterprise'
 import { V2Shell } from '@/modules/v2/V2Shell'
+
+const LoginPage = lazy(() => import('@/modules/auth/pages/LoginPage').then((module) => ({ default: module.LoginPage })))
+const SignUpPage = lazy(() => import('@/modules/auth/pages/SignUpPage').then((module) => ({ default: module.SignUpPage })))
+const ForgotPasswordPage = lazy(() => import('@/modules/auth/pages/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import('@/modules/auth/pages/ResetPasswordPage').then((module) => ({ default: module.ResetPasswordPage })))
+const LibraryPage = lazy(() => import('@/modules/library/pages/LibraryPage').then((module) => ({ default: module.LibraryPage })))
+const DocumentDetailPage = lazy(() => import('@/modules/library/pages/DocumentDetailPage').then((module) => ({ default: module.DocumentDetailPage })))
+const NotesPage = lazy(() => import('@/modules/notes/pages/NotesPage').then((module) => ({ default: module.NotesPage })))
+const NoteDetailPage = lazy(() => import('@/modules/notes/pages/NoteDetailPage').then((module) => ({ default: module.NoteDetailPage })))
+const KnowledgePage = lazy(() => import('@/modules/knowledge/pages/KnowledgePage').then((module) => ({ default: module.KnowledgePage })))
+const KnowledgeGraphPage = lazy(() => import('@/modules/knowledge-graph/pages/KnowledgeGraphPage').then((module) => ({ default: module.KnowledgeGraphPage })))
+const KnowledgeExplorerPage = lazy(() => import('@/modules/knowledge-intelligence/pages/KnowledgeExplorerPage').then((module) => ({ default: module.KnowledgeExplorerPage })))
+const KnowledgeNodeDetailPage = lazy(() => import('@/modules/knowledge-intelligence/pages/KnowledgeNodeDetailPage').then((module) => ({ default: module.KnowledgeNodeDetailPage })))
+const KnowledgeCollectionsPage = lazy(() => import('@/modules/knowledge-intelligence/pages/KnowledgeCollectionsPage').then((module) => ({ default: module.KnowledgeCollectionsPage })))
+const KnowledgeCollectionDetailPage = lazy(() => import('@/modules/knowledge-intelligence/pages/KnowledgeCollectionDetailPage').then((module) => ({ default: module.KnowledgeCollectionDetailPage })))
+const SearchPage = lazy(() => import('@/modules/search/pages/SearchPage').then((module) => ({ default: module.SearchPage })))
+const ChatPage = lazy(() => import('@/modules/ai/chat/pages/ChatPage').then((module) => ({ default: module.ChatPage })))
+const SettingsPage = lazy(() => import('@/modules/settings/pages/SettingsPage').then((module) => ({ default: module.SettingsPage })))
+const AdvancedSettingsPage = lazy(() => import('@/modules/settings/pages/AdvancedSettingsPage').then((module) => ({ default: module.AdvancedSettingsPage })))
+const WorkspaceManagementPage = lazy(() => import('@/modules/workspaces/pages/WorkspaceManagementPage').then((module) => ({ default: module.WorkspaceManagementPage })))
+const WorkspaceMembersPage = lazy(() => import('@/modules/workspaces/pages/WorkspaceMembersPage').then((module) => ({ default: module.WorkspaceMembersPage })))
+const WorkspaceCollaborationPage = lazy(() => import('@/modules/workspaces/pages/WorkspaceCollaborationPage').then((module) => ({ default: module.WorkspaceCollaborationPage })))
+const MemoryManagementPage = lazy(() => import('@/modules/ai/memory/pages/MemoryManagementPage').then((module) => ({ default: module.MemoryManagementPage })))
+const AiHealthPage = lazy(() => import('@/modules/ai/observability/pages/AiHealthPage').then((module) => ({ default: module.AiHealthPage })))
+const ProviderHealthDetailPage = lazy(() => import('@/modules/ai/observability/pages/ProviderHealthDetailPage').then((module) => ({ default: module.ProviderHealthDetailPage })))
+const ReaderPage = lazy(() => import('@/modules/reader/pages/ReaderPage').then((module) => ({ default: module.ReaderPage })))
+const ImageReaderPage = lazy(() => import('@/modules/assets/pages/ImageReaderPage').then((module) => ({ default: module.ImageReaderPage })))
+const ExecutiveDashboardPage = lazy(() => import('@/modules/intelligence/dashboard/pages/ExecutiveDashboardPage').then((module) => ({ default: module.ExecutiveDashboardPage })))
+const WorkspaceEvolutionPage = lazy(() => import('@/modules/evolution/pages/WorkspaceEvolutionPage').then((module) => ({ default: module.WorkspaceEvolutionPage })))
+const WorkspaceIntelligenceHubPage = lazy(() => import('@/modules/hub/pages/WorkspaceIntelligenceHubPage').then((module) => ({ default: module.WorkspaceIntelligenceHubPage })))
+const ExportCenterPage = lazy(() => import('@/modules/export/pages/ExportCenterPage').then((module) => ({ default: module.ExportCenterPage })))
+const ResearchPage = lazy(() => import('@/modules/research-intelligence/pages/ResearchPage').then((module) => ({ default: module.ResearchPage })))
+const PlanningPage = lazy(() => import('@/modules/planning-intelligence/pages/PlanningPage').then((module) => ({ default: module.PlanningPage })))
+const DecisionPage = lazy(() => import('@/modules/decision-intelligence/pages/DecisionPage').then((module) => ({ default: module.DecisionPage })))
+const ActionsPage = lazy(() => import('@/modules/action-intelligence/pages/ActionsPage').then((module) => ({ default: module.ActionsPage })))
+const ExecutionsPage = lazy(() => import('@/modules/execution-foundation/pages/ExecutionsPage').then((module) => ({ default: module.ExecutionsPage })))
+const LearningPage = lazy(() => import('@/modules/learning-intelligence/pages/LearningPage').then((module) => ({ default: module.LearningPage })))
+const HistoryPage = lazy(() => import('@/modules/intelligence-ledger/pages/HistoryPage').then((module) => ({ default: module.HistoryPage })))
+const IntelligenceRecordDetailPage = lazy(() => import('@/modules/intelligence-ledger/pages/IntelligenceRecordDetailPage').then((module) => ({ default: module.IntelligenceRecordDetailPage })))
+const IntelligenceJourneyDetailPage = lazy(() => import('@/modules/intelligence-ledger/pages/IntelligenceJourneyDetailPage').then((module) => ({ default: module.IntelligenceJourneyDetailPage })))
+const WelcomePage = lazy(() => import('@/modules/onboarding/pages/WelcomePage').then((module) => ({ default: module.WelcomePage })))
+const PricingPage = lazy(() => import('@/modules/billing/pages/PricingPage').then((module) => ({ default: module.PricingPage })))
+const BillingReturnPage = lazy(() => import('@/modules/billing/pages/BillingReturnPage').then((module) => ({ default: module.BillingReturnPage })))
+const FoundingProApplyPage = lazy(() => import('@/modules/founding-pro/pages/FoundingProApplyPage').then((module) => ({ default: module.FoundingProApplyPage })))
+const FoundingProInvitationPage = lazy(() => import('@/modules/founding-pro/pages/FoundingProInvitationPage').then((module) => ({ default: module.FoundingProInvitationPage })))
+const AdminDashboardPage = lazy(() => import('@/modules/admin/pages/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })))
+const AdminUsersPage = lazy(() => import('@/modules/admin/pages/AdminUsersPage').then((module) => ({ default: module.AdminUsersPage })))
+const AdminPlansPage = lazy(() => import('@/modules/admin/pages/AdminPlansPage').then((module) => ({ default: module.AdminPlansPage })))
+const AdminAiGovernancePage = lazy(() => import('@/modules/admin/pages/AdminAiGovernancePage').then((module) => ({ default: module.AdminAiGovernancePage })))
+const AdminFoundingProPage = lazy(() => import('@/modules/admin/pages/AdminFoundingProPage').then((module) => ({ default: module.AdminFoundingProPage })))
+const AdminBillingPage = lazy(() => import('@/modules/admin/pages/AdminBillingPage').then((module) => ({ default: module.AdminBillingPage })))
+const AdminUsageQuotasPage = lazy(() => import('@/modules/admin/pages/AdminUsageQuotasPage').then((module) => ({ default: module.AdminUsageQuotasPage })))
+const AdminSystemHealthPage = lazy(() => import('@/modules/admin/pages/AdminSystemHealthPage').then((module) => ({ default: module.AdminSystemHealthPage })))
+const V2FoundationPage = lazy(() => import('@/modules/v2/pages/V2FoundationPage').then((module) => ({ default: module.V2FoundationPage })))
+const V2CommandCentrePage = lazy(() => import('@/modules/v2/pages/V2CommandCentrePage').then((module) => ({ default: module.V2CommandCentrePage })))
+const V2IntelligenceCentrePage = lazy(() => import('@/modules/v2/pages/V2IntelligenceCentrePage').then((module) => ({ default: module.V2IntelligenceCentrePage })))
+const V2KnowledgeMemoryPage = lazy(() => import('@/modules/v2/pages/V2KnowledgeMemoryPage').then((module) => ({ default: module.V2KnowledgeMemoryPage })))
+const V2LearningCentrePage = lazy(() => import('../modules/v2/pages/V2LearningCentrePage').then((module) => ({ default: module.V2LearningCentrePage })))
+const V2AgentManagementPage = lazy(() => import('@/modules/v2/pages/V2AgentManagementPage').then((module) => ({ default: module.V2AgentManagementPage })))
+const V2WorkflowStudioPage = lazy(() => import('@/modules/v2/pages/V2WorkflowStudioPage').then((module) => ({ default: module.V2WorkflowStudioPage })))
 
 export const router = createBrowserRouter([
   // Post-10/10 Phase 5 (Application Hardening & App Experience) — a single

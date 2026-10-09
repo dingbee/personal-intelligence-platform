@@ -11,7 +11,6 @@ import {
   setV2WorkflowStatus,
   validateV2Workflow,
   validateWorkflowDefinitionClient,
-  type V2Workflow,
   type V2WorkflowDefinition,
   type V2WorkflowNode,
   type V2WorkflowNodeType,

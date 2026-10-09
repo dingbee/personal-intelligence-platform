@@ -44,12 +44,19 @@ type AgentVersionRow = Record<string, unknown>
 
 const db = supabase as any
 
+function requiredScopeId(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error(`Agent row is missing required ${field} scope.`)
+  }
+  return value
+}
+
 function mapAgent(row: AgentRow): V2Agent {
   return {
     id: String(row.id),
     ownerUserId: String(row.owner_user_id),
-    workspaceId: row.workspace_id ? String(row.workspace_id) : null,
-    organizationId: row.organization_id ? String(row.organization_id) : null,
+    workspaceId: requiredScopeId(row.workspace_id, 'workspace'),
+    organizationId: requiredScopeId(row.organization_id, 'organization'),
     name: String(row.name),
     slug: String(row.slug),
     description: String(row.description ?? ''),

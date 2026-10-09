@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createElement } from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { ThemeProvider } from '@/shared/components/theme/ThemeProvider'
 
 /**
  * Post-10/10 password-recovery hotfix, tightened in Phase 5.2. `/reset-password`
@@ -20,7 +21,7 @@ import { ResetPasswordPage } from '@/modules/auth/pages/ResetPasswordPage'
 afterEach(cleanup)
 
 function renderPage() {
-  return render(createElement(MemoryRouter, { initialEntries: ['/reset-password'] }, createElement(ResetPasswordPage)))
+  return render(createElement(ThemeProvider, null, createElement(MemoryRouter, { initialEntries: ['/reset-password'] }, createElement(ResetPasswordPage))))
 }
 
 describe('ResetPasswordPage', () => {

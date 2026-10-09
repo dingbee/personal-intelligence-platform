@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import '@/modules/workspace-intelligence/module'
 
-const { getWorkspaceMock, listWorkspaceObjectivesMock, buildWorkspaceHubStateMock, hasFeatureMock, streamChatCompletionMock } = vi.hoisted(() => ({
+const { getWorkspaceMock, listWorkspaceObjectivesMock, buildWorkspaceHubStateMock, hasFeatureMock, listMemoriesMock, streamChatCompletionMock } = vi.hoisted(() => ({
   getWorkspaceMock: vi.fn(),
   listWorkspaceObjectivesMock: vi.fn(),
   buildWorkspaceHubStateMock: vi.fn(),
   hasFeatureMock: vi.fn(),
+  listMemoriesMock: vi.fn(async () => []),
   streamChatCompletionMock: vi.fn(async () => ({ content: 'Objective 1 has supporting evidence, but pricing evidence remains unresolved.', model: 'test-model' })),
 }))
 
@@ -13,6 +14,7 @@ vi.mock('@/modules/workspaces/api/workspaces', () => ({ getWorkspace: getWorkspa
 vi.mock('@/modules/hub/api/objectives', () => ({ listWorkspaceObjectives: listWorkspaceObjectivesMock }))
 vi.mock('@/modules/hub/hubData', () => ({ buildWorkspaceHubState: buildWorkspaceHubStateMock }))
 vi.mock('@/modules/plans/api/plans', () => ({ hasFeature: hasFeatureMock }))
+vi.mock('@/modules/ai/memory/api/memory', () => ({ listMemories: listMemoriesMock }))
 vi.mock('@/modules/ai/providers/registry', () => ({ getChatProvider: vi.fn(() => ({ id: 'anthropic' })), DEFAULT_CHAT_PROVIDER_ID: 'anthropic' }))
 vi.mock('@/modules/ai/orchestration/streamChatCompletion', () => ({ streamChatCompletion: streamChatCompletionMock }))
 
@@ -31,6 +33,7 @@ describe('reviewWorkspaceObjectives', () => {
     getWorkspaceMock.mockResolvedValue(workspace)
     listWorkspaceObjectivesMock.mockResolvedValue([{ id: 'o1', workspace_id: 'workspace-1', user_id: 'user-1', content: 'Complete research', status: 'active', created_at: '', updated_at: '' }])
     buildWorkspaceHubStateMock.mockResolvedValue(hub)
+    listMemoriesMock.mockResolvedValue([])
   })
 
   it('denies Free before any AI completion', async () => {

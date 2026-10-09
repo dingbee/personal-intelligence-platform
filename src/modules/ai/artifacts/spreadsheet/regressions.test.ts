@@ -11,8 +11,8 @@ import { buildSpreadsheetWorkbook } from '@/modules/ai/artifacts/spreadsheet/bui
  * either area sees exactly what broke before and why the fix looks the
  * way it does.
  */
-describe('regression: SheetJS drops a formula cell with no cached value', () => {
-  it('documents the underlying platform trap directly — a raw {f} cell with no v vanishes on write/read', () => {
+describe('regression: formula cells without cached values survive spreadsheet round-trips', () => {
+  it('documents current SheetJS behavior for a raw formula cell with no cached value', () => {
     const ws: XLSX.WorkSheet = { A1: { t: 'n', v: 10 }, B1: { t: 'n', f: 'A1*2' }, '!ref': 'A1:B1' }
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, ws, 'Sheet1')
@@ -20,11 +20,11 @@ describe('regression: SheetJS drops a formula cell with no cached value', () => 
     const bytes = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
     const reread = XLSX.read(bytes, { type: 'array' })
 
-    // The trap: SheetJS's writer silently omits a formula-only cell.
-    expect(reread.Sheets['Sheet1']!['B1']).toBeUndefined()
+    // Patched SheetJS preserves the formula cell (as an error-valued cell without a cached result).
+    expect(reread.Sheets['Sheet1']!['B1']?.f).toBe('A1*2')
   })
 
-  it('confirms buildSpreadsheetWorkbook avoids the trap by writing a v:0 placeholder alongside the formula', () => {
+  it('confirms buildSpreadsheetWorkbook writes a deterministic cached-value placeholder alongside the formula', () => {
     const workbook = buildSpreadsheetWorkbook({
       sheets: [{ name: 'Sheet1', cells: [{ cell: 'A1', value: 10 }, { cell: 'B1', formula: 'A1*2' }] }],
     })
