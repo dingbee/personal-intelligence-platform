@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { KnowledgeNode } from '@/shared/types/database'
 import {
   exportKnowledgeNodePackage,
@@ -71,8 +71,14 @@ describe('exportKnowledgeNodePackage', () => {
   })
 
   it('the knowledgeNodePackageExporter object delegates to the same function', () => {
-    const node = fakeNode()
-    expect(knowledgeNodePackageExporter.export(node)).toEqual(exportKnowledgeNodePackage(node))
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-09T00:00:00.000Z'))
+    try {
+      const node = fakeNode()
+      expect(knowledgeNodePackageExporter.export(node)).toEqual(exportKnowledgeNodePackage(node))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

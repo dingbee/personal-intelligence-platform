@@ -125,6 +125,7 @@ const V2KnowledgeMemoryPage = lazy(() => import('@/modules/v2/pages/V2KnowledgeM
 const V2LearningCentrePage = lazy(() => import('../modules/v2/pages/V2LearningCentrePage').then((module) => ({ default: module.V2LearningCentrePage })))
 const V2AgentManagementPage = lazy(() => import('@/modules/v2/pages/V2AgentManagementPage').then((module) => ({ default: module.V2AgentManagementPage })))
 const V2WorkflowStudioPage = lazy(() => import('@/modules/v2/pages/V2WorkflowStudioPage').then((module) => ({ default: module.V2WorkflowStudioPage })))
+const V2GovernancePage = lazy(() => import('@/modules/v2/pages/V2GovernancePage').then((module) => ({ default: module.V2GovernancePage })))
 
 export const router = createBrowserRouter([
   // Post-10/10 Phase 5 (Application Hardening & App Experience) — a single
@@ -168,6 +169,7 @@ export const router = createBrowserRouter([
           { path: 'learning', element: <V2LearningCentrePage /> },
           { path: 'workflows', element: <V2WorkflowStudioPage /> },
           { path: 'agents', element: <V2AgentManagementPage /> },
+          { path: 'governance', element: <V2GovernancePage /> },
         ],
       },
       {
