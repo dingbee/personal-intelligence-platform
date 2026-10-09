@@ -63,14 +63,15 @@ export function V2GovernancePage() {
     }
   }
 
-  async function update(id: string, ceiling: GovernanceAutonomy, approvalMode: GovernanceApprovalMode) {
+  async function update(id: string, ceiling: GovernanceAutonomy, approvalMode: GovernanceApprovalMode, tools: string[]) {
     setBusy(true)
     setError(null)
     try {
-      await updateGovernancePolicy(id, ceiling, approvalMode, [])
+      await updateGovernancePolicy(id, ceiling, approvalMode, tools)
       await refresh()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not update the governance policy.')
+      await refresh().catch(() => undefined)
     } finally {
       setBusy(false)
     }
@@ -134,7 +135,7 @@ export function V2GovernancePage() {
                     value={policy.autonomyCeiling}
                     disabled={busy}
                     aria-label={`Autonomy ceiling for ${policy.name}`}
-                    onChange={(event) => void update(policy.id, event.target.value as GovernanceAutonomy, policy.approvalMode)}
+                    onChange={(event) => void update(policy.id, event.target.value as GovernanceAutonomy, policy.approvalMode, policy.allowedToolScopes)}
                   >
                     {autonomy.map((value) => <option key={value} value={value}>{value}</option>)}
                   </select>
@@ -147,18 +148,43 @@ export function V2GovernancePage() {
                       value={policy.approvalMode}
                       disabled={busy}
                       aria-label={`Approval mode for ${policy.name}`}
-                      onChange={(event) => void update(policy.id, policy.autonomyCeiling, event.target.value as GovernanceApprovalMode)}
+                      onChange={(event) => void update(policy.id, policy.autonomyCeiling, event.target.value as GovernanceApprovalMode, policy.allowedToolScopes)}
                     >
                       {approvals.map((value) => <option key={value} value={value}>{value}</option>)}
                     </select>
                   </label>
                   <button
                     className="rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-xs"
-                    disabled={busy}
+                    disabled={busy || policy.status === 'archived'}
                     onClick={() => void toggleStatus(policy.id, policy.status === 'active' ? 'paused' : 'active')}
                   >
                     {policy.status === 'active' ? 'Pause' : 'Activate'}
                   </button>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor={`tools-${policy.id}`}>
+                    Allowed tool scopes (comma-separated)
+                  </label>
+                  <input
+                    id={`tools-${policy.id}`}
+                    className="mt-1 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
+                    value={policy.allowedToolScopes.join(', ')}
+                    disabled={busy}
+                    placeholder="orders.read, inventory.read"
+                    onChange={(event) => {
+                      const allowedToolScopes = event.target.value.split(',').map((scope) => scope.trim()).filter(Boolean)
+                      setPolicies((current) => current.map((item) => item.id === policy.id ? { ...item, allowedToolScopes } : item))
+                    }}
+                    onBlur={() => {
+                      const current = policies.find((item) => item.id === policy.id)
+                      if (current && current.allowedToolScopes.join(',') !== policy.allowedToolScopes.join(',')) {
+                        void update(policy.id, policy.autonomyCeiling, policy.approvalMode, current.allowedToolScopes)
+                      } else if (current) {
+                        void update(policy.id, policy.autonomyCeiling, policy.approvalMode, current.allowedToolScopes)
+                      }
+                    }}
+                  />
+                  <p className="mt-1 text-xs text-[var(--text-secondary)]">Scopes are policy declarations; NoVA Core remains responsible for runtime enforcement.</p>
                 </div>
               </article>
             ))}
