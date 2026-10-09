@@ -12,6 +12,9 @@ jobs:
   certify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://example.supabase.co' }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'ci-placeholder-anon-key' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
