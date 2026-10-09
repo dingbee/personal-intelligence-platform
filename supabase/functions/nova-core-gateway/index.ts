@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 }
 
-const CORE_GATEWAY_URL = Deno.env.get("NOVA_CORE_GATEWAY_URL")?.replace(/\\/$/, "")
+const CORE_GATEWAY_URL = Deno.env.get("NOVA_CORE_GATEWAY_URL")?.replace(/\/$/, "")
 const CORE_PLUGIN_SECRET = Deno.env.get("NOVA_CORE_PLUGIN_SECRET")
 const PLUGIN_ID = "arriyia"
 
