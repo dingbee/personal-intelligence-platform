@@ -150,3 +150,46 @@ begin
 end;
 $$;
 rollback;
+
+-- A workspace collaborator must not inherit objective ownership from membership.
+begin;
+set local "request.jwt.claims" = '{"sub":"23c725ec-b2d6-487c-8291-dae7a280a291","role":"authenticated"}';
+do $$
+declare
+  v_workspace_id uuid;
+  v_objective_id uuid;
+begin
+  insert into public.workspaces (user_id, name)
+  values ('23c725ec-b2d6-487c-8291-dae7a280a291', 'IF-02 objective owner boundary')
+  returning id into v_workspace_id;
+  insert into public.workspace_members (workspace_id, user_id, role, status)
+  values (v_workspace_id, '313866d5-4ab7-4d65-bda9-67b9bd668f2d', 'viewer', 'active');
+  insert into public.workspace_objectives (workspace_id, user_id, content)
+  values (v_workspace_id, '23c725ec-b2d6-487c-8291-dae7a280a291', 'Owner-only objective')
+  returning id into v_objective_id;
+  perform set_config('app.if02_objective_workspace_id', v_workspace_id::text, true);
+  perform set_config('app.if02_objective_id', v_objective_id::text, true);
+end;
+$$;
+set local "request.jwt.claims" = '{"sub":"313866d5-4ab7-4d65-bda9-67b9bd668f2d","role":"authenticated"}';
+do $$
+declare v_raised boolean := false;
+begin
+  if not public.has_workspace_role(current_setting('app.if02_objective_workspace_id')::uuid, 'viewer') then
+    raise exception 'IF-02 TEST SETUP FAILED: collaborator does not have expected workspace access';
+  end if;
+  begin
+    perform public.create_intelligence_journey(
+      current_setting('app.if02_objective_workspace_id')::uuid,
+      current_setting('app.if02_objective_id')::uuid,
+      'Collaborator attempting to bind owner objective'
+    );
+  exception when others then v_raised := true;
+  end;
+  if not v_raised then
+    raise exception 'IF-02 TEST FAILED (8): workspace membership bypassed owner-only objective policy';
+  end if;
+  raise notice 'IF-02 TEST (8) PASSED: workspace collaborator cannot attach another user''s objective';
+end;
+$$;
+rollback;
