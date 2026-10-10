@@ -96,7 +96,7 @@ export async function runCrossDomainIntelligence(params: RunCrossDomainIntellige
   let record: Awaited<ReturnType<typeof createCrossDomainIntelligenceRecord>> | null = null
   try {
     record = await createCrossDomainIntelligenceRecord({
-    workspaceId, recordType: 'analysis', summary: `Cross-domain Intelligence: ${question.trim()}`,
+    workspaceId, summary: `Cross-domain Intelligence: ${question.trim()}`,
     structuredOutput: output as unknown as Record<string, unknown>, operationId, providerId: providerId ?? null,
     })
   } catch (error) {
