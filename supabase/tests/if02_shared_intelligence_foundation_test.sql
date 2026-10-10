@@ -10,6 +10,7 @@ set local "request.jwt.claims" = '{"sub":"23c725ec-b2d6-487c-8291-dae7a280a291",
 do $$
 declare
   v_record public.intelligence_records;
+  v_journey public.intelligence_journeys;
   v_conversation_id uuid;
   v_workspace_a uuid;
   v_workspace_b uuid;
@@ -85,8 +86,8 @@ begin
     raise exception 'IF-02 TEST FAILED (5): journey accepted objective from another workspace';
   end if;
 
-  select * into v_record from public.create_intelligence_journey(v_workspace_a, v_objective_id, 'Valid same-workspace objective');
-  if v_record.id is null then
+  select * into v_journey from public.create_intelligence_journey(v_workspace_a, v_objective_id, 'Valid same-workspace objective');
+  if v_journey.id is null then
     raise exception 'IF-02 TEST FAILED (6): valid owner/same-workspace objective was rejected';
   end if;
 
