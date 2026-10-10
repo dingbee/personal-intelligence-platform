@@ -66,7 +66,7 @@ describe('runDomainIntelligence', () => {
   })
 
   it('accepts a JSON-fenced response but rejects malformed JSON without persisting', async () => {
-    runCapabilityMock.mockResolvedValueOnce({ content: '```json\\n' + JSON.stringify(validOutput()) + '\\n```', model: 'test-model' })
+    runCapabilityMock.mockResolvedValueOnce({ content: '```json\n' + JSON.stringify(validOutput()) + '\n```', model: 'test-model' })
     await expect(runDomainIntelligence({ domain: 'finance', question: 'Assess.', userId: 'u', workspaceId: null })).resolves.toMatchObject({ output: validOutput() })
 
     runCapabilityMock.mockResolvedValueOnce({ content: 'not json', model: 'test-model' })
