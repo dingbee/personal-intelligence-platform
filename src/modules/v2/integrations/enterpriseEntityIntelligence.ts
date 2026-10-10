@@ -1,4 +1,9 @@
 import type { V2ScopeContext } from '../domain/scope'
+import {
+  validateEnterpriseSourceSnapshot,
+  type EnterpriseSourceContract,
+  type EnterpriseSourceSnapshot,
+} from './enterpriseSourceContract'
 
 /**
  * EIF-02 enterprise identity contract.
@@ -301,4 +306,70 @@ export function reconcileEnterpriseEntity(
     normalizedName,
     explanation: 'No exact identifier or normalized-name candidate exists in the authorized candidate set. Persistence/creation is a separate governed operation.',
   }
+}
+
+
+export interface EnterpriseEntityObservationBuildResult {
+  valid: boolean
+  observation?: EnterpriseEntityObservation
+  issues: Array<{ code: string; message: string }>
+}
+
+/**
+ * Build an entity observation from an EIF-01-validated source snapshot.
+ * This ties entity identity to existing source contracts instead of trusting
+ * caller-authored provenance. It is still pure and performs no I/O or writes.
+ */
+export function buildEnterpriseEntityObservation(params: {
+  contract: EnterpriseSourceContract
+  snapshot: EnterpriseSourceSnapshot
+  sourceRecordId: string
+  entityType: EnterpriseEntityType
+  name: string
+  aliases?: readonly string[]
+  identifiers: readonly EnterpriseEntityIdentifier[]
+  context: V2ScopeContext
+  now?: string
+}): EnterpriseEntityObservationBuildResult {
+  const sourceValidation = validateEnterpriseSourceSnapshot(
+    params.contract,
+    params.context,
+    params.snapshot,
+    params.now ? { now: params.now } : {},
+  )
+  if (!sourceValidation.valid) {
+    return {
+      valid: false,
+      issues: sourceValidation.issues.map(issue => ({ code: issue.code, message: issue.message })),
+    }
+  }
+
+  const record = params.snapshot.records.find(item => item.sourceRecordId === params.sourceRecordId)
+  if (!record) {
+    return {
+      valid: false,
+      issues: [{ code: 'source_record_not_found', message: 'The requested entity observation record is not present in the validated source snapshot.' }],
+    }
+  }
+
+  const observation: EnterpriseEntityObservation = {
+    organizationId: params.snapshot.organizationId,
+    workspaceId: params.snapshot.workspaceId,
+    entityType: params.entityType,
+    name: params.name,
+    aliases: params.aliases,
+    identifiers: params.identifiers,
+    evidence: {
+      sourceId: params.snapshot.sourceId,
+      sourceRecordId: record.sourceRecordId,
+      sourceSystem: record.provenance.sourceSystem,
+      observedAt: params.snapshot.observedAt,
+      locator: record.provenance.locator,
+    },
+  }
+  const observationValidation = validateEnterpriseEntityObservation(observation, params.context)
+  if (!observationValidation.valid) {
+    return { valid: false, issues: observationValidation.issues }
+  }
+  return { valid: true, observation, issues: [] }
 }
