@@ -73,7 +73,12 @@ describe('IFAB-01 integration catalogue contracts', () => {
     expect(resolveProviderDescriptor([v1, v2], 'missing')).toEqual({ found: false, reason: 'not_found' })
   })
 
-  it('rejects invalid SemVer prerelease identifiers and leading zeroes', () => {\n    expect(validateIntegrationProviderDescriptor(provider('1.0.0-01')).valid).toBe(false)\n    expect(validateIntegrationProviderDescriptor(provider('1.0.0-alpha..beta')).valid).toBe(false)\n  })\n\n  it('fails closed for duplicate provider versions instead of choosing by input order', () => {
+  it('rejects invalid SemVer prerelease identifiers and leading zeroes', () => {
+    expect(validateIntegrationProviderDescriptor(provider('1.0.0-01')).valid).toBe(false)
+    expect(validateIntegrationProviderDescriptor(provider('1.0.0-alpha..beta')).valid).toBe(false)
+  })
+
+  it('fails closed for duplicate provider versions instead of choosing by input order', () => {
     const result = resolveProviderDescriptor([provider(), provider()], 'generic-rest')
     expect(result).toEqual({ found: false, reason: 'ambiguous_version' })
   })
@@ -101,6 +106,7 @@ describe('IFAB-01 integration catalogue contracts', () => {
 
   it('orders stable semantic releases above prereleases', () => {
     expect(compareContractVersions('1.0.0', '1.0.0-rc.1')).toBeGreaterThan(0)
-    expect(compareContractVersions('1.2.0', '1.10.0')).toBeLessThan(0)\n    expect(compareContractVersions('1.0.0-10', '1.0.0-2')).toBeGreaterThan(0)
+    expect(compareContractVersions('1.2.0', '1.10.0')).toBeLessThan(0)
+    expect(compareContractVersions('1.0.0-10', '1.0.0-2')).toBeGreaterThan(0)
   })
 })
