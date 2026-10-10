@@ -8,7 +8,8 @@ Add governed cross-domain analysis over the eight IF-03 domain capabilities usin
 
 ## Architectural invariants
 
-- Reuse existing capability/prompt registries, the `domain_intelligence` entitlement, IF-02 output contract, canonical intelligence ledger, and shared provenance types/adapters.
+- Reuse existing capability/prompt registries, the `domain_intelligence` entitlement, IF-02 contract conventions, and canonical intelligence ledger. Cross-domain records keep `domain_key` NULL rather than mislabeling a multi-domain analysis as one domain.
+- Persist through the new `create_cross_domain_intelligence_record()` RPC. It re-checks the entitlement server-side, validates domain/evidence/citation structure, and enforces `requiresApproval=true` before delegating to the canonical ledger write boundary.
 - Do not create per-domain or cross-domain history tables, a parallel retrieval stack, a competing provenance ontology, or a second authorization model.
 - Do not broaden access to source records. Any cross-domain context must already be authorized for the requesting user/workspace; joins must preserve source-level permissions and omit or aggregate restricted inputs safely.
 - Evidence precedes assertions. Every material cross-domain finding must cite compatible source evidence and retain traceable source references.
@@ -35,10 +36,18 @@ Before combining evidence, evaluate and retain:
 5. Every output retains source-level provenance and citations that resolve to evidence included in the authorized input set.
 6. Unsupported joins, fabricated conversions, ungrounded causality, and cross-domain conclusions without evidence are rejected or represented as limitations.
 7. All recommendations require approval; no execution is performed.
-8. Tests cover compatible joins, incompatible metric definitions, unit/currency mismatch, period mismatch, stale/conflicting sources, restricted-data isolation, dangling provenance, malformed output, entitlement denial, and persistence failure.
+8. Tests cover compatible joins, incompatible metric definitions, unit/currency mismatch, period mismatch, stale/conflicting sources, scope isolation, dangling provenance, malformed output, entitlement denial at the RPC boundary, approval-gate bypass attempts, and persistence failure.
 9. Typecheck, lint, targeted tests, full repository suite, production build/bundle verification, IF-02 SQL certification, and ARRIYIA V2 gates pass.
 10. No production deployment or production migration is part of IF-04 implementation verification.
 
 ## Delivery sequence
 
 Inspect existing evidence and provenance contracts → define compatibility types and deterministic evaluator → implement the cross-domain capability using authorized supplied context → add adversarial tests for compatibility and authorization boundaries → run targeted checks and full CI → report closure with any external preview limitation explicitly separated from code verification.
+
+## Implementation notes
+
+- Deterministic evaluator and unit tests: `src/modules/domain-intelligence/crossDomainCompatibility.ts` and `.test.ts`.
+- Registered gated capability: `src/modules/domain-intelligence/crossDomainModule.ts`.
+- Execution and validation: `src/modules/domain-intelligence/api/runCrossDomainIntelligence.ts`.
+- Canonical ledger RPC: `supabase/migrations/0089_if04_cross_domain_intelligence.sql`; adversarial SQL tests: `supabase/tests/if04_cross_domain_intelligence_test.sql`.
+- IF-04 implementation is in verification; no production deployment or migration has been run.
