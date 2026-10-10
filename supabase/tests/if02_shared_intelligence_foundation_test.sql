@@ -193,3 +193,27 @@ begin
 end;
 $$;
 rollback;
+
+-- Domain writes are gated by the shared entitlement at the trusted RPC boundary.
+begin;
+set local "request.jwt.claims" = '{"sub":"313866d5-4ab7-4d65-bda9-67b9bd668f2d","role":"authenticated"}';
+do $$
+declare v_raised boolean := false;
+begin
+  if public.has_feature('313866d5-4ab7-4d65-bda9-67b9bd668f2d'::uuid, 'domain_intelligence') then
+    raise exception 'IF-02 TEST SETUP FAILED: user B unexpectedly has domain_intelligence entitlement';
+  end if;
+  begin
+    perform public.create_domain_intelligence_record(
+      'finance', null, null, 'analysis', 'Unentitled domain write',
+      '{"schemaVersion":1,"domain":"finance","evidence":[],"findings":[],"recommendations":[]}'::jsonb
+    );
+  exception when others then v_raised := true;
+  end;
+  if not v_raised then
+    raise exception 'IF-02 TEST FAILED (9): unentitled user created a domain intelligence record';
+  end if;
+  raise notice 'IF-02 TEST (9) PASSED: domain intelligence entitlement is enforced server-side';
+end;
+$$;
+rollback;
