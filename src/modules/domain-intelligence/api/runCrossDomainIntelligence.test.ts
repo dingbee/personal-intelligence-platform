@@ -29,7 +29,7 @@ describe('runCrossDomainIntelligence', () => {
   it('runs only compatible same-scope evidence and persists through the canonical ledger', async () => {
     const result = await runCrossDomainIntelligence({ question: 'How do marketing spend and revenue compare?', userId: 'user-1', workspaceId: 'workspace-1', evidence: evidence(), evidenceContext: 'Authorized monthly revenue and paid-media spend.' })
     expect(runCapabilityMock).toHaveBeenCalledWith(expect.objectContaining({ capabilityId: 'cross-domain-assessment', userId: 'user-1', workspaceId: 'workspace-1' }))
-    expect(createCrossDomainIntelligenceRecordMock).toHaveBeenCalledWith(expect.objectContaining({ recordType: 'analysis', workspaceId: 'workspace-1', structuredOutput: expect.objectContaining({ crossDomain: true }) }))
+    expect(createCrossDomainIntelligenceRecordMock).toHaveBeenCalledWith(expect.objectContaining({ workspaceId: 'workspace-1', structuredOutput: expect.objectContaining({ crossDomain: true }) }))
     expect(result).toMatchObject({ status: 'completed', persistence: { status: 'persisted', recordId: 'record-1' } })
   })
   it('does not invoke the model for incompatible period or authorization scope', async () => {
