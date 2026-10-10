@@ -6,6 +6,7 @@ const record = (recordType: IntelligenceRecord['recordType']): IntelligenceRecor
   workspaceId: 'space-1',
   userId: 'user-1',
   journeyId: null,
+  domainKey: null,
   recordType,
   status: 'completed',
   summary: `${recordType} record`,
