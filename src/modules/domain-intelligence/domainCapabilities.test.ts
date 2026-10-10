@@ -31,6 +31,6 @@ describe('IF-03 domain capability definitions', () => {
   })
 
   it('rejects unknown domain keys at lookup time', () => {
-    expect(() => getDomainCapabilityDefinition('finance' as 'finance' & 'unknown')).not.toThrow()
+    expect(() => getDomainCapabilityDefinition('not-a-domain' as never)).toThrow('Unknown intelligence domain')
   })
 })
