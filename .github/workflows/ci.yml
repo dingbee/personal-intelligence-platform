@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - v2-development
+      - feat/if-02-shared-intelligence-foundation
   push:
     branches:
       - main
       - v2-development
+      - 'feat/if-03-*'
 
 concurrency:
   group: ci-${{ github.ref }}
