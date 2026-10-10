@@ -5,13 +5,27 @@ export type CatalogueResolution<T> =
   | { found: true; value: T }
   | { found: false; reason: 'not_found' | 'invalid_catalogue' | 'ambiguous_version' }
 
-function parseVersion(version: string): { major: number; minor: number; patch: number; prerelease?: string } | undefined {
-  const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(version)
-  if (!match) return undefined
-  return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]), ...(match[4] ? { prerelease: match[4] } : {}) }
+interface ParsedVersion {
+  major: number
+  minor: number
+  patch: number
+  prerelease: string[]
+  build?: string
 }
 
-/** Semantic-version ordering; stable releases sort above prereleases at the same core version. */
+function parseVersion(version: string): ParsedVersion | undefined {
+  const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$/.exec(version)
+  if (!match) return undefined
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+    prerelease: match[4] ? match[4].split('.') : [],
+    ...(match[5] ? { build: match[5] } : {}),
+  }
+}
+
+/** Semantic-version precedence with a lexical tie-break for equal-precedence build variants. */
 export function compareContractVersions(left: string, right: string): number {
   const a = parseVersion(left)
   const b = parseVersion(right)
@@ -19,9 +33,29 @@ export function compareContractVersions(left: string, right: string): number {
   if (a.major !== b.major) return a.major - b.major
   if (a.minor !== b.minor) return a.minor - b.minor
   if (a.patch !== b.patch) return a.patch - b.patch
-  if (a.prerelease === undefined && b.prerelease !== undefined) return 1
-  if (a.prerelease !== undefined && b.prerelease === undefined) return -1
-  return (a.prerelease ?? '').localeCompare(b.prerelease ?? '')
+
+  const aStable = a.prerelease.length === 0
+  const bStable = b.prerelease.length === 0
+  if (aStable !== bStable) return aStable ? 1 : -1
+
+  for (let index = 0; index < Math.max(a.prerelease.length, b.prerelease.length); index += 1) {
+    const leftId = a.prerelease[index]
+    const rightId = b.prerelease[index]
+    if (leftId === undefined || rightId === undefined) {
+      if (leftId === rightId) return 0
+      return leftId === undefined ? -1 : 1
+    }
+    if (leftId === rightId) continue
+    const leftNumeric = /^(0|[1-9]\d*)$/.test(leftId)
+    const rightNumeric = /^(0|[1-9]\d*)$/.test(rightId)
+    if (leftNumeric && rightNumeric) return Number(leftId) - Number(rightId)
+    if (leftNumeric !== rightNumeric) return leftNumeric ? -1 : 1
+    return leftId.localeCompare(rightId)
+  }
+
+  // Build metadata does not affect SemVer precedence. Use lexical tie-breaking
+  // so distinct build variants never make resolution depend on input ordering.
+  return (a.build ?? '').localeCompare(b.build ?? '')
 }
 
 /**
