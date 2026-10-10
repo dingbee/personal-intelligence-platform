@@ -1,14 +1,8 @@
 -- Minimal isolated PostgreSQL fixture for IF-02 RPC certification.
 -- This fixture is disposable and must never be pointed at a production database.
 create extension if not exists pgcrypto;
-do $ begin
-  create role anon nologin;
-exception when duplicate_object then null;
-end $;
-do $ begin
-  create role authenticated nologin;
-exception when duplicate_object then null;
-end $;
+create role anon nologin;
+create role authenticated nologin;
 create schema if not exists auth;
 
 create table auth.users (
