@@ -94,7 +94,7 @@ function validEvidence(evidence: readonly EnterpriseMemoryEvidenceRef[], nowMs: 
     const observedAt = parseTime(item.observedAt)
     if (observedAt === null || observedAt > nowMs) return false
     if (item.locator !== undefined && !nonBlank(item.locator)) return false
-    const key = `${item.sourceId}:${item.sourceRecordId}`
+    const key = JSON.stringify([item.sourceId, item.sourceRecordId])
     if (keys.has(key)) return false
     keys.add(key)
   }
@@ -130,7 +130,7 @@ export function composeEnterpriseKnowledgeContext(
 ): EnterpriseKnowledgeContextResult {
   const now = options.now ?? new Date().toISOString()
   const nowMs = parseTime(now)
-  if (!context.organizationId?.trim() || !context.workspaceId?.trim() || !context.userId?.trim()) {
+  if (!nonBlank(context?.organizationId) || !nonBlank(context?.workspaceId) || !nonBlank(context?.userId)) {
     return { status: 'invalid_request', reason: 'Authenticated user, organization, and Business Space are required.' }
   }
   if (nowMs === null || !Number.isInteger(options.maxItems) || options.maxItems < 1 ||
@@ -208,7 +208,8 @@ export interface ResolveEnterpriseKnowledgeContextParams {
   userId: string
   permission: string
   context: V2ScopeContext
-  options: EnterpriseKnowledgeContextOptions
+  /** Resolve context limits and sensitivity from trusted server-side policy, never request payload. Called only after governance succeeds. */
+  resolveTrustedOptions: (scope: { organizationId: string; workspaceId: string; userId: string }) => EnterpriseKnowledgeContextOptions
   /** Must use a trusted server-side retrieval path and preserve existing RLS. Called only after governance succeeds. */
   loadCandidates: (scope: { organizationId: string; workspaceId: string; userId: string }) => Promise<readonly EnterpriseKnowledgeMemoryItem[]>
 }
@@ -218,7 +219,7 @@ export async function resolveAuthorizedEnterpriseKnowledgeContext(
   params: ResolveEnterpriseKnowledgeContextParams,
 ): Promise<EnterpriseKnowledgeContextResolution> {
   const { context, userId } = params
-  if (!context.workspaceId?.trim() || !context.organizationId.trim() || !userId.trim() || context.userId !== userId) {
+  if (!nonBlank(context?.workspaceId) || !nonBlank(context?.organizationId) || !nonBlank(userId) || context.userId !== userId) {
     return { status: 'invalid_request', reason: 'Authenticated user and explicit matching organization/Business Space scope are required.' }
   }
   const governance = govern(params.store, {
@@ -235,10 +236,12 @@ export async function resolveAuthorizedEnterpriseKnowledgeContext(
   })
   if (!governance.allowed) return { status: 'denied', governance }
 
-  const candidates = await params.loadCandidates({
+  const scope = {
     organizationId: context.organizationId,
     workspaceId: context.workspaceId,
     userId,
-  })
-  return composeEnterpriseKnowledgeContext(candidates, context, params.options)
+  }
+  const trustedOptions = params.resolveTrustedOptions(scope)
+  const candidates = await params.loadCandidates(scope)
+  return composeEnterpriseKnowledgeContext(candidates, context, trustedOptions)
 }
