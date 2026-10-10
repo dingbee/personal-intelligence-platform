@@ -72,6 +72,18 @@ begin
     raise exception 'IF-02 TEST FAILED (3c): finding with a dangling evidence reference was accepted';
   end if;
 
+  v_raised := false;
+  begin
+    perform public.create_domain_intelligence_record(
+      'finance', null, null, 'analysis', 'Recommendation missing approval gate',
+      '{"schemaVersion":1,"domain":"finance","evidence":[{"id":"e1","kind":"verified_fact","statement":"Revenue is recorded","sourceRef":null,"confidence":1}],"findings":[],"recommendations":[{"id":"r1","statement":"Change pricing","evidenceIds":["e1"],"requiresApproval":false}]}'::jsonb
+    );
+  exception when others then v_raised := true;
+  end;
+  if not v_raised then
+    raise exception 'IF-02 TEST FAILED (3d): recommendation without mandatory approval was accepted by the database boundary';
+  end if;
+
   -- A's conversation is valid only for A and only in the same workspace scope.
   insert into public.conversations (user_id, workspace_id, title)
   values ('23c725ec-b2d6-487c-8291-dae7a280a291', null, 'IF-02 owner conversation')
