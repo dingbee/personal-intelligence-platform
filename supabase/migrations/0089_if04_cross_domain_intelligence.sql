@@ -55,8 +55,11 @@ begin
     if jsonb_typeof(v_item) is distinct from 'object'
        or nullif(btrim(v_item ->> 'id'), '') is null
        or nullif(btrim(v_item ->> 'statement'), '') is null
+       or v_item ->> 'kind' is null
        or v_item ->> 'kind' not in ('verified_fact','deterministic_calculation','assumption','hypothesis','recommendation')
+       or nullif(btrim(v_item ->> 'sourceRef'), '') is null
        or jsonb_typeof(v_item -> 'sourceRef') is distinct from 'string'
+       or not (v_item ? 'confidence')
        or jsonb_typeof(v_item -> 'confidence') not in ('null','number') then
       raise exception 'create_cross_domain_intelligence_record: malformed evidence';
     end if;
