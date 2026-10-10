@@ -1,3 +1,5 @@
+import type { IntelligenceDomainKey } from '@/shared/types/database'
+
 /** IF-02 shared contract: business domain identity is separate from engine record type. */
 export const INTELLIGENCE_DOMAIN_KEYS = [
   'finance',
@@ -10,7 +12,6 @@ export const INTELLIGENCE_DOMAIN_KEYS = [
   'risk',
 ] as const
 
-import type { IntelligenceDomainKey } from '@/shared/types/database'
 export type { IntelligenceDomainKey }
 export type IntelligenceEvidenceKind =
   | 'verified_fact'
