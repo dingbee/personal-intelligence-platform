@@ -40,6 +40,7 @@ export interface EnterpriseKnowledgeContextOptions {
   now?: string
   maxItems: number
   maxCharacters: number
+  /** Must be derived by trusted server-side policy, never from user-controlled request input. */
   maximumSensitivity: EnterpriseMemorySensitivity
 }
 
