@@ -25,6 +25,7 @@ export interface ResolveAuthorizedEnterpriseEntityParams {
   sourceContract: EnterpriseSourceContract
   sourceSnapshot: EnterpriseSourceSnapshot
   sourceRecordId: string
+  requiredCapability: string
   entityType: EnterpriseEntityType
   name: string
   aliases?: readonly string[]
@@ -81,6 +82,14 @@ export async function resolveAuthorizedEnterpriseEntity(
   })
 
   if (!governance.allowed) return { status: 'denied', governance }
+
+  if (
+    !params.requiredCapability.trim() ||
+    !params.requiredCapability.endsWith('.read') ||
+    !params.sourceContract.capabilities.includes(params.requiredCapability)
+  ) {
+    return { status: 'invalid_source', issues: [{ code: 'source_capability_not_granted', message: 'The source contract does not grant the required read capability.' }] }
+  }
 
   const built = buildEnterpriseEntityObservation({
     contract: params.sourceContract,
