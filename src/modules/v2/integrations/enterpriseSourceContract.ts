@@ -183,17 +183,27 @@ export function validateEnterpriseSourceSnapshot(
 
   const now = parseTime(options.now ?? new Date().toISOString())
   const observedAt = parseTime(snapshot.observedAt)
+  const maxAgeSeconds = contract.freshness?.maxAgeSeconds
   if (now === null || observedAt === null) {
     add('invalid_observation_time', 'Snapshot observedAt and validation time must be valid timestamps.')
   } else {
     if (observedAt > now) add('future_snapshot', 'Snapshot observation time cannot be in the future.')
-    if (now - observedAt > contract.freshness.maxAgeSeconds * 1000) {
+    if (Number.isFinite(maxAgeSeconds) && maxAgeSeconds > 0 && now - observedAt > maxAgeSeconds * 1000) {
       add('stale_snapshot', 'Snapshot exceeds the source contract freshness limit.')
     }
   }
 
+  if (!Array.isArray(snapshot.records)) {
+    add('invalid_record_provenance', 'Snapshot records must be an array.')
+    return result(issues)
+  }
+
   const seen = new Set<string>()
   for (const record of snapshot.records) {
+    if (!record || typeof record !== 'object') {
+      add('invalid_record_provenance', 'Every source record must be a structured object.')
+      continue
+    }
     if (!isNonBlank(record.sourceRecordId) || seen.has(record.sourceRecordId)) {
       add('duplicate_source_record', 'Source record identifiers must be present and unique within a snapshot.', record.sourceRecordId)
     }
