@@ -80,6 +80,23 @@ describe('EIF-02 enterprise entity identity', () => {
     expect(result.issues.map(issue => issue.code)).toContain('invalid_evidence')
   })
 
+  it('rejects duplicate identifier namespaces even when the values differ', () => {
+    const result = validateEnterpriseEntityObservation(makeObservation({
+      identifiers: [
+        { namespace: 'supplier_code', value: 'SUP-1' },
+        { namespace: 'SUPPLIER_CODE', value: 'SUP-2' },
+      ],
+    }), context)
+    expect(result.valid).toBe(false)
+    expect(result.issues.map(issue => issue.code)).toContain('invalid_identifier')
+  })
+
+  it('rejects malformed aliases rather than silently ignoring them', () => {
+    const result = validateEnterpriseEntityObservation(makeObservation({ aliases: [''] }), context)
+    expect(result.valid).toBe(false)
+    expect(result.issues.map(issue => issue.code)).toContain('invalid_observation')
+  })
+
   it('matches a single in-scope identity by exact namespaced identifier', () => {
     expect(reconcileEnterpriseEntity(makeObservation(), [makeIdentity()], context)).toMatchObject({
       outcome: 'matched',
