@@ -37,6 +37,9 @@ function parseDomainOutput(raw: string, domain: IntelligenceDomainKey): DomainIn
   if (!validateDomainIntelligenceOutput(parsed, domain)) {
     throw new Error('Domain intelligence output failed IF-02 contract validation; no record was persisted.')
   }
+  if (parsed.recommendations.some(recommendation => recommendation.requiresApproval !== true)) {
+    throw new Error('Domain intelligence recommendations must require approval; no record was persisted.')
+  }
   return parsed
 }
 
