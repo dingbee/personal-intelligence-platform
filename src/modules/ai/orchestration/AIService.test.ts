@@ -100,6 +100,17 @@ vi.mock('@/modules/reader/api/readingProgress', async (importOriginal) => {
 vi.mock('@/modules/evolution/api/evolutionData', () => ({
   getWorkspaceEvolutionSnapshot: vi.fn(async () => { throw new Error('Evolution data is not part of this AIService unit test') }),
 }))
+vi.mock('@/modules/intelligence/context/contextResolver', () => ({
+  resolveNovaContext: vi.fn(async () => ({
+    workspaceContext: null,
+    activityContext: null,
+    knowledgeContext: null,
+    memoryContext: null,
+    userContext: null,
+    attentionContext: null,
+    evolutionContext: null,
+  })),
+}))
 // UX-7: the reference resolver's own lookups — same reasoning, no real Supabase call from this suite.
 vi.mock('@/modules/processing/api/chunks', () => ({ getChunkLocations: vi.fn(async () => []) }))
 vi.mock('@/modules/library/api/documents', () => ({ getDocumentTitles: vi.fn(async () => []) }))
