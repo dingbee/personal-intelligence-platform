@@ -1,6 +1,6 @@
 # IF-06 — Intelligence Contract Final Certification
 
-Status: implementation audit in progress on `feat/if-06-intelligence-certification`, stacked on the verified IF-05 head. This milestone is repository-level certification and closure, not a production release.
+Status: IF-06 implementation and repository certification are tracked against the current `feat/if-06-intelligence-certification` head, stacked on the verified IF-05 head. This milestone is repository-level certification and closure, not a production release.
 
 ## Audit scope
 
