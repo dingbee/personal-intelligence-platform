@@ -1,4 +1,4 @@
-import { createIntelligenceRecord } from '@/modules/intelligence-ledger/api/createIntelligenceRecord'
+import { toIntelligenceRecord } from '@/modules/intelligence-ledger/api/mappers'
 import type { CreateIntelligenceRecordParams, IntelligenceRecord } from '@/modules/intelligence-ledger/ledger'
 import {
   validateDomainIntelligenceOutput,
@@ -31,7 +31,7 @@ export async function createDomainIntelligenceRecord(
     p_journey_id: journeyId,
     p_record_type: recordType,
     p_summary: summary,
-    p_structured_output: structuredOutput,
+    p_structured_output: structuredOutput as unknown as Record<string, unknown>,
     p_status: status,
     p_provenance: provenance as Record<string, unknown> | null,
     p_operation_id: operationId,
@@ -42,7 +42,7 @@ export async function createDomainIntelligenceRecord(
     p_expected_outcome: expectedOutcome,
   })
   if (error) throw error
-  return (await import('@/modules/intelligence-ledger/api/mappers')).toIntelligenceRecord(data)
+  return toIntelligenceRecord(data)
 }
 
 /** Explicit best-effort persistence result: callers can distinguish a durable record from a failed optional write. */
