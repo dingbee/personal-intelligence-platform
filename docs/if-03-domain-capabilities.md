@@ -1,6 +1,6 @@
 # IF-03 — Domain Capabilities
 
-Status: implementation in progress. This phase is stacked on IF-02's shared-contract branch while its Vercel preview check is externally rate-limited. It does not merge or bypass IF-02's release gate.
+Status: IMPLEMENTATION VERIFIED — IF-03 acceptance criteria satisfied on commit `96e8f2600a5bb113631c3bd9e17161a899702350`. Full repository CI, quality gate (typecheck, lint, targeted tests, production build, bundle verification), ARRIYIA V2 Gate, and ARRIYIA V2 Certification all passed. The Vercel preview remains externally blocked by the Hobby-plan deployment-rate limit (`api-deployments-free-per-day`); this is recorded as a release/deployment blocker, not a failing application test. IF-03 remains stacked on IF-02's shared-contract branch; neither PR is merged, and no production deployment or migration was performed.
 
 ## Architectural decision
 
@@ -41,6 +41,15 @@ Each capability requests the IF-02 `DomainIntelligenceOutput` envelope (`schemaV
 7. Domain-specific privacy, legal, attribution, causality, forecast, and risk-scoring guardrails are tested.
 8. Unit tests cover successful execution, malformed JSON, wrong domain, dangling evidence citations, approval enforcement, and persistence failure. Lint, typecheck, full suite, production build/bundle verification, IF-02 SQL certification, and ARRIYIA V2 gates must pass.
 9. No production deploy or production migration is part of IF-03 implementation verification.
+
+## Closure record
+
+- Full-suite CI run `38033202798`: passed.
+- Quality gate: passed, including typecheck, lint, targeted tests, production build, and bundle verification.
+- ARRIYIA V2 Gate run `38033202849`: passed.
+- ARRIYIA V2 Certification run `38033202775`: passed.
+- Outstanding external release check: Vercel preview blocked by the daily deployment-rate limit. Do not bypass the check or treat the preview as successful.
+- IF-03 implementation is closed for scope purposes; PR #49 remains open and unmerged because it is stacked on IF-02 and Vercel is not green.
 
 ## Scope boundary
 
