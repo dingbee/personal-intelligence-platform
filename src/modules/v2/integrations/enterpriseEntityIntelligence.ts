@@ -110,11 +110,14 @@ export function normalizeEnterpriseEntityName(value: string): string {
 function validIdentifiers(identifiers: readonly EnterpriseEntityIdentifier[]): boolean {
   if (!Array.isArray(identifiers)) return false
   const keys = new Set<string>()
+  const namespaces = new Set<string>()
   for (const identifier of identifiers) {
     if (!identifier || !isNonBlank(identifier.namespace) || !isNonBlank(identifier.value)) return false
+    const namespace = identifier.namespace.trim().toLowerCase()
     const key = normalizeEnterpriseIdentifier(identifier.namespace, identifier.value)
-    if (keys.has(key)) return false
+    if (keys.has(key) || namespaces.has(namespace)) return false
     keys.add(key)
+    namespaces.add(namespace)
   }
   return true
 }
@@ -141,6 +144,9 @@ export function validateEnterpriseEntityObservation(
     add('scope_mismatch', 'Entity observation is outside the active organization and Business Space.')
   }
   if (!ENTITY_TYPES.includes(observation.entityType)) add('invalid_entity_type', 'Entity type is not supported.')
+  if (observation.aliases !== undefined && (!Array.isArray(observation.aliases) || !observation.aliases.every(isNonBlank))) {
+    add('invalid_observation', 'Aliases, when provided, must be non-empty strings.')
+  }
   if (!validIdentifiers(observation.identifiers)) add('invalid_identifier', 'Identifiers must have unique non-empty namespaces and values.')
   if (!validEvidence(observation.evidence)) add('invalid_evidence', 'Source evidence requires source identity, record identity, source system, and a valid observation timestamp.')
 
@@ -221,7 +227,6 @@ export function reconcileEnterpriseEntity(
     }
   }
 
-  const incomingKeys = identifierKeys(observation.identifiers)
   const identifierMatches = inScopeCandidates.filter(candidate =>
     sharedIdentifiers(observation.identifiers, candidate.identifiers).length > 0,
   )
@@ -298,9 +303,6 @@ export function reconcileEnterpriseEntity(
     }
   }
 
-  // Keep this explicit to make it clear identifiers were evaluated without
-  // treating their presence as a match unless namespace and value both agree.
-  void incomingKeys
   return {
     outcome: 'new_entity',
     normalizedName,
