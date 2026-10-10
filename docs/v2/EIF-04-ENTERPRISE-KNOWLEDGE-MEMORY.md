@@ -1,6 +1,6 @@
 # EIF-04 — Enterprise Knowledge and Memory Context
 
-**Status:** Implementation candidate; CI certification pending  
+**Status:** Audit fixes committed; awaiting fresh exact-head CI certification and post-merge verification  
 **Branch:** `feat/eif-04-enterprise-knowledge-memory` → `v2-development`  
 **Base:** EIF-03 merge `12e933033cf9c26fa64bb400dd1045cfe044f418`  
 **Production:** `main` remains frozen; no production deployment or migration
@@ -28,7 +28,8 @@ Added `src/modules/v2/integrations/enterpriseKnowledgeMemory.ts`:
 - Excludes archived/revoked, expired, out-of-owner private, over-classified, malformed and future-dated evidence.
 - Preserves source IDs, source-record IDs, source-system identity, observed timestamps and locators in the context packet.
 - Reuses the existing `computeEffectiveConfidence` read-time decay function; it does not mutate stored confidence.
-- Applies explicit item-count and character budgets and returns omission counts for observability. The sensitivity ceiling must be derived by trusted server-side policy; it must never be copied from user-controlled request input.
+- Applies explicit item-count and character budgets and returns omission counts for observability. Trusted sensitivity/budget options are resolved through an explicit server-policy callback only after governance succeeds; they must never be copied from user-controlled request input.
+- Validates malformed scope without throwing and compares evidence identities as tuples to avoid delimiter-collision false duplicates.
 - Does not persist context, write memory, create graph nodes, create ledger entries, fetch sources, embed content, or execute agents.
 
 Added `enterpriseKnowledgeMemory.test.ts` to cover evidence retention, tenant/workspace isolation, duplicate IDs, lifecycle/expiry, private visibility, sensitivity ceiling, invalid/future provenance, confidence-decay ranking, context budgets, governance-before-load ordering and user/context mismatch.
@@ -36,7 +37,7 @@ Added `enterpriseKnowledgeMemory.test.ts` to cover evidence retention, tenant/wo
 ## 4. Security and ownership boundaries
 
 - Candidate loading must remain in a trusted server-side adapter that uses authenticated credentials and preserves existing database RLS.
-- The maximum sensitivity supplied to the composer must come from trusted server-side policy; a caller cannot grant itself clearance by requesting a higher sensitivity level.
+- The resolver obtains sensitivity and context limits through `resolveTrustedOptions` only after governance succeeds. That callback must derive values from trusted server-side policy, not request fields; a caller cannot grant itself clearance by requesting a higher sensitivity level.
 - This contract is defense in depth; it does not replace RLS or existing authorization.
 - Existing retrieval and memory modules remain responsible for finding candidates. EIF-04 composes already-authorized candidates into context; it does not add a second retrieval algorithm.
 - Existing provenance and Intelligence Ledger remain authoritative; evidence references are carried forward, not copied into a new ledger.
@@ -52,7 +53,7 @@ Added `enterpriseKnowledgeMemory.test.ts` to cover evidence retention, tenant/wo
 5. Evidence lineage is preserved in every selected item.
 6. Existing read-time memory confidence decay is reused without mutating stored memory.
 7. Item and character budgets are enforced deterministically.
-8. Targeted tests, TypeScript, lint, full CI, V2 Gate and V2 Certification pass on the exact PR head and after merge.
+8. Targeted tests cover trusted-policy ordering, malformed scope and collision-safe evidence identity; TypeScript, lint, full CI, V2 Gate and V2 Certification must pass on the new exact PR head and after merge.
 9. Production `main` remains unchanged; no production deployment or migration occurs.
 
 ## 6. Next milestone
