@@ -210,6 +210,9 @@ begin
   if (select auth.uid()) is null then
     raise exception 'create_domain_intelligence_record: authentication required';
   end if;
+  if not public.has_feature((select auth.uid()), 'domain_intelligence') then
+    raise exception 'create_domain_intelligence_record: domain intelligence requires an entitled plan';
+  end if;
   if p_domain_key is null or p_domain_key not in ('finance', 'marketing', 'sales', 'operations', 'hr', 'legal', 'customer', 'risk') then
     raise exception 'create_domain_intelligence_record: invalid domain_key %', p_domain_key;
   end if;
@@ -299,3 +302,12 @@ $$;
 
 revoke all on function public.create_domain_intelligence_record(text, uuid, uuid, text, text, jsonb, text, jsonb, uuid, text, uuid, uuid, uuid, text) from public, anon, authenticated;
 grant execute on function public.create_domain_intelligence_record(text, uuid, uuid, text, text, jsonb, text, jsonb, uuid, text, uuid, uuid, uuid, text) to authenticated;
+
+
+-- IF-02 shared foundation entitlement. Domain intelligence is a Pro capability;
+-- enforcement is server-side in create_domain_intelligence_record(), not a UI hint.
+insert into public.plan_quotas (plan_id, quota_key, quota_limit, quota_period)
+select p.id, 'feature:domain_intelligence', 1, 'monthly'
+from public.plans p
+where p.code in ('pro', 'founding_pro')
+on conflict (plan_id, quota_key) do nothing;
