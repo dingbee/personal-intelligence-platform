@@ -1639,6 +1639,25 @@ export type Database = {
         }
         Returns: IntelligenceRecordRow
       }
+      create_domain_intelligence_record: {
+        Args: {
+          p_domain_key: IntelligenceDomainKey
+          p_workspace_id: string | null
+          p_journey_id: string | null
+          p_record_type: IntelligenceRecordType
+          p_summary: string
+          p_structured_output: Record<string, unknown>
+          p_status?: IntelligenceRecordStatus
+          p_provenance?: Record<string, unknown> | null
+          p_operation_id?: string | null
+          p_provider_id?: string | null
+          p_conversation_id?: string | null
+          p_execution_request_id?: string | null
+          p_parent_record_id?: string | null
+          p_expected_outcome?: string | null
+        }
+        Returns: IntelligenceRecordRow
+      }
       record_intelligence_outcome: {
         Args: {
           p_record_id: string
