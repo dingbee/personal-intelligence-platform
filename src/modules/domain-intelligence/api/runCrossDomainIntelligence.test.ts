@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { runCrossDomainIntelligence } from '@/modules/domain-intelligence/api/runCrossDomainIntelligence'
 import type { CrossDomainEvidenceDescriptor } from '@/modules/domain-intelligence/crossDomainCompatibility'
 
-const { runCapabilityMock, writeIntelligenceRecordMock } = vi.hoisted(() => ({ runCapabilityMock: vi.fn(), writeIntelligenceRecordMock: vi.fn() }))
+const { runCapabilityMock, createCrossDomainIntelligenceRecordMock } = vi.hoisted(() => ({ runCapabilityMock: vi.fn(), createCrossDomainIntelligenceRecordMock: vi.fn() }))
 vi.mock('@/modules/ai/orchestration/runCapability', () => ({ runCapability: runCapabilityMock }))
-vi.mock('@/modules/intelligence-ledger/api/writeIntelligenceRecord', () => ({ writeIntelligenceRecord: writeIntelligenceRecordMock }))
+vi.mock('@/modules/intelligence-ledger/api/createCrossDomainIntelligenceRecord', () => ({ createCrossDomainIntelligenceRecord: createCrossDomainIntelligenceRecordMock }))
 
 function evidence(): CrossDomainEvidenceDescriptor[] {
   const shared = { accessScopeId: 'workspace:workspace-1', unit: 'currency', currency: 'TZS', periodStart: '2026-09-01T00:00:00.000Z', periodEnd: '2026-10-01T00:00:00.000Z', timeZone: 'Africa/Dar_es_Salaam', grain: 'month', asOf: '2026-10-02T00:00:00.000Z' }
@@ -24,12 +24,12 @@ describe('runCrossDomainIntelligence', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     runCapabilityMock.mockResolvedValue({ content: JSON.stringify(modelOutput()), model: 'test-model' })
-    writeIntelligenceRecordMock.mockResolvedValue({ id: 'record-1' })
+    createCrossDomainIntelligenceRecordMock.mockResolvedValue({ id: 'record-1' })
   })
   it('runs only compatible same-scope evidence and persists through the canonical ledger', async () => {
     const result = await runCrossDomainIntelligence({ question: 'How do marketing spend and revenue compare?', userId: 'user-1', workspaceId: 'workspace-1', evidence: evidence(), evidenceContext: 'Authorized monthly revenue and paid-media spend.' })
     expect(runCapabilityMock).toHaveBeenCalledWith(expect.objectContaining({ capabilityId: 'cross-domain-assessment', userId: 'user-1', workspaceId: 'workspace-1' }))
-    expect(writeIntelligenceRecordMock).toHaveBeenCalledWith(expect.objectContaining({ recordType: 'analysis', workspaceId: 'workspace-1', structuredOutput: expect.objectContaining({ crossDomain: true }) }))
+    expect(createCrossDomainIntelligenceRecordMock).toHaveBeenCalledWith(expect.objectContaining({ recordType: 'analysis', workspaceId: 'workspace-1', structuredOutput: expect.objectContaining({ crossDomain: true }) }))
     expect(result).toMatchObject({ status: 'completed', persistence: { status: 'persisted', recordId: 'record-1' } })
   })
   it('does not invoke the model for incompatible period or authorization scope', async () => {
@@ -49,10 +49,10 @@ describe('runCrossDomainIntelligence', () => {
     await expect(runCrossDomainIntelligence({ question: 'Compare.', userId: 'user-1', workspaceId: 'workspace-1', evidence: evidence(), evidenceContext: 'context' })).rejects.toThrow('missing or dangling evidence')
     runCapabilityMock.mockResolvedValueOnce({ content: JSON.stringify(modelOutput({ recommendations: [{ id: 'r1', statement: 'Act now', evidenceIds: ['e-finance'], requiresApproval: false }] })), model: 'test-model' })
     await expect(runCrossDomainIntelligence({ question: 'Compare.', userId: 'user-1', workspaceId: 'workspace-1', evidence: evidence(), evidenceContext: 'context' })).rejects.toThrow('must require approval')
-    expect(writeIntelligenceRecordMock).not.toHaveBeenCalled()
+    expect(createCrossDomainIntelligenceRecordMock).not.toHaveBeenCalled()
   })
   it('returns explicit non-durable status when ledger persistence fails', async () => {
-    writeIntelligenceRecordMock.mockResolvedValueOnce(null)
+    createCrossDomainIntelligenceRecordMock.mockResolvedValueOnce(null)
     const result = await runCrossDomainIntelligence({ question: 'Compare.', userId: 'user-1', workspaceId: 'workspace-1', evidence: evidence(), evidenceContext: 'context' })
     expect(result).toMatchObject({ status: 'completed', persistence: { status: 'not_persisted' } })
   })
