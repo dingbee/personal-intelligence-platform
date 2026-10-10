@@ -271,7 +271,8 @@ begin
        or nullif(btrim(v_entry ->> 'id'), '') is null
        or nullif(btrim(v_entry ->> 'statement'), '') is null
        or jsonb_typeof(v_entry -> 'evidenceIds') is distinct from 'array'
-       or jsonb_typeof(v_entry -> 'requiresApproval') is distinct from 'boolean' then
+       or jsonb_typeof(v_entry -> 'requiresApproval') is distinct from 'boolean'
+       or (v_entry -> 'requiresApproval') is distinct from 'true'::jsonb then
       raise exception 'create_domain_intelligence_record: malformed recommendation';
     end if;
     for v_ref in select value from jsonb_array_elements(v_entry -> 'evidenceIds') as r(value) loop
