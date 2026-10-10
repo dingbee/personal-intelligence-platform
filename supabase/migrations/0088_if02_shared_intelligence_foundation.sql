@@ -201,7 +201,7 @@ as $$
 declare
   v_record public.intelligence_records;
 begin
-  if p_domain_key not in ('finance', 'marketing', 'sales', 'operations', 'hr', 'legal', 'customer', 'risk') then
+  if p_domain_key is null or p_domain_key not in ('finance', 'marketing', 'sales', 'operations', 'hr', 'legal', 'customer', 'risk') then
     raise exception 'create_domain_intelligence_record: invalid domain_key %', p_domain_key;
   end if;
   if p_structured_output is null or jsonb_typeof(p_structured_output) <> 'object' then
