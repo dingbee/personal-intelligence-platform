@@ -66,9 +66,7 @@ describe('runDomainIntelligence', () => {
   })
 
   it('accepts a JSON-fenced response but rejects malformed JSON without persisting', async () => {
-    runCapabilityMock.mockResolvedValueOnce({ content: ```json
-${JSON.stringify(validOutput())}
-```, model: 'test-model' })
+    runCapabilityMock.mockResolvedValueOnce({ content: '```json\\n' + JSON.stringify(validOutput()) + '\\n```', model: 'test-model' })
     await expect(runDomainIntelligence({ domain: 'finance', question: 'Assess.', userId: 'u', workspaceId: null })).resolves.toMatchObject({ output: validOutput() })
 
     runCapabilityMock.mockResolvedValueOnce({ content: 'not json', model: 'test-model' })
@@ -89,8 +87,8 @@ ${JSON.stringify(validOutput())}
     const unapproved = validOutput()
     unapproved.recommendations[0]!.requiresApproval = false
     runCapabilityMock.mockResolvedValueOnce({ content: JSON.stringify(unapproved), model: 'test-model' })
-    await expect(runDomainIntelligence({ domain: 'finance', question: 'Assess.', userId: 'u', workspaceId: null })).resolves.toBeDefined()
-    expect(writeDomainIntelligenceRecordMock).toHaveBeenCalledTimes(2)
+    await expect(runDomainIntelligence({ domain: 'finance', question: 'Assess.', userId: 'u', workspaceId: null })).rejects.toThrow('must require approval')
+    expect(writeDomainIntelligenceRecordMock).toHaveBeenCalledTimes(0)
   })
 
   it('rejects empty questions and reports persistence failure without claiming durability', async () => {
