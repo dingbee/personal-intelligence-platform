@@ -206,7 +206,7 @@ begin
   end if;
   if p_structured_output is null
      or jsonb_typeof(p_structured_output) <> 'object'
-     or p_structured_output ->> 'schemaVersion' <> '1'
+     or p_structured_output ->> 'schemaVersion' is distinct from '1'
      or p_structured_output ->> 'domain' is distinct from p_domain_key
      or jsonb_typeof(p_structured_output -> 'evidence') <> 'array'
      or jsonb_typeof(p_structured_output -> 'findings') <> 'array'
