@@ -96,7 +96,7 @@ describe('EIF-04 enterprise knowledge/memory context', () => {
     const fresh = memory({ id: 'fresh', confidence: 0.8, lastReinforcedAt: now, content: 'Fresh decision.' })
     const ranked = composeEnterpriseKnowledgeContext([old, fresh], context, options)
     expect(ranked.status).toBe('ready')
-    if (ranked.status === 'ready') expect(ranked.items[0].id).toBe('fresh')
+    if (ranked.status === 'ready') expect(ranked.items[0]?.id).toBe('fresh')
 
     const budgeted = composeEnterpriseKnowledgeContext([memory(), memory({ id: 'second', content: 'Another context item.' })], context, { ...options, maxItems: 1, maxCharacters: 500 })
     expect(budgeted).toMatchObject({ status: 'ready', items: [{ id: 'memory-1' }], omitted: { budget: 1 } })
