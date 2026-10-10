@@ -5,6 +5,8 @@ on:
     paths:
       - 'supabase/migrations/0066_intelligence_ledger.sql'
       - 'supabase/migrations/0088_if02_shared_intelligence_foundation.sql'
+      - 'supabase/tests/if04_cross_domain_intelligence_test.sql'
+      - 'supabase/migrations/0089_if04_cross_domain_intelligence.sql'
       - 'supabase/tests/if02_shared_intelligence_foundation_test.sql'
       - 'supabase/tests/if02_test_harness_setup.sql'
       - '.github/workflows/if02-sql-certification.yml'
@@ -52,3 +54,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/0088_if02_shared_intelligence_foundation.sql
       - name: Run IF-02 adversarial SQL tests
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/if02_shared_intelligence_foundation_test.sql
+      - name: Apply IF-04 migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/0089_if04_cross_domain_intelligence.sql
+      - name: Run IF-04 adversarial SQL tests
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/if04_cross_domain_intelligence_test.sql
