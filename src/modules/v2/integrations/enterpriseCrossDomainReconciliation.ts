@@ -192,11 +192,12 @@ export function reconcileCrossDomainObservations(
 
   const groups: EIFCrossDomainGroup[] = [...grouped.values()].map(entries => {
     const first = entries[0].observation
+    const comparisonValues = [...new Set(entries.map(entry => `${entry.observation.valueType}:${entry.normalizedValue}`))]
     const normalizedValues = [...new Set(entries.map(entry => entry.normalizedValue))]
     const domains = [...new Set(entries.map(entry => entry.observation.domain))].sort()
     const outcome = entries.length === 1
       ? 'single_source'
-      : normalizedValues.length > 1
+      : comparisonValues.length > 1
         ? 'conflict'
         : 'consistent'
     return {
