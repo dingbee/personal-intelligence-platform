@@ -124,4 +124,34 @@ describe('EIF-05 cross-domain reconciliation', () => {
     const result = reconcileCrossDomainObservations([first, second], context, now)
     expect(result).toMatchObject({ status: 'reconciled', groups: [{ entityId: 'entity-a' }, { entityId: 'entity-b' }] })
   })
+  it('does not report same-domain observations as cross-domain agreement', () => {
+    const result = reconcileCrossDomainObservations([
+      observation(),
+      observation({
+        evidence: { sourceId: 'finance-archive', sourceRecordId: 'record-2', sourceSystem: 'finance-suite', observedAt: '2026-10-10T10:00:00.000Z' },
+      }),
+    ], context, now)
+    expect(result).toMatchObject({
+      status: 'reconciled',
+      summary: { singleSource: 1, consistent: 0, conflicts: 0 },
+      groups: [{ outcome: 'single_source', domains: ['finance'] }],
+    })
+  })
+
+  it('rejects inconsistent declared value types for the same entity attribute', () => {
+    const result = reconcileCrossDomainObservations([
+      observation(),
+      observation({
+        domain: 'sales',
+        valueType: 'number',
+        value: 12345,
+        evidence: { sourceId: 'sales', sourceRecordId: 'r2', sourceSystem: 'sales', observedAt: '2026-10-10T10:00:00.000Z' },
+      }),
+    ], context, now)
+    expect(result).toMatchObject({
+      status: 'rejected',
+      issues: [{ code: 'invalid_value', observationIndex: 1 }],
+    })
+  })
+
 })
