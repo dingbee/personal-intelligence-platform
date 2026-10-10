@@ -10,7 +10,8 @@ export const INTELLIGENCE_DOMAIN_KEYS = [
   'risk',
 ] as const
 
-export type IntelligenceDomainKey = (typeof INTELLIGENCE_DOMAIN_KEYS)[number]
+import type { IntelligenceDomainKey } from '@/shared/types/database'
+export type { IntelligenceDomainKey }
 export type IntelligenceEvidenceKind =
   | 'verified_fact'
   | 'deterministic_calculation'
