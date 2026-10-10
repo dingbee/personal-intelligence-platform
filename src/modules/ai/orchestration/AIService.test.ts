@@ -86,6 +86,20 @@ vi.mock('@/modules/workspaces/api/workspaces', () => ({
 }))
 vi.mock('@/modules/reader/api/readingProgress', () => ({ getMostRecentReadingProgress: vi.fn(async () => null) }))
 vi.mock('@/modules/settings/api/profile', () => ({ getProfile: vi.fn(async () => ({ display_name: null })) }))
+/**
+ * Keep the NOVA Context Engine fully isolated in this unit suite. These
+ * sources were added after the original context mocks and otherwise call
+ * Supabase with CI's placeholder URL, leaving every sendMessage test
+ * waiting on network timeouts.
+ */
+vi.mock('@/modules/ai/memory/api/memory', () => ({ listMemories: vi.fn(async () => []) }))
+vi.mock('@/modules/reader/api/readingProgress', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/modules/reader/api/readingProgress')>()
+  return { ...actual, getMostRecentReadingProgress: vi.fn(async () => null), getReadingProgress: vi.fn(async () => null) }
+})
+vi.mock('@/modules/evolution/api/evolutionData', () => ({
+  getWorkspaceEvolutionSnapshot: vi.fn(async () => { throw new Error('Evolution data is not part of this AIService unit test') }),
+}))
 // UX-7: the reference resolver's own lookups — same reasoning, no real Supabase call from this suite.
 vi.mock('@/modules/processing/api/chunks', () => ({ getChunkLocations: vi.fn(async () => []) }))
 vi.mock('@/modules/library/api/documents', () => ({ getDocumentTitles: vi.fn(async () => []) }))
