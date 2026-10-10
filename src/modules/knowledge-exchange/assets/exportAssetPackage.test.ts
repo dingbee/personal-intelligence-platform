@@ -67,7 +67,15 @@ describe('exportAssetPackage', () => {
 
   it('the assetPackageExporter object delegates to the same function', () => {
     const source = { asset: fakeAsset(), fileDataBase64: 'abc' }
-    expect(assetPackageExporter.export(source)).toEqual(exportAssetPackage(source))
+    const delegated = assetPackageExporter.export(source)
+    const direct = exportAssetPackage(source)
+
+    // exportedAt is generated independently on each call, so compare the
+    // stable payload and validate each timestamp rather than requiring
+    // two separate clock reads to land in the same millisecond.
+    expect({ ...delegated, exportedAt: undefined }).toEqual({ ...direct, exportedAt: undefined })
+    expect(delegated.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
+    expect(direct.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
   })
 })
 
