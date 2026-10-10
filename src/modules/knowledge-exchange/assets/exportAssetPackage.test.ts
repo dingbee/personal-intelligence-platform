@@ -74,8 +74,8 @@ describe('exportAssetPackage', () => {
     // stable payload and validate each timestamp rather than requiring
     // two separate clock reads to land in the same millisecond.
     expect({ ...delegated, exportedAt: undefined }).toEqual({ ...direct, exportedAt: undefined })
-    expect(delegated.exportedAt).toMatch(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/)
-    expect(direct.exportedAt).toMatch(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/)
+    expect(delegated.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
+    expect(direct.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
   })
 })
 
