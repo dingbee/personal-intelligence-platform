@@ -48,7 +48,7 @@ export function compareContractVersions(left: string, right: string): number {
     if (leftId === rightId) continue
     const leftNumeric = /^(0|[1-9]\d*)$/.test(leftId)
     const rightNumeric = /^(0|[1-9]\d*)$/.test(rightId)
-    if (leftNumeric && rightNumeric) return Number(leftId) - Number(rightId)
+    if (leftNumeric && rightNumeric) return leftId.length - rightId.length || leftId.localeCompare(rightId)
     if (leftNumeric !== rightNumeric) return leftNumeric ? -1 : 1
     return leftId.localeCompare(rightId)
   }
