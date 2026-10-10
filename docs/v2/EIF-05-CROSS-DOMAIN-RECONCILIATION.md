@@ -1,6 +1,6 @@
 # EIF-05 — Cross-Domain Reconciliation
 
-**Status:** Implementation in progress on `feat/eif-05-cross-domain-reconciliation`  
+**Status:** Implementation complete; source checks passed on code revision `c7857a2a781a2e6e87c228a962cbeebdea09af1a`  
 **Base:** EIF-04 merge `f5790f4fecc92b7f18a53eb7dc611f198ab6a985`  
 **Target:** `v2-development`  
 **Production:** `main` remains frozen; no deployment or database migration
@@ -37,10 +37,11 @@ Compare evidence-backed facts about the same EIF-02 canonical entity across inde
 - [x] Conflict/consistency/single-source outcomes with provenance retention.
 - [x] Deterministic normalization and ordering.
 - [x] Unit coverage for agreement, conflicts, scope isolation, malformed/future evidence, duplicate evidence, typed values, and stable ordering.
-- [ ] Run targeted tests, TypeScript, lint, full CI, bundle verification, V2 Gate, and V2 Certification on the exact PR head.
-- [ ] Fix any failures and rerun affected checks.
-- [ ] Merge only after certification; verify `main` remains unchanged.
+- [x] Targeted tests, TypeScript, lint, full suite, production build, bundle verification, V2 Gate, and V2 Certification passed on code revision `c7857a2a781a2e6e87c228a962cbeebdea09af1a`.
+- [x] Corrected source-type mismatch handling and ensured same-domain observations are not reported as cross-domain agreement; added regression tests.
+- [ ] Vercel preview for the latest PR head is blocked by the account's daily deployment limit (`api-deployments-free-per-day`). A preview for the preceding source revision `86dc199e36b2fed8607a6ed79b786649d99408b5` is `READY`; no production deployment was made.
+- [ ] Merge PR #58 into `v2-development` and verify `main` remains unchanged after merge.
 
 ## Next
 
-Complete CI certification, fix any defects, merge the EIF-05 implementation into `v2-development`, and only then plan EIF-06.
+EIF-05 code and automated certification are complete. PR #58 remains open for owner merge; EIF-06 has not started. Do not deploy to production.
