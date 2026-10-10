@@ -27,7 +27,7 @@ begin
   exception when others then v_raised := true; end;
   if not v_raised then raise exception 'IF-04 TEST FAILED (4): recommendation with empty evidence citations was accepted'; end if;
 end;
-$;
+$$;
 rollback;
 
 begin;
