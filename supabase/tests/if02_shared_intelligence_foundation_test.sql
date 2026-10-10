@@ -84,6 +84,31 @@ begin
     raise exception 'IF-02 TEST FAILED (3d): recommendation without mandatory approval was accepted by the database boundary';
   end if;
 
+  -- Empty citation arrays must be rejected at the shared database boundary.
+  v_raised := false;
+  begin
+    perform public.create_domain_intelligence_record(
+      'finance', null, null, 'analysis', 'Finding with no evidence citations',
+      '{"schemaVersion":1,"domain":"finance","evidence":[{"id":"e1","kind":"verified_fact","statement":"Revenue is recorded","sourceRef":null,"confidence":1}],"findings":[{"id":"f-empty","statement":"Unsupported finding","evidenceIds":[]}],"recommendations":[]}'::jsonb
+    );
+  exception when others then v_raised := true;
+  end;
+  if not v_raised then
+    raise exception 'IF-02 TEST FAILED (3e): finding with empty evidence citations was accepted';
+  end if;
+
+  v_raised := false;
+  begin
+    perform public.create_domain_intelligence_record(
+      'finance', null, null, 'analysis', 'Recommendation with no evidence citations',
+      '{"schemaVersion":1,"domain":"finance","evidence":[{"id":"e1","kind":"verified_fact","statement":"Revenue is recorded","sourceRef":null,"confidence":1}],"findings":[],"recommendations":[{"id":"r-empty","statement":"Change pricing","evidenceIds":[],"requiresApproval":true}]}'::jsonb
+    );
+  exception when others then v_raised := true;
+  end;
+  if not v_raised then
+    raise exception 'IF-02 TEST FAILED (3f): recommendation with empty evidence citations was accepted';
+  end if;
+
   -- A's conversation is valid only for A and only in the same workspace scope.
   insert into public.conversations (user_id, workspace_id, title)
   values ('23c725ec-b2d6-487c-8291-dae7a280a291', null, 'IF-02 owner conversation')

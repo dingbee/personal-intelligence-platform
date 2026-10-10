@@ -16,6 +16,7 @@ on:
       - 'feat/if-03-*'
       - 'feat/if-04-*'
       - 'feat/if-05-*'
+      - 'feat/if-06-*'
     paths:
       - 'supabase/migrations/0066_intelligence_ledger.sql'
       - 'supabase/migrations/0088_if02_shared_intelligence_foundation.sql'

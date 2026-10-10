@@ -7,12 +7,14 @@ on:
       - 'feat/if-03-*'
       - 'feat/if-04-*'
       - 'feat/if-05-*'
+      - 'feat/if-06-*'
   pull_request:
     branches:
       - v2-development
       - feat/if-02-shared-intelligence-foundation
       - feat/if-03-domain-capabilities
       - feat/if-04-cross-domain-intelligence-clean
+      - feat/if-05-intelligence-centre-ux
 
 jobs:
   certify:

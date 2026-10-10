@@ -25,6 +25,17 @@ describe('IF-02 domain output contract', () => {
     }, 'finance')).toBe(false)
   })
 
+  it('rejects findings and recommendations with empty evidence citations', () => {
+    expect(validateDomainIntelligenceOutput({
+      ...valid,
+      findings: [{ id: 'f1', statement: 'Unsupported finding', evidenceIds: [] }],
+    }, 'finance')).toBe(false)
+    expect(validateDomainIntelligenceOutput({
+      ...valid,
+      recommendations: [{ id: 'r1', statement: 'Unsupported recommendation', evidenceIds: [], requiresApproval: true }],
+    }, 'finance')).toBe(false)
+  })
+
   it('rejects duplicate evidence identifiers and out-of-range confidence', () => {
     expect(validateDomainIntelligenceOutput({
       ...valid,

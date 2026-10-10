@@ -84,7 +84,7 @@ export function validateDomainIntelligenceOutput(
       const entry = item as Record<string, unknown>
       if (typeof entry.id !== 'string' || !entry.id.trim()) return false
       if (typeof entry.statement !== 'string' || !entry.statement.trim()) return false
-      if (!Array.isArray(entry.evidenceIds) || !entry.evidenceIds.every(id => typeof id === 'string' && evidenceIds.has(id))) return false
+      if (!Array.isArray(entry.evidenceIds) || entry.evidenceIds.length === 0 || !entry.evidenceIds.every(id => typeof id === 'string' && evidenceIds.has(id))) return false
       if (collection === output.recommendations && typeof entry.requiresApproval !== 'boolean') return false
     }
   }
