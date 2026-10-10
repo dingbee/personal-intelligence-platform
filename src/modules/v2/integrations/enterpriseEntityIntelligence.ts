@@ -99,12 +99,12 @@ function isNonBlank(value: unknown): value is string {
 
 /** Conservative normalization: punctuation is retained for identifiers. */
 export function normalizeEnterpriseIdentifier(namespace: string, value: string): string {
-  return `${namespace.trim().toLowerCase()}:${value.trim().toLowerCase().replace(/\\s+/g, ' ')}`
+  return `${namespace.trim().toLowerCase()}:${value.trim().toLowerCase().replace(/\s+/g, ' ')}`
 }
 
 /** Mirrors existing exact-title normalization; deliberately does not fuzzy-match. */
 export function normalizeEnterpriseEntityName(value: string): string {
-  return value.trim().replace(/[^\\w\\s]/g, ' ').replace(/\\s+/g, ' ').trim().toLowerCase()
+  return value.trim().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase()
 }
 
 function validIdentifiers(identifiers: readonly EnterpriseEntityIdentifier[]): boolean {
@@ -185,11 +185,11 @@ function identifierNamespaceConflicts(
   left: readonly EnterpriseEntityIdentifier[],
   right: readonly EnterpriseEntityIdentifier[],
 ): boolean {
-  const rightByNamespace = new Map(right.map(item => [item.namespace.trim().toLowerCase(), item.value.trim().toLowerCase().replace(/\\s+/g, ' ')]))
+  const rightByNamespace = new Map(right.map(item => [item.namespace.trim().toLowerCase(), item.value.trim().toLowerCase().replace(/\s+/g, ' ')]))
   return left.some(item => {
     const namespace = item.namespace.trim().toLowerCase()
     const otherValue = rightByNamespace.get(namespace)
-    return otherValue !== undefined && otherValue !== item.value.trim().toLowerCase().replace(/\\s+/g, ' ')
+    return otherValue !== undefined && otherValue !== item.value.trim().toLowerCase().replace(/\s+/g, ' ')
   })
 }
 
