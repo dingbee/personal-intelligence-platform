@@ -81,7 +81,7 @@ function nonBlank(value: unknown): value is string {
 function normalizeValue(value: EIFCrossDomainValue, type: EIFCrossDomainValueType): string | null {
   if (type === 'string') {
     return typeof value === 'string' && value.trim()
-      ? value.trim().replace(/\\s+/g, ' ').toLocaleLowerCase('en-US')
+      ? value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US')
       : null
   }
   if (type === 'number') {
