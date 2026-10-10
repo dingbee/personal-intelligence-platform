@@ -228,6 +228,7 @@ begin
     if jsonb_typeof(v_item) is distinct from 'object'
        or nullif(btrim(v_item ->> 'id'), '') is null
        or nullif(btrim(v_item ->> 'statement'), '') is null
+       or v_item ->> 'kind' is null
        or v_item ->> 'kind' not in ('verified_fact', 'deterministic_calculation', 'assumption', 'hypothesis', 'recommendation')
        or not (v_item ? 'sourceRef')
        or jsonb_typeof(v_item -> 'sourceRef') not in ('null', 'string')
