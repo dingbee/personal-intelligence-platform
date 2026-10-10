@@ -58,7 +58,7 @@ describe('EIF-05 cross-domain reconciliation', () => {
         evidence: { sourceId: 'source-procurement', sourceRecordId: 'vendor-7', sourceSystem: 'procurement-suite', observedAt: '2026-10-10T10:00:00.000Z' },
       }),
     ], context, now)
-    expect(result).toMatchObject({ status: 'reconciled', summary: { conflicts: 1 }, groups: [{ outcome: 'conflict', distinctValues: ['tz-12345', 'tz-99999'] }] })
+    expect(result).toMatchObject({ status: 'reconciled', summary: { conflicts: 1 }, groups: [{ outcome: 'conflict', distinctValues: ['TZ-12345', 'TZ-99999'] }] })
   })
 
   it('normalizes string casing and whitespace but does not fuzzy match', () => {
