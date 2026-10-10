@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildEnterpriseEntityObservation,
   normalizeEnterpriseEntityName,
   reconcileEnterpriseEntity,
   validateEnterpriseEntityObservation,
   type EnterpriseEntityIdentity,
   type EnterpriseEntityObservation,
 } from './enterpriseEntityIntelligence'
+import type { EnterpriseSourceContract, EnterpriseSourceSnapshot } from './enterpriseSourceContract'
+
+//} from './enterpriseEntityIntelligence'
 
 const context = { organizationId: 'org-1', workspaceId: 'space-1', userId: 'user-1' }
 
@@ -142,5 +146,90 @@ describe('EIF-02 enterprise entity identity', () => {
       outcome: 'rejected',
       reason: 'invalid_candidate',
     })
+  })
+})
+
+
+describe('EIF-02 source-to-entity observation boundary', () => {
+  const sourceContract: EnterpriseSourceContract = {
+    id: 'source-procurement',
+    organizationId: 'org-1',
+    workspaceId: 'space-1',
+    name: 'Procurement system',
+    provider: 'procurement-suite',
+    domain: 'procurement',
+    protocol: 'api',
+    accessMode: 'read_only',
+    status: 'active',
+    capabilities: ['suppliers.read'],
+    freshness: { maxAgeSeconds: 3600 },
+  }
+  const sourceSnapshot: EnterpriseSourceSnapshot = {
+    sourceId: 'source-procurement',
+    organizationId: 'org-1',
+    workspaceId: 'space-1',
+    observedAt: '2026-10-10T09:00:00.000Z',
+    records: [{
+      sourceRecordId: 'vendor-42',
+      sourceUpdatedAt: '2026-10-10T08:45:00.000Z',
+      value: { name: 'North Star Supplies Ltd.', code: 'SUP-0042' },
+      provenance: {
+        sourceId: 'source-procurement',
+        sourceSystem: 'procurement-suite',
+        retrievedAt: '2026-10-10T09:00:00.000Z',
+        locator: 'vendors/vendor-42',
+      },
+    }],
+  }
+
+  it('builds entity evidence from an active, scoped, fresh EIF-01 snapshot', () => {
+    const result = buildEnterpriseEntityObservation({
+      contract: sourceContract,
+      snapshot: sourceSnapshot,
+      sourceRecordId: 'vendor-42',
+      entityType: 'supplier',
+      name: 'North Star Supplies Ltd.',
+      identifiers: [{ namespace: 'supplier_code', value: 'SUP-0042' }],
+      context,
+      now: '2026-10-10T09:10:00.000Z',
+    })
+    expect(result.valid).toBe(true)
+    expect(result.observation?.evidence).toEqual({
+      sourceId: 'source-procurement',
+      sourceRecordId: 'vendor-42',
+      sourceSystem: 'procurement-suite',
+      observedAt: '2026-10-10T09:00:00.000Z',
+      locator: 'vendors/vendor-42',
+    })
+  })
+
+  it('rejects stale source snapshots before creating entity evidence', () => {
+    const result = buildEnterpriseEntityObservation({
+      contract: sourceContract,
+      snapshot: { ...sourceSnapshot, observedAt: '2026-10-10T07:00:00.000Z' },
+      sourceRecordId: 'vendor-42',
+      entityType: 'supplier',
+      name: 'North Star Supplies Ltd.',
+      identifiers: [],
+      context,
+      now: '2026-10-10T09:10:00.000Z',
+    })
+    expect(result.valid).toBe(false)
+    expect(result.issues.map(issue => issue.code)).toContain('stale_snapshot')
+  })
+
+  it('rejects a source record that is not present in the validated snapshot', () => {
+    const result = buildEnterpriseEntityObservation({
+      contract: sourceContract,
+      snapshot: sourceSnapshot,
+      sourceRecordId: 'missing-record',
+      entityType: 'supplier',
+      name: 'North Star Supplies Ltd.',
+      identifiers: [],
+      context,
+      now: '2026-10-10T09:10:00.000Z',
+    })
+    expect(result.valid).toBe(false)
+    expect(result.issues.map(issue => issue.code)).toContain('source_record_not_found')
   })
 })
