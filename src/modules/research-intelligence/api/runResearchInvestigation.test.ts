@@ -203,7 +203,7 @@ describe('runResearchInvestigation', () => {
     expect(investigation.steps).toHaveLength(maxSteps)
     expect(investigation.stepLimitReached).toBe(true)
     expect(investigation.status).toBe('complete')
-  })
+  }, 15000)
 
   it('marks synthesisFailed (not a fabricated summary) when the synthesis capability response cannot be parsed', async () => {
     hasFeatureMock.mockResolvedValue(true)

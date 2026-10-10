@@ -633,6 +633,7 @@ export type IntelligenceJourneyRow = {
 }
 
 export type IntelligenceRecordType = 'data' | 'analysis' | 'research' | 'planning' | 'decision' | 'action' | 'execution'
+export type IntelligenceDomainKey = 'finance' | 'marketing' | 'sales' | 'operations' | 'hr' | 'legal' | 'customer' | 'risk'
 export type IntelligenceRecordStatus = 'created' | 'running' | 'completed' | 'failed' | 'superseded' | 'archived'
 
 export type IntelligenceRecordRow = {
@@ -640,6 +641,7 @@ export type IntelligenceRecordRow = {
   workspace_id: string | null
   user_id: string
   journey_id: string | null
+  domain_key: IntelligenceDomainKey | null
   record_type: IntelligenceRecordType
   status: IntelligenceRecordStatus
   summary: string
@@ -1621,6 +1623,35 @@ export type Database = {
       }
       create_intelligence_record: {
         Args: {
+          p_workspace_id: string | null
+          p_journey_id: string | null
+          p_record_type: IntelligenceRecordType
+          p_summary: string
+          p_structured_output: Record<string, unknown>
+          p_status?: IntelligenceRecordStatus
+          p_provenance?: Record<string, unknown> | null
+          p_operation_id?: string | null
+          p_provider_id?: string | null
+          p_conversation_id?: string | null
+          p_execution_request_id?: string | null
+          p_parent_record_id?: string | null
+          p_expected_outcome?: string | null
+        }
+        Returns: IntelligenceRecordRow
+      }
+      create_cross_domain_intelligence_record: {
+        Args: {
+          p_workspace_id: string | null
+          p_summary: string
+          p_structured_output: Record<string, unknown>
+          p_operation_id?: string | null
+          p_provider_id?: string | null
+        }
+        Returns: IntelligenceRecordRow
+      }
+      create_domain_intelligence_record: {
+        Args: {
+          p_domain_key: IntelligenceDomainKey
           p_workspace_id: string | null
           p_journey_id: string | null
           p_record_type: IntelligenceRecordType

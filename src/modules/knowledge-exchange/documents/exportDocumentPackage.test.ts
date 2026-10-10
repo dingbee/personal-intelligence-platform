@@ -71,8 +71,7 @@ describe('exportDocumentPackage', () => {
   })
 
   it('the documentPackageExporter object delegates to the same function', () => {
-    const source = { document: fakeDocument(), tags: fakeTags() }
-    expect(documentPackageExporter.export(source)).toEqual(exportDocumentPackage(source))
+    expect(documentPackageExporter.export).toBe(exportDocumentPackage)
   })
 })
 

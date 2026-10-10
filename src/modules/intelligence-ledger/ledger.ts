@@ -48,7 +48,7 @@
 
 import type { ProvenanceChain } from '@/shared/provenance/types'
 import type { ExecutionProvenance } from '@/shared/provenance/adapters/executionAdapter'
-import type { IntelligenceRecordStatus, IntelligenceRecordType } from '@/shared/types/database'
+import type { IntelligenceDomainKey, IntelligenceRecordStatus, IntelligenceRecordType } from '@/shared/types/database'
 
 export type { IntelligenceRecordStatus, IntelligenceRecordType }
 
@@ -70,6 +70,8 @@ export interface IntelligenceRecord {
   workspaceId: string | null
   userId: string
   journeyId: string | null
+  /** Business domain is independent of the engine's recordType; null for legacy records. */
+  domainKey: IntelligenceDomainKey | null
   recordType: IntelligenceRecordType
   status: IntelligenceRecordStatus
   summary: string

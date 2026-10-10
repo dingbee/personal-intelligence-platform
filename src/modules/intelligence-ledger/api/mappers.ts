@@ -20,6 +20,7 @@ export function toIntelligenceRecord(row: IntelligenceRecordRow): IntelligenceRe
     workspaceId: row.workspace_id,
     userId: row.user_id,
     journeyId: row.journey_id,
+    domainKey: row.domain_key,
     recordType: row.record_type,
     status: row.status,
     summary: row.summary,
