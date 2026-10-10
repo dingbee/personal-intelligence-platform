@@ -32,14 +32,14 @@ Each capability requests the IF-02 `DomainIntelligenceOutput` envelope (`schemaV
 
 ## Acceptance criteria
 
-1. Exactly one capability and one active versioned prompt register for each of the eight canonical domain keys.
+1. Exactly one capability and one active versioned prompt register for each of the eight canonical domain keys; registry-level tests prove registration.
 2. Every capability is gated by the shared `domain_intelligence` feature key.
 3. Each prompt emits the shared IF-02 envelope and the exact configured domain key.
 4. Evidence IDs are unique; all finding/recommendation citations refer to evidence IDs actually present.
 5. Unverified claims remain assumptions/hypotheses; deterministic calculations are reproducible; unsupported facts/sources are not fabricated.
-6. Recommendations remain approval-gated and no prompt claims or performs execution.
+6. The execution API rejects recommendations unless `requiresApproval` is exactly `true`; no prompt claims or performs execution.
 7. Domain-specific privacy, legal, attribution, causality, forecast, and risk-scoring guardrails are tested.
-8. Unit tests, lint, typecheck, full suite, production build/bundle verification, IF-02 SQL certification, and ARRIYIA V2 gates pass.
+8. Unit tests cover successful execution, malformed JSON, wrong domain, dangling evidence citations, approval enforcement, and persistence failure. Lint, typecheck, full suite, production build/bundle verification, IF-02 SQL certification, and ARRIYIA V2 gates must pass.
 9. No production deploy or production migration is part of IF-03 implementation verification.
 
 ## Scope boundary
