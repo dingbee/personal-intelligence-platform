@@ -204,8 +204,14 @@ begin
   if p_domain_key is null or p_domain_key not in ('finance', 'marketing', 'sales', 'operations', 'hr', 'legal', 'customer', 'risk') then
     raise exception 'create_domain_intelligence_record: invalid domain_key %', p_domain_key;
   end if;
-  if p_structured_output is null or jsonb_typeof(p_structured_output) <> 'object' then
-    raise exception 'create_domain_intelligence_record: structured_output must be a JSON object';
+  if p_structured_output is null
+     or jsonb_typeof(p_structured_output) <> 'object'
+     or p_structured_output ->> 'schemaVersion' <> '1'
+     or p_structured_output ->> 'domain' is distinct from p_domain_key
+     or jsonb_typeof(p_structured_output -> 'evidence') <> 'array'
+     or jsonb_typeof(p_structured_output -> 'findings') <> 'array'
+     or jsonb_typeof(p_structured_output -> 'recommendations') <> 'array' then
+    raise exception 'create_domain_intelligence_record: structured_output does not match IF-02 domain contract';
   end if;
 
   select * into v_record
