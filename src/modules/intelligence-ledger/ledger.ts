@@ -99,7 +99,6 @@ export interface CreateIntelligenceJourneyParams {
 export interface CreateIntelligenceRecordParams {
   workspaceId: string | null
   journeyId?: string | null
-  domainKey?: IntelligenceDomainKey | null
   recordType: IntelligenceRecordType
   status?: IntelligenceRecordStatus
   summary: string
