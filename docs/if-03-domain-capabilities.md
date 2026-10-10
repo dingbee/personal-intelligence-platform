@@ -1,6 +1,6 @@
 # IF-03 — Domain Capabilities
 
-Status: IMPLEMENTATION VERIFIED — IF-03 acceptance criteria satisfied on commit `96e8f2600a5bb113631c3bd9e17161a899702350`. Full repository CI, quality gate (typecheck, lint, targeted tests, production build, bundle verification), ARRIYIA V2 Gate, and ARRIYIA V2 Certification all passed. The Vercel preview remains externally blocked by the Hobby-plan deployment-rate limit (`api-deployments-free-per-day`); this is recorded as a release/deployment blocker, not a failing application test. IF-03 remains stacked on IF-02's shared-contract branch; neither PR is merged, and no production deployment or migration was performed.
+Status: IF-03 audited; a database-boundary approval-enforcement defect was found and fixed. The model/API layer already rejected recommendations unless `requiresApproval === true`, but the IF-02 RPC previously accepted `false`; migration `0088_if02_shared_intelligence_foundation.sql` now rejects it and the isolated SQL test covers the bypass attempt. CI is rerunning on the amended branch. The latest completed isolated SQL certification, ARRIYIA V2 Gate, and ARRIYIA V2 Certification passed before the final CI rerun. No production deployment or migration was performed.
 
 ## Architectural decision
 
@@ -44,12 +44,11 @@ Each capability requests the IF-02 `DomainIntelligenceOutput` envelope (`schemaV
 
 ## Closure record
 
-- Full-suite CI run `38033202798`: passed.
-- Quality gate: passed, including typecheck, lint, targeted tests, production build, and bundle verification.
-- ARRIYIA V2 Gate run `38033202849`: passed.
-- ARRIYIA V2 Certification run `38033202775`: passed.
-- Outstanding external release check: Vercel preview blocked by the daily deployment-rate limit. Do not bypass the check or treat the preview as successful.
-- IF-03 implementation is closed for scope purposes; PR #49 remains open and unmerged because it is stacked on IF-02 and Vercel is not green.
+- Previously verified full-suite CI and quality gate passed at implementation commit `96e8f2600a5bb113631c3bd9e17161a899702350`; a new full CI run is required after the database-level security fix.
+- The isolated SQL certification passed for the amended migration and adversarial test.
+- ARRIYIA V2 Gate and Certification passed on the amended branch before the latest CI rerun.
+- Vercel posted a later `Ready` preview for an earlier IF-03 commit, but the latest amended commit's preview status must be checked independently; no preview is assumed from that earlier deployment.
+- IF-03 remains open pending final CI verification. The database-boundary approval bypass is now covered by the SQL certification test.
 
 ## Scope boundary
 
