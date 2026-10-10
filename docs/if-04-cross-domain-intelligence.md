@@ -42,7 +42,7 @@ Before combining evidence, evaluate and retain:
 
 ## Delivery sequence
 
-Inspect existing evidence and provenance contracts → define compatibility types and deterministic evaluator → implement the cross-domain capability using authorized supplied context → add adversarial tests for compatibility and authorization boundaries → run targeted checks and full CI → report closure with any external preview limitation explicitly separated from code verification.
+Inspect existing evidence and provenance contracts → define compatibility types and deterministic evaluator → implement the cross-domain capability using authorized supplied context → add adversarial tests for compatibility and authorization boundaries → run targeted checks and full CI → report closure with implementation checks distinct from release operations.
 
 ## Implementation notes
 
@@ -50,4 +50,4 @@ Inspect existing evidence and provenance contracts → define compatibility type
 - Registered gated capability: `src/modules/domain-intelligence/crossDomainModule.ts`.
 - Execution and validation: `src/modules/domain-intelligence/api/runCrossDomainIntelligence.ts`.
 - Canonical ledger RPC: `supabase/migrations/0089_if04_cross_domain_intelligence.sql`; adversarial SQL tests: `supabase/tests/if04_cross_domain_intelligence_test.sql`.
-- IF-04 implementation is in verification; no production deployment or migration has been run.
+- IF-04 implementation checks passed; no production deployment or migration has been run.

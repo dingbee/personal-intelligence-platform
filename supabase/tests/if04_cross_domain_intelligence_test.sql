@@ -14,8 +14,20 @@ begin
       '{"schemaVersion":1,"crossDomain":true,"domains":["finance","marketing"],"evidence":[{"id":"e1","kind":"verified_fact","statement":"Revenue","sourceRef":"report:finance","confidence":0.9}],"findings":[],"recommendations":[{"id":"r1","statement":"Change prices","evidenceIds":["e1"],"requiresApproval":false}]}'::jsonb);
   exception when others then v_raised := true; end;
   if not v_raised then raise exception 'IF-04 TEST FAILED (2): recommendation without approval was accepted'; end if;
+  v_raised := false;
+  begin
+    perform public.create_cross_domain_intelligence_record(null, 'Finding without evidence citations',
+      '{"schemaVersion":1,"crossDomain":true,"domains":["finance","marketing"],"evidence":[{"id":"e1","kind":"verified_fact","statement":"Revenue","sourceRef":"report:finance","confidence":0.9}],"findings":[{"id":"f1","statement":"Unsupported finding","evidenceIds":[]}],"recommendations":[]}'::jsonb);
+  exception when others then v_raised := true; end;
+  if not v_raised then raise exception 'IF-04 TEST FAILED (3): finding with empty evidence citations was accepted'; end if;
+  v_raised := false;
+  begin
+    perform public.create_cross_domain_intelligence_record(null, 'Recommendation without evidence citations',
+      '{"schemaVersion":1,"crossDomain":true,"domains":["finance","marketing"],"evidence":[{"id":"e1","kind":"verified_fact","statement":"Revenue","sourceRef":"report:finance","confidence":0.9}],"findings":[],"recommendations":[{"id":"r1","statement":"Unsupported recommendation","evidenceIds":[],"requiresApproval":true}]}'::jsonb);
+  exception when others then v_raised := true; end;
+  if not v_raised then raise exception 'IF-04 TEST FAILED (4): recommendation with empty evidence citations was accepted'; end if;
 end;
-$$;
+$;
 rollback;
 
 begin;

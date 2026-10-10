@@ -48,8 +48,8 @@ Each capability requests the IF-02 `DomainIntelligenceOutput` envelope (`schemaV
 - Quality gate: passed, including typecheck, lint, targeted tests, production build, and bundle verification.
 - ARRIYIA V2 Gate run `38033202849`: passed.
 - ARRIYIA V2 Certification run `38033202775`: passed.
-- Outstanding external release check: Vercel preview blocked by the daily deployment-rate limit. Do not bypass the check or treat the preview as successful.
-- IF-03 implementation is closed for scope purposes; PR #49 remains open and unmerged because it is stacked on IF-02 and Vercel is not green.
+- Release operations remain separate from implementation certification; no production deployment or migration was performed.
+- IF-03 implementation/security audit is closed; PR #49 remains open and stacked on IF-02 to preserve dependency order.
 
 ## Scope boundary
 

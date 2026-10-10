@@ -75,8 +75,9 @@ begin
     if jsonb_typeof(v_entry) is distinct from 'object'
        or nullif(btrim(v_entry ->> 'id'), '') is null
        or nullif(btrim(v_entry ->> 'statement'), '') is null
-       or jsonb_typeof(v_entry -> 'evidenceIds') is distinct from 'array' then
-      raise exception 'create_cross_domain_intelligence_record: malformed finding';
+       or jsonb_typeof(v_entry -> 'evidenceIds') is distinct from 'array'
+       or jsonb_array_length(v_entry -> 'evidenceIds') = 0 then
+      raise exception 'create_cross_domain_intelligence_record: malformed finding or missing evidence citations';
     end if;
     for v_ref in select value from jsonb_array_elements(v_entry -> 'evidenceIds') as r(value) loop
       if jsonb_typeof(v_ref) is distinct from 'string' or not ((v_ref #>> '{}') = any(v_evidence_ids)) then
@@ -90,8 +91,9 @@ begin
        or nullif(btrim(v_entry ->> 'id'), '') is null
        or nullif(btrim(v_entry ->> 'statement'), '') is null
        or jsonb_typeof(v_entry -> 'evidenceIds') is distinct from 'array'
+       or jsonb_array_length(v_entry -> 'evidenceIds') = 0
        or (v_entry -> 'requiresApproval') is distinct from 'true'::jsonb then
-      raise exception 'create_cross_domain_intelligence_record: recommendation must be valid and require approval';
+      raise exception 'create_cross_domain_intelligence_record: recommendation must cite evidence and require approval';
     end if;
     for v_ref in select value from jsonb_array_elements(v_entry -> 'evidenceIds') as r(value) loop
       if jsonb_typeof(v_ref) is distinct from 'string' or not ((v_ref #>> '{}') = any(v_evidence_ids)) then

@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useV2Space } from '../workspace/SpaceContext'
 import { listIntelligenceRecords } from '@/modules/intelligence-ledger/api/ledgerQueries'
 import { listLearningSignals } from '@/modules/learning-intelligence/api/learningQueries'
 import type { IntelligenceRecord } from '@/modules/intelligence-ledger/ledger'
+import { countDomainRecords, filterIntelligenceRecords, INTELLIGENCE_CENTRE_DOMAINS, isCrossDomainRecord, type IntelligenceCentreFilter } from '@/modules/v2/intelligenceCentreModel'
 
 type Stage = {
   number: string
@@ -54,6 +55,7 @@ export function V2IntelligenceCentrePage() {
   const { activeSpace } = useV2Space()
   const workspaceId = activeSpace?.kind === 'business' ? activeSpace.spaceId : null
   const scopeLabel = activeSpace?.kind === 'business' ? activeSpace.name : 'Personal Space'
+  const [selectedDomain, setSelectedDomain] = useState<IntelligenceCentreFilter>('all')
 
   const recordsQuery = useQuery({
     queryKey: ['v2-intelligence-records', workspaceId],
@@ -81,7 +83,9 @@ export function V2IntelligenceCentrePage() {
     learn: learningSignals.length,
   }), [records, learningSignals])
 
-  const latestRecords = records.slice(0, 8)
+  const filteredRecords = useMemo(() => filterIntelligenceRecords(records, selectedDomain), [records, selectedDomain])
+  const latestRecords = filteredRecords.slice(0, 8)
+  const crossDomainCount = records.filter(isCrossDomainRecord).length
 
   return (
     <div className="min-h-full bg-[var(--surface-base)]">
@@ -126,22 +130,25 @@ export function V2IntelligenceCentrePage() {
           </div>
         </section>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            ['Signals', '0', 'Canonical V2 signal resources are the next persistence boundary.', 'Observe'],
-            ['Insights', '0', 'Canonical V2 insight resources are derived from governed evidence.', 'Reason'],
-            ['Recommendations', '0', 'Canonical V2 recommendation resources remain distinct from execution.', 'Recommend'],
-            ['Predictions', '0', 'Prediction resources require explicit subject, horizon and probability.', 'Reason'],
-          ].map(([label, value, detail, stage]) => (
-            <article key={label} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-[var(--text-secondary)]">{label}</div>
-                <span className="rounded-full border border-[var(--border-subtle)] px-2 py-1 text-[10px] text-[var(--text-secondary)]">{stage}</span>
-              </div>
-              <div className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">{value}</div>
-              <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">{detail}</p>
-            </article>
-          ))}
+        <section aria-label="Domain intelligence coverage" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {INTELLIGENCE_CENTRE_DOMAINS.map((domain) => {
+            const count = countDomainRecords(records, domain.key)
+            const active = selectedDomain === domain.key
+            return (
+              <button key={domain.key} type="button" onClick={() => setSelectedDomain(active ? 'all' : domain.key)} aria-pressed={active}
+                className={`rounded-2xl border bg-[var(--surface-raised)] p-5 text-left transition-colors hover:bg-[var(--surface-muted)] ${active ? 'border-[var(--text-primary)]' : 'border-[var(--border-subtle)]'}`}>
+                <div className="flex items-center justify-between gap-2"><div className="text-xs text-[var(--text-secondary)]">{domain.label}</div><span className="text-[10px] text-[var(--text-secondary)]">Domain</span></div>
+                <div className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">{count}</div>
+                <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">{count === 1 ? 'Verified ledger record' : 'Verified ledger records'} · select to filter</p>
+              </button>
+            )
+          })}
+          <button type="button" onClick={() => setSelectedDomain(selectedDomain === 'cross-domain' ? 'all' : 'cross-domain')} aria-pressed={selectedDomain === 'cross-domain'}
+            className={`rounded-2xl border bg-[var(--surface-raised)] p-5 text-left transition-colors hover:bg-[var(--surface-muted)] ${selectedDomain === 'cross-domain' ? 'border-[var(--text-primary)]' : 'border-[var(--border-subtle)]'}`}>
+            <div className="flex items-center justify-between gap-2"><div className="text-xs text-[var(--text-secondary)]">Cross-domain</div><span className="text-[10px] text-[var(--text-secondary)]">Composition</span></div>
+            <div className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">{crossDomainCount}</div>
+            <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">Traceable analyses across domains · select to filter</p>
+          </button>
         </section>
 
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -168,25 +175,27 @@ export function V2IntelligenceCentrePage() {
             </div>
             <Link to="/history" className="text-xs font-medium text-[var(--text-primary)] underline-offset-4 hover:underline">Open full ledger →</Link>
           </div>
-          <div className="mt-5">
+          <div className="mt-5 space-y-4">
+            <div className="flex flex-wrap gap-2" aria-label="Filter evidence by domain">
+              <button type="button" onClick={() => setSelectedDomain('all')} aria-pressed={selectedDomain === 'all'} className={`rounded-full border px-3 py-1.5 text-xs ${selectedDomain === 'all' ? 'border-[var(--text-primary)] bg-[var(--surface-muted)] font-medium text-[var(--text-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>All records</button>
+              {INTELLIGENCE_CENTRE_DOMAINS.map((domain) => <button key={domain.key} type="button" onClick={() => setSelectedDomain(domain.key)} aria-pressed={selectedDomain === domain.key} className={`rounded-full border px-3 py-1.5 text-xs ${selectedDomain === domain.key ? 'border-[var(--text-primary)] bg-[var(--surface-muted)] font-medium text-[var(--text-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>{domain.label}</button>)}
+              <button type="button" onClick={() => setSelectedDomain('cross-domain')} aria-pressed={selectedDomain === 'cross-domain'} className={`rounded-full border px-3 py-1.5 text-xs ${selectedDomain === 'cross-domain' ? 'border-[var(--text-primary)] bg-[var(--surface-muted)] font-medium text-[var(--text-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>Cross-domain</button>
+            </div>
             {recordsQuery.isLoading ? <p className="text-sm text-[var(--text-secondary)]">Loading intelligence evidence…</p> :
-              recordsQuery.isError ? <p className="text-sm text-[var(--text-secondary)]">Intelligence evidence is unavailable for this Space.</p> :
+              recordsQuery.isError ? <div role="alert" className="rounded-2xl border border-dashed border-[var(--border-subtle)] p-5 text-sm text-[var(--text-secondary)]">Intelligence evidence is unavailable for this Space. Existing data has not been changed.</div> :
               latestRecords.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-[var(--border-subtle)] p-5">
-                  <div className="font-medium text-[var(--text-primary)]">No intelligence records yet</div>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)]">The Centre is connected to the existing ledger and will populate as intelligence engines produce governed records.</p>
+                  <div className="font-medium text-[var(--text-primary)]">{selectedDomain === 'all' ? 'No intelligence records yet' : 'No records match this filter'}</div>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">{selectedDomain === 'all' ? 'The Centre reads from the canonical ledger and will populate as intelligence engines produce governed records.' : 'Try another domain or return to all records. No records are reclassified to make them appear in a category.'}</p>
+                  {selectedDomain !== 'all' && <button type="button" onClick={() => setSelectedDomain('all')} className="mt-3 text-xs font-medium text-[var(--text-primary)] underline">Show all records</button>}
                 </div>
               ) : (
                 <div className="divide-y divide-[var(--border-subtle)]">
-                  {latestRecords.map((record) => (
-                    <article key={record.id} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium text-[var(--text-primary)]">{record.summary}</div>
-                        <div className="mt-1 text-xs text-[var(--text-secondary)]">{stageForRecord[record.recordType]} · {record.recordType} · {relativeTime(record.createdAt)}</div>
-                      </div>
-                      <span className={`w-fit shrink-0 rounded-full border px-2.5 py-1 text-[11px] text-[var(--text-secondary)] ${statusClass[record.status]}`}>{record.status}</span>
-                    </article>
-                  ))}
+                  {latestRecords.map((record) => <article key={record.id} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0"><div className="truncate font-medium text-[var(--text-primary)]">{record.summary}</div>
+                      <div className="mt-1 text-xs text-[var(--text-secondary)]">{stageForRecord[record.recordType]} · {record.recordType} · {record.domainKey ? record.domainKey : isCrossDomainRecord(record) ? 'cross-domain' : 'unclassified'} · {relativeTime(record.createdAt)}</div></div>
+                    <span className={`w-fit shrink-0 rounded-full border px-2.5 py-1 text-[11px] text-[var(--text-secondary)] ${statusClass[record.status]}`}>{record.status}</span>
+                  </article>)}
                 </div>
               )}
           </div>
