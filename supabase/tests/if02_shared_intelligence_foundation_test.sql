@@ -20,7 +20,7 @@ begin
   -- Shared contract: domain identity is independent of engine record_type.
   select * into v_record from public.create_domain_intelligence_record(
     'finance', null, null, 'analysis', 'IF-02 valid domain record',
-    '{"evidence":[],"findings":[]}'::jsonb
+    '{"schemaVersion":1,"domain":"finance","evidence":[],"findings":[],"recommendations":[]}'::jsonb
   );
   if v_record.domain_key <> 'finance' or v_record.record_type <> 'analysis' then
     raise exception 'IF-02 TEST FAILED (1): domain_key and record_type were conflated or not persisted';
