@@ -1639,6 +1639,16 @@ export type Database = {
         }
         Returns: IntelligenceRecordRow
       }
+      create_cross_domain_intelligence_record: {
+        Args: {
+          p_workspace_id: string | null
+          p_summary: string
+          p_structured_output: Record<string, unknown>
+          p_operation_id?: string | null
+          p_provider_id?: string | null
+        }
+        Returns: IntelligenceRecordRow
+      }
       create_domain_intelligence_record: {
         Args: {
           p_domain_key: IntelligenceDomainKey
