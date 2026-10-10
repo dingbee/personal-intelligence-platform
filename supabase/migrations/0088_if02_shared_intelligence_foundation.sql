@@ -200,19 +200,82 @@ set search_path = public
 as $$
 declare
   v_record public.intelligence_records;
+  v_item jsonb;
+  v_entry jsonb;
+  v_ref jsonb;
+  v_id text;
+  v_evidence_ids text[] := array[]::text[];
+  v_seen_ids text[] := array[]::text[];
 begin
+  if (select auth.uid()) is null then
+    raise exception 'create_domain_intelligence_record: authentication required';
+  end if;
   if p_domain_key is null or p_domain_key not in ('finance', 'marketing', 'sales', 'operations', 'hr', 'legal', 'customer', 'risk') then
     raise exception 'create_domain_intelligence_record: invalid domain_key %', p_domain_key;
   end if;
   if p_structured_output is null
-     or jsonb_typeof(p_structured_output) <> 'object'
+     or jsonb_typeof(p_structured_output) is distinct from 'object'
      or p_structured_output ->> 'schemaVersion' is distinct from '1'
      or p_structured_output ->> 'domain' is distinct from p_domain_key
-     or jsonb_typeof(p_structured_output -> 'evidence') <> 'array'
-     or jsonb_typeof(p_structured_output -> 'findings') <> 'array'
-     or jsonb_typeof(p_structured_output -> 'recommendations') <> 'array' then
+     or jsonb_typeof(p_structured_output -> 'evidence') is distinct from 'array'
+     or jsonb_typeof(p_structured_output -> 'findings') is distinct from 'array'
+     or jsonb_typeof(p_structured_output -> 'recommendations') is distinct from 'array' then
     raise exception 'create_domain_intelligence_record: structured_output does not match IF-02 domain contract';
   end if;
+
+  -- Validate every evidence item at the trusted write boundary, not only in the UI.
+  for v_item in select value from jsonb_array_elements(p_structured_output -> 'evidence') as e(value) loop
+    if jsonb_typeof(v_item) is distinct from 'object'
+       or nullif(btrim(v_item ->> 'id'), '') is null
+       or nullif(btrim(v_item ->> 'statement'), '') is null
+       or v_item ->> 'kind' not in ('verified_fact', 'deterministic_calculation', 'assumption', 'hypothesis', 'recommendation')
+       or not (v_item ? 'sourceRef')
+       or jsonb_typeof(v_item -> 'sourceRef') not in ('null', 'string')
+       or not (v_item ? 'confidence')
+       or jsonb_typeof(v_item -> 'confidence') not in ('null', 'number') then
+      raise exception 'create_domain_intelligence_record: malformed evidence item';
+    end if;
+    if jsonb_typeof(v_item -> 'confidence') = 'number'
+       and ((v_item ->> 'confidence')::numeric < 0 or (v_item ->> 'confidence')::numeric > 1) then
+      raise exception 'create_domain_intelligence_record: evidence confidence must be between 0 and 1';
+    end if;
+    v_id := v_item ->> 'id';
+    if v_id = any(v_seen_ids) then
+      raise exception 'create_domain_intelligence_record: evidence ids must be unique';
+    end if;
+    v_seen_ids := array_append(v_seen_ids, v_id);
+    v_evidence_ids := array_append(v_evidence_ids, v_id);
+  end loop;
+
+  -- Findings and recommendations must cite evidence from this exact output.
+  for v_entry in select value from jsonb_array_elements(p_structured_output -> 'findings') as f(value) loop
+    if jsonb_typeof(v_entry) is distinct from 'object'
+       or nullif(btrim(v_entry ->> 'id'), '') is null
+       or nullif(btrim(v_entry ->> 'statement'), '') is null
+       or jsonb_typeof(v_entry -> 'evidenceIds') is distinct from 'array' then
+      raise exception 'create_domain_intelligence_record: malformed finding';
+    end if;
+    for v_ref in select value from jsonb_array_elements(v_entry -> 'evidenceIds') as r(value) loop
+      if jsonb_typeof(v_ref) is distinct from 'string' or not ((v_ref #>> '{}') = any(v_evidence_ids)) then
+        raise exception 'create_domain_intelligence_record: finding references unknown evidence';
+      end if;
+    end loop;
+  end loop;
+
+  for v_entry in select value from jsonb_array_elements(p_structured_output -> 'recommendations') as r(value) loop
+    if jsonb_typeof(v_entry) is distinct from 'object'
+       or nullif(btrim(v_entry ->> 'id'), '') is null
+       or nullif(btrim(v_entry ->> 'statement'), '') is null
+       or jsonb_typeof(v_entry -> 'evidenceIds') is distinct from 'array'
+       or jsonb_typeof(v_entry -> 'requiresApproval') is distinct from 'boolean' then
+      raise exception 'create_domain_intelligence_record: malformed recommendation';
+    end if;
+    for v_ref in select value from jsonb_array_elements(v_entry -> 'evidenceIds') as r(value) loop
+      if jsonb_typeof(v_ref) is distinct from 'string' or not ((v_ref #>> '{}') = any(v_evidence_ids)) then
+        raise exception 'create_domain_intelligence_record: recommendation references unknown evidence';
+      end if;
+    end loop;
+  end loop;
 
   select * into v_record
   from public.create_intelligence_record(
