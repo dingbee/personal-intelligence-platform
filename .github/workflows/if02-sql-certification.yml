@@ -1,0 +1,52 @@
+name: IF-02 Isolated SQL Certification
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/0066_intelligence_ledger.sql'
+      - 'supabase/migrations/0088_if02_shared_intelligence_foundation.sql'
+      - 'supabase/tests/if02_shared_intelligence_foundation_test.sql'
+      - 'supabase/tests/if02_test_harness_setup.sql'
+      - '.github/workflows/if02-sql-certification.yml'
+  push:
+    branches:
+      - 'feat/if-02-shared-intelligence-foundation'
+    paths:
+      - 'supabase/migrations/0066_intelligence_ledger.sql'
+      - 'supabase/migrations/0088_if02_shared_intelligence_foundation.sql'
+      - 'supabase/tests/if02_shared_intelligence_foundation_test.sql'
+      - 'supabase/tests/if02_test_harness_setup.sql'
+      - '.github/workflows/if02-sql-certification.yml'
+
+jobs:
+  isolated-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: if02_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d if02_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: if02_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build isolated schema fixture
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/if02_test_harness_setup.sql
+      - name: Apply canonical ledger migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/0066_intelligence_ledger.sql
+      - name: Apply IF-02 migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/0088_if02_shared_intelligence_foundation.sql
+      - name: Run IF-02 adversarial SQL tests
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/if02_shared_intelligence_foundation_test.sql
