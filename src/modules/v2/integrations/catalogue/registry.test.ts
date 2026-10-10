@@ -70,7 +70,7 @@ describe('IFAB-01 integration catalogue contracts', () => {
     const v2 = provider('2.0.0')
     expect(resolveProviderDescriptor([v2, v1], 'generic-rest')).toEqual({ found: true, value: v2 })
     expect(resolveProviderDescriptor([v2, v1], 'generic-rest', '1.0.0')).toEqual({ found: true, value: v1 })
-    expect(resolveProviderDescriptor([v1, v2], 'missing').reason).toBe('not_found')
+    expect(resolveProviderDescriptor([v1, v2], 'missing')).toEqual({ found: false, reason: 'not_found' })
   })
 
   it('fails closed for duplicate provider versions instead of choosing by input order', () => {
