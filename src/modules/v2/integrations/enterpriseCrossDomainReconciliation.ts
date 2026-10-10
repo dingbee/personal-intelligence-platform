@@ -133,6 +133,7 @@ export function reconcileCrossDomainObservations(
 
   const seenObservations = new Set<string>()
   const seenEvidence = new Set<string>()
+  const seenValueTypes = new Map<string, EIFCrossDomainValueType>()
   const valid: Array<{ observation: EIFCrossDomainObservation; normalizedValue: string }> = []
 
   observations.forEach((observation, index) => {
@@ -158,6 +159,14 @@ export function reconcileCrossDomainObservations(
       issues.push({ code: 'invalid_value', observationIndex: index, message: 'Value does not conform to its declared type or is empty.' })
       return
     }
+    const observationGroupKey = groupKey(observation)
+    const existingValueType = seenValueTypes.get(observationGroupKey)
+    if (existingValueType && existingValueType !== observation.valueType) {
+      issues.push({ code: 'invalid_value', observationIndex: index, message: 'Observations for the same entity attribute must use the same value type.' })
+      return
+    }
+    seenValueTypes.set(observationGroupKey, observation.valueType)
+
     if (!validEvidence(observation.evidence, nowMs)) {
       issues.push({ code: 'invalid_evidence', observationIndex: index, message: 'Evidence must be attributable and cannot be future-dated.' })
       return
@@ -195,10 +204,10 @@ export function reconcileCrossDomainObservations(
     const comparisonValues = [...new Set(entries.map(entry => `${entry.observation.valueType}:${entry.normalizedValue}`))]
     const normalizedValues = [...new Set(entries.map(entry => entry.normalizedValue))]
     const domains = [...new Set(entries.map(entry => entry.observation.domain))].sort()
-    const outcome: EIFCrossDomainGroup['outcome'] = entries.length === 1
-      ? 'single_source'
-      : comparisonValues.length > 1
-        ? 'conflict'
+    const outcome: EIFCrossDomainGroup['outcome'] = comparisonValues.length > 1
+      ? 'conflict'
+      : domains.length < 2
+        ? 'single_source'
         : 'consistent'
     return {
       entityId: first.entityId,
