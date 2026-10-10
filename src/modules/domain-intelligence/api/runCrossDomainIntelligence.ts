@@ -1,7 +1,7 @@
 import { runCapability } from '@/modules/ai/orchestration/runCapability'
 import { CROSS_DOMAIN_CAPABILITY_ID } from '@/modules/domain-intelligence/crossDomainModule'
 import { evaluateCrossDomainCompatibility, type CrossDomainCompatibilityResult, type CrossDomainEvidenceDescriptor } from '@/modules/domain-intelligence/crossDomainCompatibility'
-import { writeIntelligenceRecord } from '@/modules/intelligence-ledger/api/writeIntelligenceRecord'
+import { createCrossDomainIntelligenceRecord } from '@/modules/intelligence-ledger/api/createCrossDomainIntelligenceRecord'
 import type { IntelligenceEvidenceKind, IntelligenceDomainKey } from '@/modules/intelligence-ledger/domainContract'
 
 interface CrossDomainOutputEvidence { id: string; kind: IntelligenceEvidenceKind; statement: string; sourceRef: string; confidence: number | null }
@@ -93,9 +93,14 @@ export async function runCrossDomainIntelligence(params: RunCrossDomainIntellige
     variables: { question, compatibility: JSON.stringify(compatibility), evidenceContext: JSON.stringify({ descriptors: evidence, context: evidenceContext }) },
   })
   const output = parseOutput(result.content, evidence, domains)
-  const record = await writeIntelligenceRecord({
+  let record: Awaited<ReturnType<typeof createCrossDomainIntelligenceRecord>> | null = null
+  try {
+    record = await createCrossDomainIntelligenceRecord({
     workspaceId, recordType: 'analysis', summary: `Cross-domain Intelligence: ${question.trim()}`,
     structuredOutput: output as unknown as Record<string, unknown>, operationId, providerId: providerId ?? null,
-  })
+    })
+  } catch (error) {
+    console.error('[intelligence-ledger] failed to persist cross-domain intelligence record', error)
+  }
   return { status: 'completed', compatibility, output, model: result.model, persistence: record ? { status: 'persisted', recordId: record.id } : { status: 'not_persisted' } }
 }
