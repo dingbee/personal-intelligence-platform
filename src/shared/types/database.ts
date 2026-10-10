@@ -633,6 +633,7 @@ export type IntelligenceJourneyRow = {
 }
 
 export type IntelligenceRecordType = 'data' | 'analysis' | 'research' | 'planning' | 'decision' | 'action' | 'execution'
+export type IntelligenceDomainKey = 'finance' | 'marketing' | 'sales' | 'operations' | 'hr' | 'legal' | 'customer' | 'risk'
 export type IntelligenceRecordStatus = 'created' | 'running' | 'completed' | 'failed' | 'superseded' | 'archived'
 
 export type IntelligenceRecordRow = {
@@ -640,6 +641,7 @@ export type IntelligenceRecordRow = {
   workspace_id: string | null
   user_id: string
   journey_id: string | null
+  domain_key: IntelligenceDomainKey | null
   record_type: IntelligenceRecordType
   status: IntelligenceRecordStatus
   summary: string
