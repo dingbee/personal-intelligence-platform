@@ -83,6 +83,16 @@ describe('EIF-04 enterprise knowledge/memory context', () => {
     })
   })
 
+  it('treats evidence identity as a tuple instead of a delimiter-concatenated key', () => {
+    const result = composeEnterpriseKnowledgeContext([
+      memory({ evidence: [
+        { sourceId: 'source:a', sourceRecordId: 'record', sourceSystem: 'sys', observedAt: now },
+        { sourceId: 'source', sourceRecordId: 'a:record', sourceSystem: 'sys', observedAt: now },
+      ] }),
+    ], context, options)
+    expect(result).toMatchObject({ status: 'ready', items: [{ id: 'memory-1' }] })
+  })
+
   it('rejects malformed evidence and future timestamps instead of fabricating provenance', () => {
     const result = composeEnterpriseKnowledgeContext([
       memory({ id: 'bad-evidence', evidence: [] }),
@@ -109,11 +119,35 @@ describe('EIF-04 enterprise knowledge/memory context', () => {
       userId: 'user-1',
       permission: 'enterprise_knowledge.read',
       context,
-      options,
+      resolveTrustedOptions: vi.fn(() => options),
       loadCandidates: loader,
     })
     expect(denied.status).toBe('denied')
     expect(loader).not.toHaveBeenCalled()
+  })
+
+  it('does not resolve trusted sensitivity policy before governance and fails closed on missing scope', async () => {
+    const resolveTrustedOptions = vi.fn(() => options)
+    const denied = await resolveAuthorizedEnterpriseKnowledgeContext({
+      store: new V2ControlPlaneStore(),
+      userId: 'user-1',
+      permission: 'enterprise_knowledge.read',
+      context,
+      resolveTrustedOptions,
+      loadCandidates: vi.fn(async () => [memory()]),
+    })
+    expect(denied.status).toBe('denied')
+    expect(resolveTrustedOptions).not.toHaveBeenCalled()
+
+    const invalid = await resolveAuthorizedEnterpriseKnowledgeContext({
+      store: storeWithPermission(),
+      userId: 'user-1',
+      permission: 'enterprise_knowledge.read',
+      context: { workspaceId: 'ws-1', userId: 'user-1' } as never,
+      resolveTrustedOptions: () => options,
+      loadCandidates: vi.fn(async () => [memory()]),
+    })
+    expect(invalid.status).toBe('invalid_request')
   })
 
   it('loads candidates only after governance and rejects caller/context identity mismatch', async () => {
@@ -123,7 +157,7 @@ describe('EIF-04 enterprise knowledge/memory context', () => {
       userId: 'user-1',
       permission: 'enterprise_knowledge.read',
       context,
-      options,
+      resolveTrustedOptions: vi.fn(() => options),
       loadCandidates: loader,
     })
     expect(resolved).toMatchObject({ status: 'ready', items: [{ id: 'memory-1' }] })
@@ -135,7 +169,7 @@ describe('EIF-04 enterprise knowledge/memory context', () => {
       userId: 'user-2',
       permission: 'enterprise_knowledge.read',
       context,
-      options,
+      resolveTrustedOptions: () => options,
       loadCandidates: mismatchLoader,
     })
     expect(mismatch).toMatchObject({ status: 'invalid_request' })
