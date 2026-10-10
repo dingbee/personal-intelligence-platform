@@ -6,11 +6,13 @@ on:
       - main
       - v2-development
       - feat/if-02-shared-intelligence-foundation
+      - feat/if-03-domain-capabilities
   push:
     branches:
       - main
       - v2-development
       - 'feat/if-03-*'
+      - 'feat/if-04-*'
 
 concurrency:
   group: ci-${{ github.ref }}
