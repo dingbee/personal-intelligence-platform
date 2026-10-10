@@ -75,6 +75,7 @@ function makeParams(overrides: Record<string, unknown> = {}) {
     sourceContract,
     sourceSnapshot,
     sourceRecordId: 'supplier-42',
+    requiredCapability: 'suppliers.read',
     entityType: 'supplier' as const,
     name: 'North Star Supplies Ltd',
     identifiers: [{ namespace: 'supplier_code', value: 'SUP-42' }],
@@ -117,6 +118,13 @@ describe('EIF-03 governed enterprise evidence boundary', () => {
     const params = makeParams({ context: { ...context, userId: 'user-2' } })
     const result = await resolveAuthorizedEnterpriseEntity(params)
     expect(result).toMatchObject({ status: 'scope_violation' })
+    expect(params.loadCandidates).not.toHaveBeenCalled()
+  })
+
+  it('rejects a capability not granted by the source contract before candidate loading', async () => {
+    const params = makeParams({ requiredCapability: 'invoices.read' })
+    const result = await resolveAuthorizedEnterpriseEntity(params)
+    expect(result).toMatchObject({ status: 'invalid_source', issues: [{ code: 'source_capability_not_granted' }] })
     expect(params.loadCandidates).not.toHaveBeenCalled()
   })
 
