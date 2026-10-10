@@ -6,12 +6,14 @@ on:
       - 'feat/v2-*'
       - 'feat/if-03-*'
       - 'feat/if-04-*'
+      - 'feat/if-05-*'
       - v2-development
   pull_request:
     branches:
       - v2-development
       - feat/if-02-shared-intelligence-foundation
       - feat/if-03-domain-capabilities
+      - feat/if-04-cross-domain-intelligence-clean
   workflow_dispatch:
 
 jobs:

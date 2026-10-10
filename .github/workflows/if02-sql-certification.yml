@@ -15,9 +15,12 @@ on:
       - 'feat/if-02-shared-intelligence-foundation'
       - 'feat/if-03-*'
       - 'feat/if-04-*'
+      - 'feat/if-05-*'
     paths:
       - 'supabase/migrations/0066_intelligence_ledger.sql'
       - 'supabase/migrations/0088_if02_shared_intelligence_foundation.sql'
+      - 'supabase/migrations/0089_if04_cross_domain_intelligence.sql'
+      - 'supabase/tests/if04_cross_domain_intelligence_test.sql'
       - 'supabase/tests/if02_shared_intelligence_foundation_test.sql'
       - 'supabase/tests/if02_test_harness_setup.sql'
       - '.github/workflows/if02-sql-certification.yml'

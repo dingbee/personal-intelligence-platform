@@ -1,6 +1,5 @@
 # IF-03 — Domain Capabilities
 
-Status: IMPLEMENTATION VERIFIED — IF-03 acceptance criteria satisfied on commit `96e8f2600a5bb113631c3bd9e17161a899702350`. Full repository CI, quality gate (typecheck, lint, targeted tests, production build, bundle verification), ARRIYIA V2 Gate, and ARRIYIA V2 Certification all passed. The Vercel preview remains externally blocked by the Hobby-plan deployment-rate limit (`api-deployments-free-per-day`); this is recorded as a release/deployment blocker, not a failing application test. IF-03 remains stacked on IF-02's shared-contract branch; neither PR is merged, and no production deployment or migration was performed.
 
 ## Architectural decision
 

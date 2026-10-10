@@ -1,6 +1,5 @@
 # IF-04 — Cross-domain Intelligence
 
-Status: implementation started. This branch is intentionally stacked on IF-03, which itself is stacked on IF-02. GitHub CI for IF-03 is green; Vercel preview is an external deployment-rate-limit blocker and does not block continued implementation. No production deployment or migration is authorized by this milestone.
 
 ## Objective
 
