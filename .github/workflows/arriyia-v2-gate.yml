@@ -5,11 +5,13 @@ on:
     branches:
       - 'feat/v2-*'
       - 'feat/if-03-*'
+      - 'feat/if-04-*'
       - v2-development
   pull_request:
     branches:
       - v2-development
       - feat/if-02-shared-intelligence-foundation
+      - feat/if-03-domain-capabilities
   workflow_dispatch:
 
 jobs:
