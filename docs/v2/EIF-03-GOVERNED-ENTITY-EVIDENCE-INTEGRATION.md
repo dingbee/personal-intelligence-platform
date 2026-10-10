@@ -30,7 +30,8 @@ Added `src/modules/v2/integrations/enterpriseEvidenceBoundary.ts`:
 
 - Composes the existing `govern` authorization/governance path with EIF-01 snapshot validation and EIF-02 reconciliation.
 - Requires an explicit user, organization, and Business Space; rejects caller/context user mismatch.
-- Does not invoke the candidate loader until governance passes and the source snapshot validates.
+- Requires the requested source capability to be explicitly granted as a read capability.
+- Does not invoke the candidate loader until governance, capability checks, and source-snapshot validation pass.
 - Supplies only the active organization, Business Space, and user to the candidate-loader interface.
 - Fails closed on candidate scope leakage and duplicate canonical identity IDs.
 - Returns the validated observation, including source ID, source-record ID, source-system identity, observation timestamp, and locator, with the reconciliation result.
@@ -46,7 +47,7 @@ The existing Intelligence Ledger is not written during reconciliation. A future 
 
 ## 5. Acceptance criteria
 
-- Governance happens before candidate loading.
+- Governance and source-capability checks happen before candidate loading.
 - Invalid, stale, or out-of-scope source evidence never reaches reconciliation.
 - Candidate-loader scope violations fail closed.
 - EIF-02 remains the only identity reconciliation contract; exact identifier matching and name-only review rules remain unchanged.
