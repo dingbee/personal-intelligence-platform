@@ -99,7 +99,7 @@ function FoundingProMemberPanel({ member }: { member: FoundingProMember }) {
               <p className="text-sm text-[var(--color-ink-muted)] line-through">
                 Pro {formatMemberPrice(proPlan.monthlyPriceCents!, proPlan.currency)}/mo
               </p>
-              <p className="text-2xl font-semibold text-[var(--color-ink)]">
+              <p className="break-words text-2xl font-semibold leading-tight text-[var(--color-ink)]">
                 {formatMemberPrice(member.founding_price_cents, member.currency)}/mo
               </p>
               <span className="rounded-control bg-[var(--surface-inset)] px-2 py-0.5 text-xs font-semibold text-[var(--color-accent)]">
@@ -184,10 +184,10 @@ export function FoundingProCard() {
   })
 
   return (
-    <SurfaceCard className="flex flex-col gap-4 border-2 border-[var(--color-accent)]/30">
+    <SurfaceCard className="flex min-w-0 flex-col gap-4 border-2 border-[var(--color-accent)]/30 [&_p]:[overflow-wrap:anywhere] [&_li]:[overflow-wrap:anywhere]">
       <div>
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[var(--color-ink)]">Founding Pro</h2>
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+          <h2 className="min-w-0 text-lg font-semibold text-[var(--color-ink)]">Founding Pro</h2>
           {state.kind === 'member' && state.member.transition_status === 'active' && <StatusBadge label="Your plan" variant="info" />}
         </div>
         <p className="mt-1 text-sm font-semibold text-[var(--color-accent)]">{FOUNDING_PRO_HEADLINE}</p>

@@ -123,10 +123,10 @@ function PlanCard({ tier, isCurrent, cta }: { tier: PublicPlanTier; isCurrent: b
   const copy = CARD_COPY[tier.code]
 
   return (
-    <SurfaceCard className="flex flex-col gap-4">
+    <SurfaceCard className="flex min-w-0 flex-col gap-4 [&_p]:[overflow-wrap:anywhere] [&_li]:[overflow-wrap:anywhere]">
       <div>
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[var(--color-ink)]">{tier.name}</h2>
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+          <h2 className="min-w-0 text-lg font-semibold text-[var(--color-ink)]">{tier.name}</h2>
           {isCurrent && <StatusBadge label="Current plan" variant="info" />}
         </div>
         {copy && <p className="mt-1 text-sm font-semibold text-[var(--color-accent)]">{copy.headline}</p>}
@@ -134,7 +134,7 @@ function PlanCard({ tier, isCurrent, cta }: { tier: PublicPlanTier; isCurrent: b
           <p className="mt-1 text-2xl font-semibold text-[var(--color-ink)]">Free</p>
         ) : monthly ? (
           <div className="mt-1">
-            <p className="text-2xl font-semibold text-[var(--color-ink)]">{monthly}/mo</p>
+            <p className="break-words text-2xl font-semibold leading-tight text-[var(--color-ink)]">{monthly}/mo</p>
             {annual && <p className="text-xs text-[var(--color-ink-muted)]">or {annual}/yr</p>}
           </div>
         ) : (
@@ -307,7 +307,7 @@ export function PricingPage() {
         )}
       </header>
 
-      <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8 md:px-8">
+      <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-6 px-4 py-8 md:px-8">
         <div>
           <h1 className="text-2xl font-semibold text-[var(--color-ink)]">Plans</h1>
           <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
@@ -332,7 +332,7 @@ export function PricingPage() {
           catalogLoading, since those genuinely need real catalog data
           (price/quotas) to render at all.
         */}
-        <div data-testid="plan-cards" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div data-testid="plan-cards" className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {catalogLoading || !catalog ? (
             <div className="col-span-full flex justify-center py-12">
               <Spinner />
